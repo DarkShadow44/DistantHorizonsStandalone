@@ -4,13 +4,14 @@
   "refmap": "mixins.distanthorizons.refmap.json",
   "target": "@env(DEFAULT)",
   "package": "com.seibel.distanthorizons.mixin",
-  "mixins": [
+  "client": [
       "MixinEntityRenderer",
       "MixinMinecraft",
       "MixinNetHandlerPlayClient",
       "MixinOptionsScreen",
       "MixinTextureAtlasSprite",
-      "MixinRenderGlobal"
+      "MixinRenderGlobal",
+      "MixinActiveRenderInfo"
   ],
   "compatibilityLevel": "JAVA_21"
 }
