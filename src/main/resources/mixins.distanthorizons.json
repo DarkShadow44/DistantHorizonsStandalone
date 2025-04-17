@@ -3,11 +3,8 @@
   "minVersion": "0.8.3-GTNH",
   "refmap": "mixins.distanthorizons.refmap.json",
   "target": "@env(DEFAULT)",
-  "overwrites" : {
-    "conformVisibility" : true
-  },
-   "mixins": [],
-  "client": [
+  "package": "com.seibel.distanthorizons.mixin",
+  "mixins": [
       "MixinEntityRenderer",
       "MixinMinecraft",
       "MixinNetHandlerPlayClient",
@@ -15,7 +12,6 @@
       "MixinTextureAtlasSprite",
       "MixinRenderGlobal"
   ],
-  "server": [],
   "compatibilityLevel": "JAVA_21"
 }
 

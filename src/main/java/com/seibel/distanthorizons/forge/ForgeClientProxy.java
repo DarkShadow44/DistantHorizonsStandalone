@@ -229,7 +229,7 @@ public class ForgeClientProxy implements AbstractModInitializer.IEventProxy
 				// should generally only need to be set once per game session
 				// allows DH to render directly to Optifine's level frame buffer,
 				// allowing better shader support
-				MinecraftRenderWrapper.INSTANCE.finalLevelFrameBufferId = GL32.glGetInteger(GL32.GL_FRAMEBUFFER_BINDING);
+				//MinecraftRenderWrapper.INSTANCE.finalLevelFrameBufferId = GL32.glGetInteger(GL32.GL_FRAMEBUFFER_BINDING);
 			}
 			catch (Exception | Error e)
 			{

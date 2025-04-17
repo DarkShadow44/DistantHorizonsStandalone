@@ -25,7 +25,7 @@ public class RenderHelper {
         GL32.glDepthFunc(GL32.GL_LEQUAL);
     }
 
-    private static FloatBuffer buffer = BufferUtils.createFloatBuffer(16);
+    private static FloatBuffer buffer = FloatBuffer.allocate(16);
 
     public static Mat4f getModelViewMatrix() {
 
