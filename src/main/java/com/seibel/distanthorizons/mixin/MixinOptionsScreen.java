@@ -17,7 +17,7 @@
  *    along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.gtnewhorizons.angelica.mixins.early.distanthorizons;
+package com.seibel.distanthorizons.mixin;
 
 import com.seibel.distanthorizons.common.wrappers.gui.GetConfigScreen;
 import com.seibel.distanthorizons.common.wrappers.gui.TexturedButtonWidget;

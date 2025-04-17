@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.mixins.early.distanthorizons;
+package com.seibel.distanthorizons.mixin;
 
 import com.seibel.distanthorizons.interfaces.IMixinEntityRenderer;
 import net.minecraft.client.renderer.EntityRenderer;

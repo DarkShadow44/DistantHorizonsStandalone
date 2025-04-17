@@ -6,6 +6,16 @@
   "overwrites" : {
     "conformVisibility" : true
   },
+   "mixins": [],
+  "client": [
+      "MixinEntityRenderer",
+      "MixinMinecraft",
+      "MixinNetHandlerPlayClient",
+      "MixinOptionsScreen",
+      "MixinTextureAtlasSprite",
+      "MixinRenderGlobal"
+  ],
+  "server": [],
   "compatibilityLevel": "JAVA_21"
 }
 

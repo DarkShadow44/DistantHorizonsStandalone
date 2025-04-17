@@ -25,6 +25,8 @@ import cpw.mods.fml.common.ModContainer;
 
 import java.io.File;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Stream;
 
 public class ModChecker implements IModChecker
 {
@@ -39,12 +41,13 @@ public class ModChecker implements IModChecker
 	@Override
 	public File modLocation(String modid)
 	{
-        List<ModContainer> found = Loader.instance().getModList().stream().filter(x -> x.getModId().equals(modid)).toList();
-        if (found.isEmpty())
+        Stream<ModContainer> foundStream = Loader.instance().getModList().stream().filter(x -> x.getModId().equals(modid));
+        Optional<ModContainer> container = foundStream.findFirst();
+        if (!container.isPresent())
         {
             throw new RuntimeException("Mod not found: " + modid);
         }
-        return found.get(0).getSource();
+        return container.get().getSource();
 	}
 
 }

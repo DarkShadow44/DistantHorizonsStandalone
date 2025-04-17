@@ -21,7 +21,6 @@
 package com.seibel.distanthorizons.common.wrappers.worldGeneration;
 
 import com.google.common.collect.ImmutableMap;
-import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkPos;
 import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiDistantGeneratorMode;
 import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiWorldGenerationStep;

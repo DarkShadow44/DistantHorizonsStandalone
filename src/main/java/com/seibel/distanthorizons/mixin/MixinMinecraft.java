@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.mixins.early.distanthorizons;
+package com.seibel.distanthorizons.mixin;
 
 import com.seibel.distanthorizons.interfaces.IMixinMinecraft;
 import net.minecraft.client.Minecraft;

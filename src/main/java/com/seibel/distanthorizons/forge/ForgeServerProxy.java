@@ -1,6 +1,5 @@
 package com.seibel.distanthorizons.forge;
 
-import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.seibel.distanthorizons.common.AbstractModInitializer;
 import com.seibel.distanthorizons.common.util.ProxyUtil;
 import com.seibel.distanthorizons.common.wrappers.chunk.ChunkWrapper;
@@ -118,7 +117,7 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
                     scheduledTask.run();
                 }
                 count++;
-                if (count >= AngelicaConfig.distantHorizonsChunkUpdatesPerSecond)
+                if (count >= 5)
                 {
                     break;
                 }

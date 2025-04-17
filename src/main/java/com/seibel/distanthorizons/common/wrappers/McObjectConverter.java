@@ -58,7 +58,7 @@ public class McObjectConverter
 		return matrix;
 	}
 	/** Taken from Minecraft's com.mojang.math.Matrix4f class from 1.18.2 */
-	private static void storeMatrix(
+	public static void storeMatrix(
 			Matrix4f matrix,
 			FloatBuffer buffer)
 	{

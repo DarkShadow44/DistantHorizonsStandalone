@@ -24,7 +24,6 @@ import java.lang.invoke.MethodHandles;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
-import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.seibel.distanthorizons.common.wrappers.WrapperFactory;
 
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
@@ -41,8 +40,6 @@ import com.seibel.distanthorizons.core.wrapperInterfaces.IWrapperFactory;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor.IOptifineAccessor;
 import com.seibel.distanthorizons.interfaces.IMixinMinecraft;
-import net.coderbot.iris.rendertarget.IRenderTargetExt;
-import net.coderbot.iris.rendertarget.RenderTarget;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.shader.Framebuffer;
 import net.minecraft.potion.Potion;
@@ -190,9 +187,9 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
     public int getDepthTextureId() {
         final Framebuffer framebuffer = Minecraft.getMinecraft().getFramebuffer();
 
-        if (AngelicaConfig.enableIris)
+        //if (AngelicaConfig.enableIris)
         {
-            return ((IRenderTargetExt)framebuffer).getIris$depthTextureId();
+         //   return ((IRenderTargetExt)framebuffer).getIris$depthTextureId();
         }
 
         return framebuffer.depthBuffer;

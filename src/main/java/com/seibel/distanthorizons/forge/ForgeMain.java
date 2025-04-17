@@ -19,7 +19,6 @@
 
 package com.seibel.distanthorizons.forge;
 
-import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.seibel.distanthorizons.common.AbstractModInitializer;
 import com.seibel.distanthorizons.core.api.internal.ServerApi;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
@@ -59,9 +58,6 @@ public class ForgeMain extends AbstractModInitializer
 
     @Mod.EventHandler
     public void init(FMLInitializationEvent event) {
-        if (!AngelicaConfig.enableDistantHorizons)
-            return;
-
         if (FMLCommonHandler.instance().getEffectiveSide().isClient()) {
             this.onInitializeClient();
         }
@@ -81,9 +77,6 @@ public class ForgeMain extends AbstractModInitializer
     @Mod.EventHandler
     public void dedicatedWorldLoadEvent(FMLServerAboutToStartEvent event)
     {
-        if (!AngelicaConfig.enableDistantHorizons)
-            return;
-
         ServerApi.INSTANCE.serverLoadEvent(event.getServer().isDedicatedServer());
     }
 
@@ -91,9 +84,6 @@ public class ForgeMain extends AbstractModInitializer
     @Mod.EventHandler
     public void serverWorldUnloadEvent(FMLServerStoppingEvent event)
     {
-        if (!AngelicaConfig.enableDistantHorizons)
-            return;
-
         ServerApi.INSTANCE.serverUnloadEvent();
     }
 

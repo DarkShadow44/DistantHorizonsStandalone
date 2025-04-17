@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.mixins.early.distanthorizons;
+package com.seibel.distanthorizons.mixin;
 
 import com.seibel.distanthorizons.core.api.internal.ClientApi;
 import com.seibel.distanthorizons.forge.ForgeServerProxy;
