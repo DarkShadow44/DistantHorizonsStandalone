@@ -58,7 +58,7 @@ public class McObjectConverter
 		return matrix;
 	}
 	/** Taken from Minecraft's com.mojang.math.Matrix4f class from 1.18.2 */
-	public static void storeMatrix(
+	private static void storeMatrix(
 			Matrix4f matrix,
 			FloatBuffer buffer)
 	{
@@ -79,7 +79,6 @@ public class McObjectConverter
 		buffer.put(bufferIndex(3, 2), matrix.m32());
 		buffer.put(bufferIndex(3, 3), matrix.m33());
 	}
-
 
 	static final ForgeDirection[] directions;
 	static final EDhDirection[] lodDirections;

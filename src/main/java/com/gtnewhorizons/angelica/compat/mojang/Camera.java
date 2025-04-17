@@ -26,7 +26,7 @@ public class Camera {
     public Camera(EntityLivingBase entity, float partialTicks) {
         this.partialTicks = partialTicks;
         final Vector4f offset = new Vector4f(); // third person offset
-        final Matrix4f inverseModelView = RenderHelper.getModelViewMatrix2().invert();
+        final Matrix4f inverseModelView = RenderHelper.getModelViewMatrixMC().invert();
         inverseModelView.transform(offset);
 
         final double camX = entity.lastTickPosX + (entity.posX - entity.lastTickPosX) * partialTicks + offset.x;

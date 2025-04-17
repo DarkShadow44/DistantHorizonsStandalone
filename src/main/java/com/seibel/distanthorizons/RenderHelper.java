@@ -25,25 +25,23 @@ public class RenderHelper {
         GL32.glDepthFunc(GL32.GL_LEQUAL);
     }
 
-    private static FloatBuffer buffer = FloatBuffer.allocate(16);
-
-    public static Mat4f getModelViewMatrix() {
-
+    public static Matrix4f getModelViewMatrixMC() {
+        float[] buffer = new float[16];
         GL32.glGetFloatv(GL32.GL_MODELVIEW_MATRIX, buffer);
-        return new Mat4f(buffer);
+        return new Matrix4f(FloatBuffer.wrap(buffer));
     }
 
-    public static Matrix4f getModelViewMatrix2() {
+    public static Matrix4f getProjectionMatrixMC() {
+        float[] buffer = new float[16];
+        GL32.glGetFloatv(GL32.GL_PROJECTION_MATRIX, buffer);
+        return new Matrix4f(FloatBuffer.wrap(buffer));
+    }
 
-        GL32.glGetFloatv(GL32.GL_MODELVIEW_MATRIX, buffer);
-        Matrix4f ret = new Matrix4f();
-        McObjectConverter.storeMatrix(ret, buffer);
-        return ret;
+    public static Mat4f getModelViewMatrix() {
+        return McObjectConverter.Convert(getModelViewMatrixMC());
     }
 
     public static Mat4f getProjectionMatrix() {
-
-        GL32.glGetFloatv(GL32.GL_PROJECTION_MATRIX, buffer);
-        return new Mat4f(buffer);
+       return McObjectConverter.Convert(getProjectionMatrixMC());
     }
 }
