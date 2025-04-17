@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.compat.mojang;
+package copy.com.gtnewhorizons.angelica.compat.mojang;
 
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
 import com.seibel.distanthorizons.RenderHelper;

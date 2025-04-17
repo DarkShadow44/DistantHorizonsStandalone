@@ -22,7 +22,7 @@ package com.seibel.distanthorizons.common.wrappers;
 import java.nio.FloatBuffer;
 
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
-import com.gtnewhorizons.angelica.compat.mojang.ChunkPos;
+import copy.com.gtnewhorizons.angelica.compat.mojang.ChunkPos;
 import com.seibel.distanthorizons.core.enums.EDhDirection;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos;
 import com.seibel.distanthorizons.core.pos.DhChunkPos;
