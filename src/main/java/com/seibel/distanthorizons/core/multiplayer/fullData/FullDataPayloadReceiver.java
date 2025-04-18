@@ -69,6 +69,7 @@ public class FullDataPayloadReceiver implements AutoCloseable
 
 			// TODO composite.addComponent(true, message.buffer);
             composite.addComponent(message.buffer);
+            composite.writerIndex(message.buffer.writerIndex() + composite.writerIndex());
 			LOGGER.debug("Updated full data buffer [" + message.bufferId + "]: [" + composite + "].");
 			return composite;
 		});

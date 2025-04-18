@@ -31,7 +31,8 @@ public class ForgePluginPacketSender extends AbstractPluginPacketSender
     static BiConsumer<IServerPlayerWrapper, AbstractNetworkMessage> consumerPacket;
 	public static void setPacketHandler(BiConsumer<IServerPlayerWrapper, AbstractNetworkMessage> consumer)
 	{
-		PLUGIN_CHANNEL.registerMessage(MessageWrapper.Handler.class, MessageWrapper.class, 0, Side.CLIENT);
+        PLUGIN_CHANNEL.registerMessage(MessageWrapper.Handler.class, MessageWrapper.class, 0, Side.CLIENT);
+        PLUGIN_CHANNEL.registerMessage(MessageWrapper.Handler.class, MessageWrapper.class, 0, Side.SERVER);
         consumerPacket = consumer;
 	}
 
