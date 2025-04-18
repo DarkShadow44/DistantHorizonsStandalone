@@ -5,13 +5,14 @@
   "target": "@env(DEFAULT)",
   "package": "com.seibel.distanthorizons.mixin",
   "client": [
-      "MixinEntityRenderer",
-      "MixinMinecraft",
-      "MixinNetHandlerPlayClient",
-      "MixinOptionsScreen",
-      "MixinTextureAtlasSprite",
-      "MixinRenderGlobal",
-      "MixinActiveRenderInfo"
+    "MixinActiveRenderInfo",
+    "MixinEntityRenderer",
+    "MixinMinecraft",
+    "MixinNetHandlerPlayClient",
+    "MixinOptionsScreen",
+    "MixinRenderGlobal",
+    "MixinTesselator",
+    "MixinTextureAtlasSprite"
   ],
   "compatibilityLevel": "JAVA_21"
 }
