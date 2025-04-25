@@ -24,6 +24,7 @@ import com.google.common.collect.ImmutableMap;
 import copy.com.gtnewhorizons.angelica.compat.mojang.ChunkPos;
 import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiDistantGeneratorMode;
 import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiWorldGenerationStep;
+import com.seibel.distanthorizons.common.wrappers.world.ServerLevelWrapper;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.generation.DhLightingEngine;
 import com.seibel.distanthorizons.core.level.IDhServerLevel;
@@ -34,15 +35,19 @@ import com.seibel.distanthorizons.core.pos.DhChunkPos;
 import com.seibel.distanthorizons.core.util.objects.EventTimer;
 import com.seibel.distanthorizons.core.util.LodUtil;
 import com.seibel.distanthorizons.core.util.gridList.ArrayGridList;
+import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.ChunkLightStorage;
 import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.IChunkWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor.IModChecker;
 import com.seibel.distanthorizons.core.wrapperInterfaces.worldGeneration.AbstractBatchGenerationEnvironmentWrapper;
 import com.seibel.distanthorizons.common.wrappers.chunk.ChunkWrapper;
 
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -50,11 +55,13 @@ import com.seibel.distanthorizons.common.wrappers.DependencySetupDoneCheck;
 
 import com.seibel.distanthorizons.forge.ForgeMain;
 import com.seibel.distanthorizons.forge.ForgeServerProxy;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.ChunkCoordIntPair;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.EmptyChunk;
 import net.minecraft.world.chunk.IChunkProvider;
+import net.minecraft.world.chunk.storage.AnvilChunkLoader;
 import net.minecraft.world.gen.ChunkProviderServer;
 import net.minecraftforge.common.ForgeChunkManager;
 import org.apache.logging.log4j.LogManager;
@@ -759,14 +766,13 @@ public final class BatchGenerationEnvironment extends AbstractBatchGenerationEnv
                     // cleanup
                     // release the generated chunks
 
-                    Iterator<ChunkPos> iterator = getChunkPosToGenerateStream(genEvent.minPos.getX(), genEvent.minPos.getZ(), genEvent.size, 0).iterator();
+                    Stream<ChunkPos> stream = getChunkPosToGenerateStream(genEvent.minPos.getX(), genEvent.minPos.getZ(), genEvent.size, 0);
 
+                    Stream<CompletableFuture<Void>> futures = stream.map(pos ->  releaseChunkToServer(this.params.level, pos, true));
 
-                    while (iterator.hasNext())
-                    {
-                        ChunkPos chunkPos = iterator.next();
-                        releaseChunkToServer(this.params.level, chunkPos, true);
-                    }
+                    CompletableFuture<Void> releaseFuture = CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new));
+
+                    releaseFuture.join();
 
                     genEvent.timer.complete();
                     genEvent.refreshTimeout();
@@ -819,10 +825,11 @@ public final class BatchGenerationEnvironment extends AbstractBatchGenerationEnv
         }
     }
 
-    private static CompletableFuture<Chunk> forceLoadChunkAsync(WorldServer world, int x, int z) {
-        return ForgeServerProxy.schedule(() ->
+    private CompletableFuture<Chunk> forceLoadChunkAsync(WorldServer world, int x, int z) {
+        return ForgeServerProxy.schedule(true, () ->
             {
                 ChunkProviderServer provider = (ChunkProviderServer)world.getChunkProvider();
+                ForgeChunkManager.forceChunk(DH_SERVER_GEN_TICKET, new ChunkCoordIntPair(x, z));
 
                 for (int i = -1; i <= 1; i++)
                 {
@@ -845,12 +852,6 @@ public final class BatchGenerationEnvironment extends AbstractBatchGenerationEnv
     {
         return CompletableFuture.supplyAsync(() ->
         {
-            ChunkCoordIntPair chunk = new ChunkCoordIntPair(pos.x, pos.z);
-            if (ForgeMain.isHodgePodgeInstalled) {
-                HodgePodgeCompat.preventChunkSimulation(level, chunk, true);
-            }
-            ForgeChunkManager.forceChunk(DH_SERVER_GEN_TICKET, chunk);
-
             try {
                 return forceLoadChunkAsync(level, pos.x, pos.z).get();
             } catch (InterruptedException e) {
@@ -861,14 +862,13 @@ public final class BatchGenerationEnvironment extends AbstractBatchGenerationEnv
         });
     }
     /** @param chunkWasGeneratedUpToFeatures if false this assumes the chunk was generated to "FULL" status */
-    private void releaseChunkToServer(WorldServer level, ChunkPos pos, boolean chunkWasGeneratedUpToFeatures)
+    private CompletableFuture<Void> releaseChunkToServer(WorldServer level, ChunkPos pos, boolean chunkWasGeneratedUpToFeatures)
     {
-        ChunkCoordIntPair chunk = new ChunkCoordIntPair(pos.x, pos.z);
-
-        ForgeChunkManager.unforceChunk(DH_SERVER_GEN_TICKET, chunk);
-        if (ForgeMain.isHodgePodgeInstalled) {
-            HodgePodgeCompat.preventChunkSimulation(level, chunk, false);
-        }
+        return ForgeServerProxy.schedule(false, () ->
+        {
+            ForgeChunkManager.unforceChunk(DH_SERVER_GEN_TICKET, new ChunkCoordIntPair(pos.x, pos.z));
+            return null;
+        });
     }
 
     /*

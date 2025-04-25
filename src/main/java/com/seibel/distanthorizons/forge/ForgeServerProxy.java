@@ -8,19 +8,14 @@ import com.seibel.distanthorizons.common.wrappers.world.ServerLevelWrapper;
 import com.seibel.distanthorizons.core.api.internal.ServerApi;
 import com.seibel.distanthorizons.core.api.internal.SharedApi;
 import com.seibel.distanthorizons.core.util.threading.ThreadPoolUtil;
-import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.IChunkWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.misc.IServerPlayerWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IServerLevelWrapper;
 import cpw.mods.fml.common.FMLCommonHandler;
-import cpw.mods.fml.common.Mod;
-import cpw.mods.fml.common.event.FMLServerAboutToStartEvent;
-import cpw.mods.fml.common.event.FMLServerStoppingEvent;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.PlayerEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.util.Tuple;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.chunk.Chunk;
@@ -113,10 +108,13 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
             int count = 0;
             while (!taskQueue.isEmpty()) {
                 ScheduledTask<?> scheduledTask = taskQueue.poll();
-                if (scheduledTask != null) {
-                    scheduledTask.run();
+                if (scheduledTask == null) {
+                    continue;
                 }
-                count++;
+                scheduledTask.run();
+                if (scheduledTask.isLimited()) {
+                    count++;
+                }
                 if (count >= 5)
                 {
                     break;
@@ -209,19 +207,21 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
     private static final Queue<ScheduledTask<?>> taskQueue = new ConcurrentLinkedQueue<>();
 
     // Schedule a task that runs on the main thread and returns a CompletableFuture result
-    public static <T> CompletableFuture<T> schedule(Supplier<T> task) {
+    public static <T> CompletableFuture<T> schedule(boolean limited, Supplier<T> task) {
         CompletableFuture<T> future = new CompletableFuture<>();
-        taskQueue.add(new ScheduledTask<>(task, future));
+        taskQueue.add(new ScheduledTask<>(task, future, limited));
         return future;
     }
 
     private static class ScheduledTask<T> {
         private final Supplier<T> task;
         private final CompletableFuture<T> future;
+        private final boolean limited;
 
-        public ScheduledTask(Supplier<T> task, CompletableFuture<T> future) {
+        public ScheduledTask(Supplier<T> task, CompletableFuture<T> future, boolean limited) {
             this.task = task;
             this.future = future;
+            this.limited = limited;
         }
 
         public void run() {
@@ -230,6 +230,10 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
             } catch (Exception e) {
                 future.completeExceptionally(e);
             }
+        }
+
+        public boolean isLimited() {
+            return limited;
         }
     }
 
