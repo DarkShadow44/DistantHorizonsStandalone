@@ -33,11 +33,11 @@ public class RenderHelper {
     private static Matrix4f projectionMatrix;
 
     public static Matrix4f getModelViewMatrixMC() {
-        return modelViewMatrix;
+        return new Matrix4f(modelViewMatrix);
     }
 
     public static Matrix4f getProjectionMatrixMC() {
-        return projectionMatrix;
+        return new Matrix4f(projectionMatrix);
     }
 
     public static Mat4f getModelViewMatrix() {
