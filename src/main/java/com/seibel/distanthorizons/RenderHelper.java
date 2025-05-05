@@ -27,6 +27,7 @@ public class RenderHelper {
         ClientApi.INSTANCE.renderLods(levelWrapper, mcModelViewMatrix, mcProjectionMatrix, frameTime);
         GL32.glDepthFunc(GL32.GL_LEQUAL);
         GL32.glEnable(GL32.GL_ALPHA_TEST);
+        GL32.glDisable(GL32.GL_BLEND);
     }
 
     private static Matrix4f modelViewMatrix;
