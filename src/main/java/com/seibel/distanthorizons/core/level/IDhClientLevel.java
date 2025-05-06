@@ -42,5 +42,7 @@ public interface IDhClientLevel extends IDhLevel
 	 * This method should be called after resource packs are changed or LOD settings are modified.
 	 */
 	void clearRenderCache();
+
+    void clearRenderCache(int x, int z);
 	
 }

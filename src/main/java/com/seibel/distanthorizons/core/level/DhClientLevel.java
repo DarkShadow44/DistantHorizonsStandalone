@@ -35,6 +35,7 @@ import com.seibel.distanthorizons.core.multiplayer.client.SyncOnLoadRequestQueue
 import com.seibel.distanthorizons.core.network.event.ScopedNetworkEventSource;
 import com.seibel.distanthorizons.core.network.messages.fullData.FullDataPartialUpdateMessage;
 import com.seibel.distanthorizons.core.pos.DhChunkPos;
+import com.seibel.distanthorizons.core.pos.DhSectionPos;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos;
 import com.seibel.distanthorizons.core.render.RenderBufferHandler;
 import com.seibel.distanthorizons.core.render.renderer.generic.GenericObjectRenderer;
@@ -279,6 +280,13 @@ public class DhClientLevel extends AbstractDhLevel implements IDhClientLevel
 	@Override
 	public void clearRenderCache() { this.clientside.clearRenderCache(); }
 	
+
+    @Override
+    public void clearRenderCache(int x, int z) {
+       long pos =  DhSectionPos.encode(DhSectionPos.SECTION_BLOCK_DETAIL_LEVEL, x, z);
+       this.clientside.reloadPos(pos);
+    }
+
 	@Override
 	public ILevelWrapper getLevelWrapper() { return this.levelWrapper; }
 	

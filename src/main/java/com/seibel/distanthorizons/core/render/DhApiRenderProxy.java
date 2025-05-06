@@ -23,6 +23,7 @@ import com.seibel.distanthorizons.api.interfaces.render.IDhApiRenderProxy;
 import com.seibel.distanthorizons.api.objects.DhApiResult;
 import com.seibel.distanthorizons.core.api.internal.SharedApi;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
+import com.seibel.distanthorizons.core.level.DhClientLevel;
 import com.seibel.distanthorizons.core.level.IDhClientLevel;
 import com.seibel.distanthorizons.core.level.IDhLevel;
 import com.seibel.distanthorizons.core.render.renderer.LodRenderer;
@@ -82,7 +83,22 @@ public class DhApiRenderProxy implements IDhApiRenderProxy
 		return DhApiResult.createSuccess();
 	}
 	
-	
+
+
+    public void clearRenderDataCache(int x, int z)
+    {
+        AbstractDhWorld world = SharedApi.getAbstractDhWorld();
+        Iterable<? extends IDhLevel> loadedLevels = world.getAllLoadedLevels();
+        for (IDhLevel level : loadedLevels)
+        {
+            if (level instanceof IDhClientLevel)
+            {
+                ((IDhClientLevel) level).clearRenderCache(x, z);
+            }
+        }
+    }
+
+
 	@Override
 	public DhApiResult<Integer> getDhDepthTextureId()
 	{
