@@ -237,7 +237,7 @@ public class FullDataToRenderDataTransformer
 		//==================================//
 		
 		DhBlockPosMutable mutableBlockPos = new DhBlockPosMutable(blockX, 0, blockZ);
-		
+		boolean firstNonAir = true;
 		// goes from the top down
 		for (int fullDataIndex = 0; fullDataIndex < fullColumnData.size(); fullDataIndex++)
 		{
@@ -326,8 +326,7 @@ public class FullDataToRenderDataTransformer
 				// this is an ignored block, but shouldn't be merged like a cave block
 				continue;
 			}
-			
-			
+
 			
 			//=======================//
 			// non-solid block check //
@@ -350,11 +349,13 @@ public class FullDataToRenderDataTransformer
 				}
 				
 				// skip this non-colliding block
+                firstNonAir = false;
 				continue;
 			}
 
-            if (fullDataIndex == 0)
+            if (firstNonAir)
             {
+                firstNonAir = false;
                 if (outsideBlockMap != null)
                 {
                     byte value = outsideBlockMap.getOrDefault(ChunkCoordIntPair.chunkXZ2Int(blockX, blockZ), (byte) 0);
@@ -362,6 +363,8 @@ public class FullDataToRenderDataTransformer
                     {
                         BlockStateWrapper blockState = BlockStateWrapper.fromBlockState(new FakeBlockState(Blocks.snow_layer, 0), level.getLevelWrapper());
                         colorToApplyToNextBlock = level.computeBaseColor(mutableBlockPos, biome, blockState);
+                        skylightToApplyToNextBlock = skyLight;
+                        blocklightToApplyToNextBlock = blockLight;
                     }
 
                 }
