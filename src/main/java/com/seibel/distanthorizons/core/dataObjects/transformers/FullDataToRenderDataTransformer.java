@@ -20,6 +20,8 @@
 package com.seibel.distanthorizons.core.dataObjects.transformers;
 
 import com.seibel.distanthorizons.api.enums.config.EDhApiBlocksToAvoid;
+import com.seibel.distanthorizons.common.wrappers.block.BlockStateWrapper;
+import com.seibel.distanthorizons.common.wrappers.block.FakeBlockState;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.dataObjects.fullData.FullDataPointIdMap;
 import com.seibel.distanthorizons.core.dataObjects.fullData.sources.FullDataSourceV2;
@@ -38,8 +40,11 @@ import com.seibel.distanthorizons.core.wrapperInterfaces.block.IBlockStateWrappe
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IBiomeWrapper;
 import com.seibel.distanthorizons.coreapi.util.BitShiftUtil;
+import it.unimi.dsi.fastutil.longs.Long2ByteOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import net.minecraft.init.Blocks;
+import net.minecraft.world.ChunkCoordIntPair;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.Nullable;
 
@@ -180,6 +185,14 @@ public class FullDataToRenderDataTransformer
 			}
 		}
 	}
+
+    private static Long2ByteOpenHashMap outsideBlockMap = null;
+
+    public static void setOutsideBlockMap(Long2ByteOpenHashMap map)
+    {
+        outsideBlockMap = map;
+    }
+
 	private static void setRenderColumnView(
 			IDhClientLevel level, FullDataPointIdMap fullDataMapping,
 			int blockX, int blockZ,
@@ -339,8 +352,22 @@ public class FullDataToRenderDataTransformer
 				// skip this non-colliding block
 				continue;
 			}
-			
-			
+
+            if (fullDataIndex == 0)
+            {
+                if (outsideBlockMap != null)
+                {
+                    byte value = outsideBlockMap.getOrDefault(ChunkCoordIntPair.chunkXZ2Int(blockX, blockZ), (byte) 0);
+                    if ((value & 1) != 0)
+                    {
+                        BlockStateWrapper blockState = BlockStateWrapper.fromBlockState(new FakeBlockState(Blocks.snow_layer, 0), level.getLevelWrapper());
+                        colorToApplyToNextBlock = level.computeBaseColor(mutableBlockPos, biome, blockState);
+                    }
+
+                }
+            }
+
+
 			int color;
 			if (colorToApplyToNextBlock == -1)
 			{
