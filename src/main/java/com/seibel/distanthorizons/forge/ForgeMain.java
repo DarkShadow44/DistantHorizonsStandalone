@@ -28,6 +28,7 @@ import com.seibel.distanthorizons.coreapi.ModInfo;
 
 import com.seibel.distanthorizons.forge.wrappers.modAccessor.ModChecker;
 import cpw.mods.fml.common.FMLCommonHandler;
+import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerAboutToStartEvent;
@@ -55,11 +56,15 @@ public class ForgeMain extends AbstractModInitializer
     public static Object instance;
 
     public static boolean isHodgePodgeInstalled;
+    public static GTCompat gtCompat;
 
     @Mod.EventHandler
     public void init(FMLInitializationEvent event) {
         if (FMLCommonHandler.instance().getEffectiveSide().isClient()) {
             this.onInitializeClient();
+            if (Loader.isModLoaded("gregtech")) {
+                gtCompat = new GTCompat();
+            }
         }
         else
         {
