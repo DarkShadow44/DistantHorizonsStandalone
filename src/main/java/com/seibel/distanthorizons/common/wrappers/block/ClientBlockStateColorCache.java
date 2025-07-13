@@ -540,7 +540,7 @@ public class ClientBlockStateColorCache
 		{
 			if (block instanceof BlockLeavesBase) return Leaves;
 			if (block instanceof BlockFlower) return Flower;
-			if (block.toString().contains("glass")) return Glass;
+			if (block.toString().toLowerCase().contains("glass")) return Glass;
 			if (block.toString().equals("Block{chiselsandbits:chiseled}")) return Chisel;
 			return Default;
 		}
