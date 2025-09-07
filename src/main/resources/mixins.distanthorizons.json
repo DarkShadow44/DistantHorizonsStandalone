@@ -12,7 +12,8 @@
     "MixinOptionsScreen",
     "MixinRenderGlobal",
     "MixinTesselator",
-    "MixinTextureAtlasSprite"
+    "MixinTextureAtlasSprite",
+    "MixinFramebuffer"
   ],
   "compatibilityLevel": "JAVA_21"
 }

@@ -1,10 +1,16 @@
 package com.seibel.distanthorizons.mixin;
 
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.seibel.distanthorizons.RenderHelper;
 import com.seibel.distanthorizons.interfaces.IMixinEntityRenderer;
 import cpw.mods.fml.common.eventhandler.Event;
 import cpw.mods.fml.common.eventhandler.EventBus;
 import net.minecraft.client.renderer.EntityRenderer;
+import net.minecraft.client.renderer.RenderGlobal;
+import net.minecraft.client.renderer.culling.ICamera;
 import net.minecraft.client.renderer.texture.DynamicTexture;
+import net.minecraft.entity.EntityLivingBase;
 import org.lwjglx.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
@@ -24,5 +30,12 @@ public abstract class MixinEntityRenderer implements IMixinEntityRenderer {
         GL11.glFogf(GL11.GL_FOG_END, 1024 * 1024 * 16);
         GL11.glFogi(GL11.GL_FOG_MODE, GL11.GL_LINEAR);
         return false;
+    }
+
+
+    @WrapOperation(method = "renderWorld", at = @At(value = "INVOKE", target="Lnet/minecraftforge/client/ForgeHooksClient;dispatchRenderLast(Lnet/minecraft/client/renderer/RenderGlobal;F)V"))
+    void renderLodsFade(RenderGlobal context, float partialTicks, Operation<Void> original) {
+        original.call(context, partialTicks);
+        RenderHelper.drawLodsFade();
     }
 }

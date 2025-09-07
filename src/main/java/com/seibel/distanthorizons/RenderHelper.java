@@ -30,6 +30,18 @@ public class RenderHelper {
         GL32.glDisable(GL32.GL_BLEND);
     }
 
+    public static void drawLodsFade()
+    {
+        GL32.glDisable(GL32.GL_ALPHA_TEST);
+        Mat4f mcModelViewMatrix = getModelViewMatrix();
+        Mat4f mcProjectionMatrix = getProjectionMatrix();
+        float frameTime = ((IMixinMinecraft) Minecraft.getMinecraft()).getTimer().renderPartialTicks;
+        IClientLevelWrapper levelWrapper = ClientLevelWrapper.getWrapper(Minecraft.getMinecraft().theWorld);
+        //Minecraft.getMinecraft().getFramebuffer().unbindFramebuffer();
+        ClientApi.INSTANCE.renderFade(mcModelViewMatrix, mcProjectionMatrix, frameTime, levelWrapper);
+        //Minecraft.getMinecraft().getFramebuffer().bindFramebuffer(false);
+    }
+
     private static Matrix4f modelViewMatrix;
     private static Matrix4f projectionMatrix;
 
