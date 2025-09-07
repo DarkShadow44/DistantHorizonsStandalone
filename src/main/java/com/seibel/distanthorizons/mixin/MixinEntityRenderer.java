@@ -33,7 +33,7 @@ public abstract class MixinEntityRenderer implements IMixinEntityRenderer {
     }
 
 
-    @WrapOperation(method = "renderWorld", at = @At(value = "INVOKE", target="Lnet/minecraftforge/client/ForgeHooksClient;dispatchRenderLast(Lnet/minecraft/client/renderer/RenderGlobal;F)V"))
+    @WrapOperation(method = "renderWorld", at = @At(value = "INVOKE", target="Lnet/minecraftforge/client/ForgeHooksClient;dispatchRenderLast(Lnet/minecraft/client/renderer/RenderGlobal;F)V"), remap = false)
     void renderLodsFade(RenderGlobal context, float partialTicks, Operation<Void> original) {
         original.call(context, partialTicks);
         RenderHelper.drawLodsFade();
