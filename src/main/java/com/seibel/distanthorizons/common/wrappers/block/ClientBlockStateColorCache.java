@@ -34,6 +34,7 @@ import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import java.lang.reflect.Field;
 import java.util.Random;
 
+import net.minecraft.init.Blocks;
 import net.minecraft.util.IIcon;
 import net.minecraft.world.ColorizerFoliage;
 import net.minecraft.world.IBlockAccess;
@@ -55,6 +56,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public class ClientBlockStateColorCache
 {
 	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
+    private static FakeWorld fakeWorld = new FakeWorld();
 
 	private static final HashSet<FakeBlockState> BLOCK_STATES_THAT_NEED_LEVEL = new HashSet<>();
 	private static final HashSet<FakeBlockState> BROKEN_BLOCK_STATES = new HashSet<>();
@@ -241,6 +243,10 @@ public class ClientBlockStateColorCache
 					// Backup method.
 					this.needPostTinting = blockState.block.getBlockColor() != 0xFFFFFF;
                     if (blockState.block instanceof BlockGrass || blockState.block instanceof  BlockLeavesBase || blockState.block instanceof BlockBush)
+                    {
+                        needPostTinting = true;
+                    }
+                    if (blockState.block == Blocks.water || blockState.block == Blocks.flowing_water)
                     {
                         needPostTinting = true;
                     }
@@ -439,78 +445,9 @@ public class ClientBlockStateColorCache
 			return this.baseColor;
 		}
 
+        fakeWorld.update(level.getLevel(), pos.getX(), pos.getY(), pos.getZ(), blockState.block, blockState.meta);
 
-		// attempt to get the tint
-        BiomeGenBase biome = (BiomeGenBase)biomeWrapper.getWrappedMcObject();
-        int tintColor;
-        if (blockState.block instanceof BlockGrass)
-        {
-            tintColor = biome.getBiomeGrassColor(pos.getX(), pos.getY(), pos.getZ());
-        }
-        else if (blockState.block instanceof BlockDoublePlant)
-        {
-            int l = blockState.meta;
-            tintColor = l != 2 && l != 3 ? 16777215 : biome.getBiomeGrassColor(pos.getX(), pos.getY(), pos.getZ());
-        }
-        else if (blockState.block instanceof BlockTallGrass)
-        {
-            int l = blockState.meta;
-            tintColor = l == 0 ? 16777215 : biome.getBiomeGrassColor(pos.getX(), pos.getY(), pos.getZ());
-        }
-        else if (blockState.block instanceof  BlockOldLeaf)
-        {
-            int l = blockState.meta;;
-            tintColor= (l & 3) == 1 ? ColorizerFoliage.getFoliageColorPine() : ((l & 3) == 2 ? ColorizerFoliage.getFoliageColorBirch() : biome.getBiomeFoliageColor(pos.getX(), pos.getY(), pos.getZ()));
-        }
-        else if (blockState.block instanceof  BlockLeavesBase)
-        {
-            tintColor = biome.getBiomeFoliageColor(pos.getX(), pos.getY(), pos.getZ());
-        }
-        else
-        {
-            /* TODO: Might break when chunks are unloaded... */
-            tintColor =  blockState.block.colorMultiplier(level.getLevel(), pos.getX(), pos.getY(), pos.getZ());
-        }
-        /*
-		try
-		{
-			// try to use the fast tint getter logic first
-			if (!BLOCK_STATES_THAT_NEED_LEVEL.contains(this.blockState))
-			{
-				try
-				{
-
-					tintColor = Minecraft.getInstance().getBlockColors()
-							.getColor(this.blockState, new TintWithoutLevelOverrider(biome, this.levelWrapper), McObjectConverter.Convert(pos), this.tintIndex);
-				}
-				catch (UnsupportedOperationException e)
-				{
-					// this exception generally occurs if the tint requires other blocks besides itself
-					LOGGER.debug("Unable to use ["+TintWithoutLevelOverrider.class.getSimpleName()+"] to get the block tint for block: [" + this.blockState + "] and biome: [" + biome + "] at pos: " + pos + ". Error: [" + e.getMessage() + "]. Attempting to use backup method...", e);
-					BLOCK_STATES_THAT_NEED_LEVEL.add(this.blockState);
-				}
-			}
-
-			// use the level logic only if requested
-			if (BLOCK_STATES_THAT_NEED_LEVEL.contains(this.blockState))
-			{
-				// this logic can't be used all the time due to it breaking some blocks tinting
-				// specifically oceans don't render correctly
-				tintColor = Minecraft.getInstance().getBlockColors()
-						.getColor(this.blockState, new TintGetterOverrideFast(this.level), McObjectConverter.Convert(pos), this.tintIndex);
-			}
-		}
-		catch (Exception e)
-		{
-			// only display the error once per block/biome type to reduce log spam
-			if (!BROKEN_BLOCK_STATES.contains(this.blockState))
-			{
-				LOGGER.warn("Failed to get block color for block: [" + this.blockState + "] and biome: [" + biome + "] at pos: " + pos + ". Error: ["+e.getMessage() + "]. Note: future errors for this block/biome will be ignored.", e);
-				BROKEN_BLOCK_STATES.add(this.blockState);
-			}
-		}*/
-
-
+        int tintColor = blockState.block.colorMultiplier(fakeWorld, pos.getX(), pos.getY(), pos.getZ());
 
 		if (tintColor != -1)
 		{
