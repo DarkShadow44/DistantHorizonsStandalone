@@ -62,7 +62,7 @@ public class ForgeMain extends AbstractModInitializer
     public void init(FMLInitializationEvent event) {
         if (FMLCommonHandler.instance().getEffectiveSide().isClient()) {
             this.onInitializeClient();
-            if (Loader.isModLoaded("gregtech")) {
+            if (Loader.isModLoaded("gregtech") && Loader.isModLoaded("dreamcraft")) {
                 gtCompat = new GTCompat();
             }
         }

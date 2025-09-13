@@ -225,13 +225,14 @@ public class ClientBlockStateColorCache
 				else
 				{*/
                     IIcon originalIcon = blockState.block.getIcon(ForgeDirection.UP.ordinal(), blockState.meta);
-                    IIcon icon = originalIcon;
-                    if (icon == null) {
-                        if (ForgeMain.gtCompat != null) {
-                            icon = ForgeMain.gtCompat.resolveIcon(blockState.block, blockState.meta);
-                        }
+                    IIcon icon = null;
+                    if (ForgeMain.gtCompat != null) {
+                        icon = ForgeMain.gtCompat.resolveIcon(blockState.block, blockState.meta);
                     }
-                    else if (icon instanceof IconFlipped) {
+                    if (icon == null) {
+                        icon = originalIcon;
+                    }
+                    if (icon instanceof IconFlipped) {
                         icon = ((IconFlipped) icon).baseIcon;
                     }
                     else if (icon.getClass().getName().equals("twilightforest.block.GiantBlockIcon")) {
