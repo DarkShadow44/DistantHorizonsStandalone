@@ -39,6 +39,7 @@ import net.minecraft.util.IIcon;
 import net.minecraft.world.ColorizerFoliage;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.biome.BiomeGenBase;
+import net.minecraftforge.common.IShearable;
 import net.minecraftforge.common.util.ForgeDirection;
 import org.apache.logging.log4j.Logger;
 
@@ -247,6 +248,11 @@ public class ClientBlockStateColorCache
                         needPostTinting = true;
                     }
                     if (blockState.block == Blocks.water || blockState.block == Blocks.flowing_water)
+                    {
+                        needPostTinting = true;
+                    }
+                    // For LOTR
+                    if (blockState instanceof IShearable)
                     {
                         needPostTinting = true;
                     }
