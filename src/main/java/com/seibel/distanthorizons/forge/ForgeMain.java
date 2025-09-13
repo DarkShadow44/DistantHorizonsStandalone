@@ -57,6 +57,7 @@ public class ForgeMain extends AbstractModInitializer
 
     public static boolean isHodgePodgeInstalled;
     public static GTCompat gtCompat;
+    public static AngelicaCompat angelicaCompat;
 
     @Mod.EventHandler
     public void init(FMLInitializationEvent event) {
@@ -64,6 +65,9 @@ public class ForgeMain extends AbstractModInitializer
             this.onInitializeClient();
             if (Loader.isModLoaded("gregtech") && Loader.isModLoaded("dreamcraft")) {
                 gtCompat = new GTCompat();
+            }
+            if (Loader.isModLoaded("angelica")) {
+                angelicaCompat = new AngelicaCompat();
             }
         }
         else

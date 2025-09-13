@@ -5,6 +5,7 @@ import com.seibel.distanthorizons.common.wrappers.world.ClientLevelWrapper;
 import com.seibel.distanthorizons.core.api.internal.ClientApi;
 import com.seibel.distanthorizons.core.util.math.Mat4f;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
+import com.seibel.distanthorizons.forge.ForgeMain;
 import com.seibel.distanthorizons.interfaces.IMixinMinecraft;
 import net.minecraft.client.Minecraft;
 import org.joml.Matrix4f;
@@ -32,6 +33,11 @@ public class RenderHelper {
 
     public static void drawLodsFade()
     {
+        if (ForgeMain.angelicaCompat != null) {
+            if (!ForgeMain.angelicaCompat.canDoFadeShader()) {
+                return;
+            }
+        }
         GL32.glDisable(GL32.GL_ALPHA_TEST);
         Mat4f mcModelViewMatrix = getModelViewMatrix();
         Mat4f mcProjectionMatrix = getProjectionMatrix();
