@@ -56,7 +56,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public class ClientBlockStateColorCache
 {
 	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
-    private static FakeWorld fakeWorld = new FakeWorld();
+    private static ThreadLocal<FakeWorld> fakeWorld = ThreadLocal.withInitial(FakeWorld::new);
 
 	private static final HashSet<FakeBlockState> BLOCK_STATES_THAT_NEED_LEVEL = new HashSet<>();
 	private static final HashSet<FakeBlockState> BROKEN_BLOCK_STATES = new HashSet<>();
@@ -445,9 +445,12 @@ public class ClientBlockStateColorCache
 			return this.baseColor;
 		}
 
-        fakeWorld.update(level.getLevel(), pos.getX(), pos.getY(), pos.getZ(), blockState.block, blockState.meta);
+        FakeWorld world = fakeWorld.get();
+        world.update(level.getLevel(), pos.getX(), pos.getY(), pos.getZ(), blockState);
 
-        int tintColor = blockState.block.colorMultiplier(fakeWorld, pos.getX(), pos.getY(), pos.getZ());
+        // Need to use fake world, since colorMultiplier will call into world,
+        // which will break if those chunks are unloaded - we'd just get 0 for meta.
+        int tintColor = blockState.block.colorMultiplier(world, pos.getX(), pos.getY(), pos.getZ());
 
 		if (tintColor != -1)
 		{

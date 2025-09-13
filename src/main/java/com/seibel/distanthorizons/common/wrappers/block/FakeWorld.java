@@ -1,6 +1,7 @@
 package com.seibel.distanthorizons.common.wrappers.block;
 
 import net.minecraft.block.Block;
+import net.minecraft.block.BlockDoublePlant;
 import net.minecraft.init.Blocks;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.IBlockAccess;
@@ -13,22 +14,20 @@ public class FakeWorld implements IBlockAccess {
     private int blockX;
     private int blockY;
     private int blockZ;
-    private Block block;
-    private int meta;
+    private FakeBlockState blockState;
 
-    public void update(IBlockAccess real, int blockX, int blockY, int blockZ, Block block, int meta) {
+    public void update(IBlockAccess real, int blockX, int blockY, int blockZ, FakeBlockState blockState) {
         this.real = real;
         this.blockX = blockX;
         this.blockY = blockY;
         this.blockZ = blockZ;
-        this.block = block;
-        this.meta = meta;
+        this.blockState = blockState;
     }
 
     @Override
     public Block getBlock(int x, int y, int z) {
         if (x == blockX && y == blockY && z == blockZ) {
-            return block;
+            return blockState.block;
         }
         return Blocks.air;
     }
@@ -46,7 +45,10 @@ public class FakeWorld implements IBlockAccess {
     @Override
     public int getBlockMetadata(int x, int y, int z) {
         if (x == blockX && y == blockY && z == blockZ) {
-            return meta;
+            return blockState.meta;
+        }
+        if (blockState.block instanceof BlockDoublePlant) {
+            return 2; // TODO
         }
         return 0;
     }
