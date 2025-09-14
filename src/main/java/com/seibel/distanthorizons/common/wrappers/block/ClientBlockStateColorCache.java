@@ -238,19 +238,18 @@ public class ClientBlockStateColorCache
                     if (icon instanceof IconFlipped) {
                         icon = ((IconFlipped) icon).baseIcon;
                     }
-                    else if (icon.getClass().getName().equals("twilightforest.block.GiantBlockIcon")) {
+                    if (icon != null && icon.getClass().getName().equals("twilightforest.block.GiantBlockIcon")) {
                         icon = getIconByReflection(icon, "baseIcon");
                     }
 
-                    if (icon instanceof TextureAtlasSprite)
-                    {
+                    if (icon instanceof TextureAtlasSprite) {
                         this.baseColor = calculateColorFromTexture((TextureAtlasSprite) icon,
                             ColorMode.getColorMode(this.blockState.block));
-                    } else if  (icon == null) {
-                        FMLLog.warning("Can't get icon for block type " + blockState.block.getClass());
+                    } else if (originalIcon != null) {
+                        FMLLog.warning("Can't handle icon of type " + originalIcon.getClass().getName());
                         this.baseColor = blockState.block.getBlockColor();
                     } else {
-                        FMLLog.warning("Can't handle icon of type " + originalIcon.getClass().getName());
+                        FMLLog.warning("Can't get icon for block type " + blockState.block.getClass());
                         this.baseColor = blockState.block.getBlockColor();
                     }
 
