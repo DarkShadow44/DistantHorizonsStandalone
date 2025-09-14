@@ -451,7 +451,7 @@ public class ClientBlockStateColorCache
 		}
 
         FakeWorld world = fakeWorld.get();
-        world.update(level.getLevel(), pos.getX(), pos.getY(), pos.getZ(), blockState);
+        world.update(level.getLevel(), biomeWrapper.biome, pos.getX(), pos.getY(), pos.getZ(), blockState);
 
         // Need to use fake world, since colorMultiplier will call into world,
         // which will break if those chunks are unloaded - we'd just get 0 for meta.

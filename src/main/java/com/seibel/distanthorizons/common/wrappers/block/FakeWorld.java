@@ -15,13 +15,15 @@ public class FakeWorld implements IBlockAccess {
     private int blockY;
     private int blockZ;
     private FakeBlockState blockState;
+    private BiomeGenBase biome;
 
-    public void update(IBlockAccess real, int blockX, int blockY, int blockZ, FakeBlockState blockState) {
+    public void update(IBlockAccess real, BiomeGenBase biome, int blockX, int blockY, int blockZ, FakeBlockState blockState) {
         this.real = real;
         this.blockX = blockX;
         this.blockY = blockY;
         this.blockZ = blockZ;
         this.blockState = blockState;
+        this.biome = biome;
     }
 
     @Override
@@ -65,7 +67,7 @@ public class FakeWorld implements IBlockAccess {
 
     @Override
     public BiomeGenBase getBiomeGenForCoords(int x, int z) {
-        return real.getBiomeGenForCoords(x, z);
+        return biome; // Not 100% accurate since grass samples the surrounding blocks, but good enough for now
     }
 
     @Override
