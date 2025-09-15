@@ -19,6 +19,7 @@
 package com.seibel.distanthorizons.common.wrappers.chunk;
 
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
+import com.gtnewhorizon.gtnhlib.util.ServerThreadUtil;
 import com.seibel.distanthorizons.common.wrappers.block.BiomeWrapper;
 import com.seibel.distanthorizons.common.wrappers.block.BlockStateWrapper;
 import com.seibel.distanthorizons.common.wrappers.block.FakeBlockState;
@@ -43,6 +44,7 @@ import net.minecraft.world.chunk.Chunk;
 import org.apache.logging.log4j.Logger;
 
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 
 public class ChunkWrapper implements IChunkWrapper
 {
@@ -72,7 +74,15 @@ public class ChunkWrapper implements IChunkWrapper
     private final int[][] solidHeightMap;
     /** will be null if we are using MC heightmaps */
     private final int[][] lightBlockingHeightMap;
+    private final BiomeGenBase[] biomeList = new BiomeGenBase[256];
 
+    private void fillBiomeMap() {
+        for (int x = 0; x < 16; x++) {
+            for (int z = 0; z < 16; z++) {
+                biomeList[x * 16 + z] = chunk.worldObj.getBiomeGenForCoords((chunk.xPosition << 4) + x, (chunk.zPosition << 4) + z);
+            }
+        }
+    }
 
 
     //=============//
@@ -84,6 +94,13 @@ public class ChunkWrapper implements IChunkWrapper
         this.chunk = chunk;
         this.wrappedLevel = wrappedLevel;
         this.chunkPos = new DhChunkPos(chunk.xPosition, chunk.zPosition);
+
+        try {
+            ServerThreadUtil.addScheduledTask(this::fillBiomeMap).get();
+        } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
+        }
+
 
         // use DH heightmaps if requested
         if (Config.Common.LodBuilding.recalculateChunkHeightmaps.get())
@@ -244,7 +261,7 @@ public class ChunkWrapper implements IChunkWrapper
     @Override
     public IBiomeWrapper getBiome(int relX, int relY, int relZ)
     {
-        BiomeGenBase biome = chunk.worldObj.getBiomeGenForCoords((chunk.xPosition << 4) + relX, (chunk.zPosition << 4) + relZ);
+        BiomeGenBase biome = biomeList[(relX * 16) + relZ];
         return BiomeWrapper.getBiomeWrapper(biome, this.wrappedLevel);
     }
 
