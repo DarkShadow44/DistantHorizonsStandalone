@@ -38,6 +38,7 @@ import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
 
 import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
+import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraft.world.chunk.Chunk;
 import org.apache.logging.log4j.Logger;
 
@@ -243,8 +244,8 @@ public class ChunkWrapper implements IChunkWrapper
     @Override
     public IBiomeWrapper getBiome(int relX, int relY, int relZ)
     {
-        return BiomeWrapper.getBiomeWrapper(this.chunk.getBiomeGenForWorldCoords(relX, relZ, this.chunk.worldObj.getWorldChunkManager()),
-            this.wrappedLevel);
+        BiomeGenBase biome = chunk.worldObj.getBiomeGenForCoords((chunk.xPosition << 4) + relX, (chunk.zPosition << 4) + relZ);
+        return BiomeWrapper.getBiomeWrapper(biome, this.wrappedLevel);
     }
 
     @Override
