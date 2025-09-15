@@ -18,6 +18,7 @@ import cpw.mods.fml.common.gameevent.TickEvent;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
+import net.minecraft.world.WorldServerMulti;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
@@ -151,6 +152,9 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
 	@SubscribeEvent
 	public void serverChunkLoadEvent(ChunkEvent.Load event)
 	{
+        if (!(event.world instanceof WorldServer)) {
+            return;
+        }
 		ILevelWrapper levelWrapper = ProxyUtil.getLevelWrapper(GetEventLevel(event));
 		ChunkWrapper chunk = new ChunkWrapper(event.getChunk(), levelWrapper);
         chunkLoadEvents.add(new ChunkLoadEvent(chunk, levelWrapper));
@@ -159,6 +163,9 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
     @SubscribeEvent
     public void serverChunkUnLoadEvent(ChunkDataEvent.Save event)
     {
+        if (!(event.world instanceof WorldServer)) {
+            return;
+        }
         ILevelWrapper levelWrapper = ProxyUtil.getLevelWrapper(GetEventLevel(event));
         ChunkWrapper chunk = new ChunkWrapper(event.getChunk(), levelWrapper);
         ServerApi.INSTANCE.serverChunkSaveEvent(chunk, levelWrapper);
