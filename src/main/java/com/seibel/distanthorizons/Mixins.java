@@ -5,6 +5,12 @@ import com.gtnewhorizon.gtnhmixins.builders.MixinBuilder;
 import org.jetbrains.annotations.NotNull;
 
 public enum Mixins implements IMixins {
+    CORE(new MixinBuilder()
+        .setPhase(Phase.EARLY)
+        .addCommonMixins(
+            "MixinBiomeGenBase"
+        )
+    ),
     CLIENT_CORE(new MixinBuilder()
         .setPhase(Phase.EARLY)
         .addClientMixins(

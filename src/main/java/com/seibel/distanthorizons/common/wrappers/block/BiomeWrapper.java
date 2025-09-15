@@ -27,6 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
+import com.seibel.distanthorizons.forge.BiomeHandler;
 import cpw.mods.fml.common.registry.GameRegistry;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeGenBase;
@@ -238,20 +239,8 @@ public class BiomeWrapper implements IBiomeWrapper
 
             try
             {
-                BiomeGenBase foundBiome = null;
-
-                BiomeGenBase[] biomes = BiomeGenBase.getBiomeGenArray();
-                for (BiomeGenBase biome : biomes)
-                {
-                    if (biome == null)
-                        continue;
-                    String id = "biome:" + biome.biomeName;
-                    if (id.equals(resourceLocationString))
-                    {
-                        foundBiome = biome;
-                        break;
-                    }
-                }
+                String biomeName = resourceLocationString.substring(separatorIndex + 1);
+                BiomeGenBase foundBiome = BiomeHandler.getBiomeByName(biomeName);
 
                 if (foundBiome == null)
                 {
