@@ -31,7 +31,9 @@ public class ServerPlayerWrapper implements IServerPlayerWrapper
     //=============//
 
     public static ServerPlayerWrapper getWrapper(EntityPlayerMP serverPlayer)
-    { return serverPlayerWrapperMap.computeIfAbsent(serverPlayer.getUniqueID(), ignored -> new ServerPlayerWrapper(serverPlayer)); }
+    {
+        return new ServerPlayerWrapper(serverPlayer);
+    }
 
     private ServerPlayerWrapper(EntityPlayerMP serverPlayer) { this.serverPlayer = serverPlayer; }
 
