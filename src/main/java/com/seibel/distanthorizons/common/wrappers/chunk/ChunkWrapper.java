@@ -38,6 +38,7 @@ import com.seibel.distanthorizons.core.wrapperInterfaces.world.IBiomeWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
 
 import net.minecraft.block.Block;
+import net.minecraft.client.Minecraft;
 import net.minecraft.init.Blocks;
 import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraft.world.chunk.Chunk;
@@ -89,18 +90,26 @@ public class ChunkWrapper implements IChunkWrapper
     // constructor //
     //=============//
 
+    private void runFillBiomeMap(boolean isRemote)
+    {
+        try {
+            if (isRemote) {
+                Minecraft.getMinecraft().func_152344_a(this::fillBiomeMap).get();
+            } else {
+                ServerThreadUtil.addScheduledTask(this::fillBiomeMap).get();
+            }
+        } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public ChunkWrapper(Chunk chunk, ILevelWrapper wrappedLevel)
     {
         this.chunk = chunk;
         this.wrappedLevel = wrappedLevel;
         this.chunkPos = new DhChunkPos(chunk.xPosition, chunk.zPosition);
 
-        try {
-            ServerThreadUtil.addScheduledTask(this::fillBiomeMap).get();
-        } catch (InterruptedException | ExecutionException e) {
-            throw new RuntimeException(e);
-        }
-
+       runFillBiomeMap(chunk.worldObj.isRemote);
 
         // use DH heightmaps if requested
         if (Config.Common.LodBuilding.recalculateChunkHeightmaps.get())
