@@ -73,7 +73,10 @@ public class RenderDataPointUtil
 	
 	
 	public final static int EMPTY_DATA = 0;
-	public final static int MAX_WORLD_Y_SIZE = 4096;
+
+	// the maximum valid Y value is the maximum min y + world height.
+	// min y is [-2032, 2031], height is < 4064.
+	public final static int MAX_WORLD_Y_SIZE = 2031 + 4064;
 	
 	public final static int ALPHA_DOWNSIZE_SHIFT = 4;
 	

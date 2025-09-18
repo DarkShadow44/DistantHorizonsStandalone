@@ -2,6 +2,7 @@ package com.seibel.distanthorizons.core.multiplayer.server;
 
 import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiDistantGeneratorMode;
 import com.seibel.distanthorizons.core.config.Config;
+import com.seibel.distanthorizons.core.dataObjects.fullData.sources.FullDataSourceV2;
 import com.seibel.distanthorizons.core.file.fullDatafile.GeneratedFullDataSourceProvider;
 import com.seibel.distanthorizons.core.level.AbstractDhServerLevel;
 import com.seibel.distanthorizons.core.logging.ConfigBasedLogger;
@@ -59,45 +60,80 @@ public class FullDataSourceRequestHandler
 		}
 		
 		
-		// the client timestamp will be null if we want to retrieve the LOD regardless of when it was last updated
-		long clientTimestamp = (message.clientTimestamp != null) ? message.clientTimestamp : -1;
-		// the server timestamp will be null if no LOD data exists for this position
-		Long serverTimestamp = this.fullDataSourceProvider().getTimestampForPos(message.sectionPos);
-		if (serverTimestamp == null
-			|| serverTimestamp <= clientTimestamp)
+		
+		AbstractExecutorService fileHandlerExecutor = ThreadPoolUtil.getFileHandlerExecutor();
+		if (fileHandlerExecutor == null)
 		{
-			// either no data exists to sync, or the client is already up to date
-			rateLimiterSet.syncOnLoginRateLimiter.release();
-			message.sendResponse(new FullDataSourceResponseMessage(null));
+			// shouldn't normally happen, but just in case
+			LOGGER.warn("Unable to send FullDataSourceResponseMessage - getFileHandlerExecutor() is null");
 			return;
 		}
 		
-		
-		AbstractExecutorService executor = ThreadPoolUtil.getNetworkCompressionExecutor();
-		if (executor == null)
+		AbstractExecutorService networkCompressionExecutor = ThreadPoolUtil.getNetworkCompressionExecutor();
+		if (networkCompressionExecutor == null)
 		{
 			// shouldn't normally happen, but just in case
 			LOGGER.warn("Unable to send FullDataSourceResponseMessage - getNetworkCompressionExecutor() is null");
 			return;
 		}
 		
-		this.fullDataSourceProvider().getAsync(message.sectionPos).thenAcceptAsync(fullDataSource ->
-		{
-			try (FullDataPayload payload = new FullDataPayload(fullDataSource, this.getAllBeamsForPos(message.sectionPos)))
+		
+		// get the data requested by the client
+		CompletableFuture<FullDataSourceV2> getServerDatasourceFuture = CompletableFuture.supplyAsync(() -> 
 			{
-				fullDataSource.close();
-				
-				serverPlayerState.fullDataPayloadSender.sendInChunks(payload, () ->
+				try
 				{
-					message.sendResponse(new FullDataSourceResponseMessage(payload));
-					rateLimiterSet.syncOnLoginRateLimiter.release();
-				});
-			}
-			catch (Exception e)
+					// the client timestamp will be null if we want to retrieve the LOD regardless of when it was last updated
+					long clientTimestamp = (message.clientTimestamp != null) ? message.clientTimestamp : -1;
+					
+					// the server timestamp will be null if no LOD data exists for this position
+					Long serverTimestamp = this.fullDataSourceProvider().getTimestampForPos(message.sectionPos);
+					if (serverTimestamp == null
+						|| serverTimestamp <= clientTimestamp)
+					{
+						// either no data exists to sync, or the client is already up to date
+						rateLimiterSet.syncOnLoginRateLimiter.release();
+						message.sendResponse(new FullDataSourceResponseMessage(null));
+						return null;
+					}
+					
+					// get the server's datasource
+					return this.fullDataSourceProvider().get(message.sectionPos);
+				}
+				catch (Exception e)
+				{
+					LOGGER.error("Unexpected issue getting server-side LOD for request at pos [" + DhSectionPos.toString(message.sectionPos) + "], error: [" + e.getMessage() + "].", e);
+					return null;
+				}
+			}, fileHandlerExecutor);
+		
+		// send the found data
+		getServerDatasourceFuture.thenAcceptAsync(fullDataSource ->
 			{
-				LOGGER.error("Unexpected issue getting request for pos ["+DhSectionPos.toString(message.sectionPos)+"], error: ["+e.getMessage()+"].", e);
-			}
-		}, executor);
+				try
+				{
+					// no server data source found
+					if (fullDataSource == null)
+					{
+						return;
+					}
+					
+					// send the found data source to client
+					FullDataPayload payload = new FullDataPayload(fullDataSource, this.getAllBeamsForPos(message.sectionPos));
+					fullDataSource.close();
+					
+					serverPlayerState.fullDataPayloadSender.sendInChunks(payload, () ->
+					{
+						message.sendResponse(new FullDataSourceResponseMessage(payload));
+						rateLimiterSet.syncOnLoginRateLimiter.release();
+					});
+				}
+				catch (Exception e)
+				{
+					LOGGER.error("Unexpected issue sending request for pos [" + DhSectionPos.toString(message.sectionPos) + "], error: [" + e.getMessage() + "].", e);
+				}
+			}, networkCompressionExecutor);
+		
 	}
 	
 	public void queueWorldGenForRequestMessage(ServerPlayerState serverPlayerState, FullDataSourceRequestMessage message, ServerPlayerState.RateLimiterSet rateLimiterSet)
@@ -207,19 +243,17 @@ public class FullDataSourceRequestHandler
 			}
 			CompletableFuture.runAsync(() ->
 			{
-				try (FullDataPayload payload = new FullDataPayload(requestGroup.fullDataSource, this.getAllBeamsForPos(entry.getKey())))
+				FullDataPayload payload = new FullDataPayload(requestGroup.fullDataSource, this.getAllBeamsForPos(entry.getKey()));
+				requestGroup.fullDataSource.close();
+				
+				for (DataSourceRequestGroup.RequestData requestData : requestGroup.requestMessages.values())
 				{
-					requestGroup.fullDataSource.close();
+					this.requestGroupsByFutureId.remove(requestData.futureId());
 					
-					for (DataSourceRequestGroup.RequestData requestData : requestGroup.requestMessages.values())
-					{
-						this.requestGroupsByFutureId.remove(requestData.futureId());
-						
-						requestData.serverPlayerState.fullDataPayloadSender.sendInChunks(payload, () -> {
-							requestData.message.sendResponse(new FullDataSourceResponseMessage(payload));
-							requestData.rateLimiterSet.generationRequestRateLimiter.release();
-						});
-					}
+					requestData.serverPlayerState.fullDataPayloadSender.sendInChunks(payload, () -> {
+						requestData.message.sendResponse(new FullDataSourceResponseMessage(payload));
+						requestData.rateLimiterSet.generationRequestRateLimiter.release();
+					});
 				}
 			}, executor);
 		}

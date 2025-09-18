@@ -35,6 +35,7 @@ import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftCli
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IBiomeWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IServerLevelWrapper;
+import org.jetbrains.annotations.Nullable;
 
 import java.awt.*;
 import java.util.List;
@@ -107,6 +108,7 @@ public class DhClientServerLevel extends AbstractDhServerLevel implements IDhCli
 		}
 	}
 	
+	@Nullable
 	@Override
 	public IClientLevelWrapper getClientLevelWrapper() { return MC_CLIENT.getWrappedClientLevel(); }
 	

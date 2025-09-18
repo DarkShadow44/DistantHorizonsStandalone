@@ -139,7 +139,7 @@ public class FullDataToRenderDataTransformer
 		}
 		
 		columnSource.fillDebugFlag(0, 0, ColumnRenderSource.SECTION_SIZE, ColumnRenderSource.SECTION_SIZE, ColumnRenderSource.DebugSourceFlag.FULL);
-			
+		
 		return columnSource;
 	}
 	
@@ -210,7 +210,6 @@ public class FullDataToRenderDataTransformer
 		
 		int colorToApplyToNextBlock = -1;
 		int lastColor = 0;
-		int lastBlockLight = 0;
 		int lastBottom = -10_000;
 		
 		int skylightToApplyToNextBlock = -1;
@@ -263,7 +262,7 @@ public class FullDataToRenderDataTransformer
 				continue;
 			}
 			
-			blockLight = Math.max(blockLight, block.getLightEmission());
+			
 			
 			//====================//
 			// ignored block and  //
@@ -271,7 +270,7 @@ public class FullDataToRenderDataTransformer
 			//====================//
 			
 			boolean ignoreBlock = blockStatesToIgnore.contains(block);
-			boolean caveBlock = caveBlockStatesToIgnore.contains(block);
+			boolean caveBlock = caveBlockStatesToIgnore.contains(block); // TODO caves should also ignore transparent/non-solid blocks (IE grass and plants) wthout each being defined
 			if (caveBlock)
 			{
 				if (caveCullingEnabled
@@ -363,7 +362,7 @@ public class FullDataToRenderDataTransformer
 			//=============================//
 			
 			// check if they share a top-bottom face and if they have same color
-			if (color == lastColor && lastBlockLight == blockLight && bottomY + blockHeight == lastBottom  && renderDataIndex > 0)
+			if (color == lastColor && bottomY + blockHeight == lastBottom  && renderDataIndex > 0)
 			{
 				//replace the previous block with new bottom
 				long columnData = renderColumnData.get(renderDataIndex - 1);
@@ -380,7 +379,6 @@ public class FullDataToRenderDataTransformer
 			}
 			lastBottom = bottomY;
 			lastColor = color;
-			lastBlockLight = blockLight;
 		}
 		
 		

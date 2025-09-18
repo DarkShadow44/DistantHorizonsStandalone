@@ -26,6 +26,7 @@ import com.seibel.distanthorizons.api.interfaces.config.client.*;
 import com.seibel.distanthorizons.api.objects.config.DhApiConfigValue;
 import com.seibel.distanthorizons.api.enums.rendering.EDhApiRendererMode;
 import com.seibel.distanthorizons.core.config.Config;
+import com.seibel.distanthorizons.coreapi.util.converters.RenderModeEnabledConverter;
 
 public class DhApiGraphicsConfig implements IDhApiGraphicsConfig
 {
@@ -60,7 +61,7 @@ public class DhApiGraphicsConfig implements IDhApiGraphicsConfig
 	
 	@Override
 	public IDhApiConfigValue<Boolean> renderingEnabled()
-	{ return new DhApiConfigValue<Boolean, Boolean>(Config.Client.quickEnableRendering); }
+	{ return new DhApiConfigValue<EDhApiRendererMode, Boolean>(Config.Client.Advanced.Debugging.rendererMode, new RenderModeEnabledConverter()); }
 	
 	@Override
 	public IDhApiConfigValue<EDhApiRendererMode> renderingMode()

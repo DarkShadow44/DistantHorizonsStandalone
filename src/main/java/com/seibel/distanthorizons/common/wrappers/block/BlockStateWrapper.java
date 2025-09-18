@@ -429,6 +429,11 @@ public class BlockStateWrapper implements IBlockStateWrapper
     public boolean isBeaconTintBlock() { return this.beaconTintColor != null; }
 
     @Override
+    public boolean allowsBeaconBeamPassage() {
+        return false;
+    }
+
+    @Override
     public Color getMapColor() { return this.mapColor; }
     @Override
     public Color getBeaconTintColor() { return this.beaconTintColor; }

@@ -9,6 +9,7 @@ import com.seibel.distanthorizons.core.file.fullDatafile.GeneratedFullDataSource
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos2D;
+import com.seibel.distanthorizons.core.util.FormatUtil;
 import com.seibel.distanthorizons.core.util.LodUtil;
 import com.seibel.distanthorizons.core.util.objects.RollingAverage;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IServerLevelWrapper;
@@ -167,17 +168,15 @@ public class PregenManager
 			this.generatedPercentage.update((double) this.nextSectionSpiralIndex.get() / this.sectionsToGenerate);
 			
 			double chunksToGenerate = Math.ceil(Math.sqrt(this.sectionsToGenerate) / 2 * 4 * 10) / 10; // ceil to nearest 0.1
+			int chunkRatePerSecond = (int) (1000 / this.averageTaskCompletionIntervalMs.getAverage() * 4 * 4);
 			double etaMs = this.averageTaskCompletionIntervalMs.getAverage() * (this.sectionsToGenerate - this.nextSectionSpiralIndex.get());
 			
-			return MessageFormat.format("Generated radius: {0,number,#.###} / {1,number,#.#} chunks ({2,number,#.###%}), ETA: {3}",
+			return MessageFormat.format("Generated radius: {0,number,#.###} / {1,number,#.#} chunks ({2} cps, {3,number,#.###%}), ETA: {4}",
 					this.generatedRadius.getValue(),
 					chunksToGenerate,
+					chunkRatePerSecond,
 					this.generatedPercentage.getValue(),
-					Duration.ofMillis((long) etaMs).toString()
-							.substring(2)
-							.replaceAll("(\\d[HMS])(?!$)", "$1 ")
-							.replaceAll("\\.\\d+", "")
-							.toLowerCase()
+					FormatUtil.formatEta(Duration.ofMillis((long) etaMs))
 			);
 		}
 		

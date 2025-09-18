@@ -22,15 +22,18 @@ package com.seibel.distanthorizons.api.methods.events.abstractEvents;
 import com.seibel.distanthorizons.api.methods.events.interfaces.IDhApiEvent;
 import com.seibel.distanthorizons.api.methods.events.interfaces.IDhApiEventParam;
 import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiEventParam;
+import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiTextureCreatedParam;
 
 /**
- * Called whenever Distant Horizons (re)creates 
+ * Called before Distant Horizons (re)creates 
  * the color and depth textures it renders to. <br>
  * 
  * @author James Seibel
  * @version 2024-3-2
  * @since API 2.0.0
+ * @deprecated Replaced by {@link DhApiBeforeColorDepthTextureCreatedEvent} since this event's name isn't obvious when it fires.
  */
+@Deprecated
 public abstract class DhApiColorDepthTextureCreatedEvent implements IDhApiEvent<DhApiColorDepthTextureCreatedEvent.EventParam>
 {
 	/** Fired before Distant Horizons creates. */
@@ -71,6 +74,15 @@ public abstract class DhApiColorDepthTextureCreatedEvent implements IDhApiEvent<
 			
 			this.newWidth = newWidth;
 			this.newHeight = newHeight;
+			
+		}
+		public EventParam(DhApiTextureCreatedParam textureCreatedParam)
+		{
+			this.previousWidth = textureCreatedParam.previousWidth;
+			this.previousHeight = textureCreatedParam.previousHeight;
+			
+			this.newWidth = textureCreatedParam.newWidth;
+			this.newHeight = textureCreatedParam.newHeight;
 			
 		}
 		

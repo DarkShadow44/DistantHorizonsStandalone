@@ -28,9 +28,11 @@ import com.seibel.distanthorizons.core.render.glObject.shader.ShaderProgram;
 import com.seibel.distanthorizons.core.render.renderer.LodRenderer;
 import com.seibel.distanthorizons.core.render.renderer.ScreenQuad;
 import com.seibel.distanthorizons.core.util.LodUtil;
+import com.seibel.distanthorizons.core.wrapperInterfaces.IVersionConstants;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
 import com.seibel.distanthorizons.core.util.math.Mat4f;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftGLWrapper;
+import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
 import org.lwjgl.opengl.GL32;
 
 import java.awt.*;
@@ -41,11 +43,14 @@ public class FogShader extends AbstractShaderRenderer
 	
 	private static final IMinecraftClientWrapper MC = SingletonInjector.INSTANCE.get(IMinecraftClientWrapper.class);
 	private static final IMinecraftGLWrapper GLMC = SingletonInjector.INSTANCE.get(IMinecraftGLWrapper.class);
+	private static final IMinecraftRenderWrapper MC_RENDER = SingletonInjector.INSTANCE.get(IMinecraftRenderWrapper.class);
+	
 	
 	
 	public int frameBuffer;
 	
-	private Mat4f inverseMvmProjMatrix;
+	private Mat4f inverseMvmProjMatrix; 
+	
 	
 	
 	//==========//
@@ -253,7 +258,15 @@ public class FogShader extends AbstractShaderRenderer
 		
 		// this is necessary for MC 1.16 (IE Legacy OpenGL)
 		// otherwise the framebuffer isn't cleared correctly and the fog smears across the screen
-		GL32.glClear(GL32.GL_COLOR_BUFFER_BIT | GL32.GL_DEPTH_BUFFER_BIT);
+		if (MC_RENDER.runningLegacyOpenGL())
+		{
+			// in another part of the DH code we set the fog color to opaque, here it needs to be transparent
+			float[] clearColorValues = new float[4];
+			GL32.glGetFloatv(GL32.GL_COLOR_CLEAR_VALUE, clearColorValues);
+			GL32.glClearColor(clearColorValues[0], clearColorValues[1], clearColorValues[2], 0.0f);
+			
+			GL32.glClear(GL32.GL_COLOR_BUFFER_BIT | GL32.GL_DEPTH_BUFFER_BIT);
+		}
 		
 		
 		ScreenQuad.INSTANCE.render();

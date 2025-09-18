@@ -24,7 +24,7 @@ public class ServerPlayerState implements Closeable
 {
 	private final ConfigChangeListener<String> levelKeyPrefixChangeListener
 			= new ConfigChangeListener<>(Config.Server.levelKeyPrefix, this::onLevelKeyPrefixConfigChanged);
-	private final SessionConfig.AnyChangeListener configAnyChangeListener = new SessionConfig.AnyChangeListener(this::onSessionConfigChanged);
+	private final SessionConfig.AnyChangeListener configAnyChangeListener = new SessionConfig.AnyChangeListener(this::sendConfigMessage);
 	
 	
 	private String lastLevelKey = "";
@@ -56,8 +56,9 @@ public class ServerPlayerState implements Closeable
 		this.networkSession.registerHandler(SessionConfigMessage.class, (sessionConfigMessage) ->
 		{
 			this.sessionConfig.constrainingConfig = sessionConfigMessage.config;
+			
 			this.sendLevelKey();
-			this.networkSession.sendMessage(new SessionConfigMessage(this.sessionConfig));
+			this.sendConfigMessage();
 		});
 		
 		this.networkSession.registerHandler(CloseInternalEvent.class, event -> {
@@ -93,7 +94,14 @@ public class ServerPlayerState implements Closeable
 		}
 	}
 	
-	private void onSessionConfigChanged() { this.networkSession.sendMessage(new SessionConfigMessage(this.sessionConfig)); }
+	private void sendConfigMessage()
+	{
+		double coordinateScale = this.getServerPlayer().getLevel().getDimensionType().getCoordinateScale();
+		this.sessionConfig.constrainValue(Config.Server.generationBoundsX, (int) (Config.Server.generationBoundsX.get() / coordinateScale));
+		this.sessionConfig.constrainValue(Config.Server.generationBoundsZ, (int) (Config.Server.generationBoundsZ.get() / coordinateScale));
+		
+		this.networkSession.sendMessage(new SessionConfigMessage(this.sessionConfig));
+	}
 	
 	
 	

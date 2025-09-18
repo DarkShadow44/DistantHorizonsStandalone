@@ -55,6 +55,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -109,6 +110,16 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 			// of freeing the underlying ColumnRenderSource.
 			// That way we don't have to worry about accidentally closing an in-use object.
 			.<Long, CachedColumnRenderSource>build();
+	
+	/**
+	 * Used to limit how many upload tasks are queued at once.
+	 * If all the upload tasks are queued at once, they will start uploading nearest
+	 * to the player, however if the player moves, that order is no longer valid and holes may appear
+	 * as further sections are loaded before closer ones.
+	 * Only queuing a few of the sections at a time solves this problem.
+	 */
+	public final AtomicInteger uploadTaskCountRef = new AtomicInteger(0);
+	
 	
 	@Nullable
 	public final BeaconRenderHandler beaconRenderHandler;
@@ -226,7 +237,7 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 			long rootPos = rootPosIterator.nextLong();
 			if (this.getNode(rootPos) == null)
 			{
-				this.setValue(rootPos, new LodRenderSection(rootPos, this, this.level, this.fullDataSourceProvider, this.cachedRenderSourceByPos, this.renderLoadLockContainer));
+				this.setValue(rootPos, new LodRenderSection(rootPos, this, this.level, this.fullDataSourceProvider, this.uploadTaskCountRef, this.cachedRenderSourceByPos, this.renderLoadLockContainer));
 			}
 			
 			QuadNode<LodRenderSection> rootNode = this.getNode(rootPos);
@@ -265,7 +276,7 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 		// create the node
 		if (quadNode == null && this.isSectionPosInBounds(sectionPos)) // the position bounds should only fail when at the edge of the user's render distance
 		{
-			rootNode.setValue(sectionPos, new LodRenderSection(sectionPos, this, this.level, this.fullDataSourceProvider, this.cachedRenderSourceByPos, this.renderLoadLockContainer));
+			rootNode.setValue(sectionPos, new LodRenderSection(sectionPos, this, this.level, this.fullDataSourceProvider, this.uploadTaskCountRef, this.cachedRenderSourceByPos, this.renderLoadLockContainer));
 			quadNode = rootNode.getNode(sectionPos);
 		}
 		if (quadNode == null)
@@ -278,7 +289,7 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 		LodRenderSection renderSection = quadNode.value;
 		if (renderSection == null)
 		{
-			renderSection = new LodRenderSection(sectionPos, this, this.level, this.fullDataSourceProvider, this.cachedRenderSourceByPos, this.renderLoadLockContainer);
+			renderSection = new LodRenderSection(sectionPos, this, this.level, this.fullDataSourceProvider, this.uploadTaskCountRef, this.cachedRenderSourceByPos, this.renderLoadLockContainer);
 			quadNode.setValue(sectionPos, renderSection);
 		}
 		
@@ -388,9 +399,11 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 			// prepare this section for rendering
 			if (!renderSection.gpuUploadInProgress()
 				&& renderSection.renderBuffer == null
+				// TODO this is commented out since some users reported LODs refusing to
+				//  load at their expected higher-detail levels
 				// this check is specifically for N-sized world generators where the higher quality
 				// data source may not exist yet, this is done to prevent holes while waiting for said generator
-				&& renderSection.getFullDataSourceExists()
+				//&& renderSection.getFullDataSourceExists()
 				)
 			{
 				nodesNeedingLoading.add(renderSection);

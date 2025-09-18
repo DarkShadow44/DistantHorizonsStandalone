@@ -19,10 +19,9 @@
 
 package com.seibel.distanthorizons.core.util.objects.dataStreams;
 
+import com.github.luben.zstd.RecyclingBufferPool;
+import com.github.luben.zstd.ZstdInputStream;
 import com.seibel.distanthorizons.api.enums.config.EDhApiDataCompressionMode;
-import com.seibel.distanthorizons.core.Initializer;
-import com.seibel.distanthorizons.core.util.objects.DataCorruptedException;
-import com.seibel.distanthorizons.coreapi.ModInfo;
 import net.jpountz.lz4.LZ4FrameInputStream;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -62,6 +61,8 @@ public class DhDataInputStream extends DataInputStream
 					return stream;
 				case LZ4:
 					return new LZ4FrameInputStream(stream);
+				case Z_STD:
+					return new ZstdInputStream(stream, RecyclingBufferPool.INSTANCE);
 				case LZMA2:
 					// using an array cache significantly reduces GC pressure
 					ResettableArrayCache arrayCache = LZMA_RESETTABLE_ARRAY_CACHE_GETTER.get();

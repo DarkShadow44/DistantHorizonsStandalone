@@ -39,8 +39,8 @@ public class DhClientWorld extends AbstractDhWorld implements IDhClientWorld
 	public final ClientOnlySaveStructure saveStructure;
 	public final ClientNetworkState networkState = new ClientNetworkState();
 	
-	public ExecutorService dhTickerThread = ThreadUtil.makeSingleThreadPool("Client World Ticker Thread");
-	public EventLoop eventLoop = new EventLoop(this.dhTickerThread, this::_clientTick);
+	public final ExecutorService dhTickerThread = ThreadUtil.makeSingleThreadPool("Client World Ticker Thread");
+	public final EventLoop eventLoop = new EventLoop(this.dhTickerThread, this::_clientTick);
 	
 	
 	
@@ -127,6 +127,8 @@ public class DhClientWorld extends AbstractDhWorld implements IDhClientWorld
 	public void close()
 	{
 		this.networkState.close();
+		
+		this.dhTickerThread.shutdownNow();
 		
 		
 		for (DhClientLevel dhClientLevel : this.levels.values())

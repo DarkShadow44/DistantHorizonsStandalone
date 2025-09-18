@@ -29,31 +29,24 @@ import com.seibel.distanthorizons.core.wrapperInterfaces.block.IBlockStateWrappe
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IBiomeWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.IWrapperFactory;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
-import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
-import it.unimi.dsi.fastutil.ints.Int2ObjectMaps;
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.ints.Int2ReferenceOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2IntMap;
-import it.unimi.dsi.fastutil.objects.Object2IntMaps;
-import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.*;
 import java.util.*;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * WARNING: This is not THREAD-SAFE! <br><br>
- *
+ * 
  * Used to map a numerical IDs to a Biome/BlockState pair. <br><br>
- *
+ * 
  * TODO the serializing of this map might be really big
  *  since it stringifies every block and biome name, which is quite bulky.
  *  It might be worth while to have a biome and block ID that then both get mapped
  *  to the data point ID to reduce file size.
  *  And/or it would be good to dynamically remove IDs that aren't currently in use.
- *
+ * 
  * @author Leetom
  */
 public class FullDataPointIdMap
@@ -67,31 +60,31 @@ public class FullDataPointIdMap
 	private static final boolean RUN_SERIALIZATION_DUPLICATE_VALIDATION = false;
 	/** Distant Horizons - Block State Wrapper */
 	private static final String BLOCK_STATE_SEPARATOR_STRING = "_DH-BSW_";
-
-
+	
+	
 	/** should only be used for debugging */
 	private long pos;
-
+	
 	/** The index should be the same as the Entry's ID */
 	private final ArrayList<Entry> entryList = new ArrayList<>();
-    private final Object2IntMap<Entry> idMap = Object2IntMaps.synchronize(new Object2IntOpenHashMap<>());
-
+	private final ConcurrentHashMap<Entry, Integer> idMap = new ConcurrentHashMap<>();
+	
 	private int cachedHashCode = 0;
-
-
-
+	
+	
+	
 	//=============//
 	// constructor //
 	//=============//
-
+	
 	public FullDataPointIdMap(long pos) { this.pos = pos; }
-
-
-
+	
+	
+	
 	//=========//
 	// getters //
 	//=========//
-
+	
 	/** @see FullDataPointIdMap#getEntry(int) */
 	public IBiomeWrapper getBiomeWrapper(int id) throws IndexOutOfBoundsException { return this.getEntry(id).biome; }
 	/** @see FullDataPointIdMap#getEntry(int) */
@@ -108,45 +101,66 @@ public class FullDataPointIdMap
 		{
 			throw new IndexOutOfBoundsException("FullData ID Map out of sync for pos: "+this.pos+". ID: ["+id+"] greater than the number of known ID's: ["+this.entryList.size()+"].");
 		}
-
+		
 		return entry;
 	}
-
-
+	
+	
 	/** @return -1 if the list is empty */
 	public int getMaxValidId() { return this.entryList.size() - 1; }
 	public int size() { return this.entryList.size(); }
-
+	
 	public boolean isEmpty() { return this.entryList.isEmpty(); }
-
+	
 	public long getPos() { return this.pos; }
-
-
-
+	
+	
+	
 	//=========//
 	// setters //
 	//=========//
-
+	
 	/**
 	 * If an entry with the given values already exists nothing will
 	 * be added but the existing item's ID will still be returned.
 	 */
 	public int addIfNotPresentAndGetId(IBiomeWrapper biome, IBlockStateWrapper blockState) { return this.addIfNotPresentAndGetId(Entry.getEntry(biome, blockState)); }
-    private int addIfNotPresentAndGetId(Entry biomeBlockStateEntry) {
-        return this.idMap.computeIfAbsent(biomeBlockStateEntry, (Entry newBiomeBlockStateEntry) -> {
-            final int newId = this.entryList.size();
-            this.entryList.add(newBiomeBlockStateEntry);
-            this.cachedHashCode = 0;
-            return newId;
-        });
-    }
-
+	private int addIfNotPresentAndGetId(Entry biomeBlockStateEntry)
+	{
+		// try getting the existing ID
+		Integer nullableId = this.idMap.get(biomeBlockStateEntry);
+		if (nullableId != null)
+		{
+			return nullableId;
+		}
+		
+		
+		// create the new ID
+		return this.idMap.compute(biomeBlockStateEntry, (Entry newBiomeBlockStateEntry, Integer currentId) -> 
+		{
+			if (currentId != null)
+			{
+				return currentId;
+			}
+			
+			
+			// Add the new ID
+			currentId = this.entryList.size();
+			this.entryList.add(biomeBlockStateEntry);
+			
+			// invalidate the cached hash code
+			this.cachedHashCode = 0;
+			
+			return currentId;
+		});
+	}
+	
 	/**
 	 * Adds every {@link Entry} from inputMap into this map. <br>
 	 * Allows duplicate entries. <br><br>
-	 *
-	 * Allowing duplicate entries should be done if a datasource is just being read in and
-	 * a merge step isn't being done afterwards. If duplicates are removed it may cause
+	 * 
+	 * Allowing duplicate entries should be done if a datasource is just being read in and 
+	 * a merge step isn't being done afterwards. If duplicates are removed it may cause 
 	 * the ID's to get out of sync since everything will be shifted down after the removed
 	 * ID(s).
 	 */
@@ -165,14 +179,14 @@ public class FullDataPointIdMap
 		int id = this.entryList.size();
 		this.entryList.add(biomeBlockStateEntry);
 		this.idMap.put(biomeBlockStateEntry, id);
-
+		
 		// invalidate the cached hash code
 		this.cachedHashCode = 0;
 	}
-
+	
 	/**
 	 * Adds each entry from the given map to this map. <br><br>
-	 *
+	 * 
 	 * Note: when using this function be careful about re-mapping the
 	 * same data source multiple times.
 	 * Doing so may cause indexOutOfBounds issues.
@@ -189,10 +203,10 @@ public class FullDataPointIdMap
 			int id = this.addIfNotPresentAndGetId(entity);
 			remappedEntryIds[i] = id;
 		}
-
+		
 		return remappedEntryIds;
 	}
-
+	
 	/** Should only be used if this map is going to be reused, otherwise bad things will happen. */
 	public void clear(long pos)
 	{
@@ -201,26 +215,26 @@ public class FullDataPointIdMap
 		this.idMap.clear();
 		this.cachedHashCode = 0;
 	}
-
-
-
+	
+	
+	
 	//=============//
 	// serializing //
 	//=============//
-
+	
 	/** Serializes all contained entries into the given stream, formatted in UTF */
 	public void serialize(DhDataOutputStream outputStream) throws IOException
 	{
 		outputStream.writeInt(this.entryList.size());
-
+		
 		// only used when debugging
 		HashMap<String, FullDataPointIdMap.Entry> dataPointEntryBySerialization = new HashMap<>();
-
+		
 		for (Entry entry : this.entryList)
 		{
 			String entryString = entry.serialize();
 			outputStream.writeUTF(entryString);
-
+			
 			if (RUN_SERIALIZATION_DUPLICATE_VALIDATION)
 			{
 				if (dataPointEntryBySerialization.containsKey(entryString))
@@ -235,7 +249,7 @@ public class FullDataPointIdMap
 			}
 		}
 	}
-
+	
 	/** Creates a new IdBiomeBlockStateMap from the given UTF formatted stream */
 	public static FullDataPointIdMap deserialize(DhDataInputStream inputStream, long pos, ILevelWrapper levelWrapper) throws IOException, InterruptedException, DataCorruptedException
 	{
@@ -244,11 +258,11 @@ public class FullDataPointIdMap
 		{
 			throw new DataCorruptedException("FullDataPointIdMap deserialize entry count should have a number greater than or equal to 0, returned value ["+entityCount+"].");
 		}
-
-
+		
+		
 		// only used when debugging
 		HashMap<String, FullDataPointIdMap.Entry> dataPointEntryBySerialization = new HashMap<>();
-
+		
 		FullDataPointIdMap newMap = new FullDataPointIdMap(pos);
 		for (int i = 0; i < entityCount; i++)
 		{
@@ -257,12 +271,12 @@ public class FullDataPointIdMap
 			{
 				throw new InterruptedException(FullDataPointIdMap.class.getSimpleName() + " task interrupted.");
 			}
-
-
+			
+			
 			String entryString = inputStream.readUTF();
 			Entry newEntry = Entry.deserialize(entryString, levelWrapper);
 			newMap.entryList.add(newEntry);
-
+			
 			if (RUN_SERIALIZATION_DUPLICATE_VALIDATION)
 			{
 				if (dataPointEntryBySerialization.containsKey(entryString))
@@ -276,22 +290,22 @@ public class FullDataPointIdMap
 				dataPointEntryBySerialization.put(entryString, newEntry);
 			}
 		}
-
+		
 		if (newMap.size() != entityCount)
 		{
 			// if the mappings are out of sync then the LODs will render incorrectly due to IDs being wrong
 			LodUtil.assertNotReach("ID maps failed to deserialize for pos: ["+ DhSectionPos.toString(pos)+"], incorrect entity count. Expected count ["+entityCount+"], actual count ["+newMap.size()+"]");
 		}
-
+		
 		return newMap;
 	}
-
-
-
+	
+	
+	
 	//===========//
 	// overrides //
 	//===========//
-
+	
 	@Override
 	public boolean equals(Object other)
 	{
@@ -305,7 +319,7 @@ public class FullDataPointIdMap
         }*/
 		return false;
 	}
-
+	
 	/** Only includes the base data in this object, not the mapping */
 	@Override
 	public int hashCode()
@@ -325,61 +339,84 @@ public class FullDataPointIdMap
 		}
 		this.cachedHashCode = result;
 	}
-
-
-
+	
+	
+	
 	//==============//
 	// helper class //
 	//==============//
-
+	
 	private static final class Entry
 	{
 		private static final IWrapperFactory WRAPPER_FACTORY = SingletonInjector.INSTANCE.get(IWrapperFactory.class);
-
-        private static final Int2ObjectMap<Entry> ENTRY_BY_HASH = Int2ObjectMaps.synchronize(new Int2ObjectOpenHashMap<>());
-		/** lock is necessary since {@link Int2ReferenceOpenHashMap} isn't concurrent and concurrent threads can cause infinite loops */
-		private static final ReentrantReadWriteLock ENTRY_POOL_LOCK = new ReentrantReadWriteLock();
-
+		
+		/** two levels are present so we don't need to use a key object */
+		private static final ConcurrentHashMap<IBiomeWrapper, ConcurrentHashMap<IBlockStateWrapper, Entry>> ENTRY_BY_BLOCKSTATE_BY_BIOMEWRAPPER = new ConcurrentHashMap<>();
+		
 		public final IBiomeWrapper biome;
 		public final IBlockStateWrapper blockState;
-
-		private Integer hashCode = null;
+		
+		private int hashCode = 0;
+		private boolean hashGenerated = false;
 		private String serialString = null;
-
-
-
+		
+		
+		
 		//=============//
 		// constructor //
 		//=============//
-        public static Entry getEntry(IBiomeWrapper biome, IBlockStateWrapper blockState) {
-            final int entryHash = generateHashCode(biome, blockState);
-            return ENTRY_BY_HASH.computeIfAbsent(entryHash, hash -> new Entry(biome, blockState));
-        }
-
-		private Entry(IBiomeWrapper biome, IBlockStateWrapper blockState) {
+		
+		public static Entry getEntry(IBiomeWrapper biome, IBlockStateWrapper blockState)
+		{
+			// check for existing entry
+			ConcurrentHashMap<IBlockStateWrapper, Entry> entryByBlockState = ENTRY_BY_BLOCKSTATE_BY_BIOMEWRAPPER.get(biome);
+			if (entryByBlockState != null)
+			{
+				Entry entry = entryByBlockState.get(blockState);
+				if (entry != null)
+				{
+					return entry;
+				}
+			}
+			
+			// Lazily create the inner map and new Entry
+			return ENTRY_BY_BLOCKSTATE_BY_BIOMEWRAPPER
+					.computeIfAbsent(biome, newBiome -> new ConcurrentHashMap<>())
+					.computeIfAbsent(blockState, newBlockState -> new Entry(biome, blockState));
+		}
+		private Entry(IBiomeWrapper biome, IBlockStateWrapper blockState)
+		{
 			this.biome = biome;
 			this.blockState = blockState;
 		}
-
-
-
+		
+		
+		
 		//===========//
 		// overrides //
 		//===========//
-
+		
+		/** 
+		 * Reminder: this hash code won't always be unique, collisions can occur;
+		 * because of that this hash shouldn't be the only unique identifier for this object.
+		 */
 		@Override
-		public int hashCode() {
+		public int hashCode()
+		{
 			// cache the hash code to improve speed
-			if (this.hashCode == null) {
+			if (!this.hashGenerated)
+			{
 				this.hashCode = generateHashCode(this);
+				this.hashGenerated = true;
 			}
-
+			
 			return this.hashCode;
 		}
 		private static int generateHashCode(Entry entry) { return generateHashCode(entry.biome, entry.blockState); }
-		private static int generateHashCode(IBiomeWrapper biome, IBlockStateWrapper blockState) {
+		private static int generateHashCode(IBiomeWrapper biome, IBlockStateWrapper blockState)
+		{
 			final int prime = 31;
-
+			
 			int result = 1;
 			// the biome and blockstate hashcode should be already calculated by the time
 			// we get here, so this operation should be very fast
@@ -387,39 +424,44 @@ public class FullDataPointIdMap
 			result = prime * result + (blockState == null ? 0 : blockState.hashCode());
 			return result;
 		}
-
+		
 		@Override
-		public boolean equals(Object otherObj) {
+		public boolean equals(Object otherObj)
+		{
 			if (otherObj == this)
+			{
 				return true;
-
+			}
+			
 			if (!(otherObj instanceof Entry))
+			{
 				return false;
-
+			}
+			
 			Entry other = (Entry) otherObj;
 			return other.biome.getSerialString().equals(this.biome.getSerialString())
 					&& other.blockState.getSerialString().equals(this.blockState.getSerialString());
 		}
-
+		
 		@Override
 		public String toString() { return this.serialize(); }
-
-
-
+		
+		
+		
 		//=================//
 		// (de)serializing //
 		//=================//
-
-		public String serialize()
+		
+		public String serialize() 
 		{
 			if (this.serialString == null)
 			{
 				this.serialString = this.biome.getSerialString() + BLOCK_STATE_SEPARATOR_STRING + this.blockState.getSerialString();
 			}
-
+			
 			return this.serialString;
 		}
-
+		
 		public static Entry deserialize(String str, ILevelWrapper levelWrapper) throws DataCorruptedException
 		{
 			int separatorIndex = str.indexOf(BLOCK_STATE_SEPARATOR_STRING);
@@ -427,13 +469,13 @@ public class FullDataPointIdMap
 			{
 				throw new DataCorruptedException("Failed to deserialize BiomeBlockStateEntry ["+str+"], unable to find separator.");
 			}
-
+			
 			IBiomeWrapper biome = WRAPPER_FACTORY.deserializeBiomeWrapperOrGetDefault(str.substring(0, separatorIndex), levelWrapper);
 			IBlockStateWrapper blockState = WRAPPER_FACTORY.deserializeBlockStateWrapperOrGetDefault(str.substring(separatorIndex+BLOCK_STATE_SEPARATOR_STRING.length()), levelWrapper);
 			return Entry.getEntry(biome, blockState);
 		}
-
+		
 	}
-
-
+	
+	
 }

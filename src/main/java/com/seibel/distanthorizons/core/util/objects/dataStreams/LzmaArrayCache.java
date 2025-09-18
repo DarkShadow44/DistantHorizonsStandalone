@@ -63,8 +63,16 @@ public class LzmaArrayCache extends ArrayCache
 		{
 			return new byte[size];
 		}
-		// the array needs to be cleared to prevent accidentally sending dirty data
-		Arrays.fill(array, (byte)0);
+		
+		// the array only sometimes needs to be cleared,
+		// clearing all the time results in unnecessary slowdowns
+		if (fillWithZeros)
+		{
+			// TODO it appears that this can prevent the CPU from working on
+			//  other tasks, thus causing render thread lag even when run on a separate thread 
+			Arrays.fill(array, (byte) 0);
+		}
+		
 		return array;
 	}
 	
@@ -107,8 +115,16 @@ public class LzmaArrayCache extends ArrayCache
 		{
 			return new int[size];
 		}
-		// the array needs to be cleared to prevent accidentally sending dirty data
-		Arrays.fill(array, (byte)0);
+		
+		// the array only sometimes needs to be cleared,
+		// clearing all the time results in unnecessary slowdowns
+		if (fillWithZeros)
+		{
+			// TODO it appears that this can prevent the CPU from working on
+			//  other tasks, thus causing render thread lag even when run on a separate thread
+			Arrays.fill(array, (byte) 0);
+		}
+		
 		return array;
 	}
 	

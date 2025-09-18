@@ -79,8 +79,12 @@ public interface IMinecraftClientWrapper extends IBindable
 	
 	String getUsername();
 	
+	// TODO returning null would be easier to understand but might make things harder to parse in some cases
+	/** @return (0,0,0) if no player is loaded */
 	DhBlockPos getPlayerBlockPos();
 	
+	// TODO returning null would be easier to understand but might make things harder to parse in some cases
+	/** @return (0,0) if no player is loaded */
 	DhChunkPos getPlayerChunkPos();
 	
 	/**

@@ -99,6 +99,11 @@ public class SharedApi
 	
 	public static void setDhWorld(AbstractDhWorld newWorld)
 	{
+		AbstractDhWorld oldWorld = currentWorld;
+		if (oldWorld != null)
+		{
+			oldWorld.close();
+		}
 		currentWorld = newWorld;
 		
 		// starting and stopping the DataRenderTransformer is necessary to prevent attempting to

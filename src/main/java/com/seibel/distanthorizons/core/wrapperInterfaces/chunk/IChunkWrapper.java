@@ -381,8 +381,9 @@ public interface IChunkWrapper extends IBindable
 		for (int y = beaconRelPos.getY() +1; y <= maxY; y++)
 		{
 			IBlockStateWrapper block = centerChunk.getBlockState(beaconRelPos.getX(), y, beaconRelPos.getZ());
-			if (!block.isAir() && block.getOpacity() == LodUtil.BLOCK_FULLY_OPAQUE)
+			if (!block.allowsBeaconBeamPassage())
 			{
+				// beam is blocked by this block
 				return null;
 			}
 			

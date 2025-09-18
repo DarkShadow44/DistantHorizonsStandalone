@@ -197,10 +197,10 @@ public class DhApiTerrainDataRepo implements IDhApiTerrainDataRepo
 		ILevelWrapper coreLevelWrapper = (ILevelWrapper) levelWrapper;
 		
 		
-		if (!(apiDataCache instanceof DhApiTerrainDataCache))
+		// the data cache can be null, but must be our own implementation
+		if (apiDataCache != null
+			&& !(apiDataCache instanceof DhApiTerrainDataCache))
 		{
-			// custom level wrappers aren't supported,
-			// the API user must get a level wrapper from our code somewhere
 			return DhApiResult.createFail("Unsupported [" + IDhApiTerrainDataCache.class.getSimpleName() + "] implementation, only the core class [" + DhApiTerrainDataCache.class.getSimpleName() + "] is a valid parameter.");
 		}
 		DhApiTerrainDataCache dataCache = (DhApiTerrainDataCache) apiDataCache;
@@ -226,10 +226,9 @@ public class DhApiTerrainDataRepo implements IDhApiTerrainDataRepo
 		// get the data source //
 		//=====================//
 		
+		FullDataSourceV2 dataSource = null;
 		try
 		{
-			FullDataSourceV2 dataSource = null;
-			
 			// try using the cached data if possible
 			if (dataCache != null)
 			{
@@ -244,7 +243,12 @@ public class DhApiTerrainDataRepo implements IDhApiTerrainDataRepo
 				{
 					return DhApiResult.createFail("Unable to find/generate any data at the " + DhSectionPos.class.getSimpleName() + " [" + DhSectionPos.toString(sectionPos) + "].");
 				}
-				dataCache.add(sectionPos, dataSource);
+				
+				// save to the cache if present
+				if (dataCache != null)
+				{
+					dataCache.add(sectionPos, dataSource);
+				}
 			}
 			
 			
@@ -315,6 +319,14 @@ public class DhApiTerrainDataRepo implements IDhApiTerrainDataRepo
 			// shouldn't normally happen, but just in case
 			LOGGER.error("Unexpected exception in getTerrainDataColumnArray. Error: [" + e.getMessage() + "]", e);
 			return DhApiResult.createFail("Unexpected exception: [" + e.getMessage() + "].");
+		}
+		finally
+		{
+			if (dataCache == null
+				&& dataSource != null)
+			{
+				dataSource.close();
+			}
 		}
 	}
 	

@@ -20,6 +20,7 @@
 package com.seibel.distanthorizons.core.render.renderer.shaders;
 
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
+import com.seibel.distanthorizons.core.render.glObject.GLState;
 import com.seibel.distanthorizons.core.render.glObject.shader.ShaderProgram;
 import com.seibel.distanthorizons.core.render.renderer.FadeRenderer;
 import com.seibel.distanthorizons.core.render.renderer.LodRenderer;
@@ -104,6 +105,12 @@ public class FadeApplyShader extends AbstractShaderRenderer
 	@Override
 	protected void onRender()
 	{
+		if (!MC_RENDER.mcRendersToFrameBuffer())
+		{
+			throw new IllegalStateException("If Minecraft is directly rendering to a texture the apply shader isn't needed, just draw the fade directly to the MC color texture.");
+		}
+		
+		
 		GLMC.disableBlend();
 		
 		// Depth testing must be disabled otherwise this application shader won't apply anything.
@@ -119,6 +126,9 @@ public class FadeApplyShader extends AbstractShaderRenderer
 		ScreenQuad.INSTANCE.render();
 		
 		GLMC.enableDepthTest();
+		
 	}
+	
+	
 	
 }

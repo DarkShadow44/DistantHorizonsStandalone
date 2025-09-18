@@ -23,8 +23,9 @@ import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.sql.DatabaseUpdater;
 import com.seibel.distanthorizons.core.sql.DbConnectionClosedException;
 import com.seibel.distanthorizons.core.sql.dto.IBaseDTO;
+import com.seibel.distanthorizons.core.sql.repo.phantoms.AutoClosableTrackingWrapper;
 import com.seibel.distanthorizons.core.util.KeyedLockContainer;
-import com.seibel.distanthorizons.core.util.ThreadUtil;
+import com.seibel.distanthorizons.coreapi.ModInfo;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.Nullable;
 
@@ -33,8 +34,7 @@ import java.io.IOException;
 import java.sql.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -53,8 +53,6 @@ public abstract class AbstractDhRepo<TKey, TDTO extends IBaseDTO<TKey>> implemen
 	private static final ConcurrentHashMap<String, Connection> CONNECTIONS_BY_CONNECTION_STRING = new ConcurrentHashMap<>();
 	private static final ConcurrentHashMap<AbstractDhRepo<?, ?>, String> ACTIVE_CONNECTION_STRINGS_BY_REPO = new ConcurrentHashMap<>();
 	
-	private static final ThreadPoolExecutor WAL_FLUSH_THREAD = ThreadUtil.makeSingleDaemonThreadPool("Abstract Repo WAL Flush");
-	private static final AtomicBoolean FLUSH_THREAD_QUEUED = new AtomicBoolean(false);
 	
 	
 	private final String connectionString;
@@ -62,6 +60,8 @@ public abstract class AbstractDhRepo<TKey, TDTO extends IBaseDTO<TKey>> implemen
 	
 	public final String databaseType;
 	public final File databaseFile;
+	
+	public final Set<AutoClosableTrackingWrapper> openClosables = ConcurrentHashMap.newKeySet();
 	
 	public final Class<? extends TDTO> dtoClass;
 	
@@ -356,7 +356,7 @@ public abstract class AbstractDhRepo<TKey, TDTO extends IBaseDTO<TKey>> implemen
 			
 			// Note: this can only handle 1 command at a time
 			boolean resultSetPresent = statement.execute(sql);
-			try (ResultSet resultSet = statement.getResultSet())
+			try (ResultSet resultSet = AutoClosableTrackingWrapper.wrap(ResultSet.class, statement.getResultSet(), this.openClosables))
 			{
 				return this.convertResultSetToDictionaryList(resultSet, resultSetPresent);
 			}
@@ -405,7 +405,8 @@ public abstract class AbstractDhRepo<TKey, TDTO extends IBaseDTO<TKey>> implemen
 			boolean resultSetPresent = statement.execute();
 			if (resultSetPresent)
 			{
-				return statement.getResultSet();
+				ResultSet resultSet = statement.getResultSet(); 
+				return AutoClosableTrackingWrapper.wrap(ResultSet.class, resultSet, this.openClosables);
 			}
 			else
 			{
@@ -443,7 +444,7 @@ public abstract class AbstractDhRepo<TKey, TDTO extends IBaseDTO<TKey>> implemen
 		{
 			PreparedStatement statement = this.connection.prepareStatement(sql);
 			statement.setQueryTimeout(TIMEOUT_SECONDS);
-			return statement;
+			return AutoClosableTrackingWrapper.wrap(PreparedStatement.class, statement, this.openClosables);
 		}
 		catch(SQLException e)
 		{
@@ -501,7 +502,12 @@ public abstract class AbstractDhRepo<TKey, TDTO extends IBaseDTO<TKey>> implemen
 					}
 					else
 					{
-						LOGGER.warn("Attempting to close already closed database connection: [" + connectionString + "]");
+						// these warnings can be ignored in release builds, as long as the connection is closed it doesn't really matter
+						// TODO fix duplicate closes
+						if (ModInfo.IS_DEV_BUILD)
+						{
+							LOGGER.warn("Attempting to close already closed database connection: [" + connectionString + "]");
+						}
 					}
 				}
 			}
@@ -528,6 +534,32 @@ public abstract class AbstractDhRepo<TKey, TDTO extends IBaseDTO<TKey>> implemen
 				{
 					CONNECTIONS_BY_CONNECTION_STRING.remove(this.connectionString);
 					
+					
+					// log any leaked objects
+					int openClosableCount = this.openClosables.size();
+					if (openClosableCount != 0)
+					{
+						LOGGER.warn("[" + openClosableCount + "] objects not closed for repo [" + this.getClass().getSimpleName() + "]-[" + this.getTableName() + "] with connection: [" + this.connectionString + "]. A memory leak may be present and closing this connection may take longer than normal.");
+						
+						// header
+						StringBuilder stringBuilder = new StringBuilder();
+						stringBuilder.append("Unclosed objects: \n");
+						
+						// leaked objects
+						HashMap<String, AtomicInteger> unclosedObjectCountsByString = this.getUnclosedObjectStringsAndCounts();
+						for (String objString : unclosedObjectCountsByString.keySet())
+						{
+							AtomicInteger countRef = unclosedObjectCountsByString.get(objString);
+							if (countRef != null)
+							{
+								stringBuilder.append("[" + countRef.get() + "] - [" + objString + "] \n");
+							}
+						}
+						
+						LOGGER.warn(stringBuilder.toString());
+					}
+					
+					
 					if (!this.connection.isClosed())
 					{
 						LOGGER.info("Closing database connection: [" + this.connectionString + "]...");
@@ -536,7 +568,12 @@ public abstract class AbstractDhRepo<TKey, TDTO extends IBaseDTO<TKey>> implemen
 					}
 					else
 					{
-						LOGGER.warn("Attempting to close already closed database connection: [" + this.connectionString + "]");
+						// these warnings can be ignored in release builds, as long as the connection is closed it doesn't really matter
+						// TODO fix duplicate closes
+						if (ModInfo.IS_DEV_BUILD)
+						{
+							LOGGER.warn("Attempting to close already closed database connection: [" + this.connectionString + "]");
+						}
 					}
 				}
 				ACTIVE_CONNECTION_STRINGS_BY_REPO.remove(this);
@@ -620,6 +657,49 @@ public abstract class AbstractDhRepo<TKey, TDTO extends IBaseDTO<TKey>> implemen
 		}
 		
 		return list;
+	}
+	
+	/** used for logging leaked objects */
+	public HashMap<String, AtomicInteger> getUnclosedObjectStringsAndCounts()
+	{
+		HashMap<String, AtomicInteger> closableCountsByToString = new HashMap<>();
+		
+		for (AutoClosableTrackingWrapper closableWrapper : this.openClosables)
+		{
+			// custom to-strings for better merging
+			String str = closableWrapper.wrappedClosable.getClass().getSimpleName();
+			if (closableWrapper.wrappedClosable instanceof ResultSet)
+			{
+				str += " @ " + closableWrapper.wrappedClosable.toString();
+			}
+			else if (closableWrapper.wrappedClosable instanceof PreparedStatement)
+			{
+				String sql = closableWrapper.wrappedClosable.toString();
+				int parametersIndex = sql.indexOf("\n parameters="); // remove Sqlite parameters so queries aren't separated by properties
+				if (parametersIndex != -1)
+				{
+					sql = sql.substring(0, parametersIndex);
+				}
+				str += " @ " + sql;
+			}
+			else
+			{
+				str += " @ " + closableWrapper.wrappedClosable.toString();
+			}
+			
+			
+			closableCountsByToString.compute(str, (stringVal, countRef) ->
+			{
+				if (countRef == null)
+				{
+					countRef = new AtomicInteger(0);
+				}
+				countRef.incrementAndGet();
+				return countRef;
+			});
+		}
+		
+		return closableCountsByToString;
 	}
 	
 	

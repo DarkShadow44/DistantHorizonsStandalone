@@ -223,7 +223,7 @@ public class GLBuffer implements AutoCloseable
 		this.destroyAsync();
 		this.create(true);
 		this.bind();
-		GL44.glBufferStorage(this.getBufferBindingTarget(), bb, bufferStorageHint);
+		GL44.glBufferStorage(this.getBufferBindingTarget(), bb, 0);
 		this.size = bbSize;
 	}
 	/** Requires the buffer to be bound */

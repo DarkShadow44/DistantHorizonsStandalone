@@ -78,9 +78,11 @@ public class RateLimitedThreadPoolExecutor extends ThreadPoolExecutor
 			long runTime = System.nanoTime() - this.runStartTime.get();
 			Thread.sleep(TimeUnit.NANOSECONDS.toMillis((long) (runTime / this.runTimeRatioConfig.get() - runTime)));
 		}
-		catch (InterruptedException e)
+		catch (InterruptedException ignore)
 		{
-			throw new RuntimeException(e);
+			// if this thread is interrupted that means the
+			// thread pool is being shut down,
+			// we don't need to log that.
 		}
 	}
 	

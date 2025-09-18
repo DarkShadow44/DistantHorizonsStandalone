@@ -40,6 +40,7 @@ public enum EDhApiLoggerMode
 	LOG_DEBUG_TO_CHAT_AND_FILE(Level.DEBUG, Level.DEBUG),
 	LOG_WARNING_TO_CHAT_AND_INFO_TO_FILE(Level.INFO, Level.WARN),
 	LOG_ERROR_TO_CHAT_AND_INFO_TO_FILE(Level.INFO, Level.ERROR),
+	LOG_ERROR_TO_CHAT_AND_WARNING_TO_FILE(Level.ERROR, Level.WARN),
 	;
 	
 	public final Level levelForFile;

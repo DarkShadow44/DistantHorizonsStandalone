@@ -306,9 +306,9 @@ public class PhantomArrayListPool
 					{
 						// we only want to log when something has been returned
 						if (checkoutCount != 0
-								|| returnedByteArrayCount != 0
-								|| returnedShortArrayCount != 0
-								|| returnedLongArrayCount != 0)
+							|| returnedByteArrayCount != 0
+							|| returnedShortArrayCount != 0
+							|| returnedLongArrayCount != 0)
 						{
 							LOGGER.warn("Pool: ["+ pool.name+"] phantom recovery. Returned checkouts:["+F3Screen.NUMBER_FORMAT.format(checkoutCount)+"], byte:["+F3Screen.NUMBER_FORMAT.format(returnedByteArrayCount)+"], short:["+F3Screen.NUMBER_FORMAT.format(returnedShortArrayCount)+"], long:["+F3Screen.NUMBER_FORMAT.format(returnedLongArrayCount)+"].");
 							

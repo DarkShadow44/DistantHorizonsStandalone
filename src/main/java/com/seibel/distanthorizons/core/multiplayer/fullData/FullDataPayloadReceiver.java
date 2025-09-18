@@ -9,8 +9,8 @@ import com.seibel.distanthorizons.core.network.INetworkObject;
 import com.seibel.distanthorizons.core.network.messages.fullData.FullDataSplitMessage;
 import com.seibel.distanthorizons.core.sql.dto.FullDataSourceV2DTO;
 import com.seibel.distanthorizons.core.util.LodUtil;
-import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.CompositeByteBuf;
+import io.netty.buffer.Unpooled;
 import io.netty.buffer.UnpooledByteBufAllocator;
 import org.apache.logging.log4j.LogManager;
 
@@ -25,17 +25,7 @@ public class FullDataPayloadReceiver implements AutoCloseable
 	
 	private final ConcurrentMap<Integer, CompositeByteBuf> buffersById = CacheBuilder.newBuilder()
 			.expireAfterAccess(10, TimeUnit.SECONDS)
-			.removalListener((RemovalNotification<Integer, CompositeByteBuf> notification) ->
-			{
-				// If an entry was replaced without removing, the buffer has to be released manually
-				if (notification.getCause() != RemovalCause.REPLACED)
-				{
-					Objects.requireNonNull(notification.getValue()).release();
-				}
-			})
-			.build().asMap();
-	
-	
+			.<Integer, CompositeByteBuf>build().asMap();
 	
 	@Override
 	public void close()
@@ -49,15 +39,7 @@ public class FullDataPayloadReceiver implements AutoCloseable
 		{
 			if (message.isFirst)
 			{
-				if (composite != null)
-				{
-					composite.release();
-					LOGGER.debug("Released existing full data buffer [" + message.bufferId + "]");
-				}
-				
-
-				// TODO composite = ByteBufAllocator.DEFAULT.compositeBuffer();
-                composite = UnpooledByteBufAllocator.DEFAULT.compositeBuffer();
+				composite = UnpooledByteBufAllocator.DEFAULT.compositeBuffer();
 				LOGGER.debug("Created new full data buffer [" + message.bufferId + "]: [" + composite + "]");
 			}
 			else if (composite == null)
@@ -66,28 +48,28 @@ public class FullDataPayloadReceiver implements AutoCloseable
 				return null;
 			}
 			
-
-			// TODO composite.addComponent(true, message.buffer);
-            composite.addComponent(message.buffer);
-            composite.writerIndex(message.buffer.writerIndex() + composite.writerIndex());
+			composite.addComponent(message.buffer);
+			composite.writerIndex(composite.writerIndex() + message.buffer.writerIndex());
 			LOGGER.debug("Updated full data buffer [" + message.bufferId + "]: [" + composite + "].");
 			return composite;
 		});
 	}
 	
-	public FullDataSourceV2DTO decodeDataSourceAndReleaseBuffer(FullDataPayload msg)
+	public FullDataSourceV2DTO decodeDataSource(FullDataPayload payload)
 	{
-		CompositeByteBuf compositeByteBuffer = this.buffersById.get(msg.dtoBufferId);
+		CompositeByteBuf compositeByteBuffer = this.buffersById.get(payload.dtoBufferId);
 		LodUtil.assertTrue(compositeByteBuffer != null);
 		
 		try
 		{
-			return INetworkObject.decodeToInstance(FullDataSourceV2DTO.CreateEmptyDataSourceForDecoding(), compositeByteBuffer);
+			FullDataSourceV2DTO dataSourceDto = INetworkObject.decodeToInstance(FullDataSourceV2DTO.CreateEmptyDataSourceForDecoding(), compositeByteBuffer);
+			LOGGER.debug("Buffer {} DTO: {}", payload.dtoBufferId, dataSourceDto);
+			return dataSourceDto;
 		}
 		finally
 		{
 			// Releasing the buffer is handled by cache
-			this.buffersById.remove(msg.dtoBufferId);
+			this.buffersById.remove(payload.dtoBufferId);
 		}
 	}
 	

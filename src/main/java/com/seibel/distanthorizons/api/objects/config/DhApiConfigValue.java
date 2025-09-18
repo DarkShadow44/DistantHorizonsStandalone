@@ -87,7 +87,20 @@ public class DhApiConfigValue<coreType, apiType> implements IDhApiConfigValue<ap
 		}
 	}
 	
-	public boolean clearValue() { return this.setValue(null); }
+	public boolean clearValue()
+	{
+		if (this.configEntry.getAllowApiOverride())
+		{
+			// no converter should be used here since null objects may need to be handled differently
+			// TODO the API should just have a bool to keep track of whether the API value is in use instead of using NULL
+			this.configEntry.setApiValue(null);
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+	}
 	
 	public boolean getCanBeOverrodeByApi() { return this.configEntry.getAllowApiOverride(); }
 	

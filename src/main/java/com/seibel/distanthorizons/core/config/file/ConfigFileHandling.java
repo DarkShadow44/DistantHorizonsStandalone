@@ -70,7 +70,12 @@ public class ConfigFileHandling
 		this.configBase = configBase;
 		this.configPath = configPath;
 		
-		this.nightConfig = CommentedFileConfig.builder(this.configPath.toFile()).build();
+		this.nightConfig = CommentedFileConfig
+				.builder(this.configPath.toFile())
+				// sync is needed so file reading/writing only happens during locked sections,
+				// otherwise some GUI changes may be lost when changing screens
+				.sync()
+				.build();
 	}
 	
 	
@@ -321,10 +326,7 @@ public class ConfigFileHandling
 	 *
 	 * @apiNote This overwrites any value currently stored in the config
 	 */
-	public void loadNightConfig()
-	{
-		loadNightConfig(this.nightConfig);
-	}
+	public void loadNightConfig() { this.loadNightConfig(this.nightConfig); }
 	/**
 	 * Does {@link CommentedFileConfig#load()} but with error checking
 	 *
@@ -353,7 +355,7 @@ public class ConfigFileHandling
 		{
 			System.out.println("Creating file failed");
 			this.logger.error(ex);
-			SingletonInjector.INSTANCE.get(IMinecraftClientWrapper.class).crashMinecraft("Loading file and resetting config file failed at path [" + configPath + "]. Please check the file is ok and you have the permissions", ex);
+			SingletonInjector.INSTANCE.get(IMinecraftClientWrapper.class).crashMinecraft("Loading file and resetting config file failed at path [" + this.configPath + "]. Please check the file is ok and you have the permissions", ex);
 		}
 	}
 	

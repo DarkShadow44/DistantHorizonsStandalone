@@ -19,6 +19,7 @@
 
 package com.seibel.distanthorizons.core;
 
+import com.github.luben.zstd.ZstdOutputStream;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.render.renderer.generic.GenericRenderObjectFactory;
 import com.seibel.distanthorizons.core.sql.DatabaseUpdater;
@@ -54,38 +55,15 @@ public class Initializer
 		{
 			// if any library isn't present in the jar its class
 			// will throw an error (not an exception)
-			Class<?> fastCompressor = LZ4FrameOutputStream.class;
-			Class<?> smallCompressor = XZOutputStream.class;
+			Class<?> lz4Compressor = LZ4FrameOutputStream.class;
+			Class<?> zstdCompressor = ZstdOutputStream.class;
+			Class<?> lzmaCompressor = XZOutputStream.class;
 			//Class<?> networking = ByteBuf.class;
 			Class<?> config = com.electronwill.nightconfig.core.Config.class;
 			Class<?> oldFastUtil = it.unimi.dsi.fastutil.longs.LongArrayList.class; // available in 8.2.1
 			//Class<?> newFastUtil = it.unimi.dsi.fastutil.ints.IntUnaryOperator.class; // available in 8.5.13
 			Class<?> sqliteJava = org.sqlite.SQLiteConnection.class;
 			Class<?> sqliteNative = org.sqlite.core.NativeDB.class;
-			
-			//// maybe these lines are needed to shade SQLite, James isn't sure.
-			//// Although they never seemed to fail, which is a bit odd.
-			//try
-			//{
-			//	// needed by Forge to load the Java database connection
-			//	Class.forName("org.sqlite.JDBC");
-			//	LOGGER.info("loaded normal SQLITE");
-			//}
-			//catch (ClassNotFoundException e)
-			//{
-			//	LOGGER.warn("normal: " + e.getMessage(), e);
-			//}
-			//
-			//try
-			//{
-			//	// needed by Forge to load the Java database connection
-			//	Class.forName("DistantHorizons.libraries.sqlite.JDBC");
-			//	LOGGER.info("loaded shaded SQLITE");
-			//}
-			//catch (ClassNotFoundException e)
-			//{
-			//	LOGGER.warn("shaded: " + e.getMessage(), e);
-			//}
 			
 			boolean sqliteLoaded = SQLiteJDBCLoader.initialize();
 			if (!sqliteLoaded)

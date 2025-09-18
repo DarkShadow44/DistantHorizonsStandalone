@@ -60,6 +60,9 @@ public interface IMinecraftRenderWrapper extends IBindable
 	int getScreenWidth();
 	int getScreenHeight();
 	
+	boolean mcRendersToFrameBuffer();
+	boolean runningLegacyOpenGL();
+	
 	/** @return -1 if no valid framebuffer is available yet */
 	int getTargetFrameBuffer(); // Note: Iris is now hooking onto this for DH + Iris compat, try not to change (unless we wanna deal with some annoyances)
 								//          Iris commit: https://github.com/IrisShaders/Iris/commit/a76a240527e93780bbcba57c09bef377419d47a7#diff-7b9ded0c79bbcdb130010373387756a28ee8d3640d522c0a5b7acd0abbfc20aeR16

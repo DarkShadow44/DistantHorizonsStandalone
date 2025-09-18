@@ -761,20 +761,26 @@ public class Config
 									+ "Disable this if shadows render incorrectly.")
 							.build();
 					
-					public static ConfigEntry<String> ignoredRenderBlockCsv = new ConfigEntry.Builder<String>()
+					public static ConfigEntry<String> ignoredRenderBlockCsv = new ConfigEntry.Builder<String>() // TODO accept wildcards
 							.set("minecraft:barrier,minecraft:structure_void,minecraft:light,minecraft:tripwire,minecraft:brown_mushroom")
+							.setAppearance(EConfigEntryAppearance.ONLY_IN_FILE) // only shown in file since the UI has a character limit
 							.comment(""
 									+ "A comma separated list of block resource locations that won't be rendered by DH. \n"
-									+ "Note: air is always included in this list. \n"
+									+ "Air is always included in this list. \n"
+									+ "Requires a restart to change. \n"
 									+ "")
 							.build();
 					
-					public static ConfigEntry<String> ignoredRenderCaveBlockCsv = new ConfigEntry.Builder<String>()
-							.set("minecraft:glow_lichen,minecraft:rail,minecraft:water,minecraft:lava,minecraft:bubble_column")
+					public static ConfigEntry<String> ignoredRenderCaveBlockCsv = new ConfigEntry.Builder<String>() // TODO accept wildcards
+							.set("minecraft:glow_lichen,minecraft:rail,minecraft:water,minecraft:lava,minecraft:bubble_column," +
+									"minecraft:cave_vines_plant,minecraft:vine,minecraft:cave_vines,minecraft:short_grass,minecraft:tall_grass," +
+									"minecraft:small_dripleaf,minecraft:big_dripleaf,minecraft:big_dripleaf_stem,minecraft:sculk_vein")
+							.setAppearance(EConfigEntryAppearance.ONLY_IN_FILE) // only shown in file since the UI has a character limit
 							.comment(""
 									+ "A comma separated list of block resource locations that shouldn't be rendered \n"
 									+ "if they are in a 0 sky light underground area. \n"
-									+ "Note: air is always included in this list. \n"
+									+ "Air is always included in this list. \n"
+									+ "Requires a restart to change. \n"
 									+ "")
 							.build();
 					
@@ -1009,9 +1015,23 @@ public class Config
 				public static class OpenGl
 				{
 					public static ConfigEntry<Boolean> overrideVanillaGLLogger = new ConfigEntry.Builder<Boolean>()
-							.set(ModInfo.IS_DEV_BUILD)
+							.set(true)
 							.comment(""
-									+ "Requires a reboot to change. \n"
+									+ "Defines how OpenGL errors are handled. \n "
+									+ "Requires rebooting Minecraft to change. \n"
+									+ "Will catch OpenGL errors thrown by other mods. \n"
+									+ "")
+							.build();
+					
+					public static ConfigEntry<Boolean> onlyLogGlErrorsOnce = new ConfigEntry.Builder<Boolean>()
+							.set(true)
+							.comment(""
+									+ "If true each Open GL error will only be logged once. \n"
+									+ "Enabling this may cause some error logs to be missed. \n"
+									+ "Does nothing if overrideVanillaGLLogger is set to false. \n"
+									+ " \n"
+									+ "Generally this can be kept as 'true' to prevent log spam. \n"
+									+ "However, Please set this to 'false' if a developer needs your log to debug a GL issue. \n"
 									+ "")
 							.build();
 					
@@ -1275,7 +1295,7 @@ public class Config
 			
 			public static ConfigEntry<Integer> generationProgressDisplayIntervalInSeconds = new ConfigEntry.Builder<Integer>()
 					.setChatCommandName("generation.logInterval")
-					.setMinDefaultMax(1, 5, 60 * 60 * 4) // max = 4 hours
+					.setMinDefaultMax(1, 2, 60 * 60 * 4) // max = 4 hours
 					.comment(""
 							+ "How often should the distant generator progress be displayed? \n"
 							+ "")
@@ -1312,7 +1332,7 @@ public class Config
 					.build();
 			
 			public static ConfigEntry<EDhApiDataCompressionMode> dataCompression = new ConfigEntry.Builder<EDhApiDataCompressionMode>()
-					.set(EDhApiDataCompressionMode.LZMA2)
+					.set(EDhApiDataCompressionMode.Z_STD)
 					.comment(""
 							+ "What algorithm should be used to compress new LOD data? \n"
 							+ "This setting will only affect new or updated LOD data, \n"
@@ -1322,20 +1342,26 @@ public class Config
 							+ EDhApiDataCompressionMode.UNCOMPRESSED + " \n"
 							+ "Should only be used for testing, is worse in every way vs ["+EDhApiDataCompressionMode.LZ4+"].\n"
 							+ "Expected Compression Ratio: 1.0\n"
-							+ "Estimated average DTO read speed: 1.64 milliseconds\n"
-							+ "Estimated average DTO write speed: 12.44 milliseconds\n"
+							+ "Estimated average DTO read speed: 6.09 milliseconds\n"
+							+ "Estimated average DTO write speed: 6.01 milliseconds\n"
 							+ "\n"
 							+ EDhApiDataCompressionMode.LZ4 + " \n"
 							+ "A good option if you're CPU limited and have plenty of hard drive space.\n"
-							+ "Expected Compression Ratio: 0.36\n"
-							+ "Estimated average DTO read speed: 1.85 ms\n"
-							+ "Estimated average DTO write speed: 9.46 ms\n"
+							+ "Expected Compression Ratio: 0.4513\n"
+							+ "Estimated average DTO read speed: 3.25 ms\n"
+							+ "Estimated average DTO write speed: 5.99 ms\n"
+							+ "\n"
+							+ EDhApiDataCompressionMode.Z_STD + " \n"
+							+ "A good option if you're CPU limited and have plenty of hard drive space.\n"
+							+ "Expected Compression Ratio: 0.2606\n"
+							+ "Estimated average DTO read speed: 9.31 ms\n"
+							+ "Estimated average DTO write speed: 15.13 ms\n"
 							+ "\n"
 							+ EDhApiDataCompressionMode.LZMA2 + " \n"
 							+ "Slow but very good compression.\n"
-							+ "Expected Compression Ratio: 0.14\n"
-							+ "Estimated average DTO read speed: 11.89 ms\n"
-							+ "Estimated average DTO write speed: 192.01 ms\n"
+							+ "Expected Compression Ratio: 0.2\n"
+							+ "Estimated average DTO read speed: 13.29 ms\n"
+							+ "Estimated average DTO write speed: 70.95 ms\n"
 							+ "")
 					.build();
 			
@@ -1500,7 +1526,7 @@ public class Config
 			
 			public static ConfigEntry<EDhApiLoggerMode> logNetworkEvent = new ConfigEntry.Builder<EDhApiLoggerMode>()
 					.setChatCommandName("logging.logNetworkEvent")
-					.set(EDhApiLoggerMode.LOG_ERROR_TO_CHAT_AND_INFO_TO_FILE)
+					.set(EDhApiLoggerMode.LOG_ERROR_TO_CHAT_AND_WARNING_TO_FILE)
 					.comment(""
 							+ "If enabled, the mod will log information about network operations. \n"
 							+ "This can be useful for debugging.")
@@ -1693,6 +1719,15 @@ public class Config
 						+ "Value of 0 disables the limit."
 						+ "")
 				.build();
+		public static ConfigEntry<Boolean> enableAdaptiveTransferSpeed = new ConfigEntry.Builder<Boolean>()
+				.set(false)
+				.comment(""
+						+ "Enables adaptive transfer speed based on client performance.\n"
+						+ "If true, DH will automatically adjust transfer rate to minimize connection lag.\n"
+						+ "If false, transfer speed will remain fixed.\n"
+						+ "")
+				.build();
+		
 		
 		public static ConfigCategory experimental = new ConfigCategory.Builder().set(Experimental.class).build();
 		

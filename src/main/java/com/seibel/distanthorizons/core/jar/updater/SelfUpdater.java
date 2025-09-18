@@ -111,7 +111,7 @@ public class SelfUpdater
 		}
 		if (!ModrinthGetter.mcVersions.contains(mcVersion))
 		{
-			LOGGER.warn("Minecraft version ["+ mcVersion +"] is not findable on Modrinth, only findable versions are ["+ StringUtil.join(",", ModrinthGetter.mcVersions) +"]");
+			LOGGER.warn("Minecraft version ["+ mcVersion +"] is not findable on Modrinth, only findable versions are ["+ StringUtil.join(", ", ModrinthGetter.mcVersions) +"]");
 			return false;
 		}
 		

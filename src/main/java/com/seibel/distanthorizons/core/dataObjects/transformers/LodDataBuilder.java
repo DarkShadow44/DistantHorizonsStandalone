@@ -22,7 +22,6 @@ package com.seibel.distanthorizons.core.dataObjects.transformers;
 import java.util.Collections;
 import java.util.List;
 
-import com.seibel.distanthorizons.api.enums.config.EDhApiBlocksToAvoid;
 import com.seibel.distanthorizons.api.enums.config.EDhApiWorldCompressionMode;
 import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiWorldGenerationStep;
 import com.seibel.distanthorizons.api.objects.data.DhApiChunk;
@@ -61,35 +60,10 @@ public class LodDataBuilder
 	// converters //
 	//============//
 	
-	private static boolean isBlockTouchingTransparentStep(IChunkWrapper wrapper, int x, int y, int z)
-	{
-		if (x < 0 || x > 15 || z < 0 || z > 15 || y < 0)
-			return false;
-		
-		return wrapper.getBlockState(x, y, z).getOpacity() != LodUtil.BLOCK_FULLY_OPAQUE;
-	}
-	
-	private static boolean isBlockTouchingTransparent(IChunkWrapper wrapper, int x, int y, int z)
-	{
-		if (isBlockTouchingTransparentStep(wrapper, x, y - 1, z))
-			return true;
-		if (isBlockTouchingTransparentStep(wrapper, x - 1, y, z))
-			return true;
-		if (isBlockTouchingTransparentStep(wrapper, x + 1, y, z))
-			return true;
-		if (isBlockTouchingTransparentStep(wrapper, x, y, z - 1))
-			return true;
-		if (isBlockTouchingTransparentStep(wrapper, x, y, z + 1))
-			return true;
-		return false;
-	}
-	
 	public static FullDataSourceV2 createFromChunk(IChunkWrapper chunkWrapper)
 	{
 		// only block lighting is needed here, sky lighting is populated at the data source stage
 		LodUtil.assertTrue(chunkWrapper.isDhBlockLightingCorrect());
-		
-		
 		
 		int sectionPosX = getXOrZSectionPosFromChunkPos(chunkWrapper.getChunkPos().getX());
 		int sectionPosZ = getXOrZSectionPosFromChunkPos(chunkWrapper.getChunkPos().getZ());
@@ -104,47 +78,31 @@ public class LodDataBuilder
 		
 		// compute the chunk dataSource offset
 		// this offset is used to determine where in the dataSource this chunk's data should go
-		int chunkOffsetX = chunkWrapper.getChunkPos().getX();
-		if (chunkWrapper.getChunkPos().getX() < 0)
-		{
-			// expected offset positions:
-			// chunkPos -> offset
-			//  5 -> 1
-			//  4 -> 0 ---
-			//  3 -> 3
-			//  2 -> 2
-			//  1 -> 1
-			//  0 -> 0 ===
-			// -1 -> 3
-			// -2 -> 2
-			// -3 -> 1
-			// -4 -> 0 ---
-			// -5 -> 3
-			chunkOffsetX = ((chunkOffsetX) % FullDataSourceV2.NUMB_OF_CHUNKS_WIDE);
-			if (chunkOffsetX != 0)
-			{
-				chunkOffsetX += FullDataSourceV2.NUMB_OF_CHUNKS_WIDE;
-			}
-		}
-		else
-		{
-			chunkOffsetX %= FullDataSourceV2.NUMB_OF_CHUNKS_WIDE;
-		}
-		chunkOffsetX *= LodUtil.CHUNK_WIDTH;
 		
-		int chunkOffsetZ = chunkWrapper.getChunkPos().getZ();
-		if (chunkWrapper.getChunkPos().getZ() < 0)
-		{
-			chunkOffsetZ = ((chunkOffsetZ) % FullDataSourceV2.NUMB_OF_CHUNKS_WIDE);
-			if (chunkOffsetZ != 0)
-			{
-				chunkOffsetZ += FullDataSourceV2.NUMB_OF_CHUNKS_WIDE;
-			}
-		}
-		else
-		{
-			chunkOffsetZ %= FullDataSourceV2.NUMB_OF_CHUNKS_WIDE;
-		}
+		// expected offset positions:
+		// chunkPos -> offset
+		//  5 -> 1
+		//  4 -> 0 ---
+		//  3 -> 3
+		//  2 -> 2
+		//  1 -> 1
+		//  0 -> 0 ===
+		// -1 -> 3
+		// -2 -> 2
+		// -3 -> 1
+		// -4 -> 0 ---
+		// -5 -> 3
+		
+		// Fast modulo calculation using bitwise AND since NUMB_OF_CHUNKS_WIDE is a power of 2 (4)
+		// For any number n: n & (2^k - 1) is equivalent to Math.floorMod(n, 2^k)
+		// Original: Math.floorMod(x, 4) - Handles negative numbers, gives non-negative result in range [0,3]
+		// Bitwise: x & (4-1) - Also gives non-negative result in range [0,3]
+		// Example: -5 & 3 = 3, which equals Math.floorMod(-5, 4) = 3
+		int chunkOffsetX = chunkWrapper.getChunkPos().getX() & (FullDataSourceV2.NUMB_OF_CHUNKS_WIDE - 1);
+		int chunkOffsetZ = chunkWrapper.getChunkPos().getZ() & (FullDataSourceV2.NUMB_OF_CHUNKS_WIDE - 1);
+		
+		// Convert from chunk coordinates to block coordinates
+		chunkOffsetX *= LodUtil.CHUNK_WIDTH;
 		chunkOffsetZ *= LodUtil.CHUNK_WIDTH;
 		
 		
@@ -155,7 +113,6 @@ public class LodDataBuilder
 		
 		EDhApiWorldCompressionMode worldCompressionMode = Config.Common.LodBuilding.worldCompression.get();
 		boolean ignoreHiddenBlocks = (worldCompressionMode != EDhApiWorldCompressionMode.MERGE_SAME_BLOCKS);
-		boolean ignoreNonCollidingBlocks = (Config.Client.Advanced.Graphics.Quality.blocksToIgnore.get() == EDhApiBlocksToAvoid.NON_COLLIDING);
 		
 		try
 		{
@@ -163,54 +120,49 @@ public class LodDataBuilder
 			IBlockStateWrapper previousBlockState = null;
 			
 			int minBuildHeight = chunkWrapper.getMinNonEmptyHeight();
+			int exclusiveMaxBuildHeight = chunkWrapper.getExclusiveMaxBuildHeight();
+			int inclusiveMinBuildHeight = chunkWrapper.getInclusiveMinBuildHeight();
+			int dataCapacity = chunkWrapper.getHeight() / 4;
+			
 			for (int relBlockX = 0; relBlockX < LodUtil.CHUNK_WIDTH; relBlockX++)
 			{
 				for (int relBlockZ = 0; relBlockZ < LodUtil.CHUNK_WIDTH; relBlockZ++)
 				{
-					LongArrayList longs =  dataSource.get(
-							relBlockX + chunkOffsetX,
-							relBlockZ + chunkOffsetZ);
+					// Calculate column position
+					int columnX = relBlockX + chunkOffsetX;
+					int columnZ = relBlockZ + chunkOffsetZ;
+					
+					// Get column data
+					LongArrayList longs = dataSource.get(columnX, columnZ);
 					if (longs == null)
 					{
-						longs = new LongArrayList(chunkWrapper.getHeight() / 4);
+						longs = new LongArrayList(dataCapacity);
 					}
 					else
 					{
 						longs.clear();
 					}
 					
-					int lastY = chunkWrapper.getExclusiveMaxBuildHeight();
+					int lastY = exclusiveMaxBuildHeight;
 					IBiomeWrapper biome = chunkWrapper.getBiome(relBlockX, lastY, relBlockZ);
 					IBlockStateWrapper blockState = AIR;
 					int mappedId = dataSource.mapping.addIfNotPresentAndGetId(biome, blockState);
 					
+					// Determine lighting (we are at the height limit. There are no torches here, and sky is not obscured.) // TODO: Per face lighting someday?
+					byte blockLight = LodUtil.MIN_MC_LIGHT;
+					byte skyLight = LodUtil.MAX_MC_LIGHT;
 					
-					byte blockLight;
-					byte skyLight;
-					if (lastY < chunkWrapper.getExclusiveMaxBuildHeight())
-					{
-						// FIXME: The lastY +1 offset is to reproduce the old behavior. Remove this when we get per-face lighting
-						blockLight = (byte) chunkWrapper.getDhBlockLight(relBlockX, lastY + 1, relBlockZ);
-						skyLight = (byte) chunkWrapper.getDhSkyLight(relBlockX, lastY + 1, relBlockZ);
-					}
-					else
-					{
-						//we are at the height limit. There are no torches here, and sky is not obscured.
-						blockLight = LodUtil.MIN_MC_LIGHT;
-						skyLight = LodUtil.MAX_MC_LIGHT;
-					}
-					
-					
-					// determine the starting Y Pos
+					// Get the maximum height from both heightmaps
 					int y = Math.max(
 							// max between both heightmaps to account for solid invisible blocks (glass)
 							// and non-solid opaque blocks (at one point this was stairs, not sure what would fit this now)
 							chunkWrapper.getLightBlockingHeightMapValue(relBlockX, relBlockZ),
 							chunkWrapper.getSolidHeightMapValue(relBlockX, relBlockZ)
-						);
-					// go up until we reach open air or the world limit
+					);
+					
+					// Go up until we reach open air or the world limit
 					IBlockStateWrapper topBlockState = previousBlockState = chunkWrapper.getBlockState(relBlockX, y, relBlockZ, mcBlockPos, previousBlockState);
-					while (!topBlockState.isAir() && y < chunkWrapper.getExclusiveMaxBuildHeight())
+					while (!topBlockState.isAir() && y < exclusiveMaxBuildHeight)
 					{
 						try
 						{
@@ -223,7 +175,7 @@ public class LodDataBuilder
 						{
 							if (!getTopErrorLogged)
 							{
-								LOGGER.warn("Unexpected issue in LodDataBuilder, future errors won't be logged. Chunk [" + chunkWrapper.getChunkPos() + "] with max height: [" + chunkWrapper.getExclusiveMaxBuildHeight() + "] had issue getting block at pos [" + relBlockX + "," + y + "," + relBlockZ + "] error: " + e.getMessage(), e);
+								LOGGER.warn("Unexpected issue in LodDataBuilder, future errors won't be logged. Chunk [" + chunkWrapper.getChunkPos() + "] with max height: [" + exclusiveMaxBuildHeight + "] had issue getting block at pos [" + relBlockX + "," + y + "," + relBlockZ + "] error: " + e.getMessage(), e);
 								getTopErrorLogged = true;
 							}
 							
@@ -232,53 +184,37 @@ public class LodDataBuilder
 						}
 					}
 					
-					boolean forceSingleBlock = false;
-					boolean hasColumnLight = false;
+					// Process blocks from top to bottom
 					for (; y >= minBuildHeight; y--)
 					{
 						IBiomeWrapper newBiome = chunkWrapper.getBiome(relBlockX, y, relBlockZ);
 						IBlockStateWrapper newBlockState = previousBlockState = chunkWrapper.getBlockState(relBlockX, y, relBlockZ, mcBlockPos, previousBlockState);
 						byte newBlockLight = (byte) chunkWrapper.getDhBlockLight(relBlockX, y + 1, relBlockZ);
 						byte newSkyLight = (byte) chunkWrapper.getDhSkyLight(relBlockX, y + 1, relBlockZ);
-
-						// save the biome/block change
-						if (!newBiome.equals(biome) || !newBlockState.equals(blockState) || forceSingleBlock)
+						
+						// Save the biome/block change if different from previous
+						if (!newBiome.equals(biome) || !newBlockState.equals(blockState))
 						{
-							forceSingleBlock = false;
-							// Check if the  previous block colors this block
-							// If so, we must make this block a single entry, aka add the next block even if it is the same
-							if (ignoreNonCollidingBlocks && !blockState.isAir()
-								&& !blockState.isSolid() && !blockState.isLiquid() && blockState.getOpacity() != LodUtil.BLOCK_FULLY_OPAQUE)
-							{
-								forceSingleBlock = true;
-							}
-							hasColumnLight = newBlockLight > 0;
-							longs.add(FullDataPointUtil.encode(mappedId, lastY - y, y + 1 - chunkWrapper.getInclusiveMinBuildHeight(), blockLight, skyLight));
+							longs.add(FullDataPointUtil.encode(mappedId, lastY - y, y + 1 - inclusiveMinBuildHeight, blockLight, skyLight));
 							biome = newBiome;
 							blockState = newBlockState;
-
+							
 							mappedId = dataSource.mapping.addIfNotPresentAndGetId(biome, blockState);
 							blockLight = newBlockLight;
 							skyLight = newSkyLight;
 							lastY = y;
 						}
-
-						if (hasColumnLight && !isBlockTouchingTransparent(chunkWrapper, relBlockX, y, relBlockZ))
-						{
-							forceSingleBlock = true;
-						}
 					}
-					longs.add(FullDataPointUtil.encode(mappedId, lastY - y, y + 1 - chunkWrapper.getInclusiveMinBuildHeight(), blockLight, skyLight));
 					
-					dataSource.setSingleColumn(longs,
-							relBlockX + chunkOffsetX,
-							relBlockZ + chunkOffsetZ,
-							EDhApiWorldGenerationStep.LIGHT,
-							worldCompressionMode);
+					// Add the final data point
+					longs.add(FullDataPointUtil.encode(mappedId, lastY - y, y + 1 - inclusiveMinBuildHeight, blockLight, skyLight));
+					
+					// Set the column in the data source
+					dataSource.setSingleColumn(longs, columnX, columnZ, EDhApiWorldGenerationStep.LIGHT, worldCompressionMode);
 				}
 			}
 			
-			if (ignoreHiddenBlocks) 
+			if (ignoreHiddenBlocks)
 			{
 				cullHiddenBlocks(dataSource, chunkOffsetX, chunkOffsetZ);
 			}
@@ -315,16 +251,16 @@ public class LodDataBuilder
 				{
 					long currentPoint = centerColumn.getLong(centerIndex);
 					
-					// translucent data points are not eligible to be culled.
+					// Translucent data points are not eligible to be culled.
 					if (isTranslucent(dataSource, currentPoint))
 					{
 						continue;
 					}
 					
 					// the top segment should never be culled.
-					if (centerIndex == 0 
-						|| isTranslucent(dataSource, centerColumn.getLong(centerIndex - 1))
-						)
+					if (centerIndex == 0
+							|| isTranslucent(dataSource, centerColumn.getLong(centerIndex - 1))
+					)
 					{
 						continue;
 					}
@@ -332,9 +268,9 @@ public class LodDataBuilder
 					// the bottom segment can sometimes be culled.
 					// assume it will not be seen from below,
 					// because this would imply the player is in the void.
-					if (centerIndex + 1 < centerColumn.size() 
-						&& isTranslucent(dataSource, centerColumn.getLong(centerIndex + 1))
-						)
+					if (centerIndex + 1 < centerColumn.size()
+							&& isTranslucent(dataSource, centerColumn.getLong(centerIndex + 1))
+					)
 					{
 						continue;
 					}
@@ -367,9 +303,11 @@ public class LodDataBuilder
 						continue;
 					}
 					
-					// current point is fully surrounded. remove it.
+					// Current point is fully surrounded. remove it.
 					centerColumn.removeLong(centerIndex);
-					// make the above data point cover the area that the current point used to occupy.
+					
+					// Make the above data point cover the area that the current point used to occupy.
+					// The element that was at `centerIndex - 1` is still at that position even after removal of centerIndex.
 					long above = centerColumn.getLong(centerIndex - 1);
 					above = FullDataPointUtil.setBottomY(above, FullDataPointUtil.getBottomY(currentPoint));
 					above = FullDataPointUtil.setHeight(above, FullDataPointUtil.getHeight(currentPoint) + FullDataPointUtil.getHeight(above));
@@ -378,31 +316,31 @@ public class LodDataBuilder
 			}
 		}
 	}
-
+	
 	/**
-	checks if centerPoint is "covered" by opaque data points in adjacentColumn.
-	centerPoint counts as covered if, and only if, for all Y levels in its height range,
-	there exists an opaque data point in adjacentColumn which overlaps with that Y level.
-
-	@param source used to lookup blocks (and their opacities) based on their IDs.
-	@param centerPoint the point being checked to see if it's fully covered.
-	@param adjacentColumn the data points which might cover centerPoint.
-	@param adjacentIndex the starting index in adjacentColumn to start scanning at.
-	indices greater than adjacentIndex have already been checked and confirmed to
-	not overlap or only overlap partially with centerPoint's Y range.
-
-	@return if centerPoint is covered, returns the index of the segment which finishes covering it.
-	the start of the covering may be a smaller index. in this case, the returned index may be used
-	as the adjacentIndex provided to this method on the next iteration which yields a new centerPoint.
-
-	if centerPoint is NOT covered, returns the bitwise negation of the index of the
-	segment which did not cover it. this guarantees that the returned value is negative.
-	the caller should check for negative return values and manually un-negate them to proceed with the loop.
-
-	in other words, this function returns the index of the next adjacent data 
-	point to use in the loop, AND a boolean indicating whether or not the 
-	centerPoint is covered;	both are packed into the same int, and returned.
-	*/
+	 checks if centerPoint is "covered" by opaque data points in adjacentColumn.
+	 centerPoint counts as covered if, and only if, for all Y levels in its height range,
+	 there exists an opaque data point in adjacentColumn which overlaps with that Y level.
+	 
+	 @param source used to lookup blocks (and their opacities) based on their IDs.
+	 @param centerPoint the point being checked to see if it's fully covered.
+	 @param adjacentColumn the data points which might cover centerPoint.
+	 @param adjacentIndex the starting index in adjacentColumn to start scanning at.
+	 indices greater than adjacentIndex have already been checked and confirmed to
+	 not overlap or only overlap partially with centerPoint's Y range.
+	 
+	 @return if centerPoint is covered, returns the index of the segment which finishes covering it.
+	 the start of the covering may be a smaller index. in this case, the returned index may be used
+	 as the adjacentIndex provided to this method on the next iteration which yields a new centerPoint.
+	 
+	 if centerPoint is NOT covered, returns the bitwise negation of the index of the
+	 segment which did not cover it. this guarantees that the returned value is negative.
+	 the caller should check for negative return values and manually un-negate them to proceed with the loop.
+	 
+	 in other words, this function returns the index of the next adjacent data
+	 point to use in the loop, AND a boolean indicating whether or not the
+	 centerPoint is covered;	both are packed into the same int, and returned.
+	 */
 	private static int checkOcclusion(FullDataSourceV2 source, long centerPoint, LongArrayList adjacentColumn, int adjacentIndex)
 	{
 		int bottomOfCenter = FullDataPointUtil.getBottomY(centerPoint);
@@ -427,12 +365,12 @@ public class LodDataBuilder
 		
 		throw new LodUtil.AssertFailureException("Adjacent column ends before center column does.");
 	}
-
+	
 	private static boolean isTranslucent(FullDataSourceV2 source, long point) {
 		return source.mapping.getBlockStateWrapper(FullDataPointUtil.getId(point)).getOpacity() < LodUtil.BLOCK_FULLY_OPAQUE;
 	}
-
-
+	
+	
 	
 	/** @throws ClassCastException if an API user returns the wrong object type(s) */
 	public static FullDataSourceV2 createFromApiChunkData(DhApiChunk apiChunk, boolean runAdditionalValidation) throws ClassCastException, DataCorruptedException, IllegalArgumentException
@@ -442,9 +380,13 @@ public class LodDataBuilder
 		int sectionPosZ = getXOrZSectionPosFromChunkPos(apiChunk.chunkPosZ);
 		long pos = DhSectionPos.encode(DhSectionPos.SECTION_BLOCK_DETAIL_LEVEL, sectionPosX, sectionPosZ);
 		
-		// chunk relative block position in the data source
-		int relSourceBlockX = Math.floorMod(apiChunk.chunkPosX, 4) * LodUtil.CHUNK_WIDTH;
-		int relSourceBlockZ = Math.floorMod(apiChunk.chunkPosZ, 4) * LodUtil.CHUNK_WIDTH;
+		// Fast modulo calculation using bitwise AND since NUMB_OF_CHUNKS_WIDE is a power of 2 (4)
+		// For any number n: n & (2^k - 1) is equivalent to Math.floorMod(n, 2^k)
+		// Original: Math.floorMod(x, 4) - Handles negative numbers, gives non-negative result in range [0,3]
+		// Bitwise: x & (4-1) - Also gives non-negative result in range [0,3]
+		// Example: -5 & 3 = 3, which equals Math.floorMod(-5, 4) = 3
+		int relSourceBlockX = (apiChunk.chunkPosX & (FullDataSourceV2.NUMB_OF_CHUNKS_WIDE - 1)) * LodUtil.CHUNK_WIDTH;
+		int relSourceBlockZ = (apiChunk.chunkPosZ & (FullDataSourceV2.NUMB_OF_CHUNKS_WIDE - 1)) * LodUtil.CHUNK_WIDTH;
 		
 		FullDataSourceV2 dataSource = FullDataSourceV2.createEmpty(pos);
 		for (int relBlockZ = 0; relBlockZ < LodUtil.CHUNK_WIDTH; relBlockZ++)
@@ -463,8 +405,8 @@ public class LodDataBuilder
 				// TODO add the ability for API users to define a different compression mode
 				//  or add a "unkown" compression mode
 				dataSource.setSingleColumn(
-						packedDataPoints, 
-						relBlockX + relSourceBlockX, relBlockZ + relSourceBlockZ, 
+						packedDataPoints,
+						relBlockX + relSourceBlockX, relBlockZ + relSourceBlockZ,
 						EDhApiWorldGenerationStep.LIGHT, EDhApiWorldCompressionMode.MERGE_SAME_BLOCKS);
 				dataSource.isEmpty = false;
 			}
@@ -480,7 +422,7 @@ public class LodDataBuilder
 	
 	/** @see FullDataPointUtil */
 	public static LongArrayList convertApiDataPointListToPackedLongArray(
-			@Nullable List<DhApiTerrainDataPoint> columnDataPoints, FullDataSourceV2 dataSource, 
+			@Nullable List<DhApiTerrainDataPoint> columnDataPoints, FullDataSourceV2 dataSource,
 			int bottomYBlockPos) throws DataCorruptedException
 	{
 		// this null check does 2 nice things at the same time:
@@ -573,13 +515,13 @@ public class LodDataBuilder
 			}
 			// is there a gap between the last datapoint?
 			if (topYPos != lastBottomYPos
-				&& lastBottomYPos != Integer.MIN_VALUE)
+					&& lastBottomYPos != Integer.MIN_VALUE)
 			{
 				throw new IllegalArgumentException("DhApiTerrainDataPoint ["+i+"] has a gap between it and index ["+(i-1)+"]. Empty spaces should be filled by air, otherwise DH's downsampling won't calculate lighting correctly.");
 			}
 			
 			
-			lastBottomYPos = bottomYPos; 
+			lastBottomYPos = bottomYPos;
 		}
 		
 	}

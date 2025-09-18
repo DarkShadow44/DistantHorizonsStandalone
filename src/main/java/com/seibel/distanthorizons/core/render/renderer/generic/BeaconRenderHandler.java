@@ -31,6 +31,7 @@ import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos;
 import com.seibel.distanthorizons.core.sql.dto.BeaconBeamDTO;
 import com.seibel.distanthorizons.core.util.LodUtil;
+import com.seibel.distanthorizons.core.util.RenderUtil;
 import com.seibel.distanthorizons.core.util.math.Vec3d;
 import com.seibel.distanthorizons.core.util.threading.ThreadPoolUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
@@ -214,7 +215,7 @@ public class BeaconRenderHandler
 						double mcRenderDistance = MC_RENDER.getRenderDistance() * LodUtil.CHUNK_WIDTH;
 						// multiplying by overdraw prevention helps reduce beacons from rendering strangely
 						// on the border of DH's render distance
-						mcRenderDistance *= Config.Client.Advanced.Graphics.Culling.overdrawPrevention.get();
+						mcRenderDistance *= RenderUtil.getAutoOverdrawPrevention();
 						
 						
 						// Clear the existing box group so we can re-populate it.

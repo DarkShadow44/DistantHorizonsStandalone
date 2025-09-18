@@ -86,22 +86,31 @@ public class FadeRenderer
 			this.fadeFramebuffer = -1;
 		}
 		
-		if (this.fadeTexture != -1)
-		{
-			GLMC.glDeleteTextures(this.fadeTexture);
-			this.fadeTexture = -1;
-		}
-		
 		this.fadeFramebuffer = GL32.glGenFramebuffers();
 		GLMC.glBindFramebuffer(GL32.GL_FRAMEBUFFER, this.fadeFramebuffer);
 		
-		this.fadeTexture = GL32.glGenTextures();
-		GLMC.glBindTexture(this.fadeTexture);
-		GL32.glTexImage2D(GL32.GL_TEXTURE_2D, 0, GL32.GL_RGBA16, width, height, 0, GL32.GL_RGBA, GL32.GL_UNSIGNED_SHORT_4_4_4_4, (ByteBuffer) null);
-		GL32.glTexParameteri(GL32.GL_TEXTURE_2D, GL32.GL_TEXTURE_MIN_FILTER, GL32.GL_LINEAR);
-		GL32.glTexParameteri(GL32.GL_TEXTURE_2D, GL32.GL_TEXTURE_MAG_FILTER, GL32.GL_LINEAR);
-		GL32.glFramebufferTexture2D(GL32.GL_FRAMEBUFFER, GL32.GL_COLOR_ATTACHMENT0, GL32.GL_TEXTURE_2D, this.fadeTexture, 0);
 		
+		// Applying the fade texture is only needed if MC is drawing to their own frame buffer,
+		// otherwise we can directly render to their texture
+		if (MC_RENDER.mcRendersToFrameBuffer())
+		{
+			if (this.fadeTexture != -1)
+			{
+				GLMC.glDeleteTextures(this.fadeTexture);
+				this.fadeTexture = -1;
+			}
+			
+			this.fadeTexture = GL32.glGenTextures();
+			GLMC.glBindTexture(this.fadeTexture);
+			GL32.glTexImage2D(GL32.GL_TEXTURE_2D, 0, GL32.GL_RGBA16, width, height, 0, GL32.GL_RGBA, GL32.GL_UNSIGNED_SHORT_4_4_4_4, (ByteBuffer) null);
+			GL32.glTexParameteri(GL32.GL_TEXTURE_2D, GL32.GL_TEXTURE_MIN_FILTER, GL32.GL_LINEAR);
+			GL32.glTexParameteri(GL32.GL_TEXTURE_2D, GL32.GL_TEXTURE_MAG_FILTER, GL32.GL_LINEAR);
+			GL32.glFramebufferTexture2D(GL32.GL_FRAMEBUFFER, GL32.GL_COLOR_ATTACHMENT0, GL32.GL_TEXTURE_2D, this.fadeTexture, 0);
+		}
+		else
+		{
+			GL32.glFramebufferTexture2D(GL32.GL_FRAMEBUFFER, GL32.GL_COLOR_ATTACHMENT0, GL32.GL_TEXTURE_2D, MC_RENDER.getColorTextureId(), 0);
+		}
 	}
 	
 	
@@ -146,8 +155,13 @@ public class FadeRenderer
 			
 			profiler.popPush("Fade Apply");
 			
-			FadeApplyShader.INSTANCE.fadeTexture = this.fadeTexture;
-			FadeApplyShader.INSTANCE.render(partialTicks);
+			// Applying the fade texture is only needed if MC is drawing to their own frame buffer,
+			// otherwise we can directly render to their texture
+			if (MC_RENDER.mcRendersToFrameBuffer())
+			{
+				FadeApplyShader.INSTANCE.fadeTexture = this.fadeTexture;
+				FadeApplyShader.INSTANCE.render(partialTicks);
+			}
 			
 			profiler.pop(); 
 		}

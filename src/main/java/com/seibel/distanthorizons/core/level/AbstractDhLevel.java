@@ -277,7 +277,7 @@ public abstract class AbstractDhLevel implements IDhLevel
 		
 		
 		// locked to prevent two threads from updating the same section at the same time
-		ReentrantLock lock = this.beaconUpdateLockContainer.getLockForPos(sectionPosForLock);
+		ReentrantLock lock = this.beaconUpdateLockContainer.getLockForPos(sectionPosForLock); // TODO this can cause a lot of slow-downs
 		try
 		{
 			lock.lock();

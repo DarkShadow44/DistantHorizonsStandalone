@@ -65,6 +65,7 @@ public class PriorityTaskPicker
 		{
 			try
 			{
+				// TODO limit based on thread count so visual VM is easier to parse
 				for (Executor executor : (Iterable<? extends Executor>) this.executors.stream().sorted(Comparator.comparingLong(executor -> executor.totalRuntimeNanos.get()))::iterator)
 				{
 					TrackedRunnable task;

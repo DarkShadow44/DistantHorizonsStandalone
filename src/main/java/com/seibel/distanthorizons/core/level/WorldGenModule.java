@@ -27,6 +27,7 @@ import com.seibel.distanthorizons.core.generation.IFullDataSourceRetrievalQueue;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.logging.f3.F3Screen;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos2D;
+import com.seibel.distanthorizons.core.util.FormatUtil;
 import com.seibel.distanthorizons.core.util.ThreadUtil;
 import com.seibel.distanthorizons.core.util.objects.RollingAverage;
 import com.seibel.distanthorizons.core.util.threading.PriorityTaskPicker;
@@ -35,6 +36,7 @@ import com.seibel.distanthorizons.core.world.DhApiWorldProxy;
 import org.apache.logging.log4j.Logger;
 
 import java.io.Closeable;
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -288,18 +290,7 @@ public class WorldGenModule implements Closeable
 			remainingChunkCount += this.worldGenerationQueue.getQueuedChunkCount();
 			String remainingChunkCountStr = F3Screen.NUMBER_FORMAT.format(remainingChunkCount);
 			
-			String message = "DH Gen/Import: " + remainingChunkCountStr + " chunks";
-			
-			
-			// add the remaining time estimate if available
-			double chunksPerSec = this.getEstimatedChunksPerSecond();
-			if (chunksPerSec > 0)
-			{
-				long estimatedRemainingTime = (long) (remainingChunkCount / chunksPerSec);
-				message += " Estimated Time: " + formatSeconds(estimatedRemainingTime);//+ " at " + F3Screen.NUMBER_FORMAT.format(chunksPerSec) + " chunks/sec";
-			}
-			
-			
+			String message = "DH is loading chunks. " + remainingChunkCountStr + " left.";
 			
 			// show a message about how to disable progress logging if requested
 			int msToShowDisableInstructions = Config.Common.WorldGenerator.generationProgressDisableMessageDisplayTimeInSeconds.get() * 1_000;
@@ -308,15 +299,21 @@ public class WorldGenModule implements Closeable
 				long timeSinceFirstMessageInMs = (System.currentTimeMillis() - firstProgressMessageSentMs);
 				// always show this message for the first tick
 				if (firstProgressMessageSentMs == 0
-					// show this message if there is still time
-					|| timeSinceFirstMessageInMs < msToShowDisableInstructions)
+						// show this message if there is still time
+						|| timeSinceFirstMessageInMs < msToShowDisableInstructions)
 				{
-					// replace the current message
-					message = "DH Gen/Import progress. This message can be hidden in the DH config. ["+remainingChunkCountStr+"]";
+					// append to the current message
+					message += " This message can be hidden in the DH config.";
 				}
 			}
 			
-			
+			// add the remaining time estimate if available
+			double chunksPerSec = this.getEstimatedChunksPerSecond();
+			if (chunksPerSec > 0)
+			{
+				long estimatedRemainingTime = (long) (remainingChunkCount / chunksPerSec);
+				message += " ETA: " + FormatUtil.formatEta(Duration.ofSeconds(estimatedRemainingTime));//+ " at " + F3Screen.NUMBER_FORMAT.format(chunksPerSec) + " chunks/sec";
+			}
 			
 			// only log if there are chunks needing to be generated
 			if (remainingChunkCount != 0)
@@ -343,31 +340,6 @@ public class WorldGenModule implements Closeable
 					firstProgressMessageSentMs = System.currentTimeMillis();
 				}
 			}
-		}
-		private static String formatSeconds(long totalSeconds) 
-		{
-			long days = totalSeconds / (24 * 3600);  // 24 hours in a day
-			long hours = (totalSeconds % (24 * 3600)) / 3600;  // Hours
-			long minutes = (totalSeconds % 3600) / 60;  // Minutes
-			long seconds = totalSeconds % 60;  // Seconds
-			
-			
-			String timeString = "";
-			if (days > 0)
-			{
-				timeString += days+" ";
-			}
-			if (hours > 0)
-			{
-				timeString += hours+":";
-			}
-			if (minutes > 0)
-			{
-				timeString += String.format("%02d", minutes)+":";
-			}
-			timeString += String.format("%02d", seconds);
-			
-			return timeString;
 		}
 		
 		/** @return -1 if this method isn't supported or available */

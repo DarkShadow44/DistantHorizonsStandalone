@@ -89,7 +89,14 @@ public class ThreadPoolUtil
 	
 	public static void setupThreadPools()
 	{
-		// thread pools
+		//==================//
+		// main thread pool //
+		//==================//
+		
+		if (taskPicker != null)
+		{
+			taskPicker.shutdown();
+		}
 		taskPicker = new PriorityTaskPicker();
 		
 		networkCompressionThreadPool = taskPicker.createExecutor();
@@ -98,8 +105,22 @@ public class ThreadPoolUtil
 		updatePropagatorThreadPool = taskPicker.createExecutor();
 		worldGenThreadPool = taskPicker.createExecutor();
 		
-		// single thread pools
+		
+		
+		//=========================//
+		// standalone thread pools //
+		//=========================//
+		
+		if (beaconCullingThreadPool != null)
+		{
+			beaconCullingThreadPool.shutdown();
+		}
 		beaconCullingThreadPool = ThreadUtil.makeSingleThreadPool(BEACON_CULLING_THREAD_NAME);
+		
+		if (fullDataMigrationThreadPool != null)
+		{
+			fullDataMigrationThreadPool.shutdown();
+		}
 		fullDataMigrationThreadPool = ThreadUtil.makeSingleThreadPool(FULL_DATA_MIGRATION_THREAD_NAME);
 		
 	}

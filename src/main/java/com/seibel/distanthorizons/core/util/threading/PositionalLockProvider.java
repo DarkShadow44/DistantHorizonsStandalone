@@ -23,8 +23,8 @@ import java.util.concurrent.locks.ReentrantLock;
 public class PositionalLockProvider
 {
 	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
-	
-	private static final ThreadPoolExecutor LOCK_CLEANUP_THREAD = ThreadUtil.makeSingleThreadPool("Positional Lock Cleanup");
+
+	private static final ThreadPoolExecutor LOCK_CLEANUP_THREAD = ThreadUtil.makeSingleDaemonThreadPool("Positional Lock Cleanup");
 	private static final int CLEANUP_THREAD_MAX_FREQUENCY_IN_MS = 1000;
 	
 	/** How long a lock can be unused before it is eligible for deletion */

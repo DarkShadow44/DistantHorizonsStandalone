@@ -359,6 +359,7 @@ public class RenderBufferHandler implements AutoCloseable
 		// debug wireframe setup //
 		//=======================//
 		
+		// TODO move this logic into LodRenderer so all the GL states can be handled there
 		boolean renderWireframe = Config.Client.Advanced.Debugging.renderWireframe.get();
 		if (renderWireframe)
 		{

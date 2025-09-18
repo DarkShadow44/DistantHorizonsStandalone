@@ -46,6 +46,13 @@ public class ServerPlayerStateManager
 	
 	public void handlePluginMessage(IServerPlayerWrapper player, AbstractNetworkMessage message)
 	{
+		// done to prevent a rare null-pointer on Neo/Forge
+		if (player == null || message == null)
+		{
+			return;
+		}
+		
+		
 		MessageQueueState messageQueue = this.messageQueueByPlayerWrapper.computeIfAbsent(player, k -> new MessageQueueState());
 		messageQueue.messageQueue.add(message);
 		

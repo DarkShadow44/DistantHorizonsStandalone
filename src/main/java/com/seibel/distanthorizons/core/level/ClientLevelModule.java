@@ -258,7 +258,11 @@ public class ClientLevelModule implements Closeable, AbstractDataSourceHandler.I
 	
 	public void clearRenderCache()
 	{
-		this.clientLevel.getClientLevelWrapper().clearBlockColorCache();
+		IClientLevelWrapper clientLevelWrapper = this.clientLevel.getClientLevelWrapper();
+		if (clientLevelWrapper != null)
+		{
+			clientLevelWrapper.clearBlockColorCache();
+		}
 		
 		ClientRenderState ClientRenderState = this.ClientRenderStateRef.get();
 		if (ClientRenderState != null && ClientRenderState.quadtree != null)

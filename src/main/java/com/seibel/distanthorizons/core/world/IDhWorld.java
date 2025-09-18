@@ -23,9 +23,11 @@ import com.seibel.distanthorizons.core.level.IDhLevel;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.Closeable;
 import java.util.concurrent.CompletableFuture;
 
-public interface IDhWorld
+// TODO why is this exist alongside AbstractDhWorld?
+public interface IDhWorld extends Closeable
 {
 	
 	IDhLevel getOrLoadLevel(@NotNull ILevelWrapper levelWrapper);

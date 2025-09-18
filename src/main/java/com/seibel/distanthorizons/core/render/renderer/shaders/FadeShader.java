@@ -155,6 +155,19 @@ public class FadeShader extends AbstractShaderRenderer
 	@Override
 	protected void onRender()
 	{
+		int depthTextureId = LodRenderer.getActiveDepthTextureId();
+		int colorTextureId = LodRenderer.getActiveColorTextureId();
+		
+		if (depthTextureId == -1
+			|| colorTextureId == -1)
+		{
+			// the renderer is currently being re-built and/or inactive,
+			// we don't need to/can't render fading
+			return;
+		}
+		
+		
+		
 		GLMC.glBindFramebuffer(GL32.GL_FRAMEBUFFER, this.frameBuffer);
 		GLMC.disableScissorTest();
 		GLMC.disableDepthTest();
@@ -165,7 +178,7 @@ public class FadeShader extends AbstractShaderRenderer
 		GL32.glUniform1i(this.uMcDepthTexture, 0);
 		
 		GLMC.glActiveTexture(GL32.GL_TEXTURE1);
-		GLMC.glBindTexture(LodRenderer.getActiveDepthTextureId());
+		GLMC.glBindTexture(depthTextureId);
 		GL32.glUniform1i(this.uDhDepthTexture, 1);
 		
 		GLMC.glActiveTexture(GL32.GL_TEXTURE2);
@@ -173,7 +186,7 @@ public class FadeShader extends AbstractShaderRenderer
 		GL32.glUniform1i(this.uCombinedMcDhColorTexture, 2);
 		
 		GLMC.glActiveTexture(GL32.GL_TEXTURE3);
-		GLMC.glBindTexture(LodRenderer.getActiveColorTextureId());
+		GLMC.glBindTexture(colorTextureId);
 		GL32.glUniform1i(this.uDhColorTexture, 3);
 		
 		

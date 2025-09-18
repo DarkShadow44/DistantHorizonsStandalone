@@ -29,6 +29,7 @@ import com.seibel.distanthorizons.core.file.fullDatafile.FullDataSourceProviderV
 import com.seibel.distanthorizons.core.file.fullDatafile.RemoteFullDataSourceProvider;
 import com.seibel.distanthorizons.core.file.structure.ISaveStructure;
 import com.seibel.distanthorizons.core.generation.RemoteWorldRetrievalQueue;
+import com.seibel.distanthorizons.core.logging.ConfigBasedLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.multiplayer.client.ClientNetworkState;
 import com.seibel.distanthorizons.core.multiplayer.client.SyncOnLoadRequestQueue;
@@ -41,12 +42,14 @@ import com.seibel.distanthorizons.core.render.renderer.generic.GenericObjectRend
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos2D;
 import com.seibel.distanthorizons.core.render.renderer.DebugRenderer;
 import com.seibel.distanthorizons.core.sql.dto.FullDataSourceV2DTO;
+import com.seibel.distanthorizons.core.util.threading.ThreadPoolUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.block.IBlockStateWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IProfilerWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IBiomeWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
+import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.Nullable;
 
@@ -56,13 +59,16 @@ import java.io.File;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
 /** The level used when connected to a server */
 public class DhClientLevel extends AbstractDhLevel implements IDhClientLevel
 {
 	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
+	protected static final ConfigBasedLogger NETWORK_LOGGER = new ConfigBasedLogger(LogManager.getLogger(),
+			() -> Config.Common.Logging.logNetworkEvent.get());
+	
 	private static final IMinecraftClientWrapper MC_CLIENT = SingletonInjector.INSTANCE.get(IMinecraftClientWrapper.class);
 	
 	public final ClientLevelModule clientside;
@@ -157,17 +163,38 @@ public class DhClientLevel extends AbstractDhLevel implements IDhClientLevel
 				return;
 			}
 			
-			try (FullDataSourceV2DTO dataSourceDto = this.networkState.fullDataPayloadReceiver.decodeDataSourceAndReleaseBuffer(message.payload))
+			
+			try (FullDataSourceV2DTO dataSourceDto = this.networkState.fullDataPayloadReceiver.decodeDataSource(message.payload))
 			{
-				if (!message.isSameLevelAs(this.levelWrapper))
+				boolean isSameLevel = message.isSameLevelAs(this.levelWrapper);
+				NETWORK_LOGGER.debug("Buffer {} isSameLevel: {}", message.payload.dtoBufferId, isSameLevel);
+				if (!isSameLevel)
 				{
 					return;
 				}
 				
-				this.updateBeaconBeamsForSectionPos(dataSourceDto.pos, message.payload.beaconBeams);
+				
+				Executor executor = ThreadPoolUtil.getFileHandlerExecutor();
+				if (executor != null)
+				{
+					executor.execute(() ->
+					{
+						try
+						{
+							// TODO this has a lock which can cause stuttering/lag issues
+							this.updateBeaconBeamsForSectionPos(dataSourceDto.pos, message.payload.beaconBeams);
+						}
+						catch (Exception e)
+						{
+							LOGGER.error("Unexpected erorr while updating full data source, error: ["+e.getMessage()+"].", e);
+						}
+					});
+				}
+				
 				
 				FullDataSourceV2 fullDataSource = dataSourceDto.createDataSource(this.levelWrapper);
-				this.updateDataSourcesAsync(fullDataSource).whenComplete((result, e) -> fullDataSource.close());
+				this.updateDataSourcesAsync(fullDataSource)
+						.whenComplete((result, e) -> fullDataSource.close());
 			}
 			catch (Exception e)
 			{

@@ -19,6 +19,7 @@
 
 package com.seibel.distanthorizons.core.render;
 
+import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
 import com.google.common.cache.Cache;
 import com.seibel.distanthorizons.core.config.Config;
@@ -57,7 +58,6 @@ import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.Supplier;
 
 /**
  * A render section represents an area that could be rendered.
@@ -67,15 +67,6 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 {
 	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
 	private static final IMinecraftClientWrapper MC = SingletonInjector.INSTANCE.get(IMinecraftClientWrapper.class);
-	
-	/**
-	 * Used to limit how many upload tasks are queued at once.
-	 * If all the upload tasks are queued at once, they will start uploading nearest
-	 * to the player, however if the player moves, that order is no longer valid and holes may appear
-	 * as further sections are loaded before closer ones.
-	 * Only queuing a few of the sections at a time solves this problem.
-	 */
-	public static final AtomicInteger GLOBAL_UPLOAD_TASKS_COUNT_REF = new AtomicInteger(0);
 	
 	
 	
@@ -87,6 +78,7 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 	private final LodQuadTree quadTree;
 	private final KeyedLockContainer<Long> renderLoadLockContainer;
 	private final Cache<Long, CachedColumnRenderSource> cachedRenderSourceByPos;
+	private final AtomicInteger uploadTaskCountRef;
 	
 	/** 
 	 * contains the list of beacons currently being rendered in this section 
@@ -148,7 +140,8 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 	public LodRenderSection(
 			long pos, 
 			LodQuadTree quadTree, 
-			IDhClientLevel level, FullDataSourceProviderV2 fullDataSourceProvider, 
+			IDhClientLevel level, FullDataSourceProviderV2 fullDataSourceProvider,
+			AtomicInteger uploadTaskCountRef,
 			Cache<Long, CachedColumnRenderSource> cachedRenderSourceByPos, KeyedLockContainer<Long> renderLoadLockContainer)
 	{
 		this.pos = pos;
@@ -157,6 +150,7 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 		this.renderLoadLockContainer = renderLoadLockContainer;
 		this.level = level;
 		this.fullDataSourceProvider = fullDataSourceProvider;
+		this.uploadTaskCountRef = uploadTaskCountRef;
 		
 		this.beaconRenderHandler = this.quadTree.beaconRenderHandler;
 		this.beaconBeamRepo = this.level.getBeaconBeamRepo();
@@ -196,20 +190,20 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 		// this means the closer (higher priority) tasks will load first.
 		// This also prevents issues where the nearby tasks are canceled due to
 		// LOD detail level changing, and having holes in the world
-		if (GLOBAL_UPLOAD_TASKS_COUNT_REF.getAndIncrement() > executor.getPoolSize())
+		if (this.uploadTaskCountRef.getAndIncrement() > executor.getPoolSize())
 		{
-			GLOBAL_UPLOAD_TASKS_COUNT_REF.decrementAndGet();
+			this.uploadTaskCountRef.decrementAndGet();
 			return false;
 		}
 		
 		try
 		{
 			CompletableFuture<Void> future = new CompletableFuture<>();
-			this.getAndBuildRenderDataFuture = future;
+			this.getAndBuildRenderDataFuture = future; // TODO should use a setter/getter to guard against replacing an incomplete future
 			future.handle((voidObj, throwable) -> 
 			{
 				// this has to fire are the end of every added future, otherwise we'll lock up and nothing will load
-				GLOBAL_UPLOAD_TASKS_COUNT_REF.decrementAndGet(); 
+				this.uploadTaskCountRef.decrementAndGet(); // TODO there is an issue where this variable isn't decremented properly, preventing LODs from loading in, or loading much slower
 				return null; 
 			});
 			
@@ -514,19 +508,15 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 			// calculate the missing positions if not already done
 			if (this.missingGenerationPosFunc == null)
 			{
-				// TODO memoization may not be needed anymore.
-				//  The expiring cache was originally used to fix a bug with N-sized multiplayer retrieval.
-				//  In multiplayer, when moving into new chunks, DH would generate the highest quality LOD, causing it to load,
-				//  and since said LOD was incomplete, there were holes, and the LOD wouldn't be queued for additional
-				//  retrieval.
-				//  However this doesn't appear to be the case as of 2025-2-7, so we might be able to just retrieve the
-				//  positions once and keep them in memory forever.
-				//  Currently the timeout is set to 10 minutes to test if memoization is actually needed.
-				//  10 minutes allows for the LODs to eventually refresh while allowing us
-				//  to test if the memoization is actually needed.
+				// TODO memoization is needed for multiplayer, otherwise
+				//  new retrieval requests won't be submitted.
+				// TODO why is that the case? Shouldn't the missing positions be un-changing?
+				// TODO setting this value to low can cause world gen to slow down significantly
+				//  due to a race condition where the world gen thinks it is finished, but the results
+				//  haven't been saved to file yet, causing the gen to fire again
 				this.missingGenerationPosFunc = Suppliers.memoizeWithExpiration(
 						() -> this.fullDataSourceProvider.getPositionsToRetrieve(this.pos),
-						10, TimeUnit.MINUTES)::get;
+						10, TimeUnit.MINUTES);
 			}
 			
 			LongArrayList missingGenerationPos = this.getMissingGenerationPos();

@@ -89,6 +89,15 @@ public class ClientApi
 	/** this includes the is dev build message and low allocated memory warning */
 	private static final int MS_BETWEEN_STATIC_STARTUP_MESSAGES = 4_000;
 	
+	/** 
+	 * This isn't the cleanest way of storing variables before passing them to the LOD renderer, 
+	 * but due to how mixins work and the inconsistency between MC versions,
+	 * having a static object that stores a single frame's data
+	 * is often the easiest solution. <br><br>
+	 * 
+	 * Only downside is making sure each variable is populated before rendering.
+	 */
+	public static final RenderState RENDER_STATE = new RenderState();
 	
 	
 	private boolean isDevBuildMessagePrinted = false;
@@ -389,7 +398,7 @@ public class ClientApi
 	// rendering //
 	//===========//
 	
-	/** Should be called before {@link ClientApi#renderDeferredLods} */
+	/** Should be called before {@link ClientApi#renderDeferredLodsForShaders} */
 	public void renderLods(IClientLevelWrapper levelWrapper, Mat4f mcModelViewMatrix, Mat4f mcProjectionMatrix, float partialTicks)
 	{ this.renderLodLayer(levelWrapper, mcModelViewMatrix, mcProjectionMatrix, partialTicks, false); }
 	
@@ -397,8 +406,9 @@ public class ClientApi
 	 * Only necessary when Shaders are in use.
 	 * Should be called after {@link ClientApi#renderLods} 
 	 */
-	public void renderDeferredLods(IClientLevelWrapper levelWrapper, Mat4f mcModelViewMatrix, Mat4f mcProjectionMatrix, float partialTicks)
+	public void renderDeferredLodsForShaders(IClientLevelWrapper levelWrapper, Mat4f mcModelViewMatrix, Mat4f mcProjectionMatrix, float partialTicks)
 	{ this.renderLodLayer(levelWrapper, mcModelViewMatrix, mcProjectionMatrix, partialTicks, true); }
+	
 	
 	private void renderLodLayer(
 			IClientLevelWrapper levelWrapper, Mat4f mcModelViewMatrix, Mat4f mcProjectionMatrix, float partialTicks,
@@ -442,6 +452,25 @@ public class ClientApi
 						RenderUtil.createLodProjectionMatrix(mcProjectionMatrix, partialTicks), RenderUtil.createLodModelViewMatrix(mcModelViewMatrix),
 						levelWrapper.getMinHeight()
 				);
+		
+		
+		
+		//Mat4f mcCombined = mcModelViewMatrix.copy();
+		//mcCombined.multiply(mcProjectionMatrix);
+		//
+		//com.seibel.distanthorizons.api.objects.math.DhApiMat4f dhCombined = renderEventParam.dhModelViewMatrix.copy();
+		//dhCombined.multiply(renderEventParam.dhProjectionMatrix);
+		//
+		//LOGGER.info("\n\n" +
+		//		"API\n" +
+		//		"Mc MVM: \n" + mcModelViewMatrix.toString() + "\n" +
+		//		"Mc Proj: \n" + mcProjectionMatrix + "\n" +
+		//		"Mc Combined:\n" + mcCombined.toString() + "\n" +
+		//		"\n" +
+		//		"DH MVM: \n" + renderEventParam.dhModelViewMatrix.toString() + "\n" +
+		//		"DH Proj: \n" + renderEventParam.dhProjectionMatrix + "\n" +
+		//		"DH Combined:\n" + mcCombined.toString()
+		//);
 		
 		
 		
@@ -555,25 +584,26 @@ public class ClientApi
 	public void renderFadeOpaque(Mat4f mcModelViewMatrix, Mat4f mcProjectionMatrix, float partialTicks, IClientLevelWrapper level)
 	{
 		// only fade when DH is rendering
-		if (Config.Client.Advanced.Debugging.rendererMode.get() == EDhApiRendererMode.DEFAULT)
+		if (Config.Client.Advanced.Debugging.rendererMode.get() == EDhApiRendererMode.DEFAULT
+			// only fade when requested
+			&& Config.Client.Advanced.Graphics.Quality.vanillaFadeMode.get() == EDhApiMcRenderingFadeMode.DOUBLE_PASS
+			// don't fade when Iris shaders are active, otherwise the rendering can get weird
+			&& !DhApiRenderProxy.INSTANCE.getDeferTransparentRendering())
 		{
-			if (Config.Client.Advanced.Graphics.Quality.vanillaFadeMode.get() == EDhApiMcRenderingFadeMode.DOUBLE_PASS)
-			{
-				FadeRenderer.INSTANCE.render(mcModelViewMatrix, mcProjectionMatrix, partialTicks, level);
-			}
+			FadeRenderer.INSTANCE.render(mcModelViewMatrix, mcProjectionMatrix, partialTicks, level);
 		}
 	}
 	/** should be called after DH and MC finish rendering so we can smooth the transition between the two */
 	public void renderFade(Mat4f mcModelViewMatrix, Mat4f mcProjectionMatrix, float partialTicks, IClientLevelWrapper level)
 	{
 		// only fade when DH is rendering
-		if (Config.Client.Advanced.Debugging.rendererMode.get() == EDhApiRendererMode.DEFAULT)
+		if (Config.Client.Advanced.Debugging.rendererMode.get() == EDhApiRendererMode.DEFAULT
+			// only fade when requested
+			&& Config.Client.Advanced.Graphics.Quality.vanillaFadeMode.get() != EDhApiMcRenderingFadeMode.NONE
+			// don't fade when Iris shaders are active, otherwise the rendering can get weird
+			&& !DhApiRenderProxy.INSTANCE.getDeferTransparentRendering())
 		{
-			// fade if any level fading is active
-			if (Config.Client.Advanced.Graphics.Quality.vanillaFadeMode.get() != EDhApiMcRenderingFadeMode.NONE)
-			{
-				FadeRenderer.INSTANCE.render(mcModelViewMatrix, mcProjectionMatrix, partialTicks, level);
-			}
+			FadeRenderer.INSTANCE.render(mcModelViewMatrix, mcProjectionMatrix, partialTicks, level);
 		}
 	}
 	
@@ -652,7 +682,8 @@ public class ClientApi
 	private void detectAndSendBootTimeWarnings()
 	{
 		// dev build
-		if (ModInfo.IS_DEV_BUILD && !this.isDevBuildMessagePrinted && MC_CLIENT.playerExists())
+		if (ModInfo.IS_DEV_BUILD 
+			&& !this.isDevBuildMessagePrinted && MC_CLIENT.playerExists())
 		{
 			this.isDevBuildMessagePrinted = true;
 			this.lastStaticWarningMessageSentMsTime = System.currentTimeMillis();
@@ -669,7 +700,8 @@ public class ClientApi
 		
 		// memory
 		if (this.staticStartupMessageSentRecently()) return;
-		if (!this.lowMemoryWarningPrinted && Config.Common.Logging.Warning.showLowMemoryWarningOnStartup.get())
+		if (!this.lowMemoryWarningPrinted 
+			&& Config.Common.Logging.Warning.showLowMemoryWarningOnStartup.get())
 		{
 			this.lowMemoryWarningPrinted = true;
 			this.lastStaticWarningMessageSentMsTime = System.currentTimeMillis();
@@ -694,7 +726,8 @@ public class ClientApi
 		
 		// high vanilla render distance
 		if (this.staticStartupMessageSentRecently()) return;
-		if (!this.highVanillaRenderDistanceWarningPrinted && Config.Common.Logging.Warning.showHighVanillaRenderDistanceWarning.get())
+		if (!this.highVanillaRenderDistanceWarningPrinted 
+			&& Config.Common.Logging.Warning.showHighVanillaRenderDistanceWarning.get())
 		{
 			// DH generally doesn't need a vanilla render distance above 12 
 			if (MC_RENDER.getRenderDistance() > 12)
@@ -721,7 +754,8 @@ public class ClientApi
 	{
 		if (this.lastStaticWarningMessageSentMsTime == 0)
 		{
-			return true;
+			// no static message has ever been sent
+			return false;
 		}
 		
 		long timeSinceLastMessage = System.currentTimeMillis() - this.lastStaticWarningMessageSentMsTime; 
@@ -739,5 +773,48 @@ public class ClientApi
 	 * Similar to {@link ClientApi#showChatMessageNextFrame(String)} but appears above the toolbar.
 	 */
 	public void showOverlayMessageNextFrame(String message) { this.overlayMessageQueueForNextFrame.add(message); }
+	
+	
+	
+	//================//
+	// helper classes //
+	//================//
+	
+	public static class RenderState
+	{
+		public Mat4f mcModelViewMatrix = null;
+		public Mat4f mcProjectionMatrix = null;
+		public float frameTime = -1;
+		
+		
+		public void canRenderOrThrow() throws IllegalStateException
+		{
+			String errorReasons = "";
+			
+			if (this.mcModelViewMatrix == null)
+			{
+				errorReasons += "no MVM Matrix, ";
+			}
+			
+			if (this.mcProjectionMatrix == null)
+			{
+				errorReasons += "no Projection Matrix, ";
+			}
+			
+			if (this.frameTime == -1)
+			{
+				errorReasons += "no Frame Time, ";
+			}
+			
+			
+			if (!errorReasons.isEmpty())
+			{
+				throw new IllegalStateException(errorReasons);
+			}
+			
+		}
+	}
+	
+	
 	
 }

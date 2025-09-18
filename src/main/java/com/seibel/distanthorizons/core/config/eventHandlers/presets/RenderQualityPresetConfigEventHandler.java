@@ -105,6 +105,15 @@ public class RenderQualityPresetConfigEventHandler extends AbstractPresetConfigE
 				this.put(EDhApiQualityPreset.HIGH, true);
 				this.put(EDhApiQualityPreset.EXTREME, true);
 			}});
+	private final ConfigEntryWithPresetOptions<EDhApiQualityPreset, Boolean> caveCulling = new ConfigEntryWithPresetOptions<>(Config.Client.Advanced.Graphics.Culling.enableCaveCulling,
+			new HashMap<EDhApiQualityPreset, Boolean>()
+			{{
+				this.put(EDhApiQualityPreset.MINIMUM, true);
+				this.put(EDhApiQualityPreset.LOW, true);
+				this.put(EDhApiQualityPreset.MEDIUM, true);
+				this.put(EDhApiQualityPreset.HIGH, false);
+				this.put(EDhApiQualityPreset.EXTREME, false);
+			}});
 		
 	
 	
@@ -123,6 +132,7 @@ public class RenderQualityPresetConfigEventHandler extends AbstractPresetConfigE
 		this.configList.add(this.ssaoEnabled);
 		this.configList.add(this.vanillaFade);
 		this.configList.add(this.dhDither);
+		this.configList.add(this.caveCulling);
 		
 		
 		for (ConfigEntryWithPresetOptions<EDhApiQualityPreset, ?> config : this.configList)

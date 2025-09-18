@@ -26,6 +26,7 @@ import com.seibel.distanthorizons.core.config.listeners.IConfigListener;
 import com.seibel.distanthorizons.core.config.types.enums.EConfigEntryAppearance;
 import com.seibel.distanthorizons.core.config.types.enums.EConfigEntryPerformance;
 import com.seibel.distanthorizons.coreapi.interfaces.config.IConfigEntry;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -54,6 +55,8 @@ public class ConfigEntry<T> extends AbstractConfigType<T, ConfigEntry<T>> implem
 	 * and any get() method calls will return the apiValue if it is set.
 	 */
 	public final boolean allowApiOverride;
+	/** Will be null if un-set */
+	@Nullable
 	private T apiValue;
 	
 	
@@ -132,9 +135,9 @@ public class ConfigEntry<T> extends AbstractConfigType<T, ConfigEntry<T>> implem
 	@Override
 	public T get()
 	{
-		if (allowApiOverride && apiValue != null)
+		if (this.allowApiOverride && this.apiValue != null)
 		{
-			return apiValue;
+			return this.apiValue;
 		}
 		
 		return super.get();

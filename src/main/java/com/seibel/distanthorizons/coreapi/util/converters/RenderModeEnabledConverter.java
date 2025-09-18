@@ -31,14 +31,12 @@ import com.seibel.distanthorizons.coreapi.interfaces.config.IConverter;
 public class RenderModeEnabledConverter implements IConverter<EDhApiRendererMode, Boolean>
 {
 	
-	@Override public EDhApiRendererMode convertToCoreType(Boolean renderingEnabled)
-	{
-		return renderingEnabled ? EDhApiRendererMode.DEFAULT : EDhApiRendererMode.DISABLED;
-	}
+	@Override 
+	public EDhApiRendererMode convertToCoreType(Boolean renderingEnabled)
+	{ return renderingEnabled ? EDhApiRendererMode.DEFAULT : EDhApiRendererMode.DISABLED; }
 	
-	@Override public Boolean convertToApiType(EDhApiRendererMode renderingMode)
-	{
-		return renderingMode == EDhApiRendererMode.DEFAULT;
-	}
+	@Override 
+	public Boolean convertToApiType(EDhApiRendererMode renderingMode)
+	{ return renderingMode == EDhApiRendererMode.DEFAULT; }
 	
 }

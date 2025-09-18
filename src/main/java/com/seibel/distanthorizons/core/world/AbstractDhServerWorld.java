@@ -52,7 +52,7 @@ public abstract class AbstractDhServerWorld<TDhServerLevel extends AbstractDhSer
 	public void addPlayer(IServerPlayerWrapper serverPlayer)
 	{
 		ServerPlayerState playerState = this.serverPlayerStateManager.registerJoinedPlayer(serverPlayer);
-		this.getLevel(serverPlayer.getLevel()).addPlayer(serverPlayer);
+		((TDhServerLevel) this.getOrLoadServerLevel(serverPlayer.getLevel())).addPlayer(serverPlayer);
 		
 		Iterator<TDhServerLevel> it = this.dhLevelByLevelWrapper.values().stream().distinct().iterator();
 		while (it.hasNext())

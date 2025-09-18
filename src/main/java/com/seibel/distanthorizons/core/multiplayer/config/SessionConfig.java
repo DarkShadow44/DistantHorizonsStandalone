@@ -18,7 +18,7 @@ public class SessionConfig implements INetworkObject
 	private static final LinkedHashMap<String, Entry> CONFIG_ENTRIES = new LinkedHashMap<>();
 	
 	
-	private final LinkedHashMap<String, Object> values = new LinkedHashMap<>();
+	private final HashMap<String, Object> values = new HashMap<>();
 	public SessionConfig constrainingConfig;
 	
 	
@@ -33,9 +33,9 @@ public class SessionConfig implements INetworkObject
 		
 		registerConfigEntry(Config.Common.WorldGenerator.enableDistantGeneration, Boolean::logicalAnd);
 		registerConfigEntry(Config.Server.maxGenerationRequestDistance, Math::min);
-		registerConfigEntry(Config.Server.generationBoundsX, (x, y) -> x);
-		registerConfigEntry(Config.Server.generationBoundsZ, (x, y) -> x);
-		registerConfigEntry(Config.Server.generationBoundsRadius, (x, y) -> x);
+		registerConfigEntry(Config.Server.generationBoundsX, (x, y) -> y);
+		registerConfigEntry(Config.Server.generationBoundsZ, (x, y) -> y);
+		registerConfigEntry(Config.Server.generationBoundsRadius, (x, y) -> y);
 		registerConfigEntry(Config.Server.generationRequestRateLimit, Math::min);
 		
 		registerConfigEntry(Config.Server.enableRealTimeUpdates, Boolean::logicalAnd);
@@ -119,8 +119,15 @@ public class SessionConfig implements INetworkObject
 		}
 		
 		return (this.constrainingConfig != null
-				? (T) entry.valueConstrainer.apply(value, this.constrainingConfig.getValue(name))
+				? (T) entry.valueConstrainer.apply(this.constrainingConfig.getValue(name), value)
 				: value);
+	}
+	
+	public <T> void constrainValue(ConfigEntry<T> configEntry, T value) { this.constrainValue(configEntry.getChatCommandName(), value); }
+	private void constrainValue(String name, Object value)
+	{
+		Entry entry = CONFIG_ENTRIES.get(name);
+		this.values.put(name, entry.valueConstrainer.apply(this.getValue(name), value));
 	}
 	
 	private Map<String, ?> getValues()

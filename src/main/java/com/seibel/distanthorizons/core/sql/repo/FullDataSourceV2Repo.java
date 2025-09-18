@@ -280,15 +280,14 @@ public class FullDataSourceV2Repo extends AbstractDhRepo<Long, FullDataSourceV2D
 	private void setApplyToFlag(long pos, boolean applyFlag, boolean applyToParent)
 	{
 		String sql = applyToParent ? this.setApplyToParentSql : this.setApplyToChildrenSql;
-		PreparedStatement statement = this.createPreparedStatement(sql);
-		if (statement == null)
+		try (PreparedStatement statement = this.createPreparedStatement(sql))
 		{
-			return;
-		}
-		
-		
-		try
-		{
+			if (statement == null)
+			{
+				return;
+			}
+			
+			
 			int i = 1;
 			statement.setBoolean(i++, applyFlag);
 			
@@ -337,14 +336,14 @@ public class FullDataSourceV2Repo extends AbstractDhRepo<Long, FullDataSourceV2D
 		LongArrayList list = new LongArrayList();
 		
 		String sql = getParentUpdates ? this.getParentPositionsToUpdateSql : this.getChildPositionsToUpdateSql;
-		PreparedStatement statement = this.createPreparedStatement(sql);
-		if (statement == null)
+		try (PreparedStatement statement = this.createPreparedStatement(sql))
 		{
-			return list;
-		}
-		
-		try
-		{
+			if (statement == null)
+			{
+				return list;
+			}
+			
+			
 			int i = 1;
 			statement.setInt(i++, targetBlockPosX);
 			statement.setInt(i++, targetBlockPosZ);
@@ -382,15 +381,14 @@ public class FullDataSourceV2Repo extends AbstractDhRepo<Long, FullDataSourceV2D
 	/** @return null if nothing exists for this position */
 	public void getColumnGenerationStepForPos(long pos, ByteArrayList outputByteArray)
 	{
-		PreparedStatement statement = this.createPreparedStatement(this.getColumnGenerationStepSql);
-		if (statement == null)
+		try (PreparedStatement statement = this.createPreparedStatement(this.getColumnGenerationStepSql))
 		{
-			return;
-		}
-		
-		
-		try
-		{
+			if (statement == null)
+			{
+				return;
+			}
+			
+			
 			int detailLevel = DhSectionPos.getDetailLevel(pos) - DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL;
 			
 			
@@ -448,9 +446,8 @@ public class FullDataSourceV2Repo extends AbstractDhRepo<Long, FullDataSourceV2D
 	@Nullable
 	public Long getTimestampForPos(long pos)
 	{
-		try
+		try(PreparedStatement preparedStatement = this.createPreparedStatement(this.getTimestampForPosSql))
 		{
-			PreparedStatement preparedStatement = this.createPreparedStatement(this.getTimestampForPosSql);
 			if (preparedStatement == null)
 			{
 				return null;
@@ -490,9 +487,8 @@ public class FullDataSourceV2Repo extends AbstractDhRepo<Long, FullDataSourceV2D
 			"AND PosZ BETWEEN ? AND ?;";
 	public Map<Long, Long> getTimestampsForRange(byte detailLevel, int startPosX, int startPosZ, int endPosX, int endPosZ)
 	{
-		try
+		try(PreparedStatement preparedStatement = this.createPreparedStatement(this.getTimestampForRangeSql))
 		{
-			PreparedStatement preparedStatement = this.createPreparedStatement(this.getTimestampForRangeSql);
 			if (preparedStatement == null)
 			{
 				return new HashMap<>();
@@ -541,27 +537,29 @@ public class FullDataSourceV2Repo extends AbstractDhRepo<Long, FullDataSourceV2D
 	{
 		LongArrayList list = new LongArrayList();
 		
-		PreparedStatement statement = this.createPreparedStatement(this.getAllPositionsSql);
-		if (statement == null)
+		try (PreparedStatement statement = this.createPreparedStatement(this.getAllPositionsSql))
 		{
-			return list;
-		}
-		
-		
-		try(ResultSet result = this.query(statement))
-		{
-			while (result != null && result.next())
+			if (statement == null)
 			{
-				byte detailLevel = result.getByte("DetailLevel");
-				byte sectionDetailLevel = (byte) (detailLevel + DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL);
-				int posX = result.getInt("PosX");
-				int posZ = result.getInt("PosZ");
-				
-				long pos = DhSectionPos.encode(sectionDetailLevel, posX, posZ);
-				list.add(pos);
+				return list;
 			}
 			
-			return list;
+			
+			try(ResultSet result = this.query(statement))
+			{
+				while (result != null && result.next())
+				{
+					byte detailLevel = result.getByte("DetailLevel");
+					byte sectionDetailLevel = (byte) (detailLevel + DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL);
+					int posX = result.getInt("PosX");
+					int posZ = result.getInt("PosZ");
+					
+					long pos = DhSectionPos.encode(sectionDetailLevel, posX, posZ);
+					list.add(pos);
+				}
+				
+				return list;
+			}
 		}
 		catch (SQLException e)
 		{
@@ -582,14 +580,13 @@ public class FullDataSourceV2Repo extends AbstractDhRepo<Long, FullDataSourceV2D
 	{
 		int detailLevel = DhSectionPos.getDetailLevel(pos) - DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL;
 		
-		PreparedStatement statement = this.createPreparedStatement(this.getDataSizeInBytesSql);
-		if (statement == null)
+		try (PreparedStatement statement = this.createPreparedStatement(this.getDataSizeInBytesSql))
 		{
-			return 0L;
-		}
+			if (statement == null)
+			{
+				return 0L;
+			}
 		
-		try
-		{
 			int i = 1;
 			statement.setInt(i++, detailLevel);
 			statement.setInt(i++, DhSectionPos.getX(pos));
@@ -618,9 +615,8 @@ public class FullDataSourceV2Repo extends AbstractDhRepo<Long, FullDataSourceV2D
 	/** @return the total size in bytes of the full data for this entire database */
 	public long getTotalDataSizeInBytes()
 	{
-		PreparedStatement statement = this.createPreparedStatement(this.getTotalDataSizeInBytesSql);
-		
-		try(ResultSet result = this.query(statement))
+		try (PreparedStatement statement = this.createPreparedStatement(this.getTotalDataSizeInBytesSql);
+			ResultSet result = this.query(statement))
 		{
 			if (result == null || !result.next())
 			{

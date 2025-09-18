@@ -22,8 +22,8 @@ package com.seibel.distanthorizons.core.network.messages.fullData;
 import com.google.common.base.MoreObjects;
 import com.seibel.distanthorizons.core.multiplayer.fullData.FullDataPayload;
 import com.seibel.distanthorizons.core.network.messages.AbstractNetworkMessage;
-import com.seibel.distanthorizons.core.util.TimerUtil;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 
 import java.util.Timer;
 
@@ -34,15 +34,9 @@ import java.util.Timer;
  */
 public class FullDataSplitMessage extends AbstractNetworkMessage
 {
-	private static final long BUFFER_RELEASE_DELAY_MS = 5000L;
-	
 	public int bufferId;
 	public ByteBuf buffer;
 	public boolean isFirst;
-	
-	// Reference counting is unreliable here for some reason so this is a "fix"
-	private static final Timer bufferReleaseTimer = TimerUtil.CreateTimer("FullDataBufferCleanupTimer");
-	private boolean releaseScheduled = false;
 	
 	
 	//==============//
@@ -72,12 +66,6 @@ public class FullDataSplitMessage extends AbstractNetworkMessage
 		out.writeBytes(this.buffer.readerIndex(0));
 
 		out.writeBoolean(this.isFirst);
-		
-		if (!this.releaseScheduled)
-		{
-			bufferReleaseTimer.schedule(TimerUtil.createTimerTask(this.buffer::release), BUFFER_RELEASE_DELAY_MS);
-			this.releaseScheduled = true;
-		}
 	}
 	
 	@Override
@@ -86,7 +74,7 @@ public class FullDataSplitMessage extends AbstractNetworkMessage
 		this.bufferId = in.readInt();
 		
 		int bufferSize = in.readInt();
-		this.buffer = in.readBytes(bufferSize);
+		this.buffer = Unpooled.copiedBuffer(in.readSlice(bufferSize));
 
 		this.isFirst = in.readBoolean();
 	}

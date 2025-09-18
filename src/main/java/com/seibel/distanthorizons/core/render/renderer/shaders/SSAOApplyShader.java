@@ -134,9 +134,6 @@ public class SSAOApplyShader extends AbstractShaderRenderer
 		// it should be automatically restored after rendering is complete.
 		GLMC.disableDepthTest();
 		
-		GLMC.glActiveTexture(GL32.GL_TEXTURE0);
-		GLMC.glBindTexture(0);
-		
 		// apply the rendered SSAO to the LODs 
 		GLMC.glBindFramebuffer(GL32.GL_READ_FRAMEBUFFER, SSAOShader.INSTANCE.frameBuffer);
 		GLMC.glBindFramebuffer(GL32.GL_DRAW_FRAMEBUFFER, LodRenderer.getActiveFramebufferId());

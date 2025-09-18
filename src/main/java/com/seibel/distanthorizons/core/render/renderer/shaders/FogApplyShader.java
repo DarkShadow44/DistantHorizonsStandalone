@@ -84,6 +84,7 @@ public class FogApplyShader extends AbstractShaderRenderer
 		GLMC.glActiveTexture(GL32.GL_TEXTURE1);
 		GLMC.glBindTexture(LodRenderer.getActiveDepthTextureId());
 		GL32.glUniform1i(this.depthTextureUniform, 1);
+		
 	}
 	
 	

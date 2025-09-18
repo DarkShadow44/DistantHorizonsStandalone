@@ -6,6 +6,8 @@ import com.seibel.distanthorizons.core.level.DhClientLevel;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos2D;
 
+import java.util.concurrent.CompletableFuture;
+
 /** 
  * This queue only handles LOD updates for
  * LODs that were changed when the player wasn't online
@@ -37,6 +39,8 @@ public class SyncOnLoadRequestQueue extends AbstractFullDataNetworkRequestQueue
 	{
 		return DhSectionPos.getChebyshevSignedBlockDistance(sectionPos, targetPos) <= this.networkState.sessionConfig.getMaxSyncOnLoadDistance() * 16;
 	}
+	@Override
+	protected boolean onBeforeRequest(long sectionPos, CompletableFuture<ERequestResult> future) { return true; }
 	
 	@Override
 	protected String getQueueName() { return "Sync On Login Queue"; }

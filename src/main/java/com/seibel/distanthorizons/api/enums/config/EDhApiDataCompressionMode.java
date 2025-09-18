@@ -39,8 +39,8 @@ public enum EDhApiDataCompressionMode
 	/** 
 	 * Should only be used internally and for unit testing. <br><br> 
 	 * 
-	 * Read Speed: 1.64 MS / DTO <br>
-	 * Write Speed: 12.44 MS / DTO <br>
+	 * Read Speed: 6.09 MS / DTO <br>
+	 * Write Speed: 6.01 MS / DTO <br>
 	 * Compression ratio: 1.0 <br>
 	 */
 	@DisallowSelectingViaConfigGui
@@ -49,28 +49,28 @@ public enum EDhApiDataCompressionMode
 	/** 
 	 * Extremely fast (often faster than uncompressed), but generally poor compression. <br><br> 
 	 * 
-	 * Read Speed: 1.85 MS / DTO <br>
-	 * Write Speed: 9.46 MS / DTO <br>
-	 * Compression ratio: 0.3638 <br>
+	 * Read Speed: 3.25 MS / DTO <br>
+	 * Write Speed: 5.99 MS / DTO <br>
+	 * Compression ratio: 0.4513 <br>
 	 */
 	LZ4(1),
 	
-	/*
+	/**
 	 * Decent speed and good compression. <br><br> 
 	 *
-	 * Read Speed: 11.78 MS / DTO <br>
-	 * Write Speed: 16.76 MS / DTO <br>
-	 * Compression ratio: 0.2199 <br>
+	 * Read Speed: 9.31 MS / DTO <br>
+	 * Write Speed: 15.13 MS / DTO <br>
+	 * Compression ratio: 0.2606 <br>
 	 */
-	//@Deprecated
-	//Z_STD(2),
+	Z_STD(2),
+	
 	
 	/** 
 	 * Extremely slow, but very good compression. <br><br> 
 	 *
-	 * Read Speed: 12.25 MS / DTO <br>
-	 * Write Speed: 490.07 MS / DTO <br>
-	 * Compression ratio: 0.1242 <br>
+	 * Read Speed: 13.29 MS / DTO <br>
+	 * Write Speed: 70.95 MS / DTO <br>
+	 * Compression ratio: 0.2068 <br>
 	 */
 	LZMA2(3);
 	

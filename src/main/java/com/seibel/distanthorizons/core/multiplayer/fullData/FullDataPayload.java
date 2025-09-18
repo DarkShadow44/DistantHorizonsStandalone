@@ -9,19 +9,17 @@ import com.seibel.distanthorizons.core.network.messages.fullData.FullDataSplitMe
 import com.seibel.distanthorizons.core.sql.dto.BeaconBeamDTO;
 import com.seibel.distanthorizons.core.sql.dto.FullDataSourceV2DTO;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufAllocator;
-import io.netty.buffer.UnpooledByteBufAllocator;
+import io.netty.buffer.Unpooled;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
 
 /**
  * @see FullDataSplitMessage
  */
-public class FullDataPayload implements INetworkObject, AutoCloseable
+public class FullDataPayload implements INetworkObject
 {
 	private static final AtomicInteger lastBufferId = new AtomicInteger();
 	
@@ -48,8 +46,7 @@ public class FullDataPayload implements INetworkObject, AutoCloseable
 			EDhApiDataCompressionMode compressionMode = Config.Common.LodBuilding.dataCompression.get();
 			try (FullDataSourceV2DTO dataSourceDto = FullDataSourceV2DTO.CreateFromDataSource(fullDataSource, compressionMode))
 			{
-				// TODO this.dtoBuffer = ByteBufAllocator.DEFAULT.buffer();
-                this.dtoBuffer = UnpooledByteBufAllocator.DEFAULT.buffer();
+				this.dtoBuffer = Unpooled.buffer();
 				dataSourceDto.encode(this.dtoBuffer);
 			}
 		}
@@ -86,12 +83,6 @@ public class FullDataPayload implements INetworkObject, AutoCloseable
 	//================//
 	// base overrides //
 	//================//
-	
-	@Override
-	public void close()
-	{
-		this.dtoBuffer.release();
-	}
 	
 	@Override
 	public String toString()

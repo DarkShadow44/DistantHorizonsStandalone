@@ -25,10 +25,10 @@ import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.logging.ConfigBasedLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
-import com.seibel.distanthorizons.core.util.objects.GLMessage;
-import com.seibel.distanthorizons.core.util.objects.GLMessageOutputStream;
+import com.seibel.distanthorizons.core.util.objects.GLMessages.*;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
 import com.seibel.distanthorizons.coreapi.ModInfo;
+import com.seibel.distanthorizons.coreapi.util.StringUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.glfw.GLFW;
@@ -38,30 +38,27 @@ import org.lwjgl.opengl.GLCapabilities;
 import org.lwjgl.opengl.GLUtil;
 
 import java.io.PrintStream;
-import java.lang.invoke.MethodHandles;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * A singleton that holds references to different openGL contexts
  * and GPU capabilities.
- *
- * <p>
- * Helpful OpenGL resources:
- * <p>
- * https://www.seas.upenn.edu/~pcozzi/OpenGLInsights/OpenGLInsights-AsynchronousBufferTransfers.pdf <br>
- * https://learnopengl.com/Advanced-OpenGL/Advanced-Data <br>
- * https://www.slideshare.net/CassEveritt/approaching-zero-driver-overhead <br><br>
- *
- * https://gamedev.stackexchange.com/questions/91995/edit-vbo-data-or-create-a-new-one <br>
- * https://stackoverflow.com/questions/63509735/massive-performance-loss-with-glmapbuffer <br><br>
  */
 public class GLProxy
 {
 	private static final IMinecraftClientWrapper MC = SingletonInjector.INSTANCE.get(IMinecraftClientWrapper.class);
 	
-	private static final Logger LOGGER = DhLoggerBuilder.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
+	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
 	public static final ConfigBasedLogger GL_LOGGER = new ConfigBasedLogger(LogManager.getLogger(GLProxy.class),
 			() -> Config.Common.Logging.logRendererGLEvent.get());
+	
+	public static final Set<String> LOGGED_GL_MESSAGES = Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
+	
+	
 	
 	private static GLProxy instance = null;
 	
@@ -79,7 +76,29 @@ public class GLProxy
 	
 	private final EDhApiGpuUploadMethod preferredUploadMethod;
 	
-	public final GLMessage.Builder vanillaDebugMessageBuilder = GLMessage.Builder.DEFAULT_MESSAGE_BUILDER;
+	public final GLMessageBuilder vanillaDebugMessageBuilder = 
+		new GLMessageBuilder(
+			(type) ->
+			{
+				if (type == EGLMessageType.POP_GROUP)
+					return false;
+				else if (type == EGLMessageType.PUSH_GROUP)
+					return false;
+				else if (type == EGLMessageType.MARKER)
+					return false;
+				else
+					return true;
+			},
+			(severity) ->
+			{
+				// notifications can generally be ignored (if they are logged at all)
+				if (severity == EGLMessageSeverity.NOTIFICATION)
+					return false;
+				else
+					return true;
+			},
+			null
+	);
 	
 	
 	
@@ -258,6 +277,7 @@ public class GLProxy
 	// logging //
 	//=========//
 	
+	/** this method is called on the render thread at the point of the GL Error */
 	private static void logMessage(GLMessage msg)
 	{
 		EDhApiGLErrorHandlingMode errorHandlingMode = Config.Client.Advanced.Debugging.OpenGl.glErrorHandlingMode.get();
@@ -268,44 +288,56 @@ public class GLProxy
 		
 		
 		
-		if (msg.type == GLMessage.EType.ERROR || msg.type == GLMessage.EType.UNDEFINED_BEHAVIOR)
+		boolean onlyLogOnce = Config.Client.Advanced.Debugging.OpenGl.onlyLogGlErrorsOnce.get();
+		String errorMessage = "GL ERROR [" + msg.id + "] from [" + msg.source + "]: [" + msg.message + "]"+(onlyLogOnce ? " this message will only be logged once" : "")+".";
+		if (onlyLogOnce
+			&& !LOGGED_GL_MESSAGES.add(errorMessage))
+		{
+			// this message has already been logged
+			return;
+		}
+		
+		
+		// create an exception so we get a stacktrace of where the message was triggered from
+		RuntimeException exception = new RuntimeException(errorMessage);
+		
+		if (msg.type == EGLMessageType.ERROR || msg.type == EGLMessageType.UNDEFINED_BEHAVIOR)
 		{
 			// critical error
 			
-			GL_LOGGER.error("GL ERROR " + msg.id + " from " + msg.source + ": " + msg.message);
+			GL_LOGGER.error(exception.getMessage(), exception);
 			
 			if (errorHandlingMode == EDhApiGLErrorHandlingMode.LOG_THROW)
 			{
-				throw new RuntimeException("GL ERROR: " + msg);
+				// will probably crash the game,
+				// good for quickly checking if there's a problem while preventing log spam
+				throw exception;
 			}
-			
 		}
 		else
 		{
 			// non-critical log
 			
-			GLMessage.ESeverity severity = msg.severity;
-			RuntimeException ex = new RuntimeException("GL MESSAGE: " + msg);
-			
+			EGLMessageSeverity severity = msg.severity;
 			if (severity == null)
 			{
 				// just in case the message was malformed
-				severity = GLMessage.ESeverity.LOW;
+				severity = EGLMessageSeverity.LOW;
 			}
 			
 			switch (severity)
 			{
 				case HIGH:
-					GL_LOGGER.error("{}", ex);
+					GL_LOGGER.error(exception.getMessage(), exception);
 					break;
 				case MEDIUM:
-					GL_LOGGER.warn("{}", ex);
+					GL_LOGGER.warn(exception.getMessage(), exception);
 					break;
 				case LOW:
-					GL_LOGGER.info("{}", ex);
+					GL_LOGGER.info(exception.getMessage(), exception);
 					break;
 				case NOTIFICATION:
-					GL_LOGGER.debug("{}", ex);
+					GL_LOGGER.debug(exception.getMessage(), exception);
 					break;
 			}
 		}

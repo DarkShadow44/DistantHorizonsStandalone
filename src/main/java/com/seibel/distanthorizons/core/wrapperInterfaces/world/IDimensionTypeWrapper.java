@@ -34,4 +34,6 @@ public interface IDimensionTypeWrapper extends IDhApiDimensionTypeWrapper, IBind
 	
 	boolean isTheEnd();
 	
+	double getCoordinateScale();
+	
 }

@@ -17,7 +17,7 @@
  *    along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.seibel.distanthorizons.core.util.objects;
+package com.seibel.distanthorizons.core.util.objects.GLMessages;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -27,12 +27,12 @@ import java.util.function.Consumer;
 public final class GLMessageOutputStream extends OutputStream
 {
 	final Consumer<GLMessage> func;
-	final GLMessage.Builder builder;
+	final GLMessageBuilder builder;
 	
 	
 	private final ByteArrayOutputStream buffer = new ByteArrayOutputStream();
 	
-	public GLMessageOutputStream(Consumer<GLMessage> func, GLMessage.Builder builder)
+	public GLMessageOutputStream(Consumer<GLMessage> func, GLMessageBuilder builder)
 	{
 		this.func = func;
 		this.builder = builder;
@@ -41,24 +41,30 @@ public final class GLMessageOutputStream extends OutputStream
 	@Override
 	public void write(int b)
 	{
-		buffer.write(b);
-		if (b == '\n') flush();
+		this.buffer.write(b);
+		if (b == '\n')
+		{
+			this.flush();
+		}
 	}
 	
 	@Override
 	public void flush()
 	{
-		String str = buffer.toString();
-		GLMessage msg = builder.add(str);
-		if (msg != null) func.accept(msg);
-		buffer.reset();
+		String str = this.buffer.toString();
+		GLMessage msg = this.builder.add(str);
+		if (msg != null)
+		{
+			this.func.accept(msg);
+		}
+		this.buffer.reset();
 	}
 	
 	@Override
 	public void close() throws IOException
 	{
-		flush();
-		buffer.close();
+		this.flush();
+		this.buffer.close();
 	}
 	
 }

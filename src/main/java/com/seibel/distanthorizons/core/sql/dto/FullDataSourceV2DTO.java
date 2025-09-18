@@ -142,7 +142,16 @@ public class FullDataSourceV2DTO
 	public FullDataSourceV2 createDataSource(@NotNull ILevelWrapper levelWrapper) throws IOException, InterruptedException, DataCorruptedException
 	{
 		FullDataSourceV2 dataSource = FullDataSourceV2.createEmpty(this.pos);
-		this.internalPopulateDataSource(dataSource, levelWrapper, false);
+		try
+		{	
+			this.internalPopulateDataSource(dataSource, levelWrapper, false);
+		}
+		catch (Exception e)
+		{
+			dataSource.close();
+			throw e;
+		}
+		
 		return dataSource;
 	}
 	
@@ -454,7 +463,7 @@ public class FullDataSourceV2DTO
 	{
 		return MoreObjects.toStringHelper(this)
 				.add("levelMinY", this.levelMinY)
-				.add("pos", this.pos)
+				.add("pos", DhSectionPos.toString(this.pos))
 				.add("dataChecksum", this.dataChecksum)
 				.add("compressedDataByteArray length", this.compressedDataByteArray.size())
 				.add("compressedColumnGenStepByteArray length", this.compressedColumnGenStepByteArray.size())
