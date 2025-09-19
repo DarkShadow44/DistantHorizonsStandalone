@@ -52,10 +52,9 @@ dependencies {
     shadowImplementation("it.unimi.dsi:fastutil:8.5.15")
     shadowImplementation("com.github.luben:zstd-jni:1.5.7-4")
     implementation("org.jetbrains:annotations:26.0.2")
-   // implementation("org.joml:joml:1.10.8")
     api("com.github.GTNewHorizons:GTNHLib:0.6.11:dev")
     shadowImplementation("com.google.guava:guava:33.4.8-jre")
     compileOnly("com.github.GTNewHorizons:GT5-Unofficial:5.09.51.469:dev")
     compileOnly("com.github.GTNewHorizons:Angelica:1.0.0-beta56:dev")
-    //devOnlyNonPublishable("com.github.GTNewHorizons:lwjgl3ify:2.1.11:dev")
+    compileOnly("com.falsepattern:rple-mc1.7.10:2.0.3")
 }

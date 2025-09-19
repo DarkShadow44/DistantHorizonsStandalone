@@ -28,6 +28,7 @@ import com.seibel.distanthorizons.core.util.LodUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.block.IBlockStateWrapper;
 
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
+import com.seibel.distanthorizons.forge.ForgeMain;
 import cpw.mods.fml.common.registry.GameData;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMaps;
@@ -364,6 +365,11 @@ public class BlockStateWrapper implements IBlockStateWrapper
         if (this.blockState == null) {
             return 0;
         }
+
+        if (ForgeMain.rpleCompat != null) {
+            return ForgeMain.rpleCompat.getColor(blockState);
+        }
+
         return Math.min(15, this.blockState.block.getLightValue());
     }
 

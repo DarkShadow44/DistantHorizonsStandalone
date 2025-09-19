@@ -59,6 +59,7 @@ public class ForgeMain extends AbstractModInitializer
     public static boolean isHodgePodgeInstalled;
     public static GTCompat gtCompat;
     public static AngelicaCompat angelicaCompat;
+    public static RPLECompat rpleCompat;
 
     private boolean enableGTCompat() {
         try {
@@ -78,6 +79,9 @@ public class ForgeMain extends AbstractModInitializer
             }
             if (Loader.isModLoaded("angelica")) {
                 angelicaCompat = new AngelicaCompat();
+            }
+            if (Loader.isModLoaded("rple")) {
+                rpleCompat = new RPLECompat();
             }
         }
         else
