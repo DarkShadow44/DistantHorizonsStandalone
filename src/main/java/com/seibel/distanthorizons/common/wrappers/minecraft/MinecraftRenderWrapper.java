@@ -140,7 +140,11 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
     @Override
     public int getRenderDistance()
     {
-       return MC.gameSettings.renderDistanceChunks;
+        int offset = -2;
+        if (ForgeMain.angelicaCompat != null) {
+            offset = -4;
+        }
+       return MC.gameSettings.renderDistanceChunks + offset;
     }
 
     @Override
