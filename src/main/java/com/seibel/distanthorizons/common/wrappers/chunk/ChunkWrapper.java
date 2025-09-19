@@ -98,7 +98,10 @@ public class ChunkWrapper implements IChunkWrapper
             } else {
                 ServerThreadUtil.addScheduledTask(this::fillBiomeMap).get();
             }
-        } catch (InterruptedException | ExecutionException e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Unable to handle interruption on ", e);
+        } catch (ExecutionException e) {
             throw new RuntimeException(e);
         }
     }
