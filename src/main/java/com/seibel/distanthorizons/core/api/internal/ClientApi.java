@@ -689,23 +689,6 @@ public class ClientApi
 	}
 	private void detectAndSendBootTimeWarnings()
 	{
-		// dev build
-		if (ModInfo.IS_DEV_BUILD 
-			&& !this.isDevBuildMessagePrinted && MC_CLIENT.playerExists())
-		{
-			this.isDevBuildMessagePrinted = true;
-			this.lastStaticWarningMessageSentMsTime = System.currentTimeMillis();
-			
-			// remind the user that this is a development build
-			String message =
-					// green text
-					"\u00A72" + "Distant Horizons: nightly/unstable build, version: [" + ModInfo.VERSION+"]." + "\u00A7r\n" +
-							"Issues may occur with this version.\n" +
-							"Here be dragons!\n";
-			MC_CLIENT.sendChatMessage(message);
-		}
-		
-		
 		// memory
 		if (this.staticStartupMessageSentRecently()) return;
 		if (!this.lowMemoryWarningPrinted 
