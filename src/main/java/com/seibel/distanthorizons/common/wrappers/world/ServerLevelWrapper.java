@@ -131,7 +131,7 @@ public class ServerLevelWrapper implements IServerLevelWrapper
             return null;
         }
 
-        ChunkWrapper wrapper = new ChunkWrapper(chunk, this);
+        ChunkWrapper wrapper = new ChunkWrapper(chunk, this, false);
         if (!wrapper.isChunkReady())
         {
             return null;

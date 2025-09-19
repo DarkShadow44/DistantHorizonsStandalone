@@ -156,7 +156,7 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
             return;
         }
 		ILevelWrapper levelWrapper = ProxyUtil.getLevelWrapper(GetEventLevel(event));
-		ChunkWrapper chunk = new ChunkWrapper(event.getChunk(), levelWrapper);
+		ChunkWrapper chunk = new ChunkWrapper(event.getChunk(), levelWrapper, true);
         chunkLoadEvents.add(new ChunkLoadEvent(chunk, levelWrapper));
 	}
 
@@ -167,7 +167,7 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
             return;
         }
         ILevelWrapper levelWrapper = ProxyUtil.getLevelWrapper(GetEventLevel(event));
-        ChunkWrapper chunk = new ChunkWrapper(event.getChunk(), levelWrapper);
+        ChunkWrapper chunk = new ChunkWrapper(event.getChunk(), levelWrapper, true);
         ServerApi.INSTANCE.serverChunkSaveEvent(chunk, levelWrapper);
     }
 
@@ -206,7 +206,7 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
             {
                 Chunk chunk = level.getChunkFromBlockCoords(event.x, event.z);
                 ILevelWrapper wrappedLevel = ProxyUtil.getLevelWrapper(level);
-                SharedApi.INSTANCE.chunkBlockChangedEvent(new ChunkWrapper(chunk, wrappedLevel), wrappedLevel);
+                SharedApi.INSTANCE.chunkBlockChangedEvent(new ChunkWrapper(chunk, wrappedLevel, false), wrappedLevel);
             });
         }
     }

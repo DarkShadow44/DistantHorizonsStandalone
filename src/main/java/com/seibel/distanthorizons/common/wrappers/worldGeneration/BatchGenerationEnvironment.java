@@ -725,7 +725,7 @@ public final class BatchGenerationEnvironment extends AbstractBatchGenerationEnv
 
                             if (chunk != null)
                             {
-                                ChunkWrapper chunkWrapper = new ChunkWrapper(chunk, this.serverlevel.getLevelWrapper());
+                                ChunkWrapper chunkWrapper = new ChunkWrapper(chunk, this.serverlevel.getLevelWrapper(), false);
                                 chunkWrappersByDhPos.put(new DhChunkPos(chunkPos.x, chunkPos.z), chunkWrapper);
                             }
                         }, runnableQueue::add);

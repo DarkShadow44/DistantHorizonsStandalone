@@ -103,13 +103,17 @@ public class ChunkWrapper implements IChunkWrapper
         }
     }
 
-    public ChunkWrapper(Chunk chunk, ILevelWrapper wrappedLevel)
+    public ChunkWrapper(Chunk chunk, ILevelWrapper wrappedLevel, boolean certainMainThread)
     {
         this.chunk = chunk;
         this.wrappedLevel = wrappedLevel;
         this.chunkPos = new DhChunkPos(chunk.xPosition, chunk.zPosition);
 
-       runFillBiomeMap(chunk.worldObj.isRemote);
+        if (certainMainThread) {
+            fillBiomeMap();
+        } else {
+            runFillBiomeMap(chunk.worldObj.isRemote);
+        }
 
         // use DH heightmaps if requested
         if (Config.Common.LodBuilding.recalculateChunkHeightmaps.get())

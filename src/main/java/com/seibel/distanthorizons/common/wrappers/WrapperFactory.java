@@ -180,7 +180,7 @@ public class WrapperFactory implements IWrapperFactory
 					: ServerLevelWrapper.getWrapper((WorldServer) level);
 
 
-			return new ChunkWrapper(chunk, levelWrapper);
+			return new ChunkWrapper(chunk, levelWrapper, false);
 		}
 		// incorrect number of parameters from the API
 		else

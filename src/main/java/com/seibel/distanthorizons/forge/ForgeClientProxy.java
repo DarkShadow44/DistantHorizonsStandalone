@@ -179,7 +179,7 @@ public class ForgeClientProxy implements AbstractModInitializer.IEventProxy
 	private void onBlockChangeEvent(World level, Chunk chunk)
 	{
 		ILevelWrapper wrappedLevel = ProxyUtil.getLevelWrapper(level);
-		SharedApi.INSTANCE.chunkBlockChangedEvent(new ChunkWrapper(chunk, wrappedLevel), wrappedLevel);
+		SharedApi.INSTANCE.chunkBlockChangedEvent(new ChunkWrapper(chunk, wrappedLevel, false), wrappedLevel);
 	}
 
 	@SubscribeEvent
@@ -188,7 +188,7 @@ public class ForgeClientProxy implements AbstractModInitializer.IEventProxy
 		if (MC.clientConnectedToDedicatedServer())
 		{
 			ILevelWrapper wrappedLevel = ProxyUtil.getLevelWrapper(GetEventLevel(event));
-			IChunkWrapper chunk = new ChunkWrapper(event.getChunk(), wrappedLevel);
+			IChunkWrapper chunk = new ChunkWrapper(event.getChunk(), wrappedLevel, true);
 			SharedApi.INSTANCE.chunkLoadEvent(chunk, wrappedLevel);
 		}
 	}
