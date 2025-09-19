@@ -290,7 +290,7 @@ public class WorldGenModule implements Closeable
 			remainingChunkCount += this.worldGenerationQueue.getQueuedChunkCount();
 			String remainingChunkCountStr = F3Screen.NUMBER_FORMAT.format(remainingChunkCount);
 			
-			String message = "DH is loading chunks. " + remainingChunkCountStr + " left.";
+			String message = "DH is generating chunks. " + remainingChunkCountStr + " left.";
 			
 			// show a message about how to disable progress logging if requested
 			int msToShowDisableInstructions = Config.Common.WorldGenerator.generationProgressDisableMessageDisplayTimeInSeconds.get() * 1_000;
@@ -312,7 +312,12 @@ public class WorldGenModule implements Closeable
 			if (chunksPerSec > 0)
 			{
 				long estimatedRemainingTime = (long) (remainingChunkCount / chunksPerSec);
-				message += " ETA: " + FormatUtil.formatEta(Duration.ofSeconds(estimatedRemainingTime));//+ " at " + F3Screen.NUMBER_FORMAT.format(chunksPerSec) + " chunks/sec";
+				message += " ETA: " + FormatUtil.formatEta(Duration.ofSeconds(estimatedRemainingTime));
+				
+				if (Config.Common.WorldGenerator.generationProgressIncludeChunksPerSecond.get())
+				{
+					message += " at " + F3Screen.NUMBER_FORMAT.format(chunksPerSec) + " chunks/sec";
+				}
 			}
 			
 			// only log if there are chunks needing to be generated

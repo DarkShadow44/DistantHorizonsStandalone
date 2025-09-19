@@ -185,6 +185,7 @@ public class LodDataBuilder
 					}
 					
 					// Process blocks from top to bottom
+					boolean forceSingleBlock = false;
 					for (; y >= minBuildHeight; y--)
 					{
 						IBiomeWrapper newBiome = chunkWrapper.getBiome(relBlockX, y, relBlockZ);
@@ -193,8 +194,17 @@ public class LodDataBuilder
 						byte newSkyLight = (byte) chunkWrapper.getDhSkyLight(relBlockX, y + 1, relBlockZ);
 						
 						// Save the biome/block change if different from previous
-						if (!newBiome.equals(biome) || !newBlockState.equals(blockState))
+						if (!newBiome.equals(biome) || !newBlockState.equals(blockState) || forceSingleBlock)
 						{
+							// if the previous block potentially colors this block
+							// make this block a single entry, aka add the next block even if it is the same
+							// this is done to allow fire, snow, flowers, etc. to properly color the top of columns vs the whole column
+							forceSingleBlock = 
+									!blockState.isAir()
+									&& !blockState.isSolid()
+									&& !blockState.isLiquid()
+									&& blockState.getOpacity() != LodUtil.BLOCK_FULLY_OPAQUE;
+							
 							longs.add(FullDataPointUtil.encode(mappedId, lastY - y, y + 1 - inclusiveMinBuildHeight, blockLight, skyLight));
 							biome = newBiome;
 							blockState = newBlockState;

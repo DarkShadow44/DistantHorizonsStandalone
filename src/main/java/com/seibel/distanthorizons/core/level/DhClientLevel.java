@@ -36,17 +36,14 @@ import com.seibel.distanthorizons.core.multiplayer.client.SyncOnLoadRequestQueue
 import com.seibel.distanthorizons.core.network.event.ScopedNetworkEventSource;
 import com.seibel.distanthorizons.core.network.messages.fullData.FullDataPartialUpdateMessage;
 import com.seibel.distanthorizons.core.pos.DhChunkPos;
-import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos;
 import com.seibel.distanthorizons.core.render.RenderBufferHandler;
 import com.seibel.distanthorizons.core.render.renderer.generic.GenericObjectRenderer;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos2D;
 import com.seibel.distanthorizons.core.render.renderer.DebugRenderer;
 import com.seibel.distanthorizons.core.sql.dto.FullDataSourceV2DTO;
 import com.seibel.distanthorizons.core.util.threading.ThreadPoolUtil;
-import com.seibel.distanthorizons.core.wrapperInterfaces.block.IBlockStateWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IProfilerWrapper;
-import com.seibel.distanthorizons.core.wrapperInterfaces.world.IBiomeWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
 import org.apache.logging.log4j.LogManager;
@@ -298,9 +295,6 @@ public class DhClientLevel extends AbstractDhLevel implements IDhClientLevel
 	//=========//
 	
 	@Override
-	public int computeBaseColor(DhBlockPos pos, IBiomeWrapper biome, IBlockStateWrapper block) { return this.levelWrapper.getBlockColor(pos, biome, block); }
-	
-	@Override
 	public IClientLevelWrapper getClientLevelWrapper() { return this.levelWrapper; }
 	
 	@Override
@@ -314,6 +308,8 @@ public class DhClientLevel extends AbstractDhLevel implements IDhClientLevel
 	
 	@Override
 	public int getMinY() { return this.levelWrapper.getMinHeight(); }
+	@Override
+	public int getMaxY() { return this.levelWrapper.getMaxHeight(); }
 	
 	@Override
 	public FullDataSourceProviderV2 getFullDataProvider() { return this.dataFileHandler; }

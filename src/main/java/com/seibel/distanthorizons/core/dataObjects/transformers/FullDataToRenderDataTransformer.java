@@ -26,7 +26,6 @@ import com.seibel.distanthorizons.core.dataObjects.fullData.sources.FullDataSour
 import com.seibel.distanthorizons.core.dataObjects.render.ColumnRenderSource;
 import com.seibel.distanthorizons.core.dataObjects.render.columnViews.ColumnArrayView;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
-import com.seibel.distanthorizons.core.level.IDhClientLevel;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pooling.PhantomArrayListCheckout;
 import com.seibel.distanthorizons.core.pooling.PhantomArrayListPool;
@@ -37,6 +36,7 @@ import com.seibel.distanthorizons.core.wrapperInterfaces.IWrapperFactory;
 import com.seibel.distanthorizons.core.wrapperInterfaces.block.IBlockStateWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IBiomeWrapper;
+import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
 import com.seibel.distanthorizons.coreapi.util.BitShiftUtil;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
@@ -66,13 +66,13 @@ public class FullDataToRenderDataTransformer
 	//==============================//
 	
 	@Nullable
-	public static ColumnRenderSource transformFullDataToRenderSource(@Nullable FullDataSourceV2 fullDataSource, @Nullable IDhClientLevel level)
+	public static ColumnRenderSource transformFullDataToRenderSource(@Nullable FullDataSourceV2 fullDataSource, @Nullable IClientLevelWrapper levelWrapper)
 	{
 		if (fullDataSource == null)
 		{
 			return null;
 		}
-		else if (level == null)
+		else if (levelWrapper == null)
 		{
 			// if the client is no longer loaded in the world, render sources cannot be created 
 			return null;
@@ -81,7 +81,7 @@ public class FullDataToRenderDataTransformer
 		
 		try
 		{
-			return transformCompleteFullDataToColumnData(level, fullDataSource);
+			return transformCompleteFullDataToColumnData(levelWrapper, fullDataSource);
 		}
 		catch (InterruptedException e)
 		{
@@ -102,7 +102,7 @@ public class FullDataToRenderDataTransformer
 	 * @throws InterruptedException Can be caused by interrupting the thread upstream.
 	 * Generally thrown if the method is running after the client leaves the current world.
 	 */
-	private static ColumnRenderSource transformCompleteFullDataToColumnData(IDhClientLevel level, FullDataSourceV2 fullDataSource) throws InterruptedException
+	private static ColumnRenderSource transformCompleteFullDataToColumnData(IClientLevelWrapper levelWrapper, FullDataSourceV2 fullDataSource) throws InterruptedException
 	{
  		final long pos = fullDataSource.getPos();
 		final byte dataDetail = fullDataSource.getDataDetailLevel();
@@ -111,7 +111,7 @@ public class FullDataToRenderDataTransformer
 		
 		
 		
-		final ColumnRenderSource columnSource = ColumnRenderSource.createEmpty(pos, vertSize, level.getMinY());
+		final ColumnRenderSource columnSource = ColumnRenderSource.createEmpty(pos, vertSize, levelWrapper.getMinHeight());
 		if (fullDataSource.isEmpty)
 		{
 			return columnSource;
@@ -121,9 +121,9 @@ public class FullDataToRenderDataTransformer
 		int baseX = DhSectionPos.getMinCornerBlockX(pos);
 		int baseZ = DhSectionPos.getMinCornerBlockZ(pos);
 		
-		for (int x = 0; x < DhSectionPos.getWidthCountForLowerDetailedSection(pos, dataDetail); x++)
+		for (int x = 0; x < FullDataSourceV2.WIDTH; x++)
 		{
-			for (int z = 0; z < DhSectionPos.getWidthCountForLowerDetailedSection(pos, dataDetail); z++)
+			for (int z = 0; z < FullDataSourceV2.WIDTH; z++)
 			{
 				throwIfThreadInterrupted();
 				
@@ -131,7 +131,7 @@ public class FullDataToRenderDataTransformer
 				LongArrayList dataColumn = fullDataSource.get(x, z);
 				
 				updateOrReplaceRenderDataViewColumnWithFullDataColumn(
-						level, fullDataSource.mapping, 
+						levelWrapper, fullDataSource.mapping, 
 						// bitshift is to account for LODs with a detail level greater than 0 so the block pos is correct
 						baseX + BitShiftUtil.pow(x,dataDetail), baseZ + BitShiftUtil.pow(z,dataDetail), 
 						columnArrayView, dataColumn);
@@ -145,7 +145,7 @@ public class FullDataToRenderDataTransformer
 	
 	/** Updates the given {@link ColumnArrayView} to match the incoming Full data {@link LongArrayList} */
 	public static void updateOrReplaceRenderDataViewColumnWithFullDataColumn(
-			IDhClientLevel level, 
+			IClientLevelWrapper levelWrapper, 
 			FullDataPointIdMap fullDataMapping, int blockX, int blockZ, 
 			ColumnArrayView columnArrayView, 
 			LongArrayList fullDataColumn)
@@ -160,7 +160,7 @@ public class FullDataToRenderDataTransformer
 		if (fullDataLength <= columnArrayView.verticalSize())
 		{
 			// Directly use the arrayView since it fits.
-			setRenderColumnView(level, fullDataMapping, blockX, blockZ, columnArrayView, fullDataColumn);
+			setRenderColumnView(levelWrapper, fullDataMapping, blockX, blockZ, columnArrayView, fullDataColumn);
 		}
 		else
 		{
@@ -171,7 +171,7 @@ public class FullDataToRenderDataTransformer
 			{
 				// expand the ColumnArrayView to fit the new larger max vertical size
 				ColumnArrayView newColumnArrayView = new ColumnArrayView(dataArrayList, fullDataLength, 0, fullDataLength);
-				setRenderColumnView(level, fullDataMapping, blockX, blockZ, newColumnArrayView, fullDataColumn);
+				setRenderColumnView(levelWrapper, fullDataMapping, blockX, blockZ, newColumnArrayView, fullDataColumn);
 				columnArrayView.changeVerticalSizeFrom(newColumnArrayView);
 			}
 			finally
@@ -181,7 +181,7 @@ public class FullDataToRenderDataTransformer
 		}
 	}
 	private static void setRenderColumnView(
-			IDhClientLevel level, FullDataPointIdMap fullDataMapping,
+			IClientLevelWrapper levelWrapper, FullDataPointIdMap fullDataMapping,
 			int blockX, int blockZ,
 			ColumnArrayView renderColumnData, LongArrayList fullColumnData)
 	{
@@ -192,18 +192,18 @@ public class FullDataToRenderDataTransformer
 		boolean ignoreNonCollidingBlocks = (Config.Client.Advanced.Graphics.Quality.blocksToIgnore.get() == EDhApiBlocksToAvoid.NON_COLLIDING);
 		boolean colorBelowWithAvoidedBlocks = Config.Client.Advanced.Graphics.Quality.tintWithAvoidedBlocks.get();
 		
-		HashSet<IBlockStateWrapper> blockStatesToIgnore = WRAPPER_FACTORY.getRendererIgnoredBlocks(level.getLevelWrapper());
-		HashSet<IBlockStateWrapper> caveBlockStatesToIgnore = WRAPPER_FACTORY.getRendererIgnoredCaveBlocks(level.getLevelWrapper());
+		HashSet<IBlockStateWrapper> blockStatesToIgnore = WRAPPER_FACTORY.getRendererIgnoredBlocks(levelWrapper);
+		HashSet<IBlockStateWrapper> caveBlockStatesToIgnore = WRAPPER_FACTORY.getRendererIgnoredCaveBlocks(levelWrapper);
 		
-		int caveCullingMaxY = Config.Client.Advanced.Graphics.Culling.caveCullingHeight.get() - level.getMinY();
+		int caveCullingMaxY = Config.Client.Advanced.Graphics.Culling.caveCullingHeight.get() - levelWrapper.getMinHeight();
 		boolean caveCullingEnabled = 
 			Config.Client.Advanced.Graphics.Culling.enableCaveCulling.get()
 			&& (
 				// dimensions with a ceiling will be all caves so we don't want cave culling
-				!level.getLevelWrapper().hasCeiling()
+				!levelWrapper.hasCeiling()
 				// the end has a lot of overhangs with 0 lighting above the void, which look broken with
 				// the current cave culling logic (this could probably be improved, but just skipping it works best for now)
-				&& !level.getLevelWrapper().getDimensionType().isTheEnd()
+				&& !levelWrapper.getDimensionType().isTheEnd()
 			);
 		
 		boolean isColumnVoid = true;
@@ -236,7 +236,7 @@ public class FullDataToRenderDataTransformer
 			int blockLight = FullDataPointUtil.getBlockLight(fullData);
 			int skyLight = FullDataPointUtil.getSkyLight(fullData);
 			
-			mutableBlockPos.setY(bottomY + level.getMinY());
+			mutableBlockPos.setY(bottomY + levelWrapper.getMinHeight());
 			
 			IBiomeWrapper biome;
 			IBlockStateWrapper block;
@@ -250,7 +250,7 @@ public class FullDataToRenderDataTransformer
 				if (!brokenPos.contains(fullDataMapping.getPos()))
 				{
 					brokenPos.add(fullDataMapping.getPos());
-					String levelId = level.getLevelWrapper().getDhIdentifier();
+					String levelId = levelWrapper.getDhIdentifier();
 					LOGGER.warn("Unable to get data point with id ["+id+"] " +
 							"(Max possible ID: ["+fullDataMapping.getMaxValidId()+"]) " +
 							"for pos ["+fullDataMapping.getPos()+"] in level ["+levelId+"]. " +
@@ -324,7 +324,8 @@ public class FullDataToRenderDataTransformer
 			{
 				if (colorBelowWithAvoidedBlocks)
 				{
-					int tempColor = level.computeBaseColor(mutableBlockPos, biome, block);
+					int tempColor = levelWrapper.getBlockColor(mutableBlockPos, biome, block);
+					
 					// don't transfer the color when alpha is 0
 					// this prevents issues if grass is transparent
 					if (ColorUtil.getAlpha(tempColor) != 0)
@@ -344,7 +345,7 @@ public class FullDataToRenderDataTransformer
 			if (colorToApplyToNextBlock == -1)
 			{
 				// use this block's color
-				color = level.computeBaseColor(mutableBlockPos, biome, block);
+				color = levelWrapper.getBlockColor(mutableBlockPos, biome, block);
 			}
 			else
 			{

@@ -19,6 +19,8 @@
 
 package com.seibel.distanthorizons.core.level;
 
+import com.seibel.distanthorizons.api.interfaces.render.IDhApiRenderableBoxGroup;
+import com.seibel.distanthorizons.api.objects.render.DhApiRenderableBox;
 import com.seibel.distanthorizons.core.dataObjects.fullData.sources.FullDataSourceV2;
 import com.seibel.distanthorizons.core.file.fullDatafile.FullDataSourceProviderV2;
 import com.seibel.distanthorizons.core.file.fullDatafile.GeneratedFullDataSourceProvider;
@@ -29,6 +31,7 @@ import com.seibel.distanthorizons.core.render.renderer.generic.GenericObjectRend
 import com.seibel.distanthorizons.core.sql.dto.BeaconBeamDTO;
 import com.seibel.distanthorizons.core.sql.repo.BeaconBeamRepo;
 import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.IChunkWrapper;
+import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
 import org.jetbrains.annotations.Nullable;
 
@@ -41,6 +44,7 @@ public interface IDhLevel extends AutoCloseable, GeneratedFullDataSourceProvider
 	void worldGenTick();
 	
 	int getMinY();
+	int getMaxY();
 	
 	/**
 	 * May return either a client or server level wrapper. <br>
@@ -60,6 +64,7 @@ public interface IDhLevel extends AutoCloseable, GeneratedFullDataSourceProvider
 	void updateBeaconBeamsForChunkPos(DhChunkPos chunkPos, List<BeaconBeamDTO> activeBeamList);
 	void updateBeaconBeamsForSectionPos(long sectionPos, List<BeaconBeamDTO> activeBeamList);
 	
+	/** @return null on server-only levels */
 	@Nullable
 	BeaconBeamRepo getBeaconBeamRepo();
 	

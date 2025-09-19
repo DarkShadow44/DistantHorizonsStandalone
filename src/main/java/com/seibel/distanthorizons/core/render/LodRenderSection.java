@@ -22,6 +22,8 @@ package com.seibel.distanthorizons.core.render;
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
 import com.google.common.cache.Cache;
+import com.seibel.distanthorizons.api.interfaces.render.IDhApiRenderableBoxGroup;
+import com.seibel.distanthorizons.api.objects.render.DhApiRenderableBox;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.dataObjects.fullData.sources.FullDataSourceV2;
 import com.seibel.distanthorizons.core.dataObjects.render.CachedColumnRenderSource;
@@ -47,6 +49,7 @@ import com.seibel.distanthorizons.core.util.KeyedLockContainer;
 import com.seibel.distanthorizons.core.util.threading.PriorityTaskPicker;
 import com.seibel.distanthorizons.core.util.threading.ThreadPoolUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
+import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.Nullable;
@@ -73,6 +76,7 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 	public final long pos;
 	
 	private final IDhClientLevel level;
+	private final IClientLevelWrapper levelWrapper;
 	@WillNotClose
 	private final FullDataSourceProviderV2 fullDataSourceProvider;
 	private final LodQuadTree quadTree;
@@ -149,12 +153,13 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 		this.cachedRenderSourceByPos = cachedRenderSourceByPos;
 		this.renderLoadLockContainer = renderLoadLockContainer;
 		this.level = level;
+		this.levelWrapper = level.getClientLevelWrapper();
 		this.fullDataSourceProvider = fullDataSourceProvider;
 		this.uploadTaskCountRef = uploadTaskCountRef;
 		
 		this.beaconRenderHandler = this.quadTree.beaconRenderHandler;
 		this.beaconBeamRepo = this.level.getBeaconBeamRepo();
-		
+			
 		DebugRenderer.register(this, Config.Client.Advanced.Debugging.DebugWireframe.showRenderSectionStatus);
 	}
 	
@@ -264,6 +269,10 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 					adjacentLoadFutures[1] = this.getRenderSourceForPosAsync(DhSectionPos.getAdjacentPos(this.pos, EDhDirection.SOUTH));
 					adjacentLoadFutures[2] = this.getRenderSourceForPosAsync(DhSectionPos.getAdjacentPos(this.pos, EDhDirection.EAST));
 					adjacentLoadFutures[3] = this.getRenderSourceForPosAsync(DhSectionPos.getAdjacentPos(this.pos, EDhDirection.WEST));
+					//adjacentLoadFutures[0] = CompletableFuture.completedFuture(null);
+					//adjacentLoadFutures[1] = CompletableFuture.completedFuture(null);
+					//adjacentLoadFutures[2] = CompletableFuture.completedFuture(null);
+					//adjacentLoadFutures[3] = CompletableFuture.completedFuture(null);
 					return CompletableFuture.allOf(adjacentLoadFutures).thenRun(() ->
 					{
 						try (CachedColumnRenderSource northRenderSource = adjacentLoadFutures[0].get();
@@ -342,7 +351,7 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 				// generate new render source
 				try (FullDataSourceV2 fullDataSource = this.fullDataSourceProvider.get(pos))
 				{
-					newCachedRenderSource.columnRenderSource = FullDataToRenderDataTransformer.transformFullDataToRenderSource(fullDataSource, this.level);
+					newCachedRenderSource.columnRenderSource = FullDataToRenderDataTransformer.transformFullDataToRenderSource(fullDataSource, this.levelWrapper);
 				}
 				catch (Exception e)
 				{
@@ -503,7 +512,8 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 	
 	public void tryQueuingMissingLodRetrieval()
 	{
-		if (this.fullDataSourceProvider.canRetrieveMissingDataSources() && this.fullDataSourceProvider.canQueueRetrieval())
+		if (this.fullDataSourceProvider.canRetrieveMissingDataSources() 
+			&& this.fullDataSourceProvider.canQueueRetrieval())
 		{
 			// calculate the missing positions if not already done
 			if (this.missingGenerationPosFunc == null)
@@ -620,7 +630,6 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 			}
 		}
 	}
-	
 	
 	
 	

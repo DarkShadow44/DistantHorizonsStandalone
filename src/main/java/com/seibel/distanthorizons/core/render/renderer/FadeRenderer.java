@@ -20,7 +20,6 @@
 package com.seibel.distanthorizons.core.render.renderer;
 
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
-import com.seibel.distanthorizons.core.level.DhClientLevel;
 import com.seibel.distanthorizons.core.render.glObject.GLState;
 import com.seibel.distanthorizons.core.render.renderer.shaders.FadeApplyShader;
 import com.seibel.distanthorizons.core.render.renderer.shaders.FadeShader;

@@ -284,7 +284,7 @@ public class ColumnRenderBufferBuilder
 			}// for z
 		}// for x
 		
-		quadBuilder.finalizeData();
+		quadBuilder.mergeQuads();
 	}
 	private static void addLodToBuffer(
 			IDhClientLevel clientLevel,

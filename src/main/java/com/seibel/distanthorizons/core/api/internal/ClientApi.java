@@ -597,13 +597,21 @@ public class ClientApi
 	public void renderFade(Mat4f mcModelViewMatrix, Mat4f mcProjectionMatrix, float partialTicks, IClientLevelWrapper level)
 	{
 		// only fade when DH is rendering
-		if (Config.Client.Advanced.Debugging.rendererMode.get() == EDhApiRendererMode.DEFAULT
-			// only fade when requested
-			&& Config.Client.Advanced.Graphics.Quality.vanillaFadeMode.get() != EDhApiMcRenderingFadeMode.NONE
-			// don't fade when Iris shaders are active, otherwise the rendering can get weird
-			&& !DhApiRenderProxy.INSTANCE.getDeferTransparentRendering())
+		if (Config.Client.Advanced.Debugging.rendererMode.get() == EDhApiRendererMode.DEFAULT)
 		{
-			FadeRenderer.INSTANCE.render(mcModelViewMatrix, mcProjectionMatrix, partialTicks, level);
+			boolean renderFade =
+				(
+					// only fade when requested
+					Config.Client.Advanced.Graphics.Quality.vanillaFadeMode.get() != EDhApiMcRenderingFadeMode.NONE
+					// or if LOD-only mode is enabled (fading is used to remove the MC render pass)
+					|| Config.Client.Advanced.Debugging.lodOnlyMode.get()
+				)
+				// don't fade when Iris shaders are active, otherwise the rendering can get weird
+				&& !DhApiRenderProxy.INSTANCE.getDeferTransparentRendering();
+			if (renderFade)
+			{
+				FadeRenderer.INSTANCE.render(mcModelViewMatrix, mcProjectionMatrix, partialTicks, level);
+			}
 		}
 	}
 	

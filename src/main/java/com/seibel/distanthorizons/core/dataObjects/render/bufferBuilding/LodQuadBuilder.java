@@ -22,6 +22,7 @@ package com.seibel.distanthorizons.core.dataObjects.render.bufferBuilding;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.seibel.distanthorizons.api.enums.config.EDhApiGrassSideRendering;
 import com.seibel.distanthorizons.api.enums.rendering.EDhApiBlockMaterial;
@@ -210,9 +211,6 @@ public class LodQuadBuilder
 	// data finalizing //
 	//=================//
 	
-	/** runs any final data cleanup, merging, etc. */
-	public void finalizeData() { this.mergeQuads(); }
-	
 	/** Uses Greedy meshing to merge this builder's Quads. */
 	public void mergeQuads()
 	{
@@ -251,7 +249,9 @@ public class LodQuadBuilder
 	private static long mergeQuadsInternal(ArrayList<BufferQuad>[] list, int directionIndex, BufferMergeDirectionEnum mergeDirection)
 	{
 		if (list[directionIndex].size() <= 1)
+		{
 			return 0;
+		}
 		
 		list[directionIndex].sort((objOne, objTwo) -> objOne.compare(objTwo, mergeDirection));
 		

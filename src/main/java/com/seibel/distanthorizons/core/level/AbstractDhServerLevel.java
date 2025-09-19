@@ -328,6 +328,8 @@ public abstract class AbstractDhServerLevel extends AbstractDhLevel implements I
 	
 	@Override
 	public int getMinY() { return this.getLevelWrapper().getMinHeight(); }
+	@Override
+	public int getMaxY() { return this.getLevelWrapper().getMaxHeight(); }
 	
 	@Override
 	public IServerLevelWrapper getServerLevelWrapper() { return this.serverLevelWrapper; }

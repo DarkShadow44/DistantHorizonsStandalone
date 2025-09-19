@@ -42,6 +42,7 @@ public interface IConfigEntry<T>
 	
 	void set(T newValue);
 	T get();
+	/** gets the option ignoring what the API has overridden */
 	T getTrueValue();
 	
 	/** Sets the value without saving */

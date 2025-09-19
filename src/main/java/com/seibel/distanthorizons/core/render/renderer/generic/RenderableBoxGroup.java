@@ -211,6 +211,10 @@ public class RenderableBoxGroup
 		@Override 
 		public boolean removeIf(Predicate<? super DhApiRenderableBox> filter) { return this.boxList.removeIf(filter); }
 		@Override 
+		public boolean remove(Object obj) { return this.boxList.remove(obj); }
+		@Override 
+		public DhApiRenderableBox remove(int index) { return this.boxList.remove(index); }
+		@Override 
 		public void replaceAll(UnaryOperator<DhApiRenderableBox> operator) { this.boxList.replaceAll(operator); }
 		@Override 
 		public void sort(Comparator<? super DhApiRenderableBox> comparator) { this.boxList.sort(comparator); }

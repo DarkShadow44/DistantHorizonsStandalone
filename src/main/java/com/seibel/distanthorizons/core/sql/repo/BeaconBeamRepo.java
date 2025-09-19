@@ -35,7 +35,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 public class BeaconBeamRepo extends AbstractDhRepo<DhBlockPos, BeaconBeamDTO>
 {
@@ -96,20 +95,20 @@ public class BeaconBeamRepo extends AbstractDhRepo<DhBlockPos, BeaconBeamDTO>
 		return dto;
 	}
 	
+	private final String insertSqlTemplate =
+		"INSERT INTO "+this.getTableName() + " (\n" +
+		"   BlockPosX, BlockPosY, BlockPosZ, \n" +
+		"   ColorR, ColorG, ColorB, \n" +
+		"   LastModifiedUnixDateTime, CreatedUnixDateTime) \n" +
+		"VALUES( \n" +
+		"    ?, ?, ?, \n" +
+		"    ?, ?, ?, \n" +
+		"    ?, ? \n" +
+		");";
 	@Override
 	public PreparedStatement createInsertStatement(BeaconBeamDTO dto) throws SQLException
 	{
-		String sql =
-			"INSERT INTO "+this.getTableName() + " (\n" +
-			"   BlockPosX, BlockPosY, BlockPosZ, \n" +
-			"   ColorR, ColorG, ColorB, \n" +
-			"   LastModifiedUnixDateTime, CreatedUnixDateTime) \n" +
-			"VALUES( \n" +
-			"    ?, ?, ?, \n" +
-			"    ?, ?, ?, \n" +
-			"    ?, ? \n" +
-			");";
-		PreparedStatement statement = this.createPreparedStatement(sql);
+		PreparedStatement statement = this.createPreparedStatement(this.insertSqlTemplate);
 		if (statement == null)
 		{
 			return null;
@@ -131,16 +130,16 @@ public class BeaconBeamRepo extends AbstractDhRepo<DhBlockPos, BeaconBeamDTO>
 		return statement;
 	}
 	
+	private final String updateSqlTemplate =
+		"UPDATE "+this.getTableName()+" \n" +
+		"SET \n" +
+		"    ColorR = ?, ColorG = ?, ColorB = ?,  \n" +
+		"    LastModifiedUnixDateTime = ? \n" +
+		"WHERE BlockPosX = ? AND BlockPosY = ? AND BlockPosZ = ?";
 	@Override
 	public PreparedStatement createUpdateStatement(BeaconBeamDTO dto) throws SQLException
 	{
-		String sql =
-			"UPDATE "+this.getTableName()+" \n" +
-			"SET \n" +
-			"    ColorR = ?, ColorG = ?, ColorB = ?,  \n" +
-			"    LastModifiedUnixDateTime = ? \n" +
-			"WHERE BlockPosX = ? AND BlockPosY = ? AND BlockPosZ = ?";
-		PreparedStatement statement = this.createPreparedStatement(sql);
+		PreparedStatement statement = this.createPreparedStatement(this.updateSqlTemplate);
 		if (statement == null)
 		{
 			return null;

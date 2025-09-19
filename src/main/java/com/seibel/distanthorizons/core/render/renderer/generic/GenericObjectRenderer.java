@@ -76,6 +76,8 @@ public class GenericObjectRenderer implements IDhApiCustomRenderRegister
 	private static final ISodiumAccessor SODIUM = ModAccessorInjector.INSTANCE.get(ISodiumAccessor.class);
 	private static final IMinecraftGLWrapper GLMC = SingletonInjector.INSTANCE.get(IMinecraftGLWrapper.class);
 	
+	private static final DhApiRenderableBoxGroupShading DEFAULT_SHADING = DhApiRenderableBoxGroupShading.getUnshaded();
+	
 	/** 
 	 * Can be used to troubleshoot the renderer. 
 	 * If enabled several debug objects will render around (0,150,0). 
@@ -519,13 +521,13 @@ public class GenericObjectRenderer implements IDhApiCustomRenderRegister
 	{
 		// update instance data //
 		
-		profiler.push("setup");
+		profiler.push("vertex setup");
 		boxGroup.updateVertexAttributeData();
 		
 		DhApiRenderableBoxGroupShading shading = boxGroup.shading;
 		if (shading == null)
 		{
-			shading = DhApiRenderableBoxGroupShading.getUnshaded();
+			shading = DEFAULT_SHADING;
 		}
 		
 		shaderProgram.fillIndirectUniformData(
@@ -536,6 +538,7 @@ public class GenericObjectRenderer implements IDhApiCustomRenderRegister
 		
 		
 		// Bind instance data //
+		profiler.popPush("binding");
 		
 		GL32.glBindBuffer(GL32.GL_ARRAY_BUFFER, boxGroup.instanceColorVbo);
 		GL32.glEnableVertexAttribArray(1);

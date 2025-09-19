@@ -94,20 +94,6 @@ public class DhClientServerLevel extends AbstractDhServerLevel implements IDhCli
 	// level handling //
 	//================//
 	
-	@Override //FIXME this can fail if the clientLevel isn't available yet, maybe in that case we could return -1 and handle it upstream?
-	public int computeBaseColor(DhBlockPos pos, IBiomeWrapper biome, IBlockStateWrapper block)
-	{
-		IClientLevelWrapper clientLevel = this.getClientLevelWrapper();
-		if (clientLevel == null)
-		{
-			return 0;
-		}
-		else
-		{
-			return clientLevel.getBlockColor(pos, biome, block);
-		}
-	}
-	
 	@Nullable
 	@Override
 	public IClientLevelWrapper getClientLevelWrapper() { return MC_CLIENT.getWrappedClientLevel(); }

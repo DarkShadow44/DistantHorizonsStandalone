@@ -202,6 +202,7 @@ public class Config
 									+ "Lowest Quality: " + EDhApiMaxHorizontalResolution.CHUNK + "\n"
 									+ "Highest Quality: " + EDhApiMaxHorizontalResolution.BLOCK)
 							.setPerformance(EConfigEntryPerformance.MEDIUM)
+							.addListener(ReloadLodsConfigEventHandler.DELAYED_INSTANCE)
 							.build();
 					
 					public static ConfigEntry<EDhApiVerticalQuality> verticalQuality = new ConfigEntry.Builder<EDhApiVerticalQuality>()
@@ -215,7 +216,7 @@ public class Config
 									+ "Lowest Quality: " + EDhApiVerticalQuality.HEIGHT_MAP + "\n"
 									+ "Highest Quality: " + EDhApiVerticalQuality.EXTREME)
 							.setPerformance(EConfigEntryPerformance.VERY_HIGH)
-							.addListener(ReloadLodsConfigEventHandler.INSTANCE)
+							.addListener(ReloadLodsConfigEventHandler.DELAYED_INSTANCE)
 							.build();
 					
 					public static ConfigEntry<EDhApiTransparency> transparency = new ConfigEntry.Builder<EDhApiTransparency>()
@@ -228,7 +229,7 @@ public class Config
 									+ EDhApiTransparency.DISABLED + ": LODs will be opaque. \n"
 									+ "")
 							.setPerformance(EConfigEntryPerformance.MEDIUM)
-							.addListener(ReloadLodsConfigEventHandler.INSTANCE)
+							.addListener(ReloadLodsConfigEventHandler.DELAYED_INSTANCE)
 							.build();
 					
 					public static ConfigEntry<EDhApiBlocksToAvoid> blocksToIgnore = new ConfigEntry.Builder<EDhApiBlocksToAvoid>()
@@ -240,7 +241,7 @@ public class Config
 									+ EDhApiBlocksToAvoid.NON_COLLIDING + ": Only represent solid blocks in the LODs (tall grass, torches, etc. won't count for a LOD's height) \n"
 									+ "")
 							.setPerformance(EConfigEntryPerformance.NONE)
-							.addListener(ReloadLodsConfigEventHandler.INSTANCE)
+							.addListener(ReloadLodsConfigEventHandler.DELAYED_INSTANCE)
 							.build();
 					
 					public static ConfigEntry<Boolean> tintWithAvoidedBlocks = new ConfigEntry.Builder<Boolean>()
@@ -252,7 +253,7 @@ public class Config
 									+ "False: skipped blocks will not change color of surface below them. "
 									+ "")
 							.setPerformance(EConfigEntryPerformance.NONE)
-							.addListener(ReloadLodsConfigEventHandler.INSTANCE)
+							.addListener(ReloadLodsConfigEventHandler.DELAYED_INSTANCE)
 							.build();
 					
 					public static ConfigEntry<Double> lodBias = new ConfigEntry.Builder<Double>()
@@ -273,7 +274,7 @@ public class Config
 									+ EDhApiLodShading.DISABLED + ": All LOD sides will be rendered with the same brightness. \n"
 									+ "")
 							.setPerformance(EConfigEntryPerformance.NONE)
-							.addListener(ReloadLodsConfigEventHandler.INSTANCE)
+							.addListener(ReloadLodsConfigEventHandler.DELAYED_INSTANCE)
 							.build();
 					
 					public static ConfigEntry<EDhApiGrassSideRendering> grassSideRendering = new ConfigEntry.Builder<EDhApiGrassSideRendering>()
@@ -286,7 +287,7 @@ public class Config
 									+ EDhApiGrassSideRendering.AS_DIRT + ": sides render entirely as dirt. \n"
 									+ "")
 							.setPerformance(EConfigEntryPerformance.NONE)
-							.addListener(ReloadLodsConfigEventHandler.INSTANCE)
+							.addListener(ReloadLodsConfigEventHandler.DELAYED_INSTANCE)
 							.build();
 					
 					public static ConfigEntry<Boolean> ditherDhFade = new ConfigEntry.Builder<Boolean>()
@@ -319,7 +320,7 @@ public class Config
 									+ "0 = black \n"
 									+ "1 = normal \n"
 									+ "2 = near white")
-							.addListener(ReloadLodsConfigEventHandler.INSTANCE)
+							.addListener(ReloadLodsConfigEventHandler.DELAYED_INSTANCE)
 							.build();
 					
 					public static ConfigEntry<Double> saturationMultiplier = new ConfigEntry.Builder<Double>() // TODO: Make this a float (the ClassicConfigGUI doesnt support floats)
@@ -330,7 +331,7 @@ public class Config
 									+ "0 = black and white \n"
 									+ "1 = normal \n"
 									+ "2 = very saturated")
-							.addListener(ReloadLodsConfigEventHandler.INSTANCE)
+							.addListener(ReloadLodsConfigEventHandler.DELAYED_INSTANCE)
 							.build();
 					
 					// TODO fixme
@@ -690,7 +691,7 @@ public class Config
 				public static class Culling
 				{
 					public static ConfigEntry<Double> overdrawPrevention = new ConfigEntry.Builder<Double>()
-							.setMinDefaultMax(0.0, 0.0, 1.0)
+							.setMinDefaultMax(0.0, 0.0, 1.0) // TODO change -1 to auto
 							.comment(""
 									+ "Determines how far from the camera Distant Horizons will start rendering. \n"
 									+ "Measured as a percentage of the vanilla render distance.\n"
@@ -717,7 +718,7 @@ public class Config
 									+ " Tweaking the caveCullingHeight, can resolve some \n"
 									+ " of those issues. \n"
 									+ "")
-							.addListener(ReloadLodsConfigEventHandler.INSTANCE)
+							.addListener(ReloadLodsConfigEventHandler.DELAYED_INSTANCE)
 							.build();
 					
 					public static ConfigEntry<Integer> caveCullingHeight = new ConfigEntry.Builder<Integer>()
@@ -725,7 +726,7 @@ public class Config
 							.comment(""
 									+ "At what Y value should cave culling start? \n"
 									+ "Lower this value if you get walls for areas with 0 light.")
-							.addListener(ReloadLodsConfigEventHandler.INSTANCE)
+							.addListener(ReloadLodsConfigEventHandler.DELAYED_INSTANCE)
 							.build();
 					
 					public static ConfigEntry<Boolean> disableBeaconDistanceCulling = new ConfigEntry.Builder<Boolean>()
@@ -898,6 +899,7 @@ public class Config
 								+ EDhApiDebugRendering.SHOW_BLOCK_MATERIAL + ": LODs' color will be based on their material. \n"
 								+ EDhApiDebugRendering.SHOW_OVERLAPPING_QUADS + ": LODs will be drawn with total white, but overlapping quads will be drawn with red. \n"
 								+ "")
+						.addListener(ReloadLodsConfigEventHandler.DELAYED_INSTANCE)
 						.build();
 				
 				public static ConfigEntry<Boolean> lodOnlyMode = new ConfigEntry.Builder<Boolean>()
@@ -1064,38 +1066,38 @@ public class Config
 					public static ConfigEntry<Boolean> columnBuilderDebugEnable = new ConfigEntry.Builder<Boolean>()
 							.set(false)
 							.setAppearance(EConfigEntryAppearance.ONLY_IN_GUI)
-							.addListener(ReloadLodsConfigEventHandler.INSTANCE)
+							.addListener(ReloadLodsConfigEventHandler.INSTANT_INSTANCE)
 							.build();
 					public static ConfigEntry<Integer> columnBuilderDebugDetailLevel = new ConfigEntry.Builder<Integer>()
 							.set((int) DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL)
 							.setAppearance(EConfigEntryAppearance.ONLY_IN_GUI)
-							.addListener(ReloadLodsConfigEventHandler.INSTANCE)
+							.addListener(ReloadLodsConfigEventHandler.INSTANT_INSTANCE)
 							.build();
 					public static ConfigEntry<Integer> columnBuilderDebugXPos = new ConfigEntry.Builder<Integer>()
 							.set(0)
 							.setAppearance(EConfigEntryAppearance.ONLY_IN_GUI)
-							.addListener(ReloadLodsConfigEventHandler.INSTANCE)
+							.addListener(ReloadLodsConfigEventHandler.INSTANT_INSTANCE)
 							.build();
 					public static ConfigEntry<Integer> columnBuilderDebugZPos = new ConfigEntry.Builder<Integer>()
 							.set(0)
 							.setAppearance(EConfigEntryAppearance.ONLY_IN_GUI)
-							.addListener(ReloadLodsConfigEventHandler.INSTANCE)
+							.addListener(ReloadLodsConfigEventHandler.INSTANT_INSTANCE)
 							.build();
 					
 					public static ConfigEntry<Integer> columnBuilderDebugXRow = new ConfigEntry.Builder<Integer>()
 							.set(-1)
 							.setAppearance(EConfigEntryAppearance.ONLY_IN_GUI)
-							.addListener(ReloadLodsConfigEventHandler.INSTANCE)
+							.addListener(ReloadLodsConfigEventHandler.INSTANT_INSTANCE)
 							.build();
 					public static ConfigEntry<Integer> columnBuilderDebugZRow = new ConfigEntry.Builder<Integer>()
 							.set(-1)
 							.setAppearance(EConfigEntryAppearance.ONLY_IN_GUI)
-							.addListener(ReloadLodsConfigEventHandler.INSTANCE)
+							.addListener(ReloadLodsConfigEventHandler.INSTANT_INSTANCE)
 							.build();
 					public static ConfigEntry<Integer> columnBuilderDebugColumnIndex = new ConfigEntry.Builder<Integer>()
 							.set(-1)
 							.setAppearance(EConfigEntryAppearance.ONLY_IN_GUI)
-							.addListener(ReloadLodsConfigEventHandler.INSTANCE)
+							.addListener(ReloadLodsConfigEventHandler.INSTANT_INSTANCE)
 							.build();
 					
 				}
@@ -1104,7 +1106,7 @@ public class Config
 				{
 					public static ConfigEntry<Boolean> showPlayerPos = new ConfigEntry.Builder<Boolean>()
 							.set(true)
-							.comment("Shows info about each thread pool.")
+							.comment("Shows the player's LOD position.")
 							.build();
 					public static ConfigEntry<Integer> playerPosSectionDetailLevel = new ConfigEntry.Builder<Integer>()
 							.setMinDefaultMax(6, 6, 16)
@@ -1306,6 +1308,15 @@ public class Config
 					.comment(""
 							+ "For how many seconds should instructions for disabling the distant generator progress be displayed? \n"
 							+ "Setting this to 0 hides the instructional message so the world gen progress is shown immediately when it starts. \n"
+							+ "")
+					.build();
+			
+			public static ConfigEntry<Boolean> generationProgressIncludeChunksPerSecond = new ConfigEntry.Builder<Boolean>()
+					.set(true)
+					.comment(""
+							+ "When logging generation progress also include the rate at which chunks \n"
+							+ "are being generated. \n"
+							+ "This can be useful for troubleshooting performance. \n"
 							+ "")
 					.build();
 			
@@ -1777,7 +1788,6 @@ public class Config
 				RenderQualityPresetConfigEventHandler.INSTANCE.setUiOnlyConfigValues();
 				QuickRenderToggleConfigEventHandler.INSTANCE.setUiOnlyConfigValues();
 				QuickShowWorldGenProgressConfigEventHandler.INSTANCE.setUiOnlyConfigValues();
-				RenderCacheConfigEventHandler.getInstance();
 			}
 			catch (Exception e)
 			{

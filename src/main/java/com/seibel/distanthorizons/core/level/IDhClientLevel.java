@@ -34,8 +34,6 @@ public interface IDhClientLevel extends IDhLevel
 	void render(DhApiRenderParam renderEventParam, IProfilerWrapper profiler);
 	void renderDeferred(DhApiRenderParam renderEventParam, IProfilerWrapper profiler);
 	
-	int computeBaseColor(DhBlockPos pos, IBiomeWrapper biome, IBlockStateWrapper block);
-	
 	@Nullable
 	IClientLevelWrapper getClientLevelWrapper();
 	

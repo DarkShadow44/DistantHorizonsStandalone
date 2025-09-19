@@ -48,7 +48,9 @@ public class ConfigEntryWithPresetOptions<TQuickEnum, TConfig>
 	
 	public HashSet<TQuickEnum> getPossibleQualitiesFromCurrentOptionValue()
 	{
-		TConfig inputOptionValue = this.configEntry.get();
+		// get true value so we can ignore API overrides,
+		// users find this confusing if their preset is set to "CUSTOM" 
+		TConfig inputOptionValue = this.configEntry.getTrueValue();
 		HashSet<TQuickEnum> possibleQualities = new HashSet<>();
 		
 		for (TQuickEnum key : this.configOptionByQualityOption.keySet())

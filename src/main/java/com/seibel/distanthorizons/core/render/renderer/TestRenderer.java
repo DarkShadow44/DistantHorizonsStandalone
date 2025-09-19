@@ -106,6 +106,7 @@ public class TestRenderer
 	
 	public void render()
 	{
+		// TODO fix for MC 1.21.5
 		this.init();
 		
 		GLMC.glBindFramebuffer(GL32.GL_FRAMEBUFFER, MC_RENDER.getTargetFrameBuffer());

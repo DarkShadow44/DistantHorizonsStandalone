@@ -85,7 +85,7 @@ public class ServerLevelModule implements AutoCloseable
 				// since core world generator's should have the lowest override priority
 				WorldGeneratorInjector.INSTANCE.bind(level.getLevelWrapper(), worldGenerator);
 			}
-			this.worldGenerationQueue = new WorldGenerationQueue(worldGenerator);
+			this.worldGenerationQueue = new WorldGenerationQueue(worldGenerator, level);
 		}
 		
 	}
