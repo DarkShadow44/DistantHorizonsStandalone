@@ -460,7 +460,10 @@ public class BlockStateWrapper implements IBlockStateWrapper
 
         String id = GameData.getBlockRegistry().getNameForObject(this.blockState.block);
 
-        this.serialString = id + STATE_STRING_SEPARATOR + this.blockState.meta;
+        this.serialString = id;
+        if (this.blockState.meta != 0) {
+            this.serialString += ":" + this.blockState.meta;
+        }
 
         return this.serialString;
     }
@@ -490,13 +493,22 @@ public class BlockStateWrapper implements IBlockStateWrapper
         try
         {
             // try to parse out the BlockState
-            String blockStatePropertiesString = null; // will be null if no properties were included
+            String metaString = null; // will be null if no meta was included
             int stateSeparatorIndex = resourceStateString.indexOf(STATE_STRING_SEPARATOR);
             if (stateSeparatorIndex != -1)
             {
                 // blockstate properties found
-                blockStatePropertiesString = resourceStateString.substring(stateSeparatorIndex + STATE_STRING_SEPARATOR.length());
+                metaString = resourceStateString.substring(stateSeparatorIndex + STATE_STRING_SEPARATOR.length());
                 resourceStateString = resourceStateString.substring(0, stateSeparatorIndex);
+            }
+
+            int separatorOne = resourceStateString.indexOf(':');
+            if (separatorOne != -1) {
+                stateSeparatorIndex = resourceStateString.indexOf(':', separatorOne + 1);
+                if (stateSeparatorIndex != -1) {
+                    metaString = resourceStateString.substring(stateSeparatorIndex + 1);
+                    resourceStateString = resourceStateString.substring(0, stateSeparatorIndex);
+                }
             }
 
 
@@ -505,9 +517,9 @@ public class BlockStateWrapper implements IBlockStateWrapper
             {
                 Block block = GameData.getBlockRegistry().getObject(resourceStateString);
                 int meta = 0;
-                if (blockStatePropertiesString != null)
+                if (metaString != null)
                 {
-                    meta = Integer.parseInt(blockStatePropertiesString);
+                    meta = Integer.parseInt(metaString);
                 }
 
 
