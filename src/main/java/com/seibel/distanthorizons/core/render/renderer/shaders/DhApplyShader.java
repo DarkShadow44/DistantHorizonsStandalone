@@ -99,15 +99,9 @@ public class DhApplyShader extends AbstractShaderRenderer
 		
 		GLMC.disableDepthTest();
 		
-		// blending isn't needed, we're manually merging the MC and DH textures
-		// Note: this prevents the sun/moon and stars from rendering through transparent LODs,
-		// however this also fixes transparent LODs from glowing when rendered against the sky during the day
-		GLMC.disableBlend();
-		
-		// old blending logic in case it's ever needed:
-		//GLMC.enableBlend();
-		//GL32.glBlendEquation(GL32.GL_FUNC_ADD);
-		//GLMC.glBlendFunc(GL32.GL_ONE, GL32.GL_ONE_MINUS_SRC_ALPHA);
+		GLMC.enableBlend();
+		GL32.glBlendEquation(GL32.GL_FUNC_ADD);
+		GLMC.glBlendFunc(GL32.GL_ONE, GL32.GL_ONE_MINUS_SRC_ALPHA);
 		
 		GLMC.glActiveTexture(GL32.GL_TEXTURE0);
 		GLMC.glBindTexture(LodRenderer.getActiveColorTextureId());
