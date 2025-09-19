@@ -32,6 +32,7 @@ import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerAboutToStartEvent;
+import cpw.mods.fml.common.event.FMLServerStoppedEvent;
 import cpw.mods.fml.common.event.FMLServerStoppingEvent;
 import cpw.mods.fml.common.network.NetworkCheckHandler;
 import cpw.mods.fml.relauncher.Side;
@@ -94,6 +95,12 @@ public class ForgeMain extends AbstractModInitializer
     public void serverWorldUnloadEvent(FMLServerStoppingEvent event)
     {
         ServerApi.INSTANCE.serverUnloadEvent();
+    }
+
+    @Mod.EventHandler
+    public void serverWorldUnloadEvent(FMLServerStoppedEvent event)
+    {
+        ForgeServerProxy.serverStopping();
     }
 
     @Override

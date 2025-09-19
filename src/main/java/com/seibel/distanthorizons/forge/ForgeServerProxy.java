@@ -72,6 +72,16 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
 
     public static boolean connected = false;
 
+    public static void serverStopping() {
+        while (!taskQueue.isEmpty()) {
+            ScheduledTask<?> scheduledTask = taskQueue.poll();
+            if (scheduledTask == null) {
+                continue;
+            }
+            scheduledTask.future.complete(null);
+        }
+    }
+
     private class ChunkLoadEvent
     {
         public final ChunkWrapper chunk;
