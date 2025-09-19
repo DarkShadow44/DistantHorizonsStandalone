@@ -24,6 +24,9 @@ public class FakeWorld implements IBlockAccess {
         this.blockZ = blockZ;
         this.blockState = blockState;
         this.biome = biome;
+        if (this.biome == null) {
+            this.biome = BiomeGenBase.plains; // Fallback, at least we don't crash
+        }
     }
 
     @Override
