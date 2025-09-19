@@ -140,7 +140,7 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
     @Override
     public int getRenderDistance()
     {
-       return MC.gameSettings.renderDistanceChunks - 2;
+       return MC.gameSettings.renderDistanceChunks;
     }
 
     @Override
