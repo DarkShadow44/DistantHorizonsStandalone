@@ -31,7 +31,7 @@ public class RenderHelper {
         GL32.glDisable(GL32.GL_BLEND);
     }
 
-    public static void drawLodsFade()
+    public static void drawLodsFade(boolean translucent)
     {
         if (ForgeMain.angelicaCompat != null) {
             if (!ForgeMain.angelicaCompat.canDoFadeShader()) {
@@ -44,7 +44,11 @@ public class RenderHelper {
         float frameTime = ((IMixinMinecraft) Minecraft.getMinecraft()).getTimer().renderPartialTicks;
         IClientLevelWrapper levelWrapper = ClientLevelWrapper.getWrapper(Minecraft.getMinecraft().theWorld);
         //Minecraft.getMinecraft().getFramebuffer().unbindFramebuffer();
-        ClientApi.INSTANCE.renderFade(mcModelViewMatrix, mcProjectionMatrix, frameTime, levelWrapper);
+        if (translucent) {
+            ClientApi.INSTANCE.renderFade(mcModelViewMatrix, mcProjectionMatrix, frameTime, levelWrapper);
+        } else {
+            ClientApi.INSTANCE.renderFadeOpaque(mcModelViewMatrix, mcProjectionMatrix, frameTime, levelWrapper);
+        }
         //Minecraft.getMinecraft().getFramebuffer().bindFramebuffer(false);
     }
 
