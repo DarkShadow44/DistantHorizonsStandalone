@@ -55,6 +55,7 @@ public class RenderHelper {
             ClientApi.INSTANCE.renderFadeOpaque(mcModelViewMatrix, mcProjectionMatrix, frameTime, levelWrapper);
         }
         //Minecraft.getMinecraft().getFramebuffer().bindFramebuffer(false);
+        GL32.glEnable(GL32.GL_ALPHA_TEST);
     }
 
     private static Matrix4f modelViewMatrix;
