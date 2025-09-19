@@ -15,12 +15,14 @@ public class BiomeHandler {
     }
 
     public static BiomeGenBase getBiomeByName(String name) {
-        if (biomeMap == null) {
-            biomeMap = new HashMap<>();
-            for (var biome : biomes) {
-                biomeMap.put(biome.biomeName, biome);
+        synchronized (BiomeHandler.class) {
+            if (biomeMap == null) {
+                biomeMap = new HashMap<>();
+                for (var biome : biomes) {
+                    biomeMap.put(biome.biomeName, biome);
+                }
             }
+            return biomeMap.get(name);
         }
-        return biomeMap.get(name);
     }
 }
