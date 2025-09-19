@@ -31,6 +31,11 @@ public class RenderHelper {
         GL32.glDisable(GL32.GL_BLEND);
     }
 
+    public static void beforeWater()
+    {
+        GL11.glDepthMask(true);
+    }
+
     public static void drawLodsFade(boolean translucent)
     {
         if (ForgeMain.angelicaCompat != null) {

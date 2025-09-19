@@ -15,13 +15,17 @@ public class MixinRenderGlobal {
         if (renderPass == 0) {
             RenderHelper.drawLods();
         }
+        if (renderPass == 1) {
+            RenderHelper.beforeWater();
+        }
     }
 
     @Inject(method = "sortAndRender", at = @At("TAIL"))
     void renderLods2(EntityLivingBase p_72719_1_, int renderPass, double p_72719_3_, CallbackInfoReturnable<Integer> cir) {
         if (renderPass == 0) {
             RenderHelper.drawLodsFade(false);
-        } else if (renderPass == 1) {
+        }
+        if (renderPass == 1) {
             RenderHelper.drawLodsFade(true);
         }
     }
