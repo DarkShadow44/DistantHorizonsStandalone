@@ -58,4 +58,12 @@ dependencies {
     compileOnly("com.github.GTNewHorizons:GT5-Unofficial:5.09.51.341-pre:dev") { transitive = false }
     compileOnly("com.github.GTNewHorizons:Angelica:1.0.0-beta56:dev")
     //devOnlyNonPublishable("com.github.GTNewHorizons:lwjgl3ify:2.1.11:dev")
+
+    api(rfg.deobf(files("/home/fabian/Programming/Minecraft/GTNH/DistantHorizons/run/mods_t/beddium-mc1.7.10-j21-playtest-9.jar")))
+    api(rfg.deobf(files("/home/fabian/Programming/Minecraft/GTNH/DistantHorizons/run/mods_t/falsepatternlib-mc1.7.10-1.9.0.jar")))
+    api(files("/home/fabian/Programming/Minecraft/GTNH/DistantHorizons/run/mods_t/lumi-mc1.7.10-1.2.0-dev.jar"))
+    api(files("/home/fabian/Programming/Minecraft/GTNH/DistantHorizons/run/mods_t/chunkapi-mc1.7.10-0.6.1-dev.jar"))
+    api(rfg.deobf(files("/home/fabian/Programming/Minecraft/GTNH/DistantHorizons/run/mods_t/falsetweaks-mc1.7.10-4.0.0-playtest-12.jar")))
+    api(rfg.deobf(files("/home/fabian/Programming/Minecraft/GTNH/DistantHorizons/run/mods_t/rple-mc1.7.10-1.7.0-playtest-1.jar")))
+    //api(rfg.deobf(files("/home/fabian/Programming/Minecraft/GTNH/DistantHorizons/run/mods_t/swansong-mc1.7.10-playtest-9.jar")))
 }

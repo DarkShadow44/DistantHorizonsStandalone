@@ -22,6 +22,7 @@ package com.seibel.distanthorizons.common.wrappers.minecraft;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftGLWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.misc.ILightMapWrapper;
+import com.seibel.distanthorizons.forge.ForgeMain;
 import com.seibel.distanthorizons.interfaces.IMixinEntityRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.DynamicTexture;
@@ -33,13 +34,18 @@ public class LightMapWrapper implements ILightMapWrapper
     private int oldTexture;
 
     @Override
-    public void bind()
-    {
-        IMixinEntityRenderer entityRenderer = (IMixinEntityRenderer)Minecraft.getMinecraft().entityRenderer;
-        DynamicTexture lightmapTexture = entityRenderer.getLightmapTexture();
+    public void bind() {
+        int textureId;
+        if (ForgeMain.rpleCompat != null) {
+            textureId = ForgeMain.rpleCompat.getTextureId();
+        } else {
+            IMixinEntityRenderer entityRenderer = (IMixinEntityRenderer)Minecraft.getMinecraft().entityRenderer;
+            DynamicTexture lightmapTexture = entityRenderer.getLightmapTexture();
+            textureId = lightmapTexture.getGlTextureId();
+        }
         GLMC.glActiveTexture(GL32.GL_TEXTURE0);
         oldTexture = GL32.glGetInteger(GL32.GL_TEXTURE_BINDING_2D);
-        GLMC.glBindTexture(lightmapTexture.getGlTextureId());
+        GLMC.glBindTexture(textureId);
     }
 
     @Override
