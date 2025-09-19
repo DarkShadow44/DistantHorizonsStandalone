@@ -208,17 +208,13 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
         //LOGGER.trace("interact or block place event at blockPos: " + event.getPos());
 
         World level = event.world;
-
-        AbstractExecutorService executor = ThreadPoolUtil.getFileHandlerExecutor();
-        if (executor != null)
+        schedule(false, () ->
         {
-            executor.execute(() ->
-            {
-                Chunk chunk = level.getChunkFromBlockCoords(event.x, event.z);
-                ILevelWrapper wrappedLevel = ProxyUtil.getLevelWrapper(level);
-                SharedApi.INSTANCE.chunkBlockChangedEvent(new ChunkWrapper(chunk, wrappedLevel, false), wrappedLevel);
-            });
-        }
+            Chunk chunk = level.getChunkFromBlockCoords(event.x, event.z);
+            ILevelWrapper wrappedLevel = ProxyUtil.getLevelWrapper(level);
+            SharedApi.INSTANCE.chunkBlockChangedEvent(new ChunkWrapper(chunk, wrappedLevel, false), wrappedLevel);
+            return null;
+        });
     }
 
     private static final Queue<ScheduledTask<?>> taskQueue = new ConcurrentLinkedQueue<>();
