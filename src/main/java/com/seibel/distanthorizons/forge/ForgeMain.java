@@ -60,11 +60,20 @@ public class ForgeMain extends AbstractModInitializer
     public static GTCompat gtCompat;
     public static AngelicaCompat angelicaCompat;
 
+    private boolean enableGTCompat() {
+        try {
+            Class.forName("gregtech.api.interfaces.IBlockWithTextures");
+            return true;
+        } catch (ClassNotFoundException e) {
+            return false;
+        }
+    }
+
     @Mod.EventHandler
     public void init(FMLInitializationEvent event) {
         if (FMLCommonHandler.instance().getEffectiveSide().isClient()) {
             this.onInitializeClient();
-            if (Loader.isModLoaded("gregtech") && Loader.isModLoaded("dreamcraft")) {
+            if (Loader.isModLoaded("gregtech") && enableGTCompat()) {
                 gtCompat = new GTCompat();
             }
             if (Loader.isModLoaded("angelica")) {
