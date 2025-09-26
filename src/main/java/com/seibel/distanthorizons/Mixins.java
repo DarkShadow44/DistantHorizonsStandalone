@@ -24,7 +24,12 @@ public enum Mixins implements IMixins {
             "MixinTextureAtlasSprite"
         )
     ),
-
+    FIX_SIDE_FACING_UNLOADED_CHUNKS_BEING_RENDERED(new MixinBuilder()
+        .addExcludedMod(TargetedMod.ANGELICA)
+        .addClientMixins(
+            "MixinBlock_SideFacingUnloadedChunk",
+            "MixinChunkCache_SideFacingUnloaded")
+        .setPhase(Phase.EARLY)),
     CLIENT_FADE(new MixinBuilder()
         .setPhase(Phase.EARLY)
         .addExcludedMod(TargetedMod.ANGELICA)
