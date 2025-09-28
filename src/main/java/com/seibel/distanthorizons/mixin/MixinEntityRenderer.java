@@ -38,7 +38,7 @@ public abstract class MixinEntityRenderer implements IMixinEntityRenderer {
     @Inject(method = "updateCameraAndRender", at = @At("HEAD"))
     private void updateLightmap(float partialTicks, CallbackInfo ci) {
         if (ForgeMain.rpleCompat != null) {
-            ForgeMain.rpleCompat.updateLightmap(partialTicks);
+            ForgeMain.rpleCompat.updateLightmap();
         }
     }
 }
