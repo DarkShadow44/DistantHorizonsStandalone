@@ -178,6 +178,9 @@ public class FullDataSourceProviderV2
 		{
 			// when creating new data use the compressor currently selected in the config
 			EDhApiDataCompressionMode compressionModeEnum = Config.Common.LodBuilding.dataCompression.get();
+            if (compressionModeEnum == EDhApiDataCompressionMode.Z_STD) {
+                compressionModeEnum = EDhApiDataCompressionMode.LZMA2;
+            }
 			return FullDataSourceV2DTO.CreateFromDataSource(dataSource, compressionModeEnum);
 		}
 		catch (IOException e)
