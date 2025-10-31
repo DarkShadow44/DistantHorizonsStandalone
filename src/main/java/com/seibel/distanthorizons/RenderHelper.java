@@ -24,6 +24,7 @@ public class RenderHelper {
         GL32.glDisable(GL32.GL_ALPHA_TEST);
         Mat4f mcModelViewMatrix = getModelViewMatrix();
         Mat4f mcProjectionMatrix = getProjectionMatrix();
+        GL11.glClearColor(1, 1, 1, 0.0F);
         float frameTime = ((IMixinMinecraft) Minecraft.getMinecraft()).getTimer().renderPartialTicks;
         IClientLevelWrapper levelWrapper = ClientLevelWrapper.getWrapper(Minecraft.getMinecraft().theWorld);
         ClientApi.INSTANCE.renderLods(levelWrapper, mcModelViewMatrix, mcProjectionMatrix, frameTime);
