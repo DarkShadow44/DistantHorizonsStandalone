@@ -104,7 +104,6 @@ public class RenderHelper {
         // For Angelica
         GL11.glFogf(GL11.GL_FOG_START, 1024 * 1024 * 15);
         GL11.glFogf(GL11.GL_FOG_END, 1024 * 1024 * 16);
-        GL11.glFogi(GL11.GL_FOG_MODE, GL11.GL_LINEAR);
     }
 
     public static void glEnable(int cap) {

@@ -1,5 +1,6 @@
 package com.seibel.distanthorizons.mixin;
 
+import com.llamalad7.mixinextras.sugar.Local;
 import com.seibel.distanthorizons.RenderHelper;
 import com.seibel.distanthorizons.forge.ForgeMain;
 import com.seibel.distanthorizons.interfaces.IMixinEntityRenderer;
@@ -26,7 +27,11 @@ public abstract class MixinEntityRenderer implements IMixinEntityRenderer {
     }
 
     @Redirect(method = "setupFog", at = @At(value = "INVOKE", target = "Lcpw/mods/fml/common/eventhandler/EventBus;post(Lcpw/mods/fml/common/eventhandler/Event;)Z", remap = false, ordinal = 1))
-    private boolean disableFog(EventBus instance, Event event) {
+    private boolean disableFog(EventBus instance, Event event, @Local(argsOnly = true) int p_78468_1_) {
+        if (p_78468_1_ == -1)
+        {
+            return false;
+        }
         RenderHelper.disableFog();
         return false;
     }
