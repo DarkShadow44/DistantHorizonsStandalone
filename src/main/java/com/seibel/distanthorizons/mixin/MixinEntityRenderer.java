@@ -26,7 +26,7 @@ public abstract class MixinEntityRenderer implements IMixinEntityRenderer {
     @Accessor("lightmapTexture")
     public abstract DynamicTexture getLightmapTexture();
 
-    @Redirect(method = "setupFog", at = @At(value = "INVOKE", target = "Lcpw/mods/fml/common/eventhandler/EventBus;post(Lcpw/mods/fml/common/eventhandler/Event;)Z", remap = false))
+    @Redirect(method = "setupFog", at = @At(value = "INVOKE", target = "Lcpw/mods/fml/common/eventhandler/EventBus;post(Lcpw/mods/fml/common/eventhandler/Event;)Z", remap = false, ordinal = 1))
     private boolean notFine$disableFog(EventBus instance, Event event) {
         // Extremely high values cause issues, but 15 mebimeters out should be practically infinite
         GL11.glFogf(GL11.GL_FOG_START, 1024 * 1024 * 15);
