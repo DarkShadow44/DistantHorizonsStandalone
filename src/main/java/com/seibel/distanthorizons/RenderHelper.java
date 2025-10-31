@@ -3,6 +3,7 @@ package com.seibel.distanthorizons;
 import com.seibel.distanthorizons.common.wrappers.McObjectConverter;
 import com.seibel.distanthorizons.common.wrappers.world.ClientLevelWrapper;
 import com.seibel.distanthorizons.core.api.internal.ClientApi;
+import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.util.math.Mat4f;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
 import com.seibel.distanthorizons.forge.ForgeMain;
@@ -94,6 +95,9 @@ public class RenderHelper {
     }
 
     public static void disableFog() {
+        if (!Config.Client.quickEnableRendering.get()) {
+            return;
+        }
         GL11.glDisable(GL11.GL_FOG);
 
         // Extremely high values cause issues, but 15 mebimeters out should be practically infinite
@@ -104,7 +108,7 @@ public class RenderHelper {
     }
 
     public static void glEnable(int cap) {
-        if (cap == GL11.GL_FOG) {
+        if (Config.Client.quickEnableRendering.get() && cap == GL11.GL_FOG) {
             return;
         }
         GL11.glEnable(cap);
