@@ -241,6 +241,12 @@ public class ClientBlockStateColorCache
                     if (icon != null && icon.getClass().getName().equals("twilightforest.block.GiantBlockIcon")) {
                         icon = getIconByReflection(icon, "baseIcon");
                     }
+                    if (icon != null && icon.getClass().getName().equals("ic2.core.block.BlockTextureStitched")) {
+                        IIcon icon2 = getIconByReflection(icon, "mappedTexture");
+                        if (icon2 != null) {
+                            icon = icon2;
+                        }
+                    }
 
                     if (icon instanceof TextureAtlasSprite) {
                         this.baseColor = calculateColorFromTexture((TextureAtlasSprite) icon,
