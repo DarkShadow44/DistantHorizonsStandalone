@@ -88,4 +88,25 @@ public class RenderHelper {
     public static void HelpTess() {
         GL20.glBindBuffer(GL20.GL_ARRAY_BUFFER, 0);
     }
+
+    public static void enableFog() {
+        GL11.glEnable(GL11.GL_FOG);
+    }
+
+    public static void disableFog() {
+        GL11.glDisable(GL11.GL_FOG);
+
+        // Extremely high values cause issues, but 15 mebimeters out should be practically infinite
+        // For Angelica
+        GL11.glFogf(GL11.GL_FOG_START, 1024 * 1024 * 15);
+        GL11.glFogf(GL11.GL_FOG_END, 1024 * 1024 * 16);
+        GL11.glFogi(GL11.GL_FOG_MODE, GL11.GL_LINEAR);
+    }
+
+    public static void glEnable(int cap) {
+        if (cap == GL11.GL_FOG) {
+            return;
+        }
+        GL11.glEnable(cap);
+    }
 }
