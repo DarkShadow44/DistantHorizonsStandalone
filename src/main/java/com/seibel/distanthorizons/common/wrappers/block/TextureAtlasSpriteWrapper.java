@@ -32,7 +32,7 @@ public class TextureAtlasSpriteWrapper
 	public static int getPixelRGBA(TextureAtlasSprite sprite, int frameIndex, int x, int y)
 	{
         IMixinTextureAtlasSprite spriteExt = (IMixinTextureAtlasSprite)sprite;
-        int[] spriteData = spriteExt.getSpriteData();
+        int[] spriteData = spriteExt.distanthorizons$getSpriteData();
         if (spriteData == null)
         {
             return 0xFFFF00FF;

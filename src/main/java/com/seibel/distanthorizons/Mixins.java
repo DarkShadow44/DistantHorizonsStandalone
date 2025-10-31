@@ -21,7 +21,8 @@ public enum Mixins implements IMixins {
             "MixinOptionsScreen",
             "MixinRenderGlobal",
             "MixinTesselator",
-            "MixinTextureAtlasSprite"
+            "MixinTextureAtlasSprite",
+            "MixinTextureMap"
         )
     ),
     FIX_SIDE_FACING_UNLOADED_CHUNKS_BEING_RENDERED(new MixinBuilder()

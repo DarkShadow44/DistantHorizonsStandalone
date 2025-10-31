@@ -1,5 +1,6 @@
 package com.seibel.distanthorizons.interfaces;
 
 public interface IMixinTextureAtlasSprite {
-    int[] getSpriteData();
+    int[] distanthorizons$getSpriteData();
+    void distanthorizons$loadData();
 }
