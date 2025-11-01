@@ -5,6 +5,7 @@ import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.util.StatCollector;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class DhScreen extends GuiScreen {
@@ -34,21 +35,19 @@ public class DhScreen extends GuiScreen {
     }
 
     protected void DhRenderTooltip(List<String> list, int x, int y) {
+        List<String> split = new ArrayList<>();
         for (int i = 0; i < list.size(); i++) {
             String text = list.get(i);
             if (StatCollector.canTranslate(text)) {
                 text = StatCollector.translateToLocal(text);
             }
-            list.set(i, text);
+            split.addAll(Arrays.asList(text.split("\\\\n")));
         }
-        drawHoveringText(list, x, y, fontRendererObj);
+        drawHoveringText(split, x, y, fontRendererObj);
     }
 
     protected void DhRenderTooltip(String text, int x, int y) {
-        if (StatCollector.canTranslate(text)) {
-            text = StatCollector.translateToLocal(text);
-        }
-        ArrayList<String> list = new ArrayList<>();
+        List<String> list = new ArrayList<>();
         list.add(text);
         drawHoveringText(list, x, y, fontRendererObj);
     }
