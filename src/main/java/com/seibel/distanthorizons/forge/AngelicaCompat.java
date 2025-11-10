@@ -6,7 +6,7 @@ import net.minecraft.client.shader.Framebuffer;
 
 public class AngelicaCompat {
     public int getDepthTextureId(Framebuffer framebuffer) {
-        return ((IRenderTargetExt)framebuffer).getIris$depthTextureId();
+        return ((IRenderTargetExt)framebuffer).iris$getDepthTextureId();
     }
 
     public boolean canDoFadeShader() {
