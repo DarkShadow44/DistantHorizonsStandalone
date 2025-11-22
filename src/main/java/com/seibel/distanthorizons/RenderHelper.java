@@ -1,5 +1,6 @@
 package com.seibel.distanthorizons;
 
+import com.seibel.distanthorizons.api.enums.config.EDhApiMcRenderingFadeMode;
 import com.seibel.distanthorizons.common.wrappers.McObjectConverter;
 import com.seibel.distanthorizons.common.wrappers.world.ClientLevelWrapper;
 import com.seibel.distanthorizons.core.api.internal.ClientApi;
@@ -7,12 +8,14 @@ import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.util.math.Mat4f;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
 import com.seibel.distanthorizons.forge.ForgeMain;
+import com.seibel.distanthorizons.interfaces.IMixinFramebuffer;
 import com.seibel.distanthorizons.interfaces.IMixinMinecraft;
 import net.minecraft.client.Minecraft;
 import org.joml.Matrix4f;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
+import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL32;
 
 import java.nio.ByteBuffer;
@@ -40,23 +43,36 @@ public class RenderHelper {
 
     public static void drawLodsFade(boolean translucent)
     {
+        int readFbo = GL11.glGetInteger(GL30.GL_READ_FRAMEBUFFER_BINDING);
+        int drawFbo = GL11.glGetInteger(GL30.GL_DRAW_FRAMEBUFFER_BINDING);
+
+        boolean enableFade = Config.Client.Advanced.Graphics.Quality.vanillaFadeMode.get() != EDhApiMcRenderingFadeMode.NONE;
+        boolean enableFadeDouble = Config.Client.Advanced.Graphics.Quality.vanillaFadeMode.get() == EDhApiMcRenderingFadeMode.DOUBLE_PASS;
+
+        if (!enableFade || (!enableFadeDouble && !translucent)) {
+            return;
+        }
+
         if (ForgeMain.angelicaCompat != null) {
             if (!ForgeMain.angelicaCompat.canDoFadeShader()) {
                 return;
             }
+        } else {
+            IMixinFramebuffer framebuffer = (IMixinFramebuffer) Minecraft.getMinecraft().getFramebuffer();
+            framebuffer.distanthorizons$BlitDepthToTexture();
         }
         GL32.glDisable(GL32.GL_ALPHA_TEST);
         Mat4f mcModelViewMatrix = getModelViewMatrix();
         Mat4f mcProjectionMatrix = getProjectionMatrix();
         float frameTime = ((IMixinMinecraft) Minecraft.getMinecraft()).getTimer().renderPartialTicks;
         IClientLevelWrapper levelWrapper = ClientLevelWrapper.getWrapper(Minecraft.getMinecraft().theWorld);
-        //Minecraft.getMinecraft().getFramebuffer().unbindFramebuffer();
         if (translucent) {
             ClientApi.INSTANCE.renderFade(mcModelViewMatrix, mcProjectionMatrix, frameTime, levelWrapper);
         } else {
             ClientApi.INSTANCE.renderFadeOpaque(mcModelViewMatrix, mcProjectionMatrix, frameTime, levelWrapper);
         }
-        //Minecraft.getMinecraft().getFramebuffer().bindFramebuffer(false);
+        GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, readFbo);
+        GL30.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, drawFbo);
         GL32.glEnable(GL32.GL_ALPHA_TEST);
     }
 
