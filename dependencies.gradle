@@ -49,7 +49,6 @@ dependencies {
     shadowImplementation("org.lwjgl:lwjgl-jawt:3.3.3") {
          exclude group: "org.lwjgl", module: "lwjgl"
     }
-    shadowImplementation("it.unimi.dsi:fastutil:8.5.15")
     shadowImplementation("com.github.luben:zstd-jni:1.5.7-4")
     implementation("org.jetbrains:annotations:26.0.2")
     api("com.github.GTNewHorizons:GTNHLib:0.6.11:dev")
