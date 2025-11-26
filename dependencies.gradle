@@ -53,7 +53,7 @@ dependencies {
     implementation("org.jetbrains:annotations:26.0.2")
     api("com.github.GTNewHorizons:GTNHLib:0.6.11:dev")
     compileOnly("com.github.GTNewHorizons:GT5-Unofficial:5.09.51.469:dev")
-     compileOnly('com.github.GTNewHorizons:Angelica') {
+    api('com.github.GTNewHorizons:Angelica') {
         version {
             strictly '1.0.0-beta68'
         }
