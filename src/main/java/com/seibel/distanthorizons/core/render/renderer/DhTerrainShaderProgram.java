@@ -35,6 +35,8 @@ import com.seibel.distanthorizons.core.util.RenderUtil;
 import com.seibel.distanthorizons.core.util.math.Mat4f;
 import com.seibel.distanthorizons.core.util.math.Vec3f;
 
+import java.awt.*;
+
 /**
  * Handles rendering the normal LOD terrain.
  */
@@ -63,6 +65,9 @@ public class DhTerrainShaderProgram extends ShaderProgram implements IDhApiShade
 	public int uNoiseIntensity = -1;
 	public int uNoiseDropoff = -1;
 	
+ 	// Snow uniforms
+ 	public int uSnowColor = -1;
+
 	// Debug Uniform
 	public int uWhiteWorld = -1;
 	
@@ -81,8 +86,8 @@ public class DhTerrainShaderProgram extends ShaderProgram implements IDhApiShade
 								: "shaders/standard.vert",
 						false, new StringBuilder()).toString(),
 				() -> Shader.loadFile("shaders/flat_shaded.frag", false, new StringBuilder()).toString(),
-				"fragColor", new String[]{"vPosition", "color"});
-		
+				"fragColor", new String[]{"vPosition", "color", "lastTimeUpdateLo", "lastTimeUpdateHi", "snowFlags"});
+
 		this.uCombinedMatrix = this.getUniformLocation("uCombinedMatrix");
 		this.uModelOffset = this.getUniformLocation("uModelOffset");
 		this.uWorldYOffset = this.tryGetUniformLocation("uWorldYOffset");
@@ -101,6 +106,9 @@ public class DhTerrainShaderProgram extends ShaderProgram implements IDhApiShade
 		this.uNoiseIntensity = this.getUniformLocation("uNoiseIntensity");
 		this.uNoiseDropoff = this.getUniformLocation("uNoiseDropoff");
 		
+ 		// Snow uniforms
+  		this.uSnowColor = this.getUniformLocation("uSnowColor");
+
 		// Debug Uniform
 		this.uWhiteWorld = this.getUniformLocation("uWhiteWorld");
 		
@@ -120,7 +128,10 @@ public class DhTerrainShaderProgram extends ShaderProgram implements IDhApiShade
 		// TODO comment what each attribute represents
 		this.vao.setVertexAttribute(0, 0, VertexPointer.addUnsignedShortsPointer(4, false, true)); // 2+2+2+2 // TODO probably color, blockpos
 		this.vao.setVertexAttribute(0, 1, VertexPointer.addUnsignedBytesPointer(4, true, false)); // +4 // TODO ?
-		
+        this.vao.setVertexAttribute(0, 2, VertexPointer.addIntPointer(false, true));
+        this.vao.setVertexAttribute(0, 3, VertexPointer.addIntPointer(false, true));
+        this.vao.setVertexAttribute(0, 4, VertexPointer.addIntPointer(false, true));
+
 		try
 		{
 			this.vao.completeAndCheck(vertexByteCount);
@@ -207,6 +218,8 @@ public class DhTerrainShaderProgram extends ShaderProgram implements IDhApiShade
 			dhNearClipDistance = 1.0f;
 		}
 		this.setUniform(this.uClipDistance, dhNearClipDistance);
+
+		this.setUniform(this.uSnowColor, Color.WHITE);
 	}
 	
 	@Override

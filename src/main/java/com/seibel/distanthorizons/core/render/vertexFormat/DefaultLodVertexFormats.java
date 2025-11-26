@@ -42,6 +42,7 @@ public class DefaultLodVertexFormats
 	public static final LodVertexFormatElement ELEMENT_IRIS_NORMAL_INDEX = new LodVertexFormatElement(0, LodVertexFormatElement.DataType.BYTE, 1, false);
 	
 	
+    public static final LodVertexFormatElement ELEMENT_UINT = new LodVertexFormatElement(0, LodVertexFormatElement.DataType.UINT, 1, false);
 	public static final LodVertexFormat POSITION = new LodVertexFormat(ImmutableList.<LodVertexFormatElement>builder().add(ELEMENT_POSITION).build());
 	public static final LodVertexFormat POSITION_COLOR = new LodVertexFormat(ImmutableList.<LodVertexFormatElement>builder().add(ELEMENT_POSITION).add(ELEMENT_COLOR).build());
 	public static final LodVertexFormat POSITION_COLOR_LIGHTMAP = new LodVertexFormat(ImmutableList.<LodVertexFormatElement>builder().add(ELEMENT_POSITION).add(ELEMENT_COLOR).add(ELEMENT_LIGHT_MAP_UV).build());
@@ -61,6 +62,9 @@ public class DefaultLodVertexFormats
 			.add(ELEMENT_BYTE_PADDING)
 			.add(ELEMENT_LIGHT)
 			.add(ELEMENT_COLOR)
+            .add(ELEMENT_UINT)
+            .add(ELEMENT_UINT)
+            .add(ELEMENT_UINT)
 			.build());
 	
 }

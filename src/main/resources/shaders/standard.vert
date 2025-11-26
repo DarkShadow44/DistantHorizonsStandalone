@@ -3,10 +3,14 @@
 in uvec4 vPosition;
 out vec4 vPos;
 in vec4 color;
+in int lastTimeUpdateLo;
+in int lastTimeUpdateHi;
+in int snowFlags;
 
 out vec4 vertexColor;
 out vec3 vertexWorldPos;
 out float vertexYPos;
+out int vSnowFlags;
 
 uniform bool uWhiteWorld;
 
@@ -63,4 +67,5 @@ void main()
     }
 
     gl_Position = uCombinedMatrix * vec4(vertexWorldPos + vec3(mx, 0, mz), 1.0);
+    vSnowFlags = snowFlags;
 }

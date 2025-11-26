@@ -4,6 +4,7 @@ in vec4 vertexColor;
 in vec3 vertexWorldPos;
 in vec4 vPos;
 in vec4 gl_FragCoord;
+flat in float vIsPossibleSnow;
 
 out vec4 fragColor;
 
@@ -18,6 +19,7 @@ uniform float uNoiseIntensity;
 uniform int uNoiseDropoff;
 uniform bool uDitherDhRendering;
 
+uniform vec4 uSnowColor;
 
 // The random functions for diffrent dimentions
 float rand(float co) { return fract(sin(co*(91.3458)) * 47453.5453); }
@@ -114,6 +116,10 @@ void main()
         {
             discard;
         }
+    }
+
+    if (vIsSnowQuad > 0.5) {
+        fragColor = uSnowColor;
     }
     
     if (uNoiseEnabled)
