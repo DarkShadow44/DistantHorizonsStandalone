@@ -437,11 +437,6 @@ public class LodQuadBuilder
 		bb.put(g);
 		bb.put(b);
 		bb.put(a);
-		
-		// Block ID and normal index are used by the Iris format
-		bb.put(irisBlockMaterialId);
-		bb.put(normalIndex);
-		bb.putShort((short) 0); // padding to make sure the vertex format as a whole is a multiple of 4
 	}
 	
 	

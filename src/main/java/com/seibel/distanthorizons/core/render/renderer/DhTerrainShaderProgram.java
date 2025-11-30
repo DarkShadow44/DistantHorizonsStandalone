@@ -120,7 +120,6 @@ public class DhTerrainShaderProgram extends ShaderProgram implements IDhApiShade
 		// TODO comment what each attribute represents
 		this.vao.setVertexAttribute(0, 0, VertexPointer.addUnsignedShortsPointer(4, false, true)); // 2+2+2+2 // TODO probably color, blockpos
 		this.vao.setVertexAttribute(0, 1, VertexPointer.addUnsignedBytesPointer(4, true, false)); // +4 // TODO ?
-		this.vao.setVertexAttribute(0, 2, VertexPointer.addUnsignedBytesPointer(4, true, true)); // +4 // TODO probably normal index and Iris block ID
 		
 		try
 		{

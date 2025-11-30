@@ -61,10 +61,6 @@ public class DefaultLodVertexFormats
 			.add(ELEMENT_BYTE_PADDING)
 			.add(ELEMENT_LIGHT)
 			.add(ELEMENT_COLOR)
-			.add(ELEMENT_IRIS_MATERIAL_INDEX)
-			.add(ELEMENT_IRIS_NORMAL_INDEX)
-			.add(ELEMENT_BYTE_PADDING)
-			.add(ELEMENT_BYTE_PADDING) // padding is to make sure the format is a multiple of 4
 			.build());
 	
 }
