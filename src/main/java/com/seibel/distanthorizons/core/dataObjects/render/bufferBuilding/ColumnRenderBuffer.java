@@ -98,10 +98,11 @@ public class ColumnRenderBuffer implements AutoCloseable
 		
 		
 		
+
 		// make the buffers
-		ArrayList<ByteBuffer> opaqueBuffers = builder.makeOpaqueVertexBuffers();
-		ArrayList<ByteBuffer> transparentBuffers = builder.makeTransparentVertexBuffers();
-		
+		ArrayList<ByteBuffer> opaqueBuffers = builder.makeOpaqueVertexBuffers(blockPos);
+		ArrayList<ByteBuffer> transparentBuffers = builder.makeTransparentVertexBuffers(blockPos);
+
 		this.vbos = resizeBuffer(this.vbos, opaqueBuffers.size());
 		this.vbosTransparent = resizeBuffer(this.vbosTransparent, transparentBuffers.size());
 		

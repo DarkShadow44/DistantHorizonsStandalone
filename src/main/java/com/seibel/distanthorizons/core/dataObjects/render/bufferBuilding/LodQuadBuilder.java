@@ -31,6 +31,7 @@ import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.enums.EDhDirection;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
+import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos;
 import com.seibel.distanthorizons.core.render.glObject.buffer.GLVertexBuffer;
 import com.seibel.distanthorizons.core.util.ColorUtil;
 import com.seibel.distanthorizons.api.enums.config.EDhApiGpuUploadMethod;
@@ -283,10 +284,10 @@ public class LodQuadBuilder
 	//==============//
 	// buffer setup //
 	//==============//
-	
-	public ArrayList<ByteBuffer> makeOpaqueVertexBuffers() { return this.makeVertexBuffers(this.opaqueQuads); }
-	public ArrayList<ByteBuffer> makeTransparentVertexBuffers() { return this.makeVertexBuffers(this.transparentQuads); }
-	private ArrayList<ByteBuffer> makeVertexBuffers(ArrayList<BufferQuad>[] quadList)
+
+	public ArrayList<ByteBuffer> makeOpaqueVertexBuffers(DhBlockPos blockPos) { return this.makeVertexBuffers(this.opaqueQuads, blockPos); }
+	public ArrayList<ByteBuffer> makeTransparentVertexBuffers(DhBlockPos blockPos) { return this.makeVertexBuffers(this.transparentQuads, blockPos); }
+	private ArrayList<ByteBuffer> makeVertexBuffers(ArrayList<BufferQuad>[] quadList, DhBlockPos blockPos)
 	{
 		ArrayList<ByteBuffer> byteBufferList = new ArrayList<>(3);
 		
@@ -309,8 +310,8 @@ public class LodQuadBuilder
 					buffer = MemoryUtil.memAlloc(ColumnRenderBuffer.FULL_SIZED_BUFFER);
 					byteBufferList.add(buffer);
 				}
-				
-				this.putQuad(buffer, quadList[directionIndex].get(quadIndex));
+
+				this.putQuad(buffer, quadList[directionIndex].get(quadIndex), blockPos);
 			}
 		}
 		
@@ -324,7 +325,7 @@ public class LodQuadBuilder
 		
 		return byteBufferList;
 	}
-	private void putQuad(ByteBuffer bb, BufferQuad quad)
+	private void putQuad(ByteBuffer bb, BufferQuad quad, DhBlockPos blockPos)
 	{
 		int[][] quadBase = DIRECTION_VERTEX_IBO_QUAD[quad.direction.ordinal()];
 		short widthEastWest = quad.widthEastWest;
@@ -395,18 +396,25 @@ public class LodQuadBuilder
 					}
 				}
 			}
-			
-			
+
+            int snowFlags = 0;
+
+            if (quad.y > 70) snowFlags = 1;
+
+
 			this.putVertex(bb, (short) (quad.x + dx), (short) (quad.y + dy), (short) (quad.z + dz),
 					quad.hasError ? ColorUtil.RED : color,
 					quad.hasError ? 0 : normalIndex,
 					quad.hasError ? 0 : quad.irisBlockMaterialId,
 					quad.hasError ? 15 : quad.skyLight,
 					quad.hasError ? 15 : quad.blockLight,
-					mx, my, mz);
+					mx, my, mz,
+                blockPos.getX() + quad.x, blockPos.getZ() + quad.z,
+                0,
+                snowFlags);
 		}
 	}
-	private void putVertex(ByteBuffer bb, short x, short y, short z, int color, byte normalIndex, byte irisBlockMaterialId, byte skylight, byte blocklight, int mx, int my, int mz)
+	private void putVertex(ByteBuffer bb, short x, short y, short z, int color, byte normalIndex, byte irisBlockMaterialId, byte skylight, byte blocklight, int mx, int my, int mz, int quadX, int quadZ, long lastTimeUpdate, int snowFlags)
 	{
 		skylight %= 16;
 		blocklight %= 16;
@@ -437,6 +445,23 @@ public class LodQuadBuilder
 		bb.put(g);
 		bb.put(b);
 		bb.put(a);
+
+        // Snow
+        bb.putInt((int)(lastTimeUpdate & 0xFFFFFFFFL));
+        bb.putInt((int)(lastTimeUpdate >> 32));
+
+        quadX = quadX % 256;
+        if (quadX < 0) {
+            quadX += 256;
+        }
+        quadZ = quadZ % 256;
+        if (quadZ < 0) {
+            quadZ += 256;
+        }
+        bb.put((byte)quadX);
+        bb.put((byte)snowFlags);
+        bb.put((byte)quadZ);
+        bb.put((byte)0);
 	}
 	
 	

@@ -34,8 +34,11 @@ import com.seibel.distanthorizons.core.util.LodUtil;
 import com.seibel.distanthorizons.core.util.RenderUtil;
 import com.seibel.distanthorizons.core.util.math.Mat4f;
 import com.seibel.distanthorizons.core.util.math.Vec3f;
+import org.lwjgl.BufferUtils;
+import org.lwjgl.opengl.GL32;
 
 import java.awt.*;
+import java.nio.IntBuffer;
 
 /**
  * Handles rendering the normal LOD terrain.
@@ -64,13 +67,14 @@ public class DhTerrainShaderProgram extends ShaderProgram implements IDhApiShade
 	public int uNoiseSteps = -1;
 	public int uNoiseIntensity = -1;
 	public int uNoiseDropoff = -1;
-	
+
  	// Snow uniforms
  	public int uSnowColor = -1;
+     public int uLastTimeUpdateWinterSummer = -1;
+     public int uLastTimeUpdateAny = -1;
 
 	// Debug Uniform
 	public int uWhiteWorld = -1;
-	
 	
 	
 	//=============//
@@ -86,7 +90,7 @@ public class DhTerrainShaderProgram extends ShaderProgram implements IDhApiShade
 								: "shaders/standard.vert",
 						false, new StringBuilder()).toString(),
 				() -> Shader.loadFile("shaders/flat_shaded.frag", false, new StringBuilder()).toString(),
-				"fragColor", new String[]{"vPosition", "color", "lastTimeUpdateLo", "lastTimeUpdateHi", "snowFlags"});
+				"fragColor", new String[]{"vPosition", "color", "lastTimeUpdateLo", "lastTimeUpdateHi", "quadPos"});
 
 		this.uCombinedMatrix = this.getUniformLocation("uCombinedMatrix");
 		this.uModelOffset = this.getUniformLocation("uModelOffset");
@@ -130,7 +134,7 @@ public class DhTerrainShaderProgram extends ShaderProgram implements IDhApiShade
 		this.vao.setVertexAttribute(0, 1, VertexPointer.addUnsignedBytesPointer(4, true, false)); // +4 // TODO ?
         this.vao.setVertexAttribute(0, 2, VertexPointer.addIntPointer(false, true));
         this.vao.setVertexAttribute(0, 3, VertexPointer.addIntPointer(false, true));
-        this.vao.setVertexAttribute(0, 4, VertexPointer.addIntPointer(false, true));
+        this.vao.setVertexAttribute(0, 4, VertexPointer.addUnsignedBytesPointer(4,false, true));
 
 		try
 		{
@@ -164,10 +168,26 @@ public class DhTerrainShaderProgram extends ShaderProgram implements IDhApiShade
 	{
 		super.bind();
 		this.vao.bind();
+        if (textureIdLastTimeUpdateWinterSummer == -1) {
+            textureIdLastTimeUpdateWinterSummer = generateTexture();
+            textureIdLastTimeUpdateAny = generateTexture();
+        }
+        GL32.glActiveTexture(GL32.GL_TEXTURE1);
+        lastTexture1 = GL32.glGetInteger(GL32.GL_TEXTURE_BINDING_2D);
+        GL32.glBindTexture(GL32.GL_TEXTURE_2D, textureIdLastTimeUpdateWinterSummer);
+        GL32.glActiveTexture(GL32.GL_TEXTURE2);
+        lastTexture2 = GL32.glGetInteger(GL32.GL_TEXTURE_BINDING_2D);
+        GL32.glBindTexture(GL32.GL_TEXTURE_2D, textureIdLastTimeUpdateAny);
+        GL32.glActiveTexture(GL32.GL_TEXTURE0);
 	}
 	@Override
 	public void unbind()
 	{
+        GL32.glActiveTexture(GL32.GL_TEXTURE1);
+        GL32.glBindTexture(GL32.GL_TEXTURE_2D, lastTexture1);
+        GL32.glActiveTexture(GL32.GL_TEXTURE2);
+        GL32.glBindTexture(GL32.GL_TEXTURE_2D, lastTexture2);
+        GL32.glActiveTexture(GL32.GL_TEXTURE0);
 		super.unbind();
 		this.vao.unbind();
 	}
@@ -181,22 +201,44 @@ public class DhTerrainShaderProgram extends ShaderProgram implements IDhApiShade
 	
 	@Override
 	public void bindVertexBuffer(int vbo) { this.vao.bindBufferToAllBindingPoints(vbo); }
-	
+
+    public static int textureIdLastTimeUpdateWinterSummer = -1;
+    public static int textureIdLastTimeUpdateAny = -1;
+    private int lastTexture1, lastTexture2;
+
+    private static int generateTexture() {
+        int texture = GL32.glGenTextures();
+        GL32.glBindTexture(GL32.GL_TEXTURE_2D, texture);
+
+        IntBuffer zeros = BufferUtils.createIntBuffer(256 * 256 * 4);
+        zeros.put(new int[256*256*4]);
+
+        GL32.glTexImage2D(GL32.GL_TEXTURE_2D, 0, GL32.GL_RGBA32UI,256, 256, 0, GL32.GL_RGBA_INTEGER, GL32.GL_UNSIGNED_INT, zeros);
+        GL32.glTexParameteri(GL32.GL_TEXTURE_2D, GL32.GL_TEXTURE_MIN_FILTER, GL32.GL_NEAREST);
+        GL32.glTexParameteri(GL32.GL_TEXTURE_2D, GL32.GL_TEXTURE_MAG_FILTER, GL32.GL_NEAREST);
+        GL32.glTexParameteri(GL32.GL_TEXTURE_2D, GL32.GL_TEXTURE_WRAP_S, GL32.GL_REPEAT);
+        GL32.glTexParameteri(GL32.GL_TEXTURE_2D, GL32.GL_TEXTURE_WRAP_T, GL32.GL_REPEAT);
+        return texture;
+    }
+
+
 	@Override
 	public void fillUniformData(DhApiRenderParam renderParameters)
 	{
 		Mat4f combinedMatrix = new Mat4f(renderParameters.dhProjectionMatrix);
 		combinedMatrix.multiply(renderParameters.dhModelViewMatrix);
-		
+
 		super.bind();
 
 		// uniforms
 		this.setUniform(this.uCombinedMatrix, combinedMatrix);
 		this.setUniform(this.uMircoOffset, 0.01f); // 0.01 block offset
-		
+
 		// setUniform(skyLightUniform, skyLight);
 		this.setUniform(this.uLightMap, 0); // TODO this should probably be passed in
-		
+        this.setUniform(this.uLastTimeUpdateWinterSummer, 1);
+        this.setUniform(this.uLastTimeUpdateAny, 2);
+
 		if (this.uWorldYOffset != -1) this.setUniform(this.uWorldYOffset, (float) renderParameters.worldYOffset);
 		
 		if (this.uDitherDhRendering != -1) this.setUniform(this.uDitherDhRendering, Config.Client.Advanced.Graphics.Quality.ditherDhFade.get());

@@ -4,7 +4,8 @@ in vec4 vertexColor;
 in vec3 vertexWorldPos;
 in vec4 vPos;
 in vec4 gl_FragCoord;
-flat in float vIsPossibleSnow;
+
+flat in int isSnowy;
 
 out vec4 fragColor;
 
@@ -118,7 +119,7 @@ void main()
         }
     }
 
-    if (vIsSnowQuad > 0.5) {
+    if (isSnowy > 0) {
         fragColor = uSnowColor;
     }
     

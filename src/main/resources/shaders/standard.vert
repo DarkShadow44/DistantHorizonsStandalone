@@ -3,14 +3,14 @@
 in uvec4 vPosition;
 out vec4 vPos;
 in vec4 color;
-in int lastTimeUpdateLo;
-in int lastTimeUpdateHi;
-in int snowFlags;
+in uint lastTimeUpdateLo;
+in uint lastTimeUpdateHi;
+in uvec4 quadPos;
 
 out vec4 vertexColor;
 out vec3 vertexWorldPos;
 out float vertexYPos;
-out int vSnowFlags;
+flat out int isSnowy;
 
 uniform bool uWhiteWorld;
 
@@ -21,6 +21,9 @@ uniform float uWorldYOffset;
 uniform int uWorldSkyLight;
 uniform sampler2D uLightMap;
 uniform float uMircoOffset;
+
+uniform usampler2D uLastTimeUpdateWinterSummer;
+uniform usampler2D uLastTimeUpdateAny;
 
 
 /** 
@@ -67,5 +70,48 @@ void main()
     }
 
     gl_Position = uCombinedMatrix * vec4(vertexWorldPos + vec3(mx, 0, mz), 1.0);
-    vSnowFlags = snowFlags;
+
+    // Snow logic
+
+    // bit 1 = isSnow
+    // bit 2 = isPotentialSnow
+    // bit 3 = isPermaSnow
+    // bit 4 = isPermaThaw
+    uint snowFlags = quadPos.y;
+    bool isSnow = (snowFlags & 0x1u) != 0u;
+    bool isPotentialSnow = (snowFlags & 0x2u) != 0u;
+    bool isPermaSnow = (snowFlags & 0x4u) != 0u;
+    bool isPermaThaw = (snowFlags & 0x8u) != 0u;
+
+    vec2 uvLastTimeUpdate = vec2(quadPos.x + 0.5, quadPos.z + 0.5);
+    uvec4 vecLastTimeUpdateWinterSummer = texture(uLastTimeUpdateWinterSummer, uvLastTimeUpdate);
+    uvec4 vecLastTimeUpdateAny = texture(uLastTimeUpdateAny, uvLastTimeUpdate);
+
+    uint lastSnowTickWinterLo = vecLastTimeUpdateWinterSummer.x;
+    uint lastSnowTickWinterHi = vecLastTimeUpdateWinterSummer.y;
+    uint lastThawTickSummerLo = vecLastTimeUpdateWinterSummer.z;
+    uint lastThawTickSummerHi = vecLastTimeUpdateWinterSummer.a;
+    uint lastSnowTickAnyLo = vecLastTimeUpdateAny.x;
+    uint lastSnowTickAnyHi = vecLastTimeUpdateAny.y;
+    uint lastThawTickAnyLo = vecLastTimeUpdateAny.z;
+    uint lastThawTickAnyHi = vecLastTimeUpdateAny.a;
+    
+    isSnowy = isSnow ? 1 : 0;
+    if (isPermaThaw) {
+        if (lastThawTickAnyLo > lastTimeUpdateLo) {
+            isSnowy = 0;
+        }
+    } else if (isPermaSnow) {
+        if (lastSnowTickAnyLo > lastTimeUpdateLo) {
+            isSnowy = 1;
+        }
+    } else if (lastThawTickSummerLo > lastSnowTickWinterLo) {
+        if (lastThawTickSummerLo > lastTimeUpdateLo) {
+            isSnowy = 0;
+        }
+    } else {
+        if (lastSnowTickWinterLo > lastTimeUpdateLo) {
+            isSnowy = 1;
+        }
+    }
 }
