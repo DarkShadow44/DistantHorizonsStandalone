@@ -110,8 +110,6 @@ void main()
             isSnowy = 0;
         }
     } else {
-        if (lastSnowTickWinterLo > lastTimeUpdateLo) {
-            isSnowy = 1;
-        }
+        
     }
 }
