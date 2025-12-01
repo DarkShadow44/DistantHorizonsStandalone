@@ -197,8 +197,17 @@ public class DhTerrainShaderProgram extends ShaderProgram implements IDhApiShade
 	@Override
 	public void bindVertexBuffer(int vbo) { this.vao.bindBufferToAllBindingPoints(vbo); }
 
-    public static int textureIdLastTimeUpdateWinterSummer = -1;
-    public static int textureIdLastTimeUpdateAny = -1;
+    static int textureIdLastTimeUpdateWinterSummer = -1;
+    static int textureIdLastTimeUpdateAny = -1;
+
+    public static void uploadSnowData(int[] summerWinter, int[] any) {
+        GL32.glActiveTexture(GL32.GL_TEXTURE6);
+        GL32.glBindTexture(GL32.GL_TEXTURE_2D, textureIdLastTimeUpdateWinterSummer);
+        GL32.glTexImage2D(GL32.GL_TEXTURE_2D, 0, GL32.GL_RGBA32UI,256, 256, 0, GL32.GL_RGBA_INTEGER, GL32.GL_UNSIGNED_INT, summerWinter);
+        GL32.glBindTexture(GL32.GL_TEXTURE_2D, textureIdLastTimeUpdateAny);
+        GL32.glTexImage2D(GL32.GL_TEXTURE_2D, 0, GL32.GL_RGBA32UI,256, 256, 0, GL32.GL_RGBA_INTEGER, GL32.GL_UNSIGNED_INT, any);
+        GL32.glActiveTexture(GL32.GL_TEXTURE0);
+    }
 
     private static int generateTexture() {
         int texture = GL32.glGenTextures();
