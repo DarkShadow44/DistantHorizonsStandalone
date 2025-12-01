@@ -22,6 +22,8 @@ package com.seibel.distanthorizons.core.dataObjects.render.columnViews;
 
 import com.seibel.distanthorizons.core.dataObjects.render.ColumnRenderSource;
 import com.seibel.distanthorizons.core.util.RenderDataPointUtil;
+import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
+import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 
 import java.util.Arrays;
@@ -30,8 +32,9 @@ import java.util.ConcurrentModificationException;
 public final class ColumnArrayView implements IColumnDataView
 {
 	public final LongArrayList data;
-	
-	/** 
+    public final ByteArrayList dataAdditional;
+
+	/**
 	 * How many data points are currently being represented by this view. <br>
 	 * Will be equal to or less than {@link ColumnArrayView#verticalSize}.
 	 */
@@ -55,9 +58,10 @@ public final class ColumnArrayView implements IColumnDataView
 	//=============//
 	
 	/** @throws IllegalArgumentException if the offset is greater than the data's size */
-	public ColumnArrayView(LongArrayList data, int size, int offset, int verticalSize) throws IllegalArgumentException
+	public ColumnArrayView(LongArrayList data, ByteArrayList dataAdditional, int size, int offset, int verticalSize) throws IllegalArgumentException
 	{
 		this.data = data;
+        this.dataAdditional = dataAdditional;
 		this.size = size;
 		this.offset = offset;
 		this.verticalSize = verticalSize;
@@ -75,38 +79,45 @@ public final class ColumnArrayView implements IColumnDataView
 	//=====================//
 	
 	@Override
-	public long get(int index) 
-	{
-		try
-		{
-			return this.data.getLong(index + this.offset);
-		}
-		catch (IndexOutOfBoundsException e)
-		{
-			// we can fairly confidently say this is a concurrent exception over an actual
-			// index out of bounds, since we're generally iterating over the whole
-			// array any time we use this getter.
-			throw new ConcurrentModificationException("Potential concurrent modification detected. Make sure the parent ColumnRenderSource isn't being closed before the ColumnArrayView processing is complete.", e);
-		}
-	}
-	public void set(int index, long value) { data.set(index + offset, value); }
-	
+    public long get(int index)
+    {
+        try
+        {
+            return this.data.getLong(index + this.offset);
+        }
+        catch (IndexOutOfBoundsException e)
+        {
+            // we can fairly confidently say this is a concurrent exception over an actual
+            // index out of bounds, since we're generally iterating over the whole
+            // array any time we use this getter.
+            throw new ConcurrentModificationException("Potential concurrent modification detected. Make sure the parent ColumnRenderSource isn't being closed before the ColumnArrayView processing is complete.", e);
+        }
+    }
+    public byte getAdditional(int index)
+    {
+        return this.dataAdditional.getByte(index + this.offset);
+    }
+    public void set(int index, long value) { data.set(index + offset, value); }
+
+    public void setAdditional(int index, byte value) { dataAdditional.set(index + offset, value); }
+
 	@Override
 	public int size() { return size; }
 	@Override
 	public int verticalSize() { return verticalSize; }
-	
+
 	@Override
 	public int dataCount() { return (this.verticalSize != 0) ? (this.size / this.verticalSize) : 0; } // TODO what does the divide by mean?
-	
+
 	@Override
 	public ColumnArrayView subView(int dataIndexStart, int dataCount)
 	{
-		return new ColumnArrayView(data, dataCount * verticalSize, offset + dataIndexStart * verticalSize, verticalSize);
+		return new ColumnArrayView(data, dataAdditional, dataCount * verticalSize, offset + dataIndexStart * verticalSize, verticalSize);
 	}
-	
-	public void fill(long value) { Arrays.fill(data.elements(), offset, offset + size, value); }
-	
+
+	public void fill(long value, byte valueAdditional) { Arrays.fill(data.elements(), offset, offset + size, value);
+        Arrays.fill(dataAdditional.elements(), offset, offset + size, valueAdditional);}
+
 	public void copyFrom(IColumnDataView source) { copyFrom(source, 0); }
 	public void copyFrom(IColumnDataView source, int outputDataIndexOffset)
 	{
@@ -123,20 +134,25 @@ public final class ColumnArrayView implements IColumnDataView
 			for (int i = 0; i < source.dataCount(); i++)
 			{
 				int outputOffset = offset + outputDataIndexOffset * verticalSize + i * verticalSize;
-				source.subView(i, 1).copyTo(data.elements(), outputOffset, source.verticalSize());
-				Arrays.fill(data.elements(), outputOffset + source.verticalSize(),
-						outputOffset + verticalSize, 0);
+				source.subView(i, 1).copyTo(data.elements(), dataAdditional.elements(), outputOffset, source.verticalSize());
+                Arrays.fill(data.elements(), outputOffset + source.verticalSize(),
+                    outputOffset + verticalSize, 0);
+                Arrays.fill(dataAdditional.elements(), outputOffset + source.verticalSize(),
+                    outputOffset + verticalSize, (byte)0);
 			}
 		}
 		else
 		{
-			source.copyTo(data.elements(), offset + outputDataIndexOffset * verticalSize, source.size());
+			source.copyTo(data.elements(), dataAdditional.elements(), offset + outputDataIndexOffset * verticalSize, source.size());
 		}
 	}
-	
+
 	@Override
-	public void copyTo(long[] target, int offset, int size) { System.arraycopy(data.elements(), this.offset, target, offset, size); }
-	
+	public void copyTo(long[] target, byte[] targetAdditional, int offset, int size) {
+        System.arraycopy(data.elements(), this.offset, target, offset, size);
+        System.arraycopy(dataAdditional.elements(), this.offset, targetAdditional, offset, size);
+    }
+
 	public boolean mergeWith(ColumnArrayView source, boolean override)
 	{
 		if (size != source.size)

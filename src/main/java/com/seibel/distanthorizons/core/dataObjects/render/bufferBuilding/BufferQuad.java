@@ -44,7 +44,9 @@ public final class BufferQuad
 	public final short x;
 	public final short y;
 	public final short z;
-	
+
+    public final int snowFlags;
+
 	public short widthEastWest;
 	/** This is both North/South and Up/Down since the merging logic is the same either way */
 	public short widthNorthSouthOrUpDown;
@@ -64,7 +66,7 @@ public final class BufferQuad
 	BufferQuad(
 			short x, short y, short z, short widthEastWest, short widthNorthSouthOrUpDown,
 			int color, byte irisBlockMaterialId, byte skylight, byte blockLight,
-			EDhDirection direction)
+			EDhDirection direction, int snowFlags)
 	{
 		if (widthEastWest == 0 || widthNorthSouthOrUpDown == 0)
 			throw new IllegalArgumentException("Size 0 quad!");
@@ -81,6 +83,7 @@ public final class BufferQuad
 		this.skyLight = skylight;
 		this.blockLight = blockLight;
 		this.direction = direction;
+        this.snowFlags = snowFlags;
 	}
 	
 	

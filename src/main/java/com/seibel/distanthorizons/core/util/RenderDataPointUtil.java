@@ -293,7 +293,7 @@ public class RenderDataPointUtil
 			// I expect this to never be the case,
 			// but RenderDataPointReducingList handles it sanely,
 			// so I might as well handle it sanely here too.
-			output.fill(EMPTY_DATA);
+			output.fill(EMPTY_DATA, (byte)0);
 		}
 		else if (target == 1)
 		{

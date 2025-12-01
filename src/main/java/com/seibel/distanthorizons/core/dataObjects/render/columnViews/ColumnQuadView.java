@@ -19,34 +19,38 @@
 
 package com.seibel.distanthorizons.core.dataObjects.render.columnViews;
 
+import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 
 public class ColumnQuadView implements IColumnDataView
 {
 	private final LongArrayList data;
+    private final ByteArrayList dataAdditional;
 	private final int perColumnOffset; // per column (of columns of data) offset in longs
 	private final int xSize; // x size in datapoints
 	private final int zSize; // x size in datapoints
 	private final int offset; // offset in longs
 	private final int vertSize; // vertical size in longs
-	
-	public ColumnQuadView(LongArrayList data, int dataZWidth, int dataVertSize, int viewXOffset, int viewZOffset, int xSize, int zSize)
+
+	public ColumnQuadView(LongArrayList data, ByteArrayList dataAdditional, int dataZWidth, int dataVertSize, int viewXOffset, int viewZOffset, int xSize, int zSize)
 	{
 		if (viewXOffset + xSize > (data.size() / (dataZWidth * dataVertSize)) || viewZOffset + zSize > dataZWidth)
 		{
 			throw new IllegalArgumentException("View is out of bounds");
 		}
-		
+
 		this.data = data;
+        this.dataAdditional = dataAdditional;
 		this.xSize = xSize;
 		this.zSize = zSize;
 		this.vertSize = dataVertSize;
 		this.perColumnOffset = dataZWidth * dataVertSize;
 		this.offset = viewXOffset * perColumnOffset + viewZOffset * dataVertSize;
 	}
-	private ColumnQuadView(LongArrayList data, int perColumnOffset, int offset, int vertSize, int xSize, int zSize)
+	private ColumnQuadView(LongArrayList data, ByteArrayList dataAdditional, int perColumnOffset, int offset, int vertSize, int xSize, int zSize)
 	{
 		this.data = data;
+        this.dataAdditional = dataAdditional;
 		this.perColumnOffset = perColumnOffset;
 		this.offset = offset;
 		this.vertSize = vertSize;
@@ -75,21 +79,20 @@ public class ColumnQuadView implements IColumnDataView
 	
 	public ColumnArrayView get(int x, int z)
 	{
-		return new ColumnArrayView(data, vertSize, offset + x * perColumnOffset + z * vertSize, vertSize);
+		return new ColumnArrayView(data, dataAdditional, vertSize, offset + x * perColumnOffset + z * vertSize, vertSize);
 	}
-	
+
 	public ColumnArrayView getRow(int x)
 	{
-		return new ColumnArrayView(data, zSize * vertSize, offset + x * perColumnOffset, vertSize);
+		return new ColumnArrayView(data, dataAdditional, zSize * vertSize, offset + x * perColumnOffset, vertSize);
 	}
-	
+
 	public void set(int x, int z, IColumnDataView singleColumn)
 	{
 		if (singleColumn.verticalSize() != vertSize) throw new IllegalArgumentException("Vertical size of singleColumn must be equal to vertSize");
 		if (singleColumn.dataCount() != 1) throw new IllegalArgumentException("SingleColumn must contain exactly one data point");
-		singleColumn.copyTo(data.elements(), offset + x * perColumnOffset + z * vertSize, singleColumn.size());
+		singleColumn.copyTo(data.elements(), dataAdditional.elements(), offset + x * perColumnOffset + z * vertSize, singleColumn.size());
 	}
-	
 	@Override
 	public int size()
 	{
@@ -114,28 +117,30 @@ public class ColumnQuadView implements IColumnDataView
 		if (dataCount != 1) throw new UnsupportedOperationException("Fixme: subView for QUadView only support one data point!");
 		int x = dataIndexStart / xSize;
 		int z = dataIndexStart % xSize;
-		return new ColumnArrayView(data, vertSize * dataCount, offset + x * perColumnOffset + z * vertSize, vertSize);
+		return new ColumnArrayView(data, dataAdditional, vertSize * dataCount, offset + x * perColumnOffset + z * vertSize, vertSize);
 	}
-	
+
 	public ColumnQuadView subView(int xOffset, int zOffset, int xSize, int zSize)
 	{
 		if (xOffset + xSize > this.xSize || zOffset + zSize > this.zSize) throw new IllegalArgumentException("SubView is out of bounds");
-		return new ColumnQuadView(data, perColumnOffset, offset + xOffset * perColumnOffset + zOffset * vertSize, vertSize, xSize, zSize);
+		return new ColumnQuadView(data, dataAdditional, perColumnOffset, offset + xOffset * perColumnOffset + zOffset * vertSize, vertSize, xSize, zSize);
 	}
-	
+
 	@Override
-	public void copyTo(long[] target, int offset, int size)
+	public void copyTo(long[] target, byte[] targetAddional, int offset, int size)
 	{
 		if (size != this.size() && size > zSize * vertSize) throw new UnsupportedOperationException("Not supported yet");
 		if (size <= xSize * vertSize)
 		{
-			System.arraycopy(data, this.offset, target, offset, size);
+            System.arraycopy(data, this.offset, target, offset, size);
+            System.arraycopy(dataAdditional, this.offset, targetAddional, offset, size);
 		}
 		else
 		{
 			for (int x = 0; x < xSize; x++)
 			{
-				System.arraycopy(data, this.offset + x * perColumnOffset, target, offset + x * xSize * vertSize, xSize * vertSize);
+                System.arraycopy(data, this.offset + x * perColumnOffset, target, offset + x * xSize * vertSize, xSize * vertSize);
+                System.arraycopy(dataAdditional, this.offset + x * perColumnOffset, targetAddional, offset + x * xSize * vertSize, xSize * vertSize);
 			}
 		}
 	}

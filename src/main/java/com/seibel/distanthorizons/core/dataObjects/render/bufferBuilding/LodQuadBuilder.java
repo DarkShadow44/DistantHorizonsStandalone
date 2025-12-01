@@ -146,14 +146,14 @@ public class LodQuadBuilder
 	public void addQuadAdj(
 			EDhDirection dir, short x, short y, short z,
 			short widthEastWest, short widthNorthSouthOrUpDown,
-			int color, byte irisBlockMaterialId, byte skyLight, byte blockLight)
+			int color, byte irisBlockMaterialId, byte skyLight, byte blockLight, int snowFlags)
 	{
 		if (dir == EDhDirection.DOWN)
 		{
 			throw new IllegalArgumentException("addQuadAdj() is only for adj direction! Not UP or Down!");
 		}
-		
-		BufferQuad quad = new BufferQuad(x, y, z, widthEastWest, widthNorthSouthOrUpDown, color, irisBlockMaterialId, skyLight, blockLight, dir);
+
+		BufferQuad quad = new BufferQuad(x, y, z, widthEastWest, widthNorthSouthOrUpDown, color, irisBlockMaterialId, skyLight, blockLight, dir, snowFlags);
 		ArrayList<BufferQuad> quadList = (this.doTransparency && ColorUtil.getAlpha(color) < 255) ? this.transparentQuads[dir.ordinal()] : this.opaqueQuads[dir.ordinal()];
 		if (!quadList.isEmpty() &&
 				(
@@ -169,9 +169,9 @@ public class LodQuadBuilder
 	}
 	
 	// XZ
-	public void addQuadUp(short minX, short maxY, short minZ, short widthEastWest, short widthNorthSouthOrUpDown, int color, byte irisBlockMaterialId, byte skylight, byte blocklight) // TODO argument names are wrong
+	public void addQuadUp(short minX, short maxY, short minZ, short widthEastWest, short widthNorthSouthOrUpDown, int color, byte irisBlockMaterialId, byte skylight, byte blocklight, int snowFlags) // TODO argument names are wrong
 	{
-		BufferQuad quad = new BufferQuad(minX, maxY, minZ, widthEastWest, widthNorthSouthOrUpDown, color, irisBlockMaterialId, skylight, blocklight, EDhDirection.UP);
+		BufferQuad quad = new BufferQuad(minX, maxY, minZ, widthEastWest, widthNorthSouthOrUpDown, color, irisBlockMaterialId, skylight, blocklight, EDhDirection.UP, snowFlags);
 		boolean isTransparent = (this.doTransparency && ColorUtil.getAlpha(color) < 255);
 		ArrayList<BufferQuad> quadList = isTransparent ? this.transparentQuads[EDhDirection.UP.ordinal()] : this.opaqueQuads[EDhDirection.UP.ordinal()];
 		
@@ -189,10 +189,10 @@ public class LodQuadBuilder
 		
 		quadList.add(quad);
 	}
-	
-	public void addQuadDown(short x, short y, short z, short width, short wz, int color, byte irisBlockMaterialId, byte skylight, byte blocklight)
+
+	public void addQuadDown(short x, short y, short z, short width, short wz, int color, byte irisBlockMaterialId, byte skylight, byte blocklight, int snowFlags)
 	{
-		BufferQuad quad = new BufferQuad(x, y, z, width, wz, color, irisBlockMaterialId, skylight, blocklight, EDhDirection.DOWN);
+		BufferQuad quad = new BufferQuad(x, y, z, width, wz, color, irisBlockMaterialId, skylight, blocklight, EDhDirection.DOWN, snowFlags);
 		ArrayList<BufferQuad> qs = (doTransparency && ColorUtil.getAlpha(color) < 255)
 				? transparentQuads[EDhDirection.DOWN.ordinal()] : opaqueQuads[EDhDirection.DOWN.ordinal()];
 		if (!qs.isEmpty()
@@ -397,11 +397,6 @@ public class LodQuadBuilder
 				}
 			}
 
-            int snowFlags = 0;
-
-            if (quad.y > 70) snowFlags = 1;
-
-
 			this.putVertex(bb, (short) (quad.x + dx), (short) (quad.y + dy), (short) (quad.z + dz),
 					quad.hasError ? ColorUtil.RED : color,
 					quad.hasError ? 0 : normalIndex,
@@ -411,7 +406,7 @@ public class LodQuadBuilder
 					mx, my, mz,
                 blockPos.getX() + quad.x, blockPos.getZ() + quad.z,
                 0,
-                snowFlags);
+                quad.snowFlags);
 		}
 	}
 	private void putVertex(ByteBuffer bb, short x, short y, short z, int color, byte normalIndex, byte irisBlockMaterialId, byte skylight, byte blocklight, int mx, int my, int mz, int quadX, int quadZ, long lastTimeUpdate, int snowFlags)

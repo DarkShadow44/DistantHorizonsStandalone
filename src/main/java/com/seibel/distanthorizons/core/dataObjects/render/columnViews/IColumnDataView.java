@@ -53,7 +53,7 @@ public interface IColumnDataView
 	int dataCount();
 	
 	IColumnDataView subView(int dataIndexStart, int dataCount);
-	
-	void copyTo(long[] target, int offset, int count);
-	
+
+	void copyTo(long[] target, byte[] targetAdditional, int offset, int count);
+
 }

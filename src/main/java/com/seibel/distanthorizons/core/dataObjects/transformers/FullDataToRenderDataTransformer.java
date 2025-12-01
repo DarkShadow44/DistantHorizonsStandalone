@@ -38,8 +38,11 @@ import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftCli
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IBiomeWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
 import com.seibel.distanthorizons.coreapi.util.BitShiftUtil;
+import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import net.minecraft.init.Blocks;
+import net.minecraft.world.biome.BiomeGenBase;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.Nullable;
 
@@ -169,8 +172,10 @@ public class FullDataToRenderDataTransformer
 			
 			try
 			{
+                ByteArrayList dataAdditional = new ByteArrayList();
+                dataAdditional.size(dataArrayList.size());
 				// expand the ColumnArrayView to fit the new larger max vertical size
-				ColumnArrayView newColumnArrayView = new ColumnArrayView(dataArrayList, fullDataLength, 0, fullDataLength);
+				ColumnArrayView newColumnArrayView = new ColumnArrayView(dataArrayList, dataAdditional, fullDataLength, 0, fullDataLength);
 				setRenderColumnView(levelWrapper, fullDataMapping, blockX, blockZ, newColumnArrayView, fullDataColumn);
 				columnArrayView.changeVerticalSizeFrom(newColumnArrayView);
 			}
@@ -209,6 +214,7 @@ public class FullDataToRenderDataTransformer
 		boolean isColumnVoid = true;
 		
 		int colorToApplyToNextBlock = -1;
+        boolean nextBlockIsSnowy = false;
 		int lastColor = 0;
 		int lastBottom = -10_000;
 		
@@ -227,8 +233,9 @@ public class FullDataToRenderDataTransformer
 		// goes from the top down
 		for (int fullDataIndex = 0; fullDataIndex < fullColumnData.size(); fullDataIndex++)
 		{
+            boolean isFirst = fullDataIndex == 0;
 			long fullData = fullColumnData.getLong(fullDataIndex);
-			
+
 			int bottomY = FullDataPointUtil.getBottomY(fullData);
 			int blockHeight = FullDataPointUtil.getHeight(fullData);
 			int topY = bottomY + blockHeight;
@@ -318,10 +325,14 @@ public class FullDataToRenderDataTransformer
 			//=======================//
 			// non-solid block check //
 			//=======================//
-			
-			if (ignoreNonCollidingBlocks 
+
+			if (ignoreNonCollidingBlocks
 				&& !block.isSolid() && !block.isLiquid() && block.getOpacity() != LodUtil.BLOCK_FULLY_OPAQUE)
 			{
+                if (block == Blocks.snow_layer) {
+                    nextBlockIsSnowy = true;
+                    continue;
+                }
 				if (colorBelowWithAvoidedBlocks)
 				{
 					int tempColor = levelWrapper.getBlockColor(mutableBlockPos, biome, block);
@@ -361,9 +372,10 @@ public class FullDataToRenderDataTransformer
 			//=============================//
 			// merge same-colored adjacent //
 			//=============================//
+
 			
 			// check if they share a top-bottom face and if they have same color
-			if (color == lastColor && bottomY + blockHeight == lastBottom  && renderDataIndex > 0)
+			if (color == lastColor && bottomY + blockHeight == lastBottom  && renderDataIndex > 0 && !nextBlockIsSnowy && !isFirst)
 			{
 				//replace the previous block with new bottom
 				long columnData = renderColumnData.get(renderDataIndex - 1);
@@ -376,10 +388,16 @@ public class FullDataToRenderDataTransformer
 				isColumnVoid = false;
 				long columnData = RenderDataPointUtil.createDataPoint(bottomY + blockHeight, bottomY, color, skyLight, blockLight, block.getMaterialId());
 				renderColumnData.set(renderDataIndex, columnData);
+                BiomeGenBase realBiome = (BiomeGenBase) biome.getWrappedMcObject();
+                boolean isPermaSnow = realBiome.temperature <= 0.15;
+                boolean isPermaThaw = realBiome.temperature - 0.7 > 0.15;
+                int columnDataAdditional = ((nextBlockIsSnowy ? 0x1 : 0) | (isFirst ? 0x2 : 0)| (isPermaSnow ? 0x4 : 0)| (isPermaThaw ? 0x8 : 0));
+                renderColumnData.setAdditional(renderDataIndex, (byte)columnDataAdditional);
 				renderDataIndex++;
 			}
 			lastBottom = bottomY;
 			lastColor = color;
+            nextBlockIsSnowy = false;
 		}
 		
 		

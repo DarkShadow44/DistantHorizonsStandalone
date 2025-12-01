@@ -67,7 +67,7 @@ public class ColumnBox
 			short xSize, short ySize, short zSize,
 			short minX, short minY, short minZ,
 			int color, byte irisBlockMaterialId, byte skyLight, byte blockLight,
-			long topData, long bottomData, ColumnArrayView[] adjData, boolean[] isAdjDataSameDetailLevel)
+			long topData, long bottomData, ColumnArrayView[] adjData, boolean[] isAdjDataSameDetailLevel, int snowFlags)
 	{
 		//================//
 		// variable setup //
@@ -128,13 +128,13 @@ public class ColumnBox
 		boolean skipTop = RenderDataPointUtil.doesDataPointExist(topData) && (RenderDataPointUtil.getYMin(topData) == maxY) && !isTopTransparent;
 		if (!skipTop)
 		{
-			builder.addQuadUp(minX, maxY, minZ, xSize, zSize, ColorUtil.applyShade(color, MC.getShade(EDhDirection.UP)), irisBlockMaterialId, skyLightTop, blockLight);
+			builder.addQuadUp(minX, maxY, minZ, xSize, zSize, ColorUtil.applyShade(color, MC.getShade(EDhDirection.UP)), irisBlockMaterialId, skyLightTop, blockLight, snowFlags);
 		}
-		
+
 		boolean skipBottom = RenderDataPointUtil.doesDataPointExist(bottomData) && (RenderDataPointUtil.getYMax(bottomData) == minY) && !isBottomTransparent;
 		if (!skipBottom)
 		{
-			builder.addQuadDown(minX, minY, minZ, xSize, zSize, ColorUtil.applyShade(color, MC.getShade(EDhDirection.DOWN)), irisBlockMaterialId, skyLightBot, blockLight);
+			builder.addQuadDown(minX, minY, minZ, xSize, zSize, ColorUtil.applyShade(color, MC.getShade(EDhDirection.DOWN)), irisBlockMaterialId, skyLightBot, blockLight, snowFlags);
 		}
 		
 		
@@ -153,13 +153,13 @@ public class ColumnBox
 				// Add an adjacent face if this is opaque face or transparent over the void.
 				if (!isTransparent || overVoid)
 				{
-					builder.addQuadAdj(EDhDirection.NORTH, minX, minY, minZ, xSize, ySize, color, irisBlockMaterialId, LodUtil.MAX_MC_LIGHT, blockLight);
+					builder.addQuadAdj(EDhDirection.NORTH, minX, minY, minZ, xSize, ySize, color, irisBlockMaterialId, LodUtil.MAX_MC_LIGHT, blockLight, snowFlags);
 				}
 			}
 			else
 			{
 				makeAdjVerticalQuad(builder, adjCol, adjSameDetailLevel, caveCullingMaxY, EDhDirection.NORTH, minX, minY, minZ, xSize, ySize,
-						color, irisBlockMaterialId, blockLight);
+						color, irisBlockMaterialId, blockLight, snowFlags);
 			}
 		}
 		
@@ -171,16 +171,16 @@ public class ColumnBox
 			{
 				if (!isTransparent || overVoid)
 				{
-					builder.addQuadAdj(EDhDirection.SOUTH, minX, minY, maxZ, xSize, ySize, color, irisBlockMaterialId, LodUtil.MAX_MC_LIGHT, blockLight);
+					builder.addQuadAdj(EDhDirection.SOUTH, minX, minY, maxZ, xSize, ySize, color, irisBlockMaterialId, LodUtil.MAX_MC_LIGHT, blockLight, snowFlags);
 				}
 			}
 			else
 			{
 				makeAdjVerticalQuad(builder, adjCol, adjSameDetailLevel, caveCullingMaxY, EDhDirection.SOUTH, minX, minY, maxZ, xSize, ySize,
-						color, irisBlockMaterialId, blockLight);
+						color, irisBlockMaterialId, blockLight, snowFlags);
 			}
 		}
-		
+
 		// WEST face
 		{
 			ColumnArrayView adjCol = adjData[EDhDirection.WEST.ordinal() - 2];
@@ -189,13 +189,13 @@ public class ColumnBox
 			{
 				if (!isTransparent || overVoid)
 				{
-					builder.addQuadAdj(EDhDirection.WEST, minX, minY, minZ, zSize, ySize, color, irisBlockMaterialId, LodUtil.MAX_MC_LIGHT, blockLight);
+					builder.addQuadAdj(EDhDirection.WEST, minX, minY, minZ, zSize, ySize, color, irisBlockMaterialId, LodUtil.MAX_MC_LIGHT, blockLight, snowFlags);
 				}
 			}
 			else
 			{
 				makeAdjVerticalQuad(builder, adjCol, adjSameDetailLevel, caveCullingMaxY, EDhDirection.WEST, minX, minY, minZ, zSize, ySize,
-						color, irisBlockMaterialId, blockLight);
+						color, irisBlockMaterialId, blockLight, snowFlags);
 			}
 		}
 		
@@ -207,21 +207,21 @@ public class ColumnBox
 			{
 				if (!isTransparent || overVoid)
 				{
-					builder.addQuadAdj(EDhDirection.EAST, maxX, minY, minZ, zSize, ySize, color, irisBlockMaterialId, LodUtil.MAX_MC_LIGHT, blockLight);
+					builder.addQuadAdj(EDhDirection.EAST, maxX, minY, minZ, zSize, ySize, color, irisBlockMaterialId, LodUtil.MAX_MC_LIGHT, blockLight, snowFlags);
 				}
 			}
 			else
 			{
 				makeAdjVerticalQuad(builder, adjCol, adjSameDetailLevel, caveCullingMaxY, EDhDirection.EAST, maxX, minY, minZ, zSize, ySize,
-						color, irisBlockMaterialId, blockLight);
+						color, irisBlockMaterialId, blockLight, snowFlags);
 			}
 		}
 	}
-	
+
 	private static void makeAdjVerticalQuad(
-			LodQuadBuilder builder, @NotNull ColumnArrayView adjColumnView, boolean adjacentIsSameDetailLevel, int caveCullingMaxY, EDhDirection direction, 
+			LodQuadBuilder builder, @NotNull ColumnArrayView adjColumnView, boolean adjacentIsSameDetailLevel, int caveCullingMaxY, EDhDirection direction,
 			short x, short yMin, short z, short horizontalWidth, short ySize,
-			int color, byte irisBlockMaterialId, byte blockLight)
+			int color, byte irisBlockMaterialId, byte blockLight, int snowFlags)
 	{
 		//==================//
 		// create face with //
@@ -234,8 +234,8 @@ public class ColumnBox
 		// just add the full vertical quad
 		if (adjColumnView.size == 0 || RenderDataPointUtil.isVoid(adjColumnView.get(0)))
 		{
-			
-			builder.addQuadAdj(direction, x, yMin, z, horizontalWidth, ySize, color, irisBlockMaterialId, LodUtil.MAX_MC_LIGHT, blockLight);
+
+			builder.addQuadAdj(direction, x, yMin, z, horizontalWidth, ySize, color, irisBlockMaterialId, LodUtil.MAX_MC_LIGHT, blockLight, snowFlags);
 			return;
 		}
 		
@@ -369,7 +369,7 @@ public class ColumnBox
 							builder, direction,
 							x, z, horizontalWidth,
 							color, irisBlockMaterialId, blockLight,
-							lastSkyLight, inputTransparent, quadTopY, quadBottomY
+							lastSkyLight, inputTransparent, quadTopY, quadBottomY, snowFlags
 					);
 					
 					lastSkyLight = skyLight;
@@ -386,7 +386,7 @@ public class ColumnBox
 						builder, direction,
 						x, z, horizontalWidth,
 						color, irisBlockMaterialId, blockLight,
-						lastSkyLight, inputTransparent, quadTopY, quadBottomY
+						lastSkyLight, inputTransparent, quadTopY, quadBottomY, snowFlags
 				);
 			}
 		}
@@ -401,7 +401,7 @@ public class ColumnBox
 			LodQuadBuilder builder, EDhDirection direction,
 			short x, short z, short horizontalWidth,
 			int color, byte irisBlockMaterialId, byte blockLight,
-			byte lastSkyLight, boolean inputTransparent, int quadTopY, int quadBottomY
+			byte lastSkyLight, boolean inputTransparent, int quadTopY, int quadBottomY, int snowFlags
 			)
 	{
 		// invalid positions will have a negative skylight
@@ -417,7 +417,7 @@ public class ColumnBox
 				short height = (short) (quadTopY - quadBottomY);
 				if (height > 0)
 				{
-					builder.addQuadAdj(direction, x, (short) quadBottomY, z, horizontalWidth, height, color, irisBlockMaterialId, lastSkyLight, blockLight);
+					builder.addQuadAdj(direction, x, (short) quadBottomY, z, horizontalWidth, height, color, irisBlockMaterialId, lastSkyLight, blockLight, snowFlags);
 				}
 			}
 		}

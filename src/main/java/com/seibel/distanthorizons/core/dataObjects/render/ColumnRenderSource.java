@@ -36,6 +36,7 @@ import com.seibel.distanthorizons.core.level.IDhClientLevel;
 import com.seibel.distanthorizons.coreapi.util.BitShiftUtil;
 import com.seibel.distanthorizons.core.util.ColorUtil;
 import com.seibel.distanthorizons.core.util.RenderDataPointUtil;
+import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import org.apache.logging.log4j.Logger;
 
@@ -65,7 +66,8 @@ public class ColumnRenderSource extends PhantomArrayListParent
 	public int yOffset;
 	
 	public final LongArrayList renderDataContainer;
-	
+    public final ByteArrayList renderDataContainerAdditional;
+
 	public final DebugSourceFlag[] debugSourceFlags;
 	
 	private boolean isEmpty = true;
@@ -94,9 +96,13 @@ public class ColumnRenderSource extends PhantomArrayListParent
 		this.yOffset = yOffset;
 		
 		this.verticalDataCount = maxVerticalSize;
+
+
 		
 		this.renderDataContainer = this.pooledArraysCheckout.getLongArray(0, SECTION_SIZE * SECTION_SIZE * this.verticalDataCount);
-		
+        this.renderDataContainerAdditional = new ByteArrayList();
+        renderDataContainerAdditional.size(renderDataContainer.size());
+
 		this.debugSourceFlags = new DebugSourceFlag[SECTION_SIZE * SECTION_SIZE];
 	}
 	
@@ -123,15 +129,14 @@ public class ColumnRenderSource extends PhantomArrayListParent
 			return null;
 		}
 		
-		return new ColumnArrayView(this.renderDataContainer, this.verticalDataCount,
+
+		return new ColumnArrayView(this.renderDataContainer, renderDataContainerAdditional, this.verticalDataCount,
 				offset, this.verticalDataCount);
 	}
-	
+
 	public ColumnQuadView getFullQuadView() { return this.getQuadViewOverRange(0, 0, SECTION_SIZE, SECTION_SIZE); }
-	public ColumnQuadView getQuadViewOverRange(int quadX, int quadZ, int quadXSize, int quadZSize) { return new ColumnQuadView(this.renderDataContainer, SECTION_SIZE, this.verticalDataCount, quadX, quadZ, quadXSize, quadZSize); }
-	
-	
-	
+	public ColumnQuadView getQuadViewOverRange(int quadX, int quadZ, int quadXSize, int quadZSize) { return new ColumnQuadView(this.renderDataContainer, renderDataContainerAdditional, SECTION_SIZE, this.verticalDataCount, quadX, quadZ, quadXSize, quadZSize); }
+
 	//=====================//
 	// data helper methods //
 	//=====================//

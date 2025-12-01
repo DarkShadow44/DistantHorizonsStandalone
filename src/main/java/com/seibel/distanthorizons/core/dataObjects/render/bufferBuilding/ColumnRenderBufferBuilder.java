@@ -261,8 +261,10 @@ public class ColumnRenderBufferBuilder
 							continue;
 						}
 					}
+
 					
 					long data = columnRenderData.get(i);
+                    byte snowFlags = columnRenderData.getAdditional(i);
 					// If the data is not render-able (Void or non-existing) we stop since there is
 					// no data left in this position
 					if (RenderDataPointUtil.isVoid(data) || !RenderDataPointUtil.doesDataPointExist(data))
@@ -275,10 +277,10 @@ public class ColumnRenderBufferBuilder
 					
 					addLodToBuffer(
 							clientLevel,
-							data, topDataPoint, bottomDataPoint, 
+							data, topDataPoint, bottomDataPoint,
 							adjColumnViews, isSameDetailLevel,
-							thisDetailLevel, relX, relZ, 
-							quadBuilder, debugSourceFlag);
+							thisDetailLevel, relX, relZ,
+							quadBuilder, debugSourceFlag, snowFlags);
 				}
 				
 			}// for z
@@ -288,10 +290,10 @@ public class ColumnRenderBufferBuilder
 	}
 	private static void addLodToBuffer(
 			IDhClientLevel clientLevel,
-			long data, long topData, long bottomData, 
+			long data, long topData, long bottomData,
 			ColumnArrayView[] adjColumnViews, boolean[] isSameDetailLevel,
-			byte detailLevel, int renderSourceOffsetPosX, int renderSourceOffsetPosZ, 
-			LodQuadBuilder quadBuilder, ColumnRenderSource.DebugSourceFlag debugSource)
+			byte detailLevel, int renderSourceOffsetPosX, int renderSourceOffsetPosZ,
+			LodQuadBuilder quadBuilder, ColumnRenderSource.DebugSourceFlag debugSource, int snowFlags)
 	{
 		long sectionPos = DhSectionPos.encode(detailLevel, renderSourceOffsetPosX, renderSourceOffsetPosZ);
 		
@@ -426,7 +428,7 @@ public class ColumnRenderBufferBuilder
 				blockMaterialId,
 				RenderDataPointUtil.getLightSky(data),
 				fullBright ? 15 : RenderDataPointUtil.getLightBlock(data),
-				topData, bottomData, adjColumnViews, isSameDetailLevel);
+				topData, bottomData, adjColumnViews, isSameDetailLevel, snowFlags);
 	}
 	
 }

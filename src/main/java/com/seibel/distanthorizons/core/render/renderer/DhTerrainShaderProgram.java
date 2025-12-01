@@ -112,6 +112,8 @@ public class DhTerrainShaderProgram extends ShaderProgram implements IDhApiShade
 		
  		// Snow uniforms
   		this.uSnowColor = this.getUniformLocation("uSnowColor");
+        this.uLastTimeUpdateWinterSummer = this.getUniformLocation("uLastTimeUpdateWinterSummer");
+        this.uLastTimeUpdateAny = this.getUniformLocation("uLastTimeUpdateAny");
 
 		// Debug Uniform
 		this.uWhiteWorld = this.getUniformLocation("uWhiteWorld");
@@ -172,22 +174,15 @@ public class DhTerrainShaderProgram extends ShaderProgram implements IDhApiShade
             textureIdLastTimeUpdateWinterSummer = generateTexture();
             textureIdLastTimeUpdateAny = generateTexture();
         }
-        GL32.glActiveTexture(GL32.GL_TEXTURE1);
-        lastTexture1 = GL32.glGetInteger(GL32.GL_TEXTURE_BINDING_2D);
+        GL32.glActiveTexture(GL32.GL_TEXTURE6);
         GL32.glBindTexture(GL32.GL_TEXTURE_2D, textureIdLastTimeUpdateWinterSummer);
-        GL32.glActiveTexture(GL32.GL_TEXTURE2);
-        lastTexture2 = GL32.glGetInteger(GL32.GL_TEXTURE_BINDING_2D);
+        GL32.glActiveTexture(GL32.GL_TEXTURE7);
         GL32.glBindTexture(GL32.GL_TEXTURE_2D, textureIdLastTimeUpdateAny);
         GL32.glActiveTexture(GL32.GL_TEXTURE0);
 	}
 	@Override
 	public void unbind()
 	{
-        GL32.glActiveTexture(GL32.GL_TEXTURE1);
-        GL32.glBindTexture(GL32.GL_TEXTURE_2D, lastTexture1);
-        GL32.glActiveTexture(GL32.GL_TEXTURE2);
-        GL32.glBindTexture(GL32.GL_TEXTURE_2D, lastTexture2);
-        GL32.glActiveTexture(GL32.GL_TEXTURE0);
 		super.unbind();
 		this.vao.unbind();
 	}
@@ -204,7 +199,6 @@ public class DhTerrainShaderProgram extends ShaderProgram implements IDhApiShade
 
     public static int textureIdLastTimeUpdateWinterSummer = -1;
     public static int textureIdLastTimeUpdateAny = -1;
-    private int lastTexture1, lastTexture2;
 
     private static int generateTexture() {
         int texture = GL32.glGenTextures();
@@ -212,6 +206,8 @@ public class DhTerrainShaderProgram extends ShaderProgram implements IDhApiShade
 
         IntBuffer zeros = BufferUtils.createIntBuffer(256 * 256 * 4);
         zeros.put(new int[256*256*4]);
+
+        // TODO flip?!?!
 
         GL32.glTexImage2D(GL32.GL_TEXTURE_2D, 0, GL32.GL_RGBA32UI,256, 256, 0, GL32.GL_RGBA_INTEGER, GL32.GL_UNSIGNED_INT, zeros);
         GL32.glTexParameteri(GL32.GL_TEXTURE_2D, GL32.GL_TEXTURE_MIN_FILTER, GL32.GL_NEAREST);
@@ -236,8 +232,8 @@ public class DhTerrainShaderProgram extends ShaderProgram implements IDhApiShade
 
 		// setUniform(skyLightUniform, skyLight);
 		this.setUniform(this.uLightMap, 0); // TODO this should probably be passed in
-        this.setUniform(this.uLastTimeUpdateWinterSummer, 1);
-        this.setUniform(this.uLastTimeUpdateAny, 2);
+        this.setUniform(this.uLastTimeUpdateWinterSummer, 6);
+        this.setUniform(this.uLastTimeUpdateAny, 7);
 
 		if (this.uWorldYOffset != -1) this.setUniform(this.uWorldYOffset, (float) renderParameters.worldYOffset);
 		
