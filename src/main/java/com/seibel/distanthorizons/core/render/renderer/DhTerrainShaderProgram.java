@@ -204,12 +204,7 @@ public class DhTerrainShaderProgram extends ShaderProgram implements IDhApiShade
         int texture = GL32.glGenTextures();
         GL32.glBindTexture(GL32.GL_TEXTURE_2D, texture);
 
-        IntBuffer zeros = BufferUtils.createIntBuffer(256 * 256 * 4);
-        zeros.put(new int[256*256*4]);
-
-        // TODO flip?!?!
-
-        GL32.glTexImage2D(GL32.GL_TEXTURE_2D, 0, GL32.GL_RGBA32UI,256, 256, 0, GL32.GL_RGBA_INTEGER, GL32.GL_UNSIGNED_INT, zeros);
+        GL32.glTexImage2D(GL32.GL_TEXTURE_2D, 0, GL32.GL_RGBA32UI,256, 256, 0, GL32.GL_RGBA_INTEGER, GL32.GL_UNSIGNED_INT, new int[256*256*4]);
         GL32.glTexParameteri(GL32.GL_TEXTURE_2D, GL32.GL_TEXTURE_MIN_FILTER, GL32.GL_NEAREST);
         GL32.glTexParameteri(GL32.GL_TEXTURE_2D, GL32.GL_TEXTURE_MAG_FILTER, GL32.GL_NEAREST);
         GL32.glTexParameteri(GL32.GL_TEXTURE_2D, GL32.GL_TEXTURE_WRAP_S, GL32.GL_REPEAT);
