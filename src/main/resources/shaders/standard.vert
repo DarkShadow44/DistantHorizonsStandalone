@@ -102,7 +102,7 @@ void main()
             isSnowy = 0;
         }
     } else if (isPermaSnow) {
-        if (lastSnowTickAnyLo > lastTimeUpdateLo) {
+        if (isPotentialSnow && lastSnowTickAnyLo > lastTimeUpdateLo) {
             isSnowy = 1;
         }
     } else if (lastThawTickSummerLo > lastSnowTickWinterLo) {
@@ -110,6 +110,8 @@ void main()
             isSnowy = 0;
         }
     } else {
-        
+        if (isPotentialSnow && lastSnowTickWinterLo > lastTimeUpdateLo) {
+            isSnowy = 1;
+        }
     }
 }
