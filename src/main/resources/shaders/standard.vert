@@ -83,9 +83,8 @@ void main()
     bool isPermaSnow = (snowFlags & 0x4u) != 0u;
     bool isPermaThaw = (snowFlags & 0x8u) != 0u;
 
-    vec2 uvLastTimeUpdate = vec2(quadPos.x + 0.5, quadPos.z + 0.5);
-    uvec4 vecLastTimeUpdateWinterSummer = texture(uLastTimeUpdateWinterSummer, uvLastTimeUpdate);
-    uvec4 vecLastTimeUpdateAny = texture(uLastTimeUpdateAny, uvLastTimeUpdate);
+    uvec4 vecLastTimeUpdateWinterSummer = texelFetch(uLastTimeUpdateWinterSummer, ivec2(quadPos.xz), 0);
+    uvec4 vecLastTimeUpdateAny = texelFetch(uLastTimeUpdateAny, ivec2(quadPos.xz), 0);
 
     uint lastSnowTickWinterLo = vecLastTimeUpdateWinterSummer.x;
     uint lastSnowTickWinterHi = vecLastTimeUpdateWinterSummer.y;
