@@ -186,6 +186,7 @@ public class LodDataBuilder
 					
 					// Process blocks from top to bottom
 					boolean forceSingleBlock = false;
+                    boolean isFirst = true;
 					for (; y >= minBuildHeight; y--)
 					{
 						IBiomeWrapper newBiome = chunkWrapper.getBiome(relBlockX, y, relBlockZ);
@@ -199,12 +200,14 @@ public class LodDataBuilder
 							// if the previous block potentially colors this block
 							// make this block a single entry, aka add the next block even if it is the same
 							// this is done to allow fire, snow, flowers, etc. to properly color the top of columns vs the whole column
-							forceSingleBlock = 
+							forceSingleBlock =
 									!blockState.isAir()
 									&& !blockState.isSolid()
 									&& !blockState.isLiquid()
-									&& blockState.getOpacity() != LodUtil.BLOCK_FULLY_OPAQUE;
-							
+									&& blockState.getOpacity() != LodUtil.BLOCK_FULLY_OPAQUE || isFirst;
+
+                            isFirst = false;
+
 							longs.add(FullDataPointUtil.encode(mappedId, lastY - y, y + 1 - inclusiveMinBuildHeight, blockLight, skyLight));
 							biome = newBiome;
 							blockState = newBlockState;
