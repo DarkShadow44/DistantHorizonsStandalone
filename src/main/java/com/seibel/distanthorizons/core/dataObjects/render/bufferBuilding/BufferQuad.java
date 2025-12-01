@@ -158,7 +158,10 @@ public final class BufferQuad
 		// only merge quads that are in the same direction
 		if (this.direction != quad.direction)
 			return false;
-		
+
+        if (this.snowFlags != quad.snowFlags)
+            return false;
+
 		// make sure these quads share the same perpendicular axis
 		if ((mergeDirection == BufferMergeDirectionEnum.EastWest && this.y != quad.y) ||
 				(mergeDirection == BufferMergeDirectionEnum.NorthSouthOrUpDown && this.x != quad.x))
