@@ -229,11 +229,12 @@ public class FullDataToRenderDataTransformer
 		//==================================//
 		
 		DhBlockPosMutable mutableBlockPos = new DhBlockPosMutable(blockX, 0, blockZ);
+
+        boolean isFirst = true;
 		
 		// goes from the top down
 		for (int fullDataIndex = 0; fullDataIndex < fullColumnData.size(); fullDataIndex++)
 		{
-            boolean isFirst = fullDataIndex == 0;
 			long fullData = fullColumnData.getLong(fullDataIndex);
 
 			int bottomY = FullDataPointUtil.getBottomY(fullData);
@@ -394,6 +395,7 @@ public class FullDataToRenderDataTransformer
                 int columnDataAdditional = ((nextBlockIsSnowy ? 0x1 : 0) | (isFirst ? 0x2 : 0)| (isPermaSnow ? 0x4 : 0)| (isPermaThaw ? 0x8 : 0));
                 renderColumnData.setAdditional(renderDataIndex, (byte)columnDataAdditional);
 				renderDataIndex++;
+                isFirst = false;
 			}
 			lastBottom = bottomY;
 			lastColor = color;
