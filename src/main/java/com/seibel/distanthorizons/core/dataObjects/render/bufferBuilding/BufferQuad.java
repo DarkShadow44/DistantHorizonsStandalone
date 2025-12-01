@@ -159,7 +159,7 @@ public final class BufferQuad
 		if (this.direction != quad.direction)
 			return false;
 
-        if (this.snowFlags != quad.snowFlags)
+        if ((this.snowFlags & 0x3) != 0 || (quad.snowFlags & 0x3) != 0)
             return false;
 
 		// make sure these quads share the same perpendicular axis
