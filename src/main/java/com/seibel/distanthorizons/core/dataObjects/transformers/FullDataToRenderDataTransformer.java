@@ -20,6 +20,7 @@
 package com.seibel.distanthorizons.core.dataObjects.transformers;
 
 import com.seibel.distanthorizons.api.enums.config.EDhApiBlocksToAvoid;
+import com.seibel.distanthorizons.common.wrappers.block.FakeBlockState;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.dataObjects.fullData.FullDataPointIdMap;
 import com.seibel.distanthorizons.core.dataObjects.fullData.sources.FullDataSourceV2;
@@ -373,6 +374,10 @@ public class FullDataToRenderDataTransformer
 			//=============================//
 			// merge same-colored adjacent //
 			//=============================//
+
+            if (((FakeBlockState)block.getWrappedMcObject()).block == Blocks.netherrack) {
+                int k = 0;
+            }
 
 
 			// check if they share a top-bottom face and if they have same color
