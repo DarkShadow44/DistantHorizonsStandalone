@@ -54,20 +54,20 @@ import java.util.HashSet;
 public class FullDataToRenderDataTransformer
 {
 	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
-	
+
 	private static final IWrapperFactory WRAPPER_FACTORY = SingletonInjector.INSTANCE.get(IWrapperFactory.class);
 	private static final IMinecraftClientWrapper MC = SingletonInjector.INSTANCE.get(IMinecraftClientWrapper.class);
-	
+
 	private static final LongOpenHashSet brokenPos = new LongOpenHashSet();
-	
+
 	public static final PhantomArrayListPool ARRAY_LIST_POOL = new PhantomArrayListPool("Data Transformer");
-	
-	
-	
+
+
+
 	//==============================//
 	// public transformer interface //
 	//==============================//
-	
+
 	@Nullable
 	public static ColumnRenderSource transformFullDataToRenderSource(@Nullable FullDataSourceV2 fullDataSource, @Nullable IClientLevelWrapper levelWrapper)
 	{
@@ -77,11 +77,11 @@ public class FullDataToRenderDataTransformer
 		}
 		else if (levelWrapper == null)
 		{
-			// if the client is no longer loaded in the world, render sources cannot be created 
+			// if the client is no longer loaded in the world, render sources cannot be created
 			return null;
 		}
-		
-		
+
+
 		try
 		{
 			return transformCompleteFullDataToColumnData(levelWrapper, fullDataSource);
@@ -91,13 +91,13 @@ public class FullDataToRenderDataTransformer
 			return null;
 		}
 	}
-	
-	
-	
+
+
+
 	//==============//
 	// transformers //
 	//==============//
-	
+
 	/**
 	 * Creates a LodNode for a chunk in the given world.
 	 *
@@ -109,48 +109,48 @@ public class FullDataToRenderDataTransformer
 	{
  		final long pos = fullDataSource.getPos();
 		final byte dataDetail = fullDataSource.getDataDetailLevel();
-		
+
 		final int vertSize = Config.Client.Advanced.Graphics.Quality.verticalQuality.get().calculateMaxVerticalData(fullDataSource.getDataDetailLevel());
-		
-		
-		
+
+
+
 		final ColumnRenderSource columnSource = ColumnRenderSource.createEmpty(pos, vertSize, levelWrapper.getMinHeight());
 		if (fullDataSource.isEmpty)
 		{
 			return columnSource;
 		}
-		
+
 		columnSource.markNotEmpty();
 		int baseX = DhSectionPos.getMinCornerBlockX(pos);
 		int baseZ = DhSectionPos.getMinCornerBlockZ(pos);
-		
+
 		for (int x = 0; x < FullDataSourceV2.WIDTH; x++)
 		{
 			for (int z = 0; z < FullDataSourceV2.WIDTH; z++)
 			{
 				throwIfThreadInterrupted();
-				
+
 				ColumnArrayView columnArrayView = columnSource.getVerticalDataPointView(x, z);
 				LongArrayList dataColumn = fullDataSource.get(x, z);
-				
+
 				updateOrReplaceRenderDataViewColumnWithFullDataColumn(
-						levelWrapper, fullDataSource.mapping, 
+						levelWrapper, fullDataSource.mapping,
 						// bitshift is to account for LODs with a detail level greater than 0 so the block pos is correct
-						baseX + BitShiftUtil.pow(x,dataDetail), baseZ + BitShiftUtil.pow(z,dataDetail), 
+						baseX + BitShiftUtil.pow(x,dataDetail), baseZ + BitShiftUtil.pow(z,dataDetail),
 						columnArrayView, dataColumn);
 			}
 		}
-		
+
 		columnSource.fillDebugFlag(0, 0, ColumnRenderSource.SECTION_SIZE, ColumnRenderSource.SECTION_SIZE, ColumnRenderSource.DebugSourceFlag.FULL);
-		
+
 		return columnSource;
 	}
-	
+
 	/** Updates the given {@link ColumnArrayView} to match the incoming Full data {@link LongArrayList} */
 	public static void updateOrReplaceRenderDataViewColumnWithFullDataColumn(
-			IClientLevelWrapper levelWrapper, 
-			FullDataPointIdMap fullDataMapping, int blockX, int blockZ, 
-			ColumnArrayView columnArrayView, 
+			IClientLevelWrapper levelWrapper,
+			FullDataPointIdMap fullDataMapping, int blockX, int blockZ,
+			ColumnArrayView columnArrayView,
 			LongArrayList fullDataColumn)
 	{
 		// we can't do anything if the full data is missing or empty
@@ -158,7 +158,7 @@ public class FullDataToRenderDataTransformer
 		{
 			return;
 		}
-		
+
 		int fullDataLength = fullDataColumn.size();
 		if (fullDataLength <= columnArrayView.verticalSize())
 		{
@@ -169,7 +169,7 @@ public class FullDataToRenderDataTransformer
 		{
 			PhantomArrayListCheckout checkout = ARRAY_LIST_POOL.checkoutArrays(0, 0, 1);
 			LongArrayList dataArrayList = checkout.getLongArray(0, fullDataLength);
-			
+
 			try
 			{
                 ByteArrayList dataAdditional = new ByteArrayList();
@@ -193,15 +193,15 @@ public class FullDataToRenderDataTransformer
 		//===============//
 		// config values //
 		//===============//
-		
+
 		boolean ignoreNonCollidingBlocks = (Config.Client.Advanced.Graphics.Quality.blocksToIgnore.get() == EDhApiBlocksToAvoid.NON_COLLIDING);
 		boolean colorBelowWithAvoidedBlocks = Config.Client.Advanced.Graphics.Quality.tintWithAvoidedBlocks.get();
-		
+
 		HashSet<IBlockStateWrapper> blockStatesToIgnore = WRAPPER_FACTORY.getRendererIgnoredBlocks(levelWrapper);
 		HashSet<IBlockStateWrapper> caveBlockStatesToIgnore = WRAPPER_FACTORY.getRendererIgnoredCaveBlocks(levelWrapper);
-		
+
 		int caveCullingMaxY = Config.Client.Advanced.Graphics.Culling.caveCullingHeight.get() - levelWrapper.getMinHeight();
-		boolean caveCullingEnabled = 
+		boolean caveCullingEnabled =
 			Config.Client.Advanced.Graphics.Culling.enableCaveCulling.get()
 			&& (
 				// dimensions with a ceiling will be all caves so we don't want cave culling
@@ -210,28 +210,28 @@ public class FullDataToRenderDataTransformer
 				// the current cave culling logic (this could probably be improved, but just skipping it works best for now)
 				&& !levelWrapper.getDimensionType().isTheEnd()
 			);
-		
+
 		boolean isColumnVoid = true;
-		
+
 		int colorToApplyToNextBlock = -1;
         boolean nextBlockIsSnowy = false;
 		int lastColor = 0;
 		int lastBottom = -10_000;
-		
+
 		int skylightToApplyToNextBlock = -1;
 		int blocklightToApplyToNextBlock = -1;
 		int renderDataIndex = 0;
-		
-		
-		
+
+
+
 		//==================================//
 		// convert full data to render data //
 		//==================================//
-		
+
 		DhBlockPosMutable mutableBlockPos = new DhBlockPosMutable(blockX, 0, blockZ);
 
         boolean isFirst = true;
-		
+
 		// goes from the top down
 		for (int fullDataIndex = 0; fullDataIndex < fullColumnData.size(); fullDataIndex++)
 		{
@@ -243,9 +243,9 @@ public class FullDataToRenderDataTransformer
 			int id = FullDataPointUtil.getId(fullData);
 			int blockLight = FullDataPointUtil.getBlockLight(fullData);
 			int skyLight = FullDataPointUtil.getSkyLight(fullData);
-			
+
 			mutableBlockPos.setY(bottomY + levelWrapper.getMinHeight());
-			
+
 			IBiomeWrapper biome;
 			IBlockStateWrapper block;
 			try
@@ -265,25 +265,25 @@ public class FullDataToRenderDataTransformer
 							"Error: ["+e.getMessage()+"]. " +
 							"Further errors for this position won't be logged.");
 				}
-				
+
 				// don't render broken data
 				continue;
 			}
-			
-			
-			
+
+
+
 			//====================//
 			// ignored block and  //
 			// cave culling check //
 			//====================//
-			
+
 			boolean ignoreBlock = blockStatesToIgnore.contains(block);
 			boolean caveBlock = caveBlockStatesToIgnore.contains(block); // TODO caves should also ignore transparent/non-solid blocks (IE grass and plants) wthout each being defined
 			if (caveBlock)
 			{
 				if (caveCullingEnabled
 					// assume this data point is underground if it has no sky-light
-					&& skyLight == LodUtil.MIN_MC_LIGHT	
+					&& skyLight == LodUtil.MIN_MC_LIGHT
 					// ignore caves above a certain height to prevent floating islands from having walls underneath them
 					&& topY < caveCullingMaxY
 					// cave culling shouldn't happen when at the top of the world
@@ -295,7 +295,7 @@ public class FullDataToRenderDataTransformer
 					// the air block here will always have a light of 0/0 due to only the top of the LOD's light being saved.
 					long nextFullData = fullColumnData.getLong(fullDataIndex+1);
 					int nextSkyLight = FullDataPointUtil.getSkyLight(nextFullData);
-					
+
 					if (nextSkyLight == LodUtil.MIN_MC_LIGHT
 							&& ColorUtil.getAlpha(lastColor) == 255)
 					{
@@ -304,11 +304,11 @@ public class FullDataToRenderDataTransformer
 						columnData = RenderDataPointUtil.setYMin(columnData, bottomY);
 						renderColumnData.set(renderDataIndex - 1, columnData);
 					}
-					
+
 					continue;
 				}
-				
-				
+
+
 				if (ignoreBlock)
 				{
 					// this is a merged block and a cave block, so it should never be rendered
@@ -320,9 +320,9 @@ public class FullDataToRenderDataTransformer
 				// this is an ignored block, but shouldn't be merged like a cave block
 				continue;
 			}
-			
-			
-			
+
+
+
 			//=======================//
 			// non-solid block check //
 			//=======================//
@@ -337,7 +337,7 @@ public class FullDataToRenderDataTransformer
 				if (colorBelowWithAvoidedBlocks)
 				{
 					int tempColor = levelWrapper.getBlockColor(mutableBlockPos, biome, block);
-					
+
 					// don't transfer the color when alpha is 0
 					// this prevents issues if grass is transparent
 					if (ColorUtil.getAlpha(tempColor) != 0)
@@ -347,12 +347,12 @@ public class FullDataToRenderDataTransformer
 						blocklightToApplyToNextBlock = blockLight;
 					}
 				}
-				
+
 				// skip this non-colliding block
 				continue;
 			}
-			
-			
+
+
 			int color;
 			if (colorToApplyToNextBlock == -1)
 			{
@@ -367,14 +367,18 @@ public class FullDataToRenderDataTransformer
 				skyLight = skylightToApplyToNextBlock;
 				blockLight = blocklightToApplyToNextBlock;
 			}
-			
-			
-			
+
+
+
 			//=============================//
 			// merge same-colored adjacent //
 			//=============================//
 
-			
+            if (block == Blocks.netherrack) {
+                int k = 0;
+            }
+
+
 			// check if they share a top-bottom face and if they have same color
 			if (color == lastColor && bottomY + blockHeight == lastBottom  && renderDataIndex > 0 && !nextBlockIsSnowy && !isFirst)
 			{
@@ -401,20 +405,20 @@ public class FullDataToRenderDataTransformer
 			lastColor = color;
             nextBlockIsSnowy = false;
 		}
-		
-		
+
+
 		if (isColumnVoid)
 		{
 			renderColumnData.set(0, RenderDataPointUtil.EMPTY_DATA);
 		}
 	}
-	
-	
-	
+
+
+
 	//================//
 	// helper methods //
 	//================//
-	
+
 	/**
 	 * Called in loops that may run for an extended period of time. <br>
 	 * This is necessary to allow canceling these transformers since running
@@ -427,5 +431,5 @@ public class FullDataToRenderDataTransformer
 			throw new InterruptedException(FullDataToRenderDataTransformer.class.getSimpleName() + " task interrupted.");
 		}
 	}
-	
+
 }
