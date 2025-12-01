@@ -374,10 +374,6 @@ public class FullDataToRenderDataTransformer
 			// merge same-colored adjacent //
 			//=============================//
 
-            if (block == Blocks.netherrack) {
-                int k = 0;
-            }
-
 
 			// check if they share a top-bottom face and if they have same color
 			if (color == lastColor && bottomY + blockHeight == lastBottom  && renderDataIndex > 0 && !nextBlockIsSnowy && !isFirst)
@@ -396,8 +392,8 @@ public class FullDataToRenderDataTransformer
                 BiomeGenBase realBiome = (BiomeGenBase) biome.getWrappedMcObject();
                 boolean isPermaSnow = realBiome.temperature <= 0.15;
                 boolean isPermaThaw = realBiome.temperature - 0.7 > 0.15;
-                int columnDataAdditional = ((nextBlockIsSnowy ? 0x1 : 0) | (isFirst ? 0x2 : 0)| (isPermaSnow ? 0x4 : 0)| (isPermaThaw ? 0x8 : 0));
-                renderColumnData.setAdditional(renderDataIndex, (byte)columnDataAdditional);
+                int snowFlags = ((nextBlockIsSnowy ? 0x1 : 0) | (isFirst ? 0x2 : 0)| (isPermaSnow ? 0x4 : 0)| (isPermaThaw ? 0x8 : 0));
+                renderColumnData.setAdditional(renderDataIndex, (byte)snowFlags);
 				renderDataIndex++;
                 isFirst = false;
 			}
