@@ -31,7 +31,7 @@ import com.seibel.distanthorizons.coreapi.ModInfo;
 import com.seibel.distanthorizons.coreapi.util.StringUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.lwjgl.glfw.GLFW;
+import org.lwjgl.sdl.SDLVideo;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL32;
 import org.lwjgl.opengl.GLCapabilities;
@@ -109,7 +109,7 @@ public class GLProxy
 	private GLProxy() throws IllegalStateException
 	{
 		// this must be created on minecraft's render context to work correctly
-		if (GLFW.glfwGetCurrentContext() == 0L)
+		if (SDLVideo.SDL_GL_GetCurrentContext() == 0L)
 		{
 			throw new IllegalStateException(GLProxy.class.getSimpleName() + " was created outside the render thread!");
 		}
@@ -215,7 +215,7 @@ public class GLProxy
 	
 	public boolean runningOnRenderThread()
 	{
-		long currentContext = GLFW.glfwGetCurrentContext();
+		long currentContext = SDLVideo.SDL_GL_GetCurrentContext();
 		return currentContext != 0L; // if the context isn't null, it's the MC context
 	}
 	

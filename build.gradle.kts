@@ -14,7 +14,7 @@ java {
     }
 }
 
-val lwjglVersion = "3.3.3"
+val lwjglVersion = "3.4.0"
 
 minecraft {
     javaCompatibilityVersion = 21
@@ -36,7 +36,7 @@ lwjgl3 {
         version.set(lwjglVersion)
 
         modules.add("lwjgl")
-        modules.add("lwjgl-glfw")
+        modules.add("lwjgl-sdl")
         modules.add("lwjgl-opengl")
     }
 }

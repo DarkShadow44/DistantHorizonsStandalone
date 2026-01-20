@@ -60,7 +60,6 @@ import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapp
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
-import org.lwjgl.glfw.GLFW;
 
 import java.io.File;
 import java.util.*;
@@ -623,7 +622,8 @@ public class ClientApi
 	//=================//
 	
 	/** Trigger once on key press, with CLIENT PLAYER. */
-	public void keyPressedEvent(int glfwKey)
+    // i cant find any reference to that function
+	/**public void keyPressedEvent(int glfwKey)
 	{
 		if (!Config.Client.Advanced.Debugging.enableDebugKeybindings.get())
 		{
@@ -647,7 +647,7 @@ public class ClientApi
 			prefLoggerEnabled = !prefLoggerEnabled;
 			MC_CLIENT.sendChatMessage("P: Debug Pref Logger is " + (prefLoggerEnabled ? "enabled" : "disabled"));
 		}
-	}
+	}**/
 	
 	private void sendQueuedChatMessages()
 	{

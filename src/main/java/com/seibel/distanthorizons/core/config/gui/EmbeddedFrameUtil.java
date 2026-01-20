@@ -21,6 +21,8 @@ package com.seibel.distanthorizons.core.config.gui;
 
 import com.seibel.distanthorizons.core.jar.EPlatform;
 import org.jetbrains.annotations.NotNull;
+import org.lwjgl.sdl.SDLProperties;
+import org.lwjgl.sdl.SDLVideo;
 import org.lwjgl.system.jawt.JAWT;
 import org.lwjgl.system.macosx.*;
 
@@ -28,9 +30,6 @@ import java.awt.*;
 import java.lang.reflect.*;
 import java.util.regex.*;
 
-import static org.lwjgl.glfw.GLFWNativeCocoa.*;
-import static org.lwjgl.glfw.GLFWNativeWin32.*;
-import static org.lwjgl.glfw.GLFWNativeX11.*;
 import static org.lwjgl.system.JNI.*;
 import static org.lwjgl.system.jawt.JAWTFunctions.*;
 import static org.lwjgl.system.macosx.ObjCRuntime.*;
@@ -85,22 +84,28 @@ public final class EmbeddedFrameUtil
 				throw new IllegalStateException();
 		}
 	}
-	
-	private static long getEmbeddedFrameHandle(long window)
-	{
-		switch (EPlatform.get())
-		{
-			case LINUX:
-				return glfwGetX11Window(window);
-			case WINDOWS:
-				return glfwGetWin32Window(window);
-			case MACOS:
-				long objc_msgSend = ObjCRuntime.getLibrary().getFunctionAddress("objc_msgSend");
-				return invokePPP(glfwGetCocoaWindow(window), sel_getUid("contentView"), objc_msgSend);
-			default:
-				throw new IllegalStateException();
-		}
-	}
+
+    private static long getEmbeddedFrameHandle(long window)
+    {
+        int properties = SDLVideo.SDL_GetWindowProperties(window);
+        switch (EPlatform.get())
+        {
+            case LINUX: {
+                long wayland = SDLProperties.SDL_GetPointerProperty(properties, SDLVideo.SDL_PROP_WINDOW_WAYLAND_SURFACE_POINTER, 0);
+                if (wayland != 0) {
+                    return wayland;
+                } else {
+                    return SDLProperties.SDL_GetPointerProperty(properties, SDLVideo.SDL_PROP_WINDOW_X11_WINDOW_NUMBER, 0);
+                }
+            }
+            case WINDOWS:
+                return SDLProperties.SDL_GetPointerProperty(properties, SDLVideo.SDL_PROP_WINDOW_WIN32_HWND_POINTER, 0);
+            case MACOS:
+                return SDLProperties.SDL_GetPointerProperty(properties, SDLVideo.SDL_PROP_WINDOW_UIKIT_WINDOW_POINTER, 0);
+            default:
+                throw new IllegalStateException();
+        }
+    }
 	
 	public static Frame embeddedFrameCreate(long window)
 	{
