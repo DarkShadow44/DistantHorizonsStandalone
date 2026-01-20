@@ -30,8 +30,6 @@ import java.awt.*;
 import java.lang.reflect.*;
 import java.util.regex.*;
 
-import static org.lwjgl.sdl.SDLProperties.*;
-import static org.lwjgl.sdl.SDLVideo.*;
 import static org.lwjgl.system.JNI.*;
 import static org.lwjgl.system.jawt.JAWTFunctions.*;
 import static org.lwjgl.system.macosx.ObjCRuntime.*;
@@ -47,23 +45,23 @@ import static org.lwjgl.system.macosx.ObjCRuntime.*;
  */
 public final class EmbeddedFrameUtil
 {
-
+	
 	private static final int JAVA_VERSION;
-
+	
 	private static final JAWT awt;
-
+	
 	static
 	{
 		Pattern p = Pattern.compile("^(?:1[.])?([1-9][0-9]*)[.-]");
 		Matcher m = p.matcher(System.getProperty("java.version"));
-
+		
 		if (!m.find())
 		{
 			throw new IllegalStateException("Failed to parse java.version");
 		}
-
+		
 		JAVA_VERSION = Integer.parseInt(m.group(1));
-
+		
 		awt = JAWT.calloc();
 		awt.version(JAVA_VERSION < 9 ? JAWT_VERSION_1_4 : JAWT_VERSION_9);
 		if (!JAWT_GetAWT(awt))
@@ -71,7 +69,7 @@ public final class EmbeddedFrameUtil
 			throw new RuntimeException("GetAWT failed");
 		}
 	}
-
+	
 	private static String getEmbeddedFrameImpl()
 	{
 		switch (EPlatform.get())
@@ -87,28 +85,28 @@ public final class EmbeddedFrameUtil
 		}
 	}
 
-	private static long getEmbeddedFrameHandle(long window)
-	{
+    private static long getEmbeddedFrameHandle(long window)
+    {
         int properties = SDLVideo.SDL_GetWindowProperties(window);
-		switch (EPlatform.get())
-		{
-			case LINUX: {
+        switch (EPlatform.get())
+        {
+            case LINUX: {
                 long wayland = SDLProperties.SDL_GetPointerProperty(properties, SDLVideo.SDL_PROP_WINDOW_WAYLAND_SURFACE_POINTER, 0);
                 if (wayland != 0) {
                     return wayland;
                 } else {
-                    return SDLProperties.SDL_GetPointerProperty(properties, SDL_PROP_WINDOW_X11_WINDOW_NUMBER, 0);
+                    return SDLProperties.SDL_GetPointerProperty(properties, SDLVideo.SDL_PROP_WINDOW_X11_WINDOW_NUMBER, 0);
                 }
             }
-			case WINDOWS:
+            case WINDOWS:
                 return SDLProperties.SDL_GetPointerProperty(properties, SDLVideo.SDL_PROP_WINDOW_WIN32_HWND_POINTER, 0);
-			case MACOS:
+            case MACOS:
                 return SDLProperties.SDL_GetPointerProperty(properties, SDLVideo.SDL_PROP_WINDOW_UIKIT_WINDOW_POINTER, 0);
-			default:
-				throw new IllegalStateException();
-		}
-	}
-
+            default:
+                throw new IllegalStateException();
+        }
+    }
+	
 	public static Frame embeddedFrameCreate(long window)
 	{
 		if (JAVA_VERSION < 9)
@@ -118,7 +116,7 @@ public final class EmbeddedFrameUtil
 				@SuppressWarnings("unchecked")
 				Class<? extends Frame> EmdeddedFrame = (Class<? extends Frame>) Class.forName(getEmbeddedFrameImpl());
 				Constructor<? extends Frame> c = EmdeddedFrame.getConstructor(long.class);
-
+				
 				return c.newInstance(getEmbeddedFrameHandle(window));
 			}
 			catch (Exception e)
@@ -131,7 +129,7 @@ public final class EmbeddedFrameUtil
 			return nJAWT_CreateEmbeddedFrame(getEmbeddedFrameHandle(window), awt.CreateEmbeddedFrame());
 		}
 	}
-
+	
 	static void embeddedFrameSynthesizeWindowActivation(Frame embeddedFrame, boolean doActivate)
 	{
 		if (JAVA_VERSION < 9)
@@ -153,7 +151,7 @@ public final class EmbeddedFrameUtil
 			JAWT_SynthesizeWindowActivation(embeddedFrame, doActivate, awt.SynthesizeWindowActivation());
 		}
 	}
-
+	
 	public static void embeddedFrameSetBounds(Frame embeddedFrame, int x, int y, int width, int height)
 	{
 		if (JAVA_VERSION < 9)
@@ -177,14 +175,14 @@ public final class EmbeddedFrameUtil
 			JAWT_SetBounds(embeddedFrame, x, y, width, height, awt.SetBounds());
 		}
 	}
-
-
+	
+	
 	public static void hideFrame(@NotNull Frame embeddedFrame)
 	{
 		embeddedFrame.setVisible(false);
 		embeddedFrameSynthesizeWindowActivation(embeddedFrame, false);
 	}
-
+	
 	public static void showFrame(@NotNull Frame embeddedFrame)
 	{
 		embeddedFrameSynthesizeWindowActivation(embeddedFrame, true);
@@ -199,5 +197,5 @@ public final class EmbeddedFrameUtil
 		float newY = (windowHeight - newHeight) / 2F;
 		embeddedFrameSetBounds(embeddedFrame, Math.round(newX), Math.round(newY), Math.round(newWidth), Math.round(newHeight));
 	}
-
+	
 }
