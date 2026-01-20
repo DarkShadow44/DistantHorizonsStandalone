@@ -35,27 +35,27 @@
  */
 minecraft {
     mainLwjglVersion = 3
-    lwjgl3Version = "3.3.3"
+    lwjgl3Version = "3.4.0"
 }
 
 dependencies {
-    api("com.github.GTNewHorizons:lwjgl3ify:2.1.11:dev")
+    api("com.github.GTNewHorizons:lwjgl3ify:3.0.6:dev")
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:NotEnoughItems:2.7.4-GTNH:dev")
     shadowImplementation("com.electronwill.night-config:toml:3.6.6")
     shadowImplementation("com.electronwill.night-config:json:3.6.6")
     shadowImplementation("org.lz4:lz4-java:1.8.0")
     shadowImplementation("org.tukaani:xz:1.9")
     shadowImplementation("org.xerial:sqlite-jdbc:3.47.2.0")
-    shadowImplementation("org.lwjgl:lwjgl-jawt:3.3.3") {
+    shadowImplementation("org.lwjgl:lwjgl-jawt:3.4.0") {
          exclude group: "org.lwjgl", module: "lwjgl"
     }
     shadowImplementation("com.github.luben:zstd-jni:1.5.7-4")
     implementation("org.jetbrains:annotations:26.0.2")
-    api("com.github.GTNewHorizons:GTNHLib:0.6.11:dev")
-    compileOnly("com.github.GTNewHorizons:GT5-Unofficial:5.09.51.469:dev")
+    api("com.github.GTNewHorizons:GTNHLib:0.9.3:dev")
+    compileOnly("com.github.GTNewHorizons:GT5-Unofficial:5.09.52.220:dev")
      compileOnly('com.github.GTNewHorizons:Angelica') {
         version {
-            strictly '1.0.0-beta68'
+            strictly '2.0.0-alpha8'
         }
     }
     compileOnly("com.falsepattern:rple-mc1.7.10:2.1.0:api")
