@@ -7,6 +7,7 @@ import com.seibel.distanthorizons.common.wrappers.block.BlockStateWrapper;
 import com.seibel.distanthorizons.common.wrappers.block.ClientBlockStateColorCache;
 import com.seibel.distanthorizons.common.wrappers.block.FakeBlockState;
 import com.seibel.distanthorizons.common.wrappers.chunk.ChunkWrapper;
+import com.seibel.distanthorizons.core.dataObjects.fullData.sources.FullDataSourceV2;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.level.*;
 import com.seibel.distanthorizons.core.level.IServerKeyedClientLevel;
@@ -134,7 +135,7 @@ public class ClientLevelWrapper implements IClientLevelWrapper
 
 
     @Override
-    public int getBlockColor(DhBlockPos pos, IBiomeWrapper biome, IBlockStateWrapper blockWrapper)
+    public int getBlockColor(DhBlockPos pos, IBiomeWrapper biome, FullDataSourceV2 fullDataSource, IBlockStateWrapper blockWrapper)
     {
         final ClientBlockStateColorCache blockColorCache = this.blockCache.computeIfAbsent(
             ((BlockStateWrapper) blockWrapper).blockState, cachedBlockColorCacheFunction);
@@ -159,7 +160,7 @@ public class ClientLevelWrapper implements IClientLevelWrapper
             }
         }
 
-        return this.getBlockColor(DhBlockPos.ZERO,BiomeWrapper.EMPTY_WRAPPER, this.dirtBlockWrapper);
+        return this.getBlockColor(DhBlockPos.ZERO,BiomeWrapper.EMPTY_WRAPPER, null, this.dirtBlockWrapper);
     }
 
     @Override

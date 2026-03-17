@@ -63,12 +63,15 @@ void main()
 
     // a fragment depth of "1" means the fragment wasn't drawn to,
     // we only want to apply SSAO to LODs, not to the sky outside the LODs
-    if (fragmentDepth < 1) {
-        if (gBlurRadius > 0) {
+    if (fragmentDepth < 1) 
+    {
+        if (gBlurRadius > 0) 
+        {
             float fragmentDepthLinear = linearizeDepth(fragmentDepth);
             fragColor.a = BilateralGaussianBlur(TexCoord, fragmentDepthLinear, 1.6);
         }
-        else {
+        else 
+        {
             fragColor.a = texelFetch(gSSAOMap, ivec2(gl_FragCoord.xy), 0).r;
         }
     }

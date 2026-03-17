@@ -154,7 +154,7 @@ public abstract class AbstractModInitializer
 
 	private void initConfig()
 	{
-		ConfigBase.INSTANCE = new ConfigBase(ModInfo.ID, ModInfo.NAME, Config.class, ModInfo.CONFIG_FILE_VERSION);
+		ConfigBase.RunFirstTimeSetup();
 		Config.completeDelayedSetup();
 	}
 

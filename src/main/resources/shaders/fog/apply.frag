@@ -8,16 +8,19 @@ uniform sampler2D uColorTexture;
 uniform sampler2D uDepthTexture;
 
 
-
+/** 
+ * Fog application shader
+ *
+ * This merges the rendered fog onto DH's rendered LODs
+ */
 void main()
 {
-    fragColor = vec4(1.0);
-    
-    float fragmentDepth = textureLod(uDepthTexture, TexCoord, 0).r;
+    fragColor = vec4(0.0);
 
     // a fragment depth of "1" means the fragment wasn't drawn to,
     // only update fragments that were drawn to
-    if (fragmentDepth != 1) 
+    float fragmentDepth = textureLod(uDepthTexture, TexCoord, 0).r;
+    if (fragmentDepth != 1)
     {
         fragColor = texture(uColorTexture, TexCoord);
     }

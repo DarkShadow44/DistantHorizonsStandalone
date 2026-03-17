@@ -4,17 +4,20 @@ in vec2 TexCoord;
 
 out vec4 fragColor;
 
-uniform sampler2D uMcDepthTexture;
-uniform sampler2D uDhDepthTexture;
-uniform sampler2D uCombinedMcDhColorTexture;
-uniform sampler2D uDhColorTexture;
 // inverted model view matrix and projection matrix
 uniform mat4 uDhInvMvmProj;
 uniform mat4 uMcInvMvmProj;
 
+uniform sampler2D uMcDepthTexture;
+uniform sampler2D uDhDepthTexture;
+uniform sampler2D uCombinedMcDhColorTexture;
+uniform sampler2D uDhColorTexture;
+
 uniform float uStartFadeBlockDistance;
 uniform float uEndFadeBlockDistance;
 uniform float uMaxLevelHeight;
+
+uniform bool uOnlyRenderLods;
 
 
 
@@ -38,6 +41,15 @@ void main()
     vec4 combinedMcDhColor = texture(uCombinedMcDhColorTexture, TexCoord);
     // just the DH render pass
     vec4 dhColor = texture(uDhColorTexture, TexCoord);
+    
+    // completely remove the MC render pass to only show LODs
+    // useful for debugging/troubleshooting, but doesn't improve performance since MC is still rendering
+    if (uOnlyRenderLods)
+    {
+        fragColor = dhColor;
+        return;
+    }
+    
     
     // the DH texture will have white if nothing was written to that pixel.
     // TODO replace with a depth texture check, this feels janky

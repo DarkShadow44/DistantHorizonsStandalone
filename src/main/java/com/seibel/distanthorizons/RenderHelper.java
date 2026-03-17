@@ -3,6 +3,7 @@ package com.seibel.distanthorizons;
 import com.seibel.distanthorizons.common.wrappers.McObjectConverter;
 import com.seibel.distanthorizons.common.wrappers.world.ClientLevelWrapper;
 import com.seibel.distanthorizons.core.api.internal.ClientApi;
+import com.seibel.distanthorizons.core.api.internal.rendering.RenderState;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.util.math.Mat4f;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
@@ -21,13 +22,14 @@ import java.nio.FloatBuffer;
 public class RenderHelper {
     public static void drawLods()
     {
+        ClientApi.RENDER_STATE.mcModelViewMatrix = getModelViewMatrix();
+        ClientApi.RENDER_STATE.mcProjectionMatrix = getProjectionMatrix();
+        ClientApi.RENDER_STATE.frameTime = ((IMixinMinecraft) Minecraft.getMinecraft()).getTimer().renderPartialTicks;
+        ClientApi.RENDER_STATE.clientLevelWrapper = ClientLevelWrapper.getWrapper(Minecraft.getMinecraft().theWorld);
+
         GL32.glDisable(GL32.GL_ALPHA_TEST);
-        Mat4f mcModelViewMatrix = getModelViewMatrix();
-        Mat4f mcProjectionMatrix = getProjectionMatrix();
         GL11.glClearColor(1, 1, 1, 0.0F);
-        float frameTime = ((IMixinMinecraft) Minecraft.getMinecraft()).getTimer().renderPartialTicks;
-        IClientLevelWrapper levelWrapper = ClientLevelWrapper.getWrapper(Minecraft.getMinecraft().theWorld);
-        ClientApi.INSTANCE.renderLods(levelWrapper, mcModelViewMatrix, mcProjectionMatrix, frameTime);
+        ClientApi.INSTANCE.renderLods();
         GL32.glDepthFunc(GL32.GL_LEQUAL);
         GL32.glEnable(GL32.GL_ALPHA_TEST);
         GL32.glDisable(GL32.GL_BLEND);
@@ -45,18 +47,17 @@ public class RenderHelper {
                 return;
             }
         }
+        ClientApi.RENDER_STATE.mcModelViewMatrix = getModelViewMatrix();
+        ClientApi.RENDER_STATE.mcProjectionMatrix = getProjectionMatrix();
+        ClientApi.RENDER_STATE.frameTime = ((IMixinMinecraft) Minecraft.getMinecraft()).getTimer().renderPartialTicks;
+        ClientApi.RENDER_STATE.clientLevelWrapper = ClientLevelWrapper.getWrapper(Minecraft.getMinecraft().theWorld);
+
         GL32.glDisable(GL32.GL_ALPHA_TEST);
-        Mat4f mcModelViewMatrix = getModelViewMatrix();
-        Mat4f mcProjectionMatrix = getProjectionMatrix();
-        float frameTime = ((IMixinMinecraft) Minecraft.getMinecraft()).getTimer().renderPartialTicks;
-        IClientLevelWrapper levelWrapper = ClientLevelWrapper.getWrapper(Minecraft.getMinecraft().theWorld);
-        //Minecraft.getMinecraft().getFramebuffer().unbindFramebuffer();
         if (translucent) {
-            ClientApi.INSTANCE.renderFade(mcModelViewMatrix, mcProjectionMatrix, frameTime, levelWrapper);
+            ClientApi.INSTANCE.renderFadeTransparent();
         } else {
-            ClientApi.INSTANCE.renderFadeOpaque(mcModelViewMatrix, mcProjectionMatrix, frameTime, levelWrapper);
+            ClientApi.INSTANCE.renderFadeOpaque();
         }
-        //Minecraft.getMinecraft().getFramebuffer().bindFramebuffer(false);
         GL32.glEnable(GL32.GL_ALPHA_TEST);
     }
 

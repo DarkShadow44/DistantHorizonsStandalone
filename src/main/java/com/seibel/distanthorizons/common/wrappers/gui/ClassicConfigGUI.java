@@ -154,14 +154,14 @@ public class ClassicConfigGUI {
     private static class ConfigScreen extends DhScreen {
         protected ConfigScreen(ConfigBase configBase, GuiScreen parent, String category) {
             super(Translatable(
-                StatCollector.canTranslate(configBase.modID + ".config" + (category.isEmpty() ? "." + category : "") + ".title") ?
-                    configBase.modID + ".config.title" :
-                    configBase.modID + ".config" + (category.isEmpty() ? "" : "." + category) + ".title")
+                StatCollector.canTranslate(ModInfo.ID + ".config" + (category.isEmpty() ? "." + category : "") + ".title") ?
+                    ModInfo.ID + ".config.title" :
+                    ModInfo.ID + ".config" + (category.isEmpty() ? "" : "." + category) + ".title")
             );
             this.configBase = configBase;
             this.parent = parent;
             this.category = category;
-            this.translationPrefix = configBase.modID + ".config.";
+            this.translationPrefix = ModInfo.ID + ".config.";
         }
 
         private final ConfigBase configBase;
@@ -231,7 +231,7 @@ public class ClassicConfigGUI {
          */
         @Override
         public void onGuiClosed() {
-            ConfigBase.INSTANCE.configFileINSTANCE.saveToFile();
+            ConfigBase.INSTANCE.configFileHandler.saveToFile();
             //Minecraft.getMinecraft().displayGuiScreen(this.parent);
 
             CONFIG_CORE_INTERFACE.onScreenChangeListenerList.forEach((listener) -> listener.run());
@@ -241,7 +241,7 @@ public class ClassicConfigGUI {
         public void initGui() {
             super.initGui();
             if (!reload) {
-                ConfigBase.INSTANCE.configFileINSTANCE.loadFromFile();
+                ConfigBase.INSTANCE.configFileHandler.loadFromFile();
             }
 
             /*
@@ -278,11 +278,11 @@ public class ClassicConfigGUI {
                 150, 20,
                 button ->
                 {
-                    ConfigBase.INSTANCE.configFileINSTANCE.loadFromFile();
+                    ConfigBase.INSTANCE.configFileHandler.loadFromFile();
                     Minecraft.getMinecraft().displayGuiScreen(parent);
                 }));
             doneButton = addBtn(MakeBtn(Translatable("distanthorizons.general.done"), this.width / 2 + 4, this.height - 28, 150, 20, (button) -> {
-                ConfigBase.INSTANCE.configFileINSTANCE.saveToFile();
+                ConfigBase.INSTANCE.configFileHandler.saveToFile();
                 Minecraft.getMinecraft().displayGuiScreen(parent);
             }));
 
@@ -352,7 +352,7 @@ public class ClassicConfigGUI {
             }
             if (ConfigCategory.class.isAssignableFrom(info.getClass())) {
                 GuiButton widget = MakeBtn(name, this.width / 2 - 100, this.height - 28, 100 * 2, 20, (button -> {
-                    ConfigBase.INSTANCE.configFileINSTANCE.saveToFile();
+                    ConfigBase.INSTANCE.configFileHandler.saveToFile();
                     Minecraft.getMinecraft().displayGuiScreen(ClassicConfigGUI.getScreen(this.configBase, this, ((ConfigCategory) info).getDestination()));
                 }));
                 this.list.addButton(widget, null, null, null);
@@ -385,13 +385,13 @@ public class ClassicConfigGUI {
 
             DhDrawCenteredString(title, width / 2, 15, 0xFFFFFF); // Render title
 
-            if (this.configBase.modID.equals("distanthorizons")) {
+            if (ModInfo.ID.equals("distanthorizons")) {
                 // Display version
                 DhDrawString(TextOrLiteral(ModInfo.VERSION), 2, height - 10, 0xAAAAAA);
 
                 // If the update is pending, display this message to inform the user that it will apply when the game restarts
                 if (SelfUpdater.deleteOldJarOnJvmShutdown)
-                    DhDrawString(Translatable(configBase.modID + ".updater.waitingForClose"), 4, height - 38, 0xFFFFFF);
+                    DhDrawString(Translatable(ModInfo.ID + ".updater.waitingForClose"), 4, height - 38, 0xFFFFFF);
             }
 
 
