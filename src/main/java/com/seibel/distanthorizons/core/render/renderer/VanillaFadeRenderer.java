@@ -136,9 +136,7 @@ public class VanillaFadeRenderer
 		profiler.push("DH-Vanilla Fade");
 		
 		
-		GLState mcState = new GLState();
-		
-		try
+		try(GLState mcState = new GLState())
 		{
 			profiler.push("Vanilla Fade Generate");
 			
@@ -156,7 +154,7 @@ public class VanillaFadeRenderer
 			
 			
 			VanillaFadeShader.INSTANCE.frameBuffer = this.fadeFramebuffer;
-			VanillaFadeShader.INSTANCE.setProjectionMatrix(mcModelViewMatrix, mcProjectionMatrix, partialTicks);
+			VanillaFadeShader.INSTANCE.setProjectionMatrix(mcModelViewMatrix, mcProjectionMatrix);
 			VanillaFadeShader.INSTANCE.setLevelMaxHeight(level.getMaxHeight());
 			VanillaFadeShader.INSTANCE.render(partialTicks);
 			
@@ -177,12 +175,6 @@ public class VanillaFadeRenderer
 		catch (Exception e)
 		{
 			LOGGER.error("Unexpected error during fade render, error: ["+e.getMessage()+"].", e);
-		}
-		finally
-		{
-			// make sure we always revert to MC's state to prevent GL state corruption
-			// this is especially important on MC 1.16.5 or when other rendering mods are present
-			mcState.restore();
 		}
 	}
 	

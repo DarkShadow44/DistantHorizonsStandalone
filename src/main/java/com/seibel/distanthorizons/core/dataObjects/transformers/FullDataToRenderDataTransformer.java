@@ -24,13 +24,13 @@ import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.dataObjects.fullData.FullDataPointIdMap;
 import com.seibel.distanthorizons.core.dataObjects.fullData.sources.FullDataSourceV2;
 import com.seibel.distanthorizons.core.dataObjects.render.ColumnRenderSource;
-import com.seibel.distanthorizons.core.dataObjects.render.columnViews.ColumnArrayView;
+import com.seibel.distanthorizons.core.dataObjects.render.columnViews.ColumnRenderView;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
-import com.seibel.distanthorizons.core.pooling.PhantomArrayListCheckout;
-import com.seibel.distanthorizons.core.pooling.PhantomArrayListPool;
-import com.seibel.distanthorizons.core.pos.DhSectionPos;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPosMutable;
+import com.seibel.distanthorizons.core.util.objects.pooling.PhantomArrayListCheckout;
+import com.seibel.distanthorizons.core.util.objects.pooling.PhantomArrayListPool;
+import com.seibel.distanthorizons.core.pos.DhSectionPos;
 import com.seibel.distanthorizons.core.util.*;
 import com.seibel.distanthorizons.core.wrapperInterfaces.IWrapperFactory;
 import com.seibel.distanthorizons.core.wrapperInterfaces.block.IBlockStateWrapper;
@@ -40,6 +40,7 @@ import com.seibel.distanthorizons.coreapi.util.BitShiftUtil;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import com.seibel.distanthorizons.core.logging.DhLogger;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashSet;
@@ -108,11 +109,11 @@ public class FullDataToRenderDataTransformer
  		final long pos = fullDataSource.getPos();
 		final byte dataDetail = fullDataSource.getDataDetailLevel();
 		
-		final int vertSize = Config.Client.Advanced.Graphics.Quality.verticalQuality.get().calculateMaxVerticalData(fullDataSource.getDataDetailLevel());
+		final int maxVertSliceCount = Config.Client.Advanced.Graphics.Quality.verticalQuality.get().calculateMaxNumberOfVerticalSlicesAtDetailLevel(fullDataSource.getDataDetailLevel());
 		
 		
 		
-		final ColumnRenderSource columnSource = ColumnRenderSource.createEmpty(pos, vertSize, levelWrapper.getMinHeight());
+		final ColumnRenderSource columnSource = ColumnRenderSource.createEmpty(pos, maxVertSliceCount, levelWrapper.getMinHeight());
 		if (fullDataSource.isEmpty)
 		{
 			return columnSource;
@@ -122,32 +123,40 @@ public class FullDataToRenderDataTransformer
 		int baseX = DhSectionPos.getMinCornerBlockX(pos);
 		int baseZ = DhSectionPos.getMinCornerBlockZ(pos);
 		
-		for (int x = 0; x < FullDataSourceV2.WIDTH; x++)
+		try(ColumnRenderView columnArrayView = ColumnRenderView.getPooled();
+			PhantomArrayListCheckout phantomCheckout = ARRAY_LIST_POOL.checkoutLongArrays(1);
+			ColumnRenderView tempExpandingColumnView = ColumnRenderView.getPooled();
+			RenderDataPointReducingList reducingList = new RenderDataPointReducingList())
 		{
-			for (int z = 0; z < FullDataSourceV2.WIDTH; z++)
+			for (int x = 0; x < FullDataSourceV2.WIDTH; x++)
 			{
-				ColumnArrayView columnArrayView = columnSource.getVerticalDataPointView(x, z);
-				LongArrayList dataColumn = fullDataSource.getColumnAtRelPos(x, z);
-				
-				updateOrReplaceRenderDataViewColumnWithFullDataColumn(
-						levelWrapper, fullDataSource, 
-						// bitshift is to account for LODs with a detail level greater than 0 so the block pos is correct
-						baseX + BitShiftUtil.pow(x,dataDetail), baseZ + BitShiftUtil.pow(z,dataDetail), 
-						columnArrayView, dataColumn);
+				for (int z = 0; z < FullDataSourceV2.WIDTH; z++)
+				{
+					columnSource.populateColumnView(columnArrayView, x, z);
+					LongArrayList dataColumn = fullDataSource.getColumnAtRelPos(x, z);
+					
+					updateOrReplaceRenderDataViewColumnWithFullDataColumn(
+						levelWrapper, fullDataSource,
+						// bit shift is to account for LODs with a detail level greater than 0 so the block pos is correct
+						baseX + BitShiftUtil.pow(x, dataDetail), baseZ + BitShiftUtil.pow(z, dataDetail),
+						columnArrayView, dataColumn,
+						// pooled references so we don't need to re-allocate/get them 4000 times per render source
+						phantomCheckout, tempExpandingColumnView, reducingList);
+				}
 			}
 		}
-		
-		columnSource.fillDebugFlag(0, 0, ColumnRenderSource.WIDTH, ColumnRenderSource.WIDTH, ColumnRenderSource.DebugSourceFlag.FULL);
 		
 		return columnSource;
 	}
 	
-	/** Updates the given {@link ColumnArrayView} to match the incoming Full data {@link LongArrayList} */
+	/** Updates the given {@link ColumnRenderView} to match the incoming Full data {@link LongArrayList} */
 	public static void updateOrReplaceRenderDataViewColumnWithFullDataColumn(
 			IClientLevelWrapper levelWrapper,
 			FullDataSourceV2 fullDataSource, int blockX, int blockZ, 
-			ColumnArrayView columnArrayView, 
-			LongArrayList fullDataColumn)
+			ColumnRenderView columnArrayView, 
+			LongArrayList fullDataColumn,
+			// pooled references
+			PhantomArrayListCheckout phantomCheckout, ColumnRenderView tempExpandingColumnView, RenderDataPointReducingList reducingList)
 	{
 		// we can't do anything if the full data is missing or empty
 		if (fullDataColumn == null 
@@ -157,34 +166,26 @@ public class FullDataToRenderDataTransformer
 		}
 		
 		int fullDataLength = fullDataColumn.size();
-		if (fullDataLength <= columnArrayView.verticalSize())
+		if (fullDataLength <= columnArrayView.maxVerticalSliceCount)
 		{
 			// Directly use the arrayView since it fits.
 			setRenderColumnView(levelWrapper, fullDataSource, blockX, blockZ, columnArrayView, fullDataColumn);
 		}
 		else
 		{
-			PhantomArrayListCheckout checkout = ARRAY_LIST_POOL.checkoutArrays(0, 0, 1);
-			LongArrayList dataArrayList = checkout.getLongArray(0, fullDataLength);
+			LongArrayList dataArrayList = phantomCheckout.getLongArray(0, fullDataLength);
 			
-			try
-			{
-				// expand the ColumnArrayView to fit the new larger max vertical size
-				ColumnArrayView newColumnArrayView = new ColumnArrayView(dataArrayList, fullDataLength, 0, fullDataLength);
-				setRenderColumnView(levelWrapper, fullDataSource, blockX, blockZ, newColumnArrayView, fullDataColumn);
-				
-				columnArrayView.changeVerticalSizeFrom(newColumnArrayView);
-			}
-			finally
-			{
-				ARRAY_LIST_POOL.returnCheckout(checkout);
-			}
+			// expand the ColumnArrayView to fit the new larger max vertical size
+			tempExpandingColumnView.populate(dataArrayList, fullDataLength, 0, fullDataLength);
+			setRenderColumnView(levelWrapper, fullDataSource, blockX, blockZ, tempExpandingColumnView, fullDataColumn);
+			
+			columnArrayView.changeVerticalSizeFrom(tempExpandingColumnView, reducingList);
 		}
 	}
 	private static void setRenderColumnView(
 			IClientLevelWrapper levelWrapper, FullDataSourceV2 fullDataSource,
 			int blockX, int blockZ,
-			ColumnArrayView renderColumnData, LongArrayList fullColumnData)
+			ColumnRenderView renderColumnData, LongArrayList fullColumnData)
 	{
 		//===============//
 		// config values //
@@ -193,8 +194,8 @@ public class FullDataToRenderDataTransformer
 		boolean ignoreNonCollidingBlocks = (Config.Client.Advanced.Graphics.Quality.blocksToIgnore.get() == EDhApiBlocksToAvoid.NON_COLLIDING);
 		boolean colorBelowWithAvoidedBlocks = Config.Client.Advanced.Graphics.Quality.tintWithAvoidedBlocks.get();
 		
-		HashSet<IBlockStateWrapper> blockStatesToIgnore = WRAPPER_FACTORY.getRendererIgnoredBlocks(levelWrapper);
-		HashSet<IBlockStateWrapper> caveBlockStatesToIgnore = WRAPPER_FACTORY.getRendererIgnoredCaveBlocks(levelWrapper);
+		ObjectOpenHashSet<IBlockStateWrapper> blockStatesToIgnore = WRAPPER_FACTORY.getRendererIgnoredBlocks(levelWrapper);
+		ObjectOpenHashSet<IBlockStateWrapper> caveBlockStatesToIgnore = WRAPPER_FACTORY.getRendererIgnoredCaveBlocks(levelWrapper);
 		
 		// build snow block cache if needed
 		if (snowLayerBlockStates == null)
@@ -283,18 +284,22 @@ public class FullDataToRenderDataTransformer
 			//====================//
 			
 			boolean ignoreBlock = blockStatesToIgnore.contains(block);
-			boolean caveBlock = caveBlockStatesToIgnore.contains(block); // TODO caves should also ignore transparent/non-solid blocks (IE grass and plants) wthout each being defined
-			if (caveBlock)
+			boolean caveBlock = caveBlockStatesToIgnore.contains(block);
+			if (caveBlock
+				// caves also ignore transparent/non-solid blocks (IE grass and plants) without each being defined
+				|| !block.isSolid()
+				|| block.isLiquid()
+				|| block.getOpacity() < LodUtil.BLOCK_FULLY_OPAQUE)
 			{
 				if (caveCullingEnabled
-						// assume this data point is underground if it has no sky-light
-						&& skyLight == LodUtil.MIN_MC_LIGHT
-						// ignore caves above a certain height to prevent floating islands from having walls underneath them
-						&& topY < caveCullingMaxY
-						// cave culling shouldn't happen when at the top of the world
-						&& renderDataIndex != 0 && fullDataIndex != 0
-						// cave culling can't happen when at the bottom of the world
-						&& (fullDataIndex + 1) < fullColumnData.size())
+					// assume this data point is underground if it has no sky-light
+					&& skyLight == LodUtil.MIN_MC_LIGHT
+					// ignore caves above a certain height to prevent floating islands from having walls underneath them
+					&& topY < caveCullingMaxY
+					// cave culling shouldn't happen when at the top of the world
+					&& renderDataIndex != 0 && fullDataIndex != 0
+					// cave culling can't happen when at the bottom of the world
+					&& (fullDataIndex + 1) < fullColumnData.size())
 				{
 					// we need to get the next sky/block lights because
 					// the air block here will always have a light of 0/0 due to only the top of the LOD's light being saved.
@@ -302,7 +307,7 @@ public class FullDataToRenderDataTransformer
 					int nextSkyLight = FullDataPointUtil.getSkyLight(nextFullData);
 					
 					if (nextSkyLight == LodUtil.MIN_MC_LIGHT
-							&& ColorUtil.getAlpha(lastColor) == 255)
+						&& ColorUtil.getAlpha(lastColor) == 255)
 					{
 						// replace the previous block with new bottom
 						long columnData = renderColumnData.get(renderDataIndex - 1);
@@ -348,23 +353,40 @@ public class FullDataToRenderDataTransformer
 				{
 					// this snow block was entirely removed, just color the block below it
 					ignoreNonSolidBlock = true;
+					
+					// snow is a special case where it should always tint the block
+					// below it, if not done grass will appear as gray
+					int snowColor = levelWrapper.getBlockColor(mutableBlockPos, biome, fullDataSource, block);
+					colorToApplyToNextBlock = ColorUtil.setAlpha(snowColor, 255);
 				}
 			}
 			
 			if (ignoreNonSolidBlock)
 			{
+				int ignoredColor = levelWrapper.getBlockColor(mutableBlockPos, biome, fullDataSource, block);
+				int ignoredAlpha = ColorUtil.getAlpha(ignoredColor);
+				
 				if (colorBelowWithAvoidedBlocks)
 				{
-					int tempColor = levelWrapper.getBlockColor(mutableBlockPos, biome, fullDataSource, block);
-					
 					// don't transfer the color when alpha is 0
 					// this prevents issues if grass is transparent
-					if (ColorUtil.getAlpha(tempColor) != 0)
+					if (ignoredAlpha != 0)
 					{
-						colorToApplyToNextBlock = ColorUtil.setAlpha(tempColor, 255);
-						skylightToApplyToNextBlock = skyLight;
-						blocklightToApplyToNextBlock = blockLight;
+						colorToApplyToNextBlock = ColorUtil.setAlpha(ignoredColor, 255);
 					}
+				}
+				
+				// Don't transfer the lighting when alpha is 0
+				// (the block below should have its own lighting).
+				if (ignoredAlpha != 0)
+				{
+					// Lighting is transferred even when "colorBelowWithAvoidedBlocks"
+					// is false, since otherwise the blocks underneath may have a light value of "0"
+					// which makes things look darker than they should.
+					// This can specifically manifest as grid lines on LOD borders
+					// (not entire sure why grid lines on LOD borders, maybe it has to do with the fact that those LODs aren't occluded?).
+					skylightToApplyToNextBlock = skyLight;
+					blocklightToApplyToNextBlock = blockLight;
 				}
 				
 				// skip this non-colliding block
@@ -377,6 +399,20 @@ public class FullDataToRenderDataTransformer
 			{
 				// use this block's color
 				color = levelWrapper.getBlockColor(mutableBlockPos, biome, fullDataSource, block);
+				
+				// use the skylight override if present
+				if (skylightToApplyToNextBlock != -1)
+				{
+					skyLight = skylightToApplyToNextBlock;
+					// remove the override so we don't accidentally override the next datapoint
+					skylightToApplyToNextBlock = -1;
+				}
+				
+				if (blocklightToApplyToNextBlock != -1)
+				{
+					blockLight = blocklightToApplyToNextBlock;
+					blocklightToApplyToNextBlock = -1;
+				}
 			}
 			else
 			{

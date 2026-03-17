@@ -23,6 +23,7 @@ public class DhApiRenderableBox
 	public DhApiVec3d maxPos;
 	
 	public Color color;
+	/** @see EDhApiBlockMaterial */
 	public byte material;
 	
 	

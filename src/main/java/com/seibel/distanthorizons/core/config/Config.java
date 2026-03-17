@@ -101,6 +101,7 @@ public class Config
 				.build();
 		
 		public static ConfigUiLinkedEntry quickEnableWorldGenerator = new ConfigUiLinkedEntry(Common.WorldGenerator.enableDistantGeneration);
+		public static ConfigUiLinkedEntry quickEnableServerGeneration = new ConfigUiLinkedEntry(Server.enableServerGeneration);
 		
 		public static ConfigUiLinkedEntry quickShowWorldGenProgress = new ConfigUiLinkedEntry(Common.WorldGenerator.showGenerationProgress);
 		
@@ -269,13 +270,6 @@ public class Config
 							.addListener(ReloadLodsConfigEventHandler.DELAYED_INSTANCE)
 							.build();
 					
-					public static ConfigEntry<Double> lodBias = new ConfigEntry.Builder<Double>()
-							.setMinDefaultMax(0d, 0d, null)
-							.comment(""
-									+ "What value should vanilla Minecraft's texture LodBias be? \n"
-									+ "If set to 0 the mod wont overwrite vanilla's default (which so happens to also be 0)")
-							.build();
-					
 					public static ConfigEntry<EDhApiLodShading> lodShading = new ConfigEntry.Builder<EDhApiLodShading>()
 							.set(EDhApiLodShading.AUTO)
 							.comment(""
@@ -329,8 +323,8 @@ public class Config
 									+ "")
 							.build();
 					
-					public static ConfigEntry<Double> brightnessMultiplier = new ConfigEntry.Builder<Double>() // TODO: Make this a float (the ClassicConfigGUI doesnt support floats)
-							.set(1.0)
+					public static ConfigEntry<Float> brightnessMultiplier = new ConfigEntry.Builder<Float>()
+							.set(1.0f)
 							.comment(""
 									+ "How bright LOD colors are. \n"
 									+ "\n"
@@ -340,8 +334,8 @@ public class Config
 							.addListener(ReloadLodsConfigEventHandler.DELAYED_INSTANCE)
 							.build();
 					
-					public static ConfigEntry<Double> saturationMultiplier = new ConfigEntry.Builder<Double>() // TODO: Make this a float (the ClassicConfigGUI doesnt support floats)
-							.set(1.0)
+					public static ConfigEntry<Float> saturationMultiplier = new ConfigEntry.Builder<Float>()
+							.set(1.0f)
 							.comment(""
 									+ "How saturated LOD colors are. \n"
 									+ "\n"
@@ -371,60 +365,6 @@ public class Config
 					public static ConfigEntry<Boolean> enableSsao = new ConfigEntry.Builder<Boolean>()
 							.set(true)
 							.comment("Enable Screen Space Ambient Occlusion")
-							.build();
-					
-					public static ConfigEntry<Integer> sampleCount = new ConfigEntry.Builder<Integer>()
-							.set(6)
-							.comment("" +
-									"Determines how many points in space are sampled for the occlusion test. \n" +
-									"Higher numbers will improve quality and reduce banding, but will increase GPU load." +
-									"")
-							.build();
-					
-					public static ConfigEntry<Double> radius = new ConfigEntry.Builder<Double>()
-							.set(4.0)
-							.comment("" +
-									"Determines the radius Screen Space Ambient Occlusion is applied, measured in blocks." +
-									"")
-							.build();
-					
-					public static ConfigEntry<Double> strength = new ConfigEntry.Builder<Double>()
-							.set(0.2)
-							.comment("" +
-									"Determines how dark the Screen Space Ambient Occlusion effect will be." +
-									"")
-							.build();
-					
-					public static ConfigEntry<Double> bias = new ConfigEntry.Builder<Double>()
-							.set(0.02)
-							.comment("" +
-									"Increasing the value can reduce banding at the cost of reducing the strength of the effect." +
-									"")
-							.build();
-					
-					public static ConfigEntry<Double> minLight = new ConfigEntry.Builder<Double>()
-							.set(0.25)
-							.comment("" +
-									"Determines how dark the occlusion shadows can be. \n" +
-									"0 = totally black at the corners \n" +
-									"1 = no shadow" +
-									"")
-							.build();
-					
-					public static ConfigEntry<Integer> blurRadius = new ConfigEntry.Builder<Integer>()
-							.set(2)
-							.comment("" +
-									"The radius, measured in pixels, that blurring is calculated for the SSAO. \n" +
-									"Higher numbers will reduce banding at the cost of GPU performance." +
-									"")
-							.build();
-					
-					public static ConfigEntry<Integer> fadeDistanceInBlocks = new ConfigEntry.Builder<Integer>()
-							.setMinDefaultMax(0, 1_600, 30_000_000)
-							.comment("" +
-									"The distance in blocks from the camera where the SSAO will fade out to. \n"+
-									"This is done to prevent banding and noise at extreme distances. \n"+
-									"")
 							.build();
 					
 				}
@@ -457,12 +397,33 @@ public class Config
 									+ "")
 							.build();
 					
+					public static ConfigEntry<Boolean> expandDistantBeacons = new ConfigEntry.Builder<Boolean>()
+						.set(true) 
+						.comment(""
+							+ "If true LOD beacon beams will be rendered wider at extreme distances, \n"
+							+ "making them easier to see. \n"
+							+ "If false all LOD beacon beams will only ever be 1 block wide. \n"
+							+ "")
+						.build();
+					
 					public static ConfigEntry<Boolean> enableCloudRendering = new ConfigEntry.Builder<Boolean>()
 							.set(true)
 							.comment(""
 									+ "If true LOD clouds will be rendered. \n"
 									+ "")
 							.build();
+					
+					public static ConfigEntry<String> dimensionEnabledCloudRenderingCsv = new ConfigEntry.Builder<String>()
+						.set("minecraft:overworld")
+						.setAppearance(EConfigEntryAppearance.ALL)
+						.comment(""
+							+ "A comma separated separated list of dimension resource locations where DH clouds will render.\n"
+							+ "\n"
+							+ "Example: \"minecraft:overworld,minecraft:the_end\"\n"
+							+ "\n"
+							+ "Changes will only be seen when the world is re-loaded.\n"
+							+ "")
+						.build();
 					
 					public static ConfigEntry<Boolean> enableInstancedRendering = new ConfigEntry.Builder<Boolean>()
 							.set(true)
@@ -475,8 +436,8 @@ public class Config
 				
 				public static class Fog
 				{
-					private static final Double FOG_RANGE_MIN = 0.0;
-					private static final Double FOG_RANGE_MAX = Math.sqrt(2.0);
+					private static final Float FOG_RANGE_MIN = 0.0f;
+					private static final Float FOG_RANGE_MAX = (float)Math.sqrt(2.0);
 					
 					
 					
@@ -508,8 +469,8 @@ public class Config
 					
 					
 					
-					public static ConfigEntry<Double> farFogStart = new ConfigEntry.Builder<Double>()
-							.setMinDefaultMax(FOG_RANGE_MIN, 0.4, FOG_RANGE_MAX)
+					public static ConfigEntry<Float> farFogStart = new ConfigEntry.Builder<Float>()
+							.setMinDefaultMax(FOG_RANGE_MIN, 0.4f, FOG_RANGE_MAX)
 							.comment(""
 									+ "At what distance should the far fog start? \n"
 									+ "\n"
@@ -518,8 +479,8 @@ public class Config
 									+ "1.414: Fog starts at the corner of the vanilla render distance.")
 							.build();
 					
-					public static ConfigEntry<Double> farFogEnd = new ConfigEntry.Builder<Double>()
-							.setMinDefaultMax(FOG_RANGE_MIN, 1.0, FOG_RANGE_MAX)
+					public static ConfigEntry<Float> farFogEnd = new ConfigEntry.Builder<Float>()
+							.setMinDefaultMax(FOG_RANGE_MIN, 1.0f, FOG_RANGE_MAX)
 							.comment(""
 									+ "Where should the far fog end? \n"
 									+ "\n"
@@ -528,8 +489,8 @@ public class Config
 									+ "1.414: Fog ends at the corner of the vanilla render distance.")
 							.build();
 					
-					public static ConfigEntry<Double> farFogMin = new ConfigEntry.Builder<Double>()
-							.setMinDefaultMax(-5.0, 0.0, FOG_RANGE_MAX)
+					public static ConfigEntry<Float> farFogMin = new ConfigEntry.Builder<Float>()
+							.setMinDefaultMax(-5.0f, 0.0f, FOG_RANGE_MAX)
 							.comment(""
 									+ "What is the minimum fog thickness? \n"
 									+ "\n"
@@ -537,8 +498,8 @@ public class Config
 									+ "1.0: Fully opaque fog.")
 							.build();
 					
-					public static ConfigEntry<Double> farFogMax = new ConfigEntry.Builder<Double>()
-							.setMinDefaultMax(FOG_RANGE_MIN, 1.0, 5.0)
+					public static ConfigEntry<Float> farFogMax = new ConfigEntry.Builder<Float>()
+							.setMinDefaultMax(FOG_RANGE_MIN, 1.0f, 5.0f)
 							.comment(""
 									+ "What is the maximum fog thickness? \n"
 									+ "\n"
@@ -556,8 +517,8 @@ public class Config
 									+ EDhApiFogFalloff.EXPONENTIAL_SQUARED + ": 1/(e^((distance*density)^2)")
 							.build();
 					
-					public static ConfigEntry<Double> farFogDensity = new ConfigEntry.Builder<Double>()
-							.setMinDefaultMax(0.01, 2.5, 50.0)
+					public static ConfigEntry<Float> farFogDensity = new ConfigEntry.Builder<Float>()
+							.setMinDefaultMax(0.01f, 2.5f, 50.0f)
 							.comment(""
 									+ "Used in conjunction with the Fog Falloff.")
 							.build();
@@ -603,13 +564,13 @@ public class Config
 										+ EDhApiHeightFogDirection.ABOVE_AND_BELOW_SET_HEIGHT + ": Height fog starts from a set height and goes towards both the sky and void")
 								.build();
 						
-						public static ConfigEntry<Double> heightFogBaseHeight = new ConfigEntry.Builder<Double>()
-								.setMinDefaultMax(-4096.0, 80.0, 4096.0)
+						public static ConfigEntry<Float> heightFogBaseHeight = new ConfigEntry.Builder<Float>()
+								.setMinDefaultMax(-4096.0f, 80.0f, 4096.0f)
 								.comment("If the height fog is calculated around a set height, what is that height position?")
 								.build();
 						
-						public static ConfigEntry<Double> heightFogStart = new ConfigEntry.Builder<Double>()
-								.setMinDefaultMax(FOG_RANGE_MIN, 0.0, FOG_RANGE_MAX)
+						public static ConfigEntry<Float> heightFogStart = new ConfigEntry.Builder<Float>()
+								.setMinDefaultMax(FOG_RANGE_MIN, 0.0f, FOG_RANGE_MAX)
 								.comment(""
 										+ "Should the start of the height fog be offset? \n"
 										+ "\n"
@@ -617,8 +578,8 @@ public class Config
 										+ "1.0: Fog start with offset of the entire world's height. (Includes depth)")
 								.build();
 						
-						public static ConfigEntry<Double> heightFogEnd = new ConfigEntry.Builder<Double>()
-								.setMinDefaultMax(FOG_RANGE_MIN, 0.6, FOG_RANGE_MAX)
+						public static ConfigEntry<Float> heightFogEnd = new ConfigEntry.Builder<Float>()
+								.setMinDefaultMax(FOG_RANGE_MIN, 0.6f, FOG_RANGE_MAX)
 								.comment(""
 										+ "Should the end of the height fog be offset? \n"
 										+ "\n"
@@ -626,8 +587,8 @@ public class Config
 										+ "1.0: Fog end with offset of the entire world's height. (Include depth)")
 								.build();
 						
-						public static ConfigEntry<Double> heightFogMin = new ConfigEntry.Builder<Double>()
-								.setMinDefaultMax(0.0, 0.0, FOG_RANGE_MAX)
+						public static ConfigEntry<Float> heightFogMin = new ConfigEntry.Builder<Float>()
+								.setMinDefaultMax(0.0f, 0.0f, FOG_RANGE_MAX)
 								.comment(""
 										+ "What is the minimum fog thickness? \n"
 										+ "\n"
@@ -635,8 +596,8 @@ public class Config
 										+ "1.0: Fully opaque fog.")
 								.build();
 						
-						public static ConfigEntry<Double> heightFogMax = new ConfigEntry.Builder<Double>()
-								.setMinDefaultMax(FOG_RANGE_MIN, 1.0, 5.0)
+						public static ConfigEntry<Float> heightFogMax = new ConfigEntry.Builder<Float>()
+								.setMinDefaultMax(FOG_RANGE_MIN, 1.0f, 5.0f)
 								.comment(""
 										+ "What is the maximum fog thickness? \n"
 										+ "\n"
@@ -654,8 +615,8 @@ public class Config
 										+ EDhApiFogFalloff.EXPONENTIAL_SQUARED + ": 1/(e^((height*density)^2)")
 								.build();
 						
-						public static ConfigEntry<Double> heightFogDensity = new ConfigEntry.Builder<Double>()
-								.setMinDefaultMax(0.01, 20.0, 50.0)
+						public static ConfigEntry<Float> heightFogDensity = new ConfigEntry.Builder<Float>()
+								.setMinDefaultMax(0.01f, 20.0f, 50.0f)
 								.comment("What is the height fog's density?")
 								.build();
 						
@@ -683,13 +644,13 @@ public class Config
 									+ "")
 							.build();
 					
-					public static ConfigEntry<Double> noiseIntensity = new ConfigEntry.Builder<Double>()    // TODO: Make this a float (the ClassicConfigGUI doesn't support floats)
-							.setMinDefaultMax(0d, 5d, 100d)                    // TODO: Once this becomes a float make it 0-1 instead of 0-100 (I did this cus doubles only allow 2 decimal places)
+					public static ConfigEntry<Float> noiseIntensity = new ConfigEntry.Builder<Float>()
+							.setMinDefaultMax(0f, 0.05f, 1f)
 							.comment(""
 									+ "How intense should the noise should be?")
 							.build();
 					
-					public static ConfigEntry<Integer> noiseDropoff = new ConfigEntry.Builder<Integer>()    // TODO: Make this a float (the ClassicConfigGUI doesn't support floats)
+					public static ConfigEntry<Integer> noiseDropoff = new ConfigEntry.Builder<Integer>()
 							.setMinDefaultMax(0, 1024, null)
 							.comment(""
 									+ "Defines how far should the noise texture render before it fades away. (in blocks) \n"
@@ -703,21 +664,32 @@ public class Config
 				{
 					public static ConfigUIComment cullingHeader = new ConfigUIComment.Builder().setParentConfigClass(Culling.class).build();
 					
-					public static ConfigEntry<Double> overdrawPrevention = new ConfigEntry.Builder<Double>()
-							.setMinDefaultMax(0.0, 0.0, 1.0) // TODO change -1 to auto
+					public static ConfigEntry<Float> overdrawPrevention = new ConfigEntry.Builder<Float>()
+							.setMinDefaultMax(-1.0f, -1.0f, 1.0f)
 							.comment(""
-									+ "Determines how far from the camera Distant Horizons will start rendering. \n"
-									+ "Measured as a percentage of the vanilla render distance.\n"
-									+ "\n"
-									+ "0 = auto, overdraw will change based on the vanilla render distance.\n"
-									+ "\n"
-									+ "Higher values will prevent LODs from rendering behind vanilla blocks at a higher distance,\n"
-									+ "but may cause holes in the world. \n"
-									+ "Holes are most likely to appear when flying through unloaded terrain. \n"
-									+ "\n"
-									+ "Increasing the vanilla render distance increases the effectiveness of this setting."
-									+ "")
+								+ "Determines how far from the camera Distant Horizons will start rendering. \n"
+								+ "Measured as a percentage of the vanilla render distance.\n"
+								+ "\n"
+								+ "-1 = auto, overdraw will change based on the vanilla render distance.\n"
+								+ "\n"
+								+ "Higher values will prevent LODs from rendering behind vanilla blocks at a higher distance,\n"
+								+ "but may cause holes in the world. \n"
+								+ "Holes are most likely to appear when flying through unloaded terrain. \n"
+								+ "\n"
+								+ "Increasing the vanilla render distance increases the effectiveness of this setting."
+								+ "")
 							.build();
+					
+					public static ConfigEntry<Boolean> reduceOverdrawWithFastMovement = new ConfigEntry.Builder<Boolean>()
+						.set(true)
+						.comment(""
+							+ "If set to true the overdraw prevention radius will get closer\n"
+							+ "to the camera when flying/moving quickly.\n"
+							+ "\n"
+							+ "This helps reduce issues where Minecraft can't load or\n"
+							+ "generate chunks fast enough to keep up with DH.\n"
+							+ "")
+						.build();
 					
 					public static ConfigEntry<Boolean> enableCaveCulling = new ConfigEntry.Builder<Boolean>()
 							.set(true)
@@ -773,9 +745,9 @@ public class Config
 									+ "Disable this if shadows render incorrectly.")
 							.build();
 					
-					public static ConfigEntry<String> ignoredRenderBlockCsv = new ConfigEntry.Builder<String>() // TODO accept wildcards
+					public static ConfigEntry<String> ignoredRenderBlockCsv = new ConfigEntry.Builder<String>()
 							.set("minecraft:barrier,minecraft:structure_void,minecraft:light,minecraft:tripwire,minecraft:brown_mushroom")
-							.setAppearance(EConfigEntryAppearance.ONLY_IN_FILE) // only shown in file since the UI has a character limit
+							.setAppearance(EConfigEntryAppearance.ALL)
 							.comment(""
 									+ "A comma separated list of block resource locations that won't be rendered by DH. \n"
 									+ "Air is always included in this list. \n"
@@ -788,11 +760,9 @@ public class Config
 									+ "")
 							.build();
 					
-					public static ConfigEntry<String> ignoredRenderCaveBlockCsv = new ConfigEntry.Builder<String>() // TODO accept wildcards
-							.set("minecraft:glow_lichen,minecraft:rail,minecraft:water,minecraft:lava,minecraft:bubble_column," +
-									"minecraft:cave_vines_plant,minecraft:vine,minecraft:cave_vines,minecraft:short_grass,minecraft:tall_grass," +
-									"minecraft:small_dripleaf,minecraft:big_dripleaf,minecraft:big_dripleaf_stem,minecraft:sculk_vein")
-							.setAppearance(EConfigEntryAppearance.ONLY_IN_FILE) // only shown in file since the UI has a character limit
+					public static ConfigEntry<String> ignoredRenderCaveBlockCsv = new ConfigEntry.Builder<String>()
+							.set("") // config is empty since most cave blocks will be automatically ignored due to being: transparent, non-solid, or liquids, but new blocks can be added here if needed
+							.setAppearance(EConfigEntryAppearance.ALL)
 							.comment(""
 									+ "A comma separated list of block resource locations that shouldn't be rendered \n"
 									+ "if they are in a 0 sky light underground area. \n"
@@ -958,13 +928,15 @@ public class Config
 								+ "")
 						.build();
 				
-				// TODO add LOD-only mode to this
 				public static ConfigEntry<Boolean> enableDebugKeybindings = new ConfigEntry.Builder<Boolean>()
-						.set(false)
-						.comment(""
-								+ "If true the F8 key can be used to cycle through the different debug modes. \n"
-								+ "and the F6 key can be used to enable and disable LOD rendering.")
-						.build();
+					.set(false)
+					.comment(""
+						+ "If true several keys can be used to toggle debug states. \n"
+						+ "F6 - enable/disable LOD rendering \n"
+						+ "F7 - enable/disable LOD only rendering \n"
+						+ "F8 - cycle through the different debug rendering modes \n"
+						+ "")
+					.build();
 				
 				public static ConfigEntry<Boolean> enableWhiteWorld = new ConfigEntry.Builder<Boolean>()
 						.set(false)
@@ -1184,6 +1156,11 @@ public class Config
 					public static ConfigEntry<Boolean> showLevelStatus = new ConfigEntry.Builder<Boolean>()
 							.set(true)
 							.comment("Shows what levels are loaded and world gen/rendering info about those levels.")
+							.build();
+					
+					public static ConfigEntry<Boolean> onlyShowRenderingLevels = new ConfigEntry.Builder<Boolean>()
+							.set(true)
+							.comment("Only show levels that DH is actively rendering.")
 							.build();
 					
 				}
@@ -1669,7 +1646,16 @@ public class Config
 					.comment(""
 						+ "If enabled, a message will be logged if the garbage \n"
 						+ "collector Java is currently using is known \n"
-						+ "to cause stutters and/or issues. \n"
+						+ "to cause frame stuttering and/or other issues. \n"
+						+ "")
+					.build();
+				
+				public static ConfigEntry<Boolean> showGarbageCollectorWarning = new ConfigEntry.Builder<Boolean>()
+					.set(true)
+					.comment(""
+						+ "If enabled, a chat message will be displayed if the garbage \n"
+						+ "collector Java is currently using is known \n"
+						+ "to cause frame stuttering and/or other issues. \n"
 						+ "")
 					.build();
 				
@@ -1725,6 +1711,15 @@ public class Config
 		
 		
 		// Generation
+		public static ConfigEntry<Boolean> enableServerGeneration = new ConfigEntry.Builder<Boolean>()
+			.set(true)
+			.comment(""
+				+ "When enabled, Distant Horizons will attempt to download missing LODs from the server.\n"
+				+ "\n"
+				+ "Note: the server must have Distant Generation enabled for it to work."
+				+ "")
+			.build();
+		
 		public static ConfigEntry<Integer> generationRequestRateLimit = new ConfigEntry.Builder<Integer>()
 				.setChatCommandName("generation.requestRateLimit")
 				.setMinDefaultMax(1, 20, 100)

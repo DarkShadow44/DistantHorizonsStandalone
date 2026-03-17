@@ -52,24 +52,24 @@ public interface IDhApiHeightFogConfig extends IDhApiConfigGroup
 	 * Defines the height fog's base height if {@link IDhApiHeightFogConfig#heightFogDirection()}
 	 * is set to use a specific height.
 	 */
-	IDhApiConfigValue<Double> heightFogBaseHeight();
+	IDhApiConfigValue<Float> heightFogBaseHeight();
 	
 	/** Defines the height fog's starting height as a percent of the world height. */
-	IDhApiConfigValue<Double> heightFogStartingHeightPercent();
+	IDhApiConfigValue<Float> heightFogStartingHeightPercent();
 	
 	/** Defines the height fog's ending height as a percent of the world height. */
-	IDhApiConfigValue<Double> heightFogEndingHeightPercent();
+	IDhApiConfigValue<Float> heightFogEndingHeightPercent();
 	
 	/** Defines how opaque the height fog is at its thinnest point. */
-	IDhApiConfigValue<Double> heightFogMinThickness();
+	IDhApiConfigValue<Float> heightFogMinThickness();
 	
 	/** Defines how opaque the height fog is at its thickest point. */
-	IDhApiConfigValue<Double> heightFogMaxThickness();
+	IDhApiConfigValue<Float> heightFogMaxThickness();
 	
 	/** Defines how the height fog changes in thickness. */
 	IDhApiConfigValue<EDhApiFogFalloff> heightFogFalloff();
 	
 	/** Defines the height fog's density. */
-	IDhApiConfigValue<Double> heightFogDensity();
+	IDhApiConfigValue<Float> heightFogDensity();
 	
 }

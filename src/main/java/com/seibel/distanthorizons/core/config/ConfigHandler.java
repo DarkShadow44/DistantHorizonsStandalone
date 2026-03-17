@@ -62,7 +62,7 @@ public class ConfigHandler
 	 * <br> {@link String}
 	 * <br> 
 	 * <br> // Below, "T" should be a value from above
-	 * <br> // Note: This is not checked, so we trust that you are doing the right thing (TODO: Check it)
+	 * <br> // Note: This is not checked, so we trust that you are doing the right thing
 	 * <br> List<T>
 	 * <br> ArrayList<T>
 	 * <br> Map<String, T>
@@ -261,7 +261,6 @@ public class ConfigHandler
 			if (ConfigUIComment.class.isAssignableFrom(entry.getClass())
 				&& ((ConfigUIComment)entry).parentConfigPath != null)
 			{
-				// TODO this could potentially add the same item multiple times
 				entryPrefix = "distanthorizons.config." + ((ConfigUIComment)entry).parentConfigPath;
 			}
 			

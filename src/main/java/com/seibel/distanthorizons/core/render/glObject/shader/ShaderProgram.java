@@ -40,9 +40,6 @@ import com.seibel.distanthorizons.core.util.math.Vec3f;
  * and contains a few methods that can be used with OpenGL shader programs.
  * The reason for many of these simple wrapper methods is as reminders of what
  * can (and needs to be) done with a shader program.
- *
- * @author James Seibel
- * @version 11-26-2021
  */
 public class ShaderProgram
 {
@@ -51,46 +48,32 @@ public class ShaderProgram
 	
 	
 	
-	// TODO: A better way to set the fragData output name
+	//=============//
+	// constructor //
+	//=============//
+	//region
+	
+	public ShaderProgram(String vertResourcePath, String fragResourcePath, String attribute) { this(vertResourcePath, fragResourcePath, new String[]{ attribute }); }
 	/**
-	 * Creates a shader program.
-	 * This will bind ShaderProgram
+	 * @param vertResourcePath the relative path the vertex shader should be found 
+	 * @param fragResourcePath the relative path the fragment shader should be found 
 	 */
-	public ShaderProgram(String vert, String frag, String fragDataOutputName, String[] attributes)
-	{
-		this(
-				() -> Shader.loadFile(vert, false, new StringBuilder()).toString(),
-				() -> Shader.loadFile(frag, false, new StringBuilder()).toString(),
-				fragDataOutputName, attributes
-		);
-	}
-	
-	public ShaderProgram(Supplier<String> vert, Supplier<String> frag, String fragDataOutputName, String[] attributes)
-	{
-		this(
-				new ArrayList<>(Arrays.asList(vert)),
-				new ArrayList<>(Arrays.asList(frag)),
-				attributes
-		);
-	}
-	
-	
-	public ShaderProgram(List<Supplier<String>> vertSupplierList, List<Supplier<String>> fragSupplierList, String[] attributes)
+	public ShaderProgram(String vertResourcePath, String fragResourcePath, String[] attributes)
 	{
 		this.id = GL32.glCreateProgram();
 		
-		for (Supplier<String> vertSupplier : vertSupplierList)
 		{
-			Shader vertShader = new Shader(GL32.GL_VERTEX_SHADER, vertSupplier.get());
+			String shaderString = Shader.loadFile(vertResourcePath, false);
+			Shader vertShader = new Shader(GL32.GL_VERTEX_SHADER, shaderString);
 			GL32.glAttachShader(this.id, vertShader.id);
-			vertShader.free(); // important!
+			vertShader.free();
 		}
 		
-		for (Supplier<String> fragSupplier : fragSupplierList)
 		{
-			Shader fragShader = new Shader(GL32.GL_FRAGMENT_SHADER, fragSupplier.get());
+			String shaderString = Shader.loadFile(fragResourcePath, false);
+			Shader fragShader = new Shader(GL32.GL_FRAGMENT_SHADER, shaderString);
 			GL32.glAttachShader(this.id, fragShader.id);
-			fragShader.free(); // important!
+			fragShader.free();
 		}
 		
 		for (int i = 0; i < attributes.length; i++)
@@ -109,16 +92,28 @@ public class ShaderProgram
 		GL32.glUseProgram(this.id); // This HAVE to be a direct call to prevent calling the overloaded version
 	}
 	
+	//endregion
 	
 	
+	
+	//=========//
+	// binding //
+	//=========//
+	//region
 	
 	public void bind() { GL32.glUseProgram(this.id); }
 	public void unbind() { GL32.glUseProgram(0); }
 	
 	public void free() { GL32.glDeleteProgram(this.id); }
 	
+	//endregion
 	
 	
+	
+	//============//
+	// attributes //
+	//============//
+	//region
 	
 	/**
 	 * WARNING: Slow native call! Cache it if possible!
@@ -141,6 +136,15 @@ public class ShaderProgram
 	 */
 	public int tryGetAttributeLocation(CharSequence name)
 	{ return GL32.glGetAttribLocation(this.id, name); }
+	
+	//endregion
+	
+	
+	
+	//==========//
+	// uniforms //
+	//==========//
+	//region
 	
 	/**
 	 * WARNING: Slow native call! Cache it if possible!
@@ -218,5 +222,9 @@ public class ShaderProgram
 	}
 	/** @see ShaderProgram#setUniform(int, Color) */
 	public void trySetUniform(int location, Color value) { if (location != -1) { this.setUniform(location, value); } }
+	
+	//endregion
+	
+	
 	
 }

@@ -11,10 +11,7 @@ import java.util.function.IntUnaryOperator;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /** 
- * LZMA requires a custom object to cache it's backend arrays. 
- *
- * TODO there's a lot of duplicate code in this class since it has logic for both
- *  int[]'s and byte[]'s.
+ * LZMA requires a custom object to cache its backend arrays. 
  */
 public class LzmaArrayCache extends ArrayCache
 {
@@ -68,8 +65,10 @@ public class LzmaArrayCache extends ArrayCache
 		// clearing all the time results in unnecessary slowdowns
 		if (fillWithZeros)
 		{
-			// TODO it appears that this can prevent the CPU from working on
-			//  other tasks, thus causing render thread lag even when run on a separate thread 
+			// Warning: 
+			// This is extremely memory intensive and can prevent the CPU from working on
+			// other tasks, causing render thread lag even when run on a separate thread.
+			// This is why LZMA has been deprecated in favor of ZStd.
 			Arrays.fill(array, (byte) 0);
 		}
 		
@@ -120,8 +119,10 @@ public class LzmaArrayCache extends ArrayCache
 		// clearing all the time results in unnecessary slowdowns
 		if (fillWithZeros)
 		{
-			// TODO it appears that this can prevent the CPU from working on
-			//  other tasks, thus causing render thread lag even when run on a separate thread
+			// Warning: 
+			// This is extremely memory intensive and can prevent the CPU from working on
+			// other tasks, causing render thread lag even when run on a separate thread.
+			// This is why LZMA has been deprecated in favor of ZStd.
 			Arrays.fill(array, (byte) 0);
 		}
 		

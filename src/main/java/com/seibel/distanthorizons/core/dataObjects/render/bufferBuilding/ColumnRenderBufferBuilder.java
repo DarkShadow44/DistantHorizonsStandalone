@@ -27,15 +27,14 @@ import com.seibel.distanthorizons.core.dataObjects.render.ColumnRenderSource;
 import com.seibel.distanthorizons.core.level.IDhClientLevel;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
-import com.seibel.distanthorizons.core.pooling.PhantomArrayListCheckout;
-import com.seibel.distanthorizons.core.pooling.PhantomArrayListPool;
+import com.seibel.distanthorizons.core.util.objects.pooling.PhantomArrayListCheckout;
+import com.seibel.distanthorizons.core.util.objects.pooling.PhantomArrayListPool;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
-import com.seibel.distanthorizons.core.render.glObject.GLProxy;
 import com.seibel.distanthorizons.core.util.ColorUtil;
 import com.seibel.distanthorizons.core.util.LodUtil;
 import com.seibel.distanthorizons.core.util.RenderDataPointUtil;
-import com.seibel.distanthorizons.core.dataObjects.render.columnViews.ColumnArrayView;
+import com.seibel.distanthorizons.core.dataObjects.render.columnViews.ColumnRenderView;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -108,22 +107,34 @@ public class ColumnRenderBufferBuilder
 		//===================//
 		
 		// pooled arrays for ColumnBox use
-		try (PhantomArrayListCheckout phantomArrayCheckout = ARRAY_LIST_POOL.checkoutArrays(0, 0, 2))
+		try (PhantomArrayListCheckout phantomArrayCheckout = ARRAY_LIST_POOL.checkoutLongArrays(2);
+			ColumnRenderView columnRenderData = ColumnRenderView.getPooled();
+			ColumnRenderView northAdjView = ColumnRenderView.getPooled();
+			ColumnRenderView southAdjView = ColumnRenderView.getPooled();
+			ColumnRenderView eastAdjView = ColumnRenderView.getPooled();
+			ColumnRenderView westAdjView = ColumnRenderView.getPooled())
 		{
+			ColumnRenderView[] adjColumnViews = new ColumnRenderView[EDhDirection.CARDINAL_COMPASS.length];
+			adjColumnViews[EDhDirection.NORTH.compassIndex] = northAdjView;
+			adjColumnViews[EDhDirection.SOUTH.compassIndex] = southAdjView;
+			adjColumnViews[EDhDirection.EAST.compassIndex] = eastAdjView;
+			adjColumnViews[EDhDirection.WEST.compassIndex] = westAdjView;
+			
+			
 			byte thisDetailLevel = renderSource.getDataDetailLevel();
 			for (int relX = 0; relX < ColumnRenderSource.WIDTH; relX++)
 			{
 				for (int relZ = 0; relZ < ColumnRenderSource.WIDTH; relZ++)
 				{
-					// ignore empty/null columns
-					ColumnArrayView columnRenderData = renderSource.getVerticalDataPointView(relX, relZ);
-					if (columnRenderData.size() == 0
-							|| !RenderDataPointUtil.doesDataPointExist(columnRenderData.get(0))
-							|| RenderDataPointUtil.hasZeroHeight(columnRenderData.get(0)))
+					renderSource.populateColumnView(columnRenderData, relX, relZ);
+					
+					// ignore empty columns
+					if (columnRenderData.size == 0
+						|| !RenderDataPointUtil.doesDataPointExist(columnRenderData.get(0))
+						|| RenderDataPointUtil.hasZeroHeight(columnRenderData.get(0)))
 					{
 						continue;
 					}
-					
 					
 					
 					//=============//
@@ -152,7 +163,12 @@ public class ColumnRenderBufferBuilder
 					// get adjacent render data columns //
 					//==================================//
 					
-					ColumnArrayView[] adjColumnViews = new ColumnArrayView[EDhDirection.CARDINAL_COMPASS.length];
+					// clear the old data so we can handle if one of the adjacent columns is missing/empty
+					adjColumnViews[EDhDirection.NORTH.compassIndex].clear();
+					adjColumnViews[EDhDirection.SOUTH.compassIndex].clear();
+					adjColumnViews[EDhDirection.EAST.compassIndex].clear();
+					adjColumnViews[EDhDirection.WEST.compassIndex].clear();
+					
 					for (EDhDirection direction : EDhDirection.CARDINAL_COMPASS)
 					{
 						try
@@ -160,8 +176,8 @@ public class ColumnRenderBufferBuilder
 							int xAdj = relX + direction.normal.x;
 							int zAdj = relZ + direction.normal.z;
 							boolean isCrossRenderSourceBoundary =
-									(xAdj < 0 || xAdj >= ColumnRenderSource.WIDTH) ||
-											(zAdj < 0 || zAdj >= ColumnRenderSource.WIDTH);
+								(xAdj < 0 || xAdj >= ColumnRenderSource.WIDTH)
+								|| (zAdj < 0 || zAdj >= ColumnRenderSource.WIDTH);
 							
 							ColumnRenderSource adjRenderSource;
 							byte adjDetailLevel;
@@ -230,7 +246,7 @@ public class ColumnRenderBufferBuilder
 								LodUtil.assertNotReach("Mismatch between adjacent detail level ["+adjDetailLevel+"] and this render source's detail level ["+thisDetailLevel+"]. Detail levels should be adj >= this.");
 							}
 							
-							adjColumnViews[direction.compassIndex] = adjRenderSource.getVerticalDataPointView(xAdj, zAdj);
+							adjRenderSource.populateColumnView(adjColumnViews[direction.compassIndex], xAdj, zAdj);
 						}
 						catch (RuntimeException e)
 						{
@@ -244,16 +260,14 @@ public class ColumnRenderBufferBuilder
 					// build this render column //
 					//==========================//
 					
-					ColumnRenderSource.DebugSourceFlag debugSourceFlag = renderSource.debugGetFlag(relX, relZ);
-					
-					for (int i = 0; i < columnRenderData.size(); i++)
+					for (int i = 0; i < columnRenderData.size; i++)
 					{
 						// can be uncommented to limit which vertical LOD is generated
 						if (Config.Client.Advanced.Debugging.ColumnBuilderDebugging.columnBuilderDebugEnable.get())
 						{
 							int wantedColumnIndex = Config.Client.Advanced.Debugging.ColumnBuilderDebugging.columnBuilderDebugColumnIndex.get();
 							if (wantedColumnIndex >= 0
-									&& i != wantedColumnIndex)
+								&& i != wantedColumnIndex)
 							{
 								continue;
 							}
@@ -263,22 +277,21 @@ public class ColumnRenderBufferBuilder
 						// If the data is not render-able (Void or non-existing) we stop since there is
 						// no data left in this position
 						if (RenderDataPointUtil.hasZeroHeight(data)
-								|| !RenderDataPointUtil.doesDataPointExist(data))
+							|| !RenderDataPointUtil.doesDataPointExist(data))
 						{
 							break;
 						}
 						
 						long topDataPoint = (i - 1) >= 0 ? columnRenderData.get(i - 1) : RenderDataPointUtil.EMPTY_DATA;
-						long bottomDataPoint = (i + 1) < columnRenderData.size() ? columnRenderData.get(i + 1) : RenderDataPointUtil.EMPTY_DATA;
+						long bottomDataPoint = (i + 1) < columnRenderData.size ? columnRenderData.get(i + 1) : RenderDataPointUtil.EMPTY_DATA;
 						
 						addRenderDataPointToBuilder(
-								clientLevel, phantomArrayCheckout,
-								data, topDataPoint, bottomDataPoint,
-								adjColumnViews, isSameDetailLevel,
-								thisDetailLevel, relX, relZ,
-								quadBuilder, debugSourceFlag);
+							clientLevel, phantomArrayCheckout,
+							data, topDataPoint, bottomDataPoint,
+							adjColumnViews, isSameDetailLevel,
+							thisDetailLevel, relX, relZ,
+							quadBuilder);
 					}
-					
 				}// for z
 			}// for x
 		}// phantom checkout
@@ -288,9 +301,9 @@ public class ColumnRenderBufferBuilder
 	private static void addRenderDataPointToBuilder(
 			IDhClientLevel clientLevel, PhantomArrayListCheckout phantomArrayCheckout,
 			long renderData, long topRenderData, long bottomRenderData, 
-			ColumnArrayView[] adjColumnViews, boolean[] isSameDetailLevel,
+			ColumnRenderView[] adjColumnViews, boolean[] isSameDetailLevel,
 			byte detailLevel, int renderSourceOffsetPosX, int renderSourceOffsetPosZ, 
-			LodQuadBuilder quadBuilder, ColumnRenderSource.DebugSourceFlag debugSource)
+			LodQuadBuilder quadBuilder)
 	{
 		long sectionPos = DhSectionPos.encode(detailLevel, renderSourceOffsetPosX, renderSourceOffsetPosZ);
 		
@@ -320,8 +333,8 @@ public class ColumnRenderBufferBuilder
 		{
 			case OFF:
 			{
-				float saturationMultiplier = Config.Client.Advanced.Graphics.Quality.saturationMultiplier.get().floatValue();
-				float brightnessMultiplier = Config.Client.Advanced.Graphics.Quality.brightnessMultiplier.get().floatValue();
+				float saturationMultiplier = Config.Client.Advanced.Graphics.Quality.saturationMultiplier.get();
+				float brightnessMultiplier = Config.Client.Advanced.Graphics.Quality.brightnessMultiplier.get();
 				if (saturationMultiplier == 1.0 && brightnessMultiplier == 1.0)
 				{
 					color = RenderDataPointUtil.getColor(renderData);
@@ -404,12 +417,6 @@ public class ColumnRenderBufferBuilder
 			case SHOW_OVERLAPPING_QUADS:
 			{
 				color = ColorUtil.WHITE;
-				fullBright = true;
-				break;
-			}
-			case SHOW_RENDER_SOURCE_FLAG:
-			{
-				color = debugSource == null ? ColorUtil.RED : debugSource.color;
 				fullBright = true;
 				break;
 			}

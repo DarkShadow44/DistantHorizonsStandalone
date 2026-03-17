@@ -51,8 +51,8 @@ void main()
     }
     
     
-    // the DH texture will have white if nothing was written to that pixel.
-    // TODO replace with a depth texture check, this feels janky
+    // ignore anything that DH hasn't drawn to
+    // We don't use DH's depth here because it would prevent the fade from running before DH has loaded
     if (dhColor == vec4(1))
     {
         // if not done vanilla clouds will render incorrectly at night
@@ -81,7 +81,7 @@ void main()
         // as the depth increases from the camera
         float fadeStep = smoothstep(uStartFadeBlockDistance, uEndFadeBlockDistance, mcFragmentDistance);
         fragColor = mix(combinedMcDhColor, dhColor, fadeStep);
-        fragColor.a = 1.0; // TODO is setting the alpha needed?
+        fragColor.a = 1.0;
     }
     else
     {

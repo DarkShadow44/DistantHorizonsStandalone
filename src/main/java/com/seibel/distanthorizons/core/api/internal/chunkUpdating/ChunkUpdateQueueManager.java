@@ -1,33 +1,61 @@
 package com.seibel.distanthorizons.core.api.internal.chunkUpdating;
 
-import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.seibel.distanthorizons.core.api.internal.ClientApi;
 import com.seibel.distanthorizons.core.api.internal.SharedApi;
 import com.seibel.distanthorizons.core.config.Config;
-import com.seibel.distanthorizons.core.enums.EMinecraftColor;
+import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
+import com.seibel.distanthorizons.core.enums.MinecraftTextFormat;
+import com.seibel.distanthorizons.core.generation.DhLightingEngine;
+import com.seibel.distanthorizons.core.level.IDhLevel;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
-import com.seibel.distanthorizons.core.multiplayer.client.SyncOnLoadRequestQueue;
+import com.seibel.distanthorizons.core.logging.f3.F3Screen;
 import com.seibel.distanthorizons.core.pos.DhChunkPos;
+import com.seibel.distanthorizons.core.util.LodUtil;
+import com.seibel.distanthorizons.core.util.threading.ThreadPoolUtil;
 import com.seibel.distanthorizons.core.world.EWorldEnvironment;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.IChunkWrapper;
+import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
+import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftSharedWrapper;
+import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
+
+/**
+ * @see WorldChunkUpdateManager
+ */
 public class ChunkUpdateQueueManager
 {
 	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
+	private static final IMinecraftClientWrapper MC_CLIENT = SingletonInjector.INSTANCE.get(IMinecraftClientWrapper.class);
+	private static final IMinecraftSharedWrapper MC_SHARED = SingletonInjector.INSTANCE.get(IMinecraftSharedWrapper.class);
+	
+	/**
+	 * how many chunks can be queued for updating per thread + player (in multiplayer), 
+	 * used to prevent updates from infinitely pilling up if the user flies around extremely fast 
+	 */
+	public static final int MAX_UPDATING_CHUNK_COUNT_PER_THREAD_AND_PLAYER = 1_000;
+	
+	/** how many milliseconds must pass before an overloaded message can be sent in chat or the log */
+	public static final int MIN_MS_BETWEEN_OVERLOADED_LOG_MESSAGE = 30_000;
+	
+	
+	
+	private final Set<DhChunkPos> ignoredChunkPosSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
+	private static long lastOverloadedLogMessageMsTime = 0;
+	
+	
+	
 	
 	public final ChunkPosQueue updateQueue;
 	public final ChunkPosQueue preUpdateQueue;
-	public final Set<DhChunkPos> ignoredChunkPosSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
 	
 	public final ConcurrentMap<DhChunkPos, IChunkWrapper> queuedChunkWrapperByChunkPos = CacheBuilder.newBuilder()
 		.expireAfterWrite(20, TimeUnit.SECONDS)
@@ -37,13 +65,15 @@ public class ChunkUpdateQueueManager
 	/** dynamically changes based on the number of threads currently available */
 	public int maxSize = 500;
 	
-	private static long lastOverloadedLogMessageMsTime = 0;
+	/** used to prevent flickering */
+	public long lastMsTimeShownActiveInF3Screen = System.currentTimeMillis();
 	
 	
 	
 	//=============//
 	// constructor //
 	//=============//
+	//region
 	
 	public ChunkUpdateQueueManager()
 	{
@@ -51,11 +81,14 @@ public class ChunkUpdateQueueManager
 		this.preUpdateQueue = new ChunkPosQueue();
 	}
 	
+	//endregion
+	
 	
 	
 	//==================//
 	// list/set methods //
 	//==================//
+	//region
 	
 	public boolean contains(DhChunkPos pos) 
 	{ 
@@ -71,7 +104,8 @@ public class ChunkUpdateQueueManager
 		this.ignoredChunkPosSet.clear();
 	}
 	public int getQueuedCount() { return this.updateQueue.getQueuedCount() + this.preUpdateQueue.getQueuedCount(); }
-	public boolean isEmpty()
+	
+	public boolean updateQueuesEmpty()
 	{
 		return this.updateQueue.isEmpty()
 				&& this.preUpdateQueue.isEmpty();
@@ -116,14 +150,14 @@ public class ChunkUpdateQueueManager
 	{
 		// limit how often an overloaded message can be sent
 		long msBetweenLastLog = System.currentTimeMillis() - lastOverloadedLogMessageMsTime;
-		if (msBetweenLastLog >= SharedApi.MIN_MS_BETWEEN_OVERLOADED_LOG_MESSAGE)
+		if (msBetweenLastLog >= MIN_MS_BETWEEN_OVERLOADED_LOG_MESSAGE)
 		{
 			lastOverloadedLogMessageMsTime = System.currentTimeMillis();
 			
-			String message = EMinecraftColor.ORANGE + "Distant Horizons overloaded, too many chunks queued for LOD processing. " + EMinecraftColor.CLEAR_FORMATTING +
+			String message = MinecraftTextFormat.ORANGE + "Distant Horizons overloaded, too many chunks queued for LOD processing. " + MinecraftTextFormat.CLEAR_FORMATTING +
 					"\nThis may result in holes in your LODs. " +
 					"\nFix: move through the world slower, decrease your vanilla render distance, slow down your world pre-generator (IE Chunky), or increase the Distant Horizons' CPU thread counts. " +
-					"\nMax queue count [" + SharedApi.CHUNK_UPDATE_QUEUE_MANAGER.maxSize + "] ([" + SharedApi.MAX_UPDATING_CHUNK_COUNT_PER_THREAD_AND_PLAYER + "] per thread+players).";
+					"\nMax queue count [" + this.maxSize + "] ([" + MAX_UPDATING_CHUNK_COUNT_PER_THREAD_AND_PLAYER + "] per thread+players).";
 			
 			boolean showWarningInChat = Config.Common.Logging.Warning.showUpdateQueueOverloadedChatWarning.get();
 			if (showWarningInChat)
@@ -161,26 +195,214 @@ public class ChunkUpdateQueueManager
 		return existingWrapper.copy();
 	}
 	
+	//endregion
+	
 	
 	
 	//=========//
 	// ignores //
 	//=========//
+	//region
 	
 	public void addPosToIgnore(DhChunkPos chunkPos) { this.ignoredChunkPosSet.add(chunkPos); }
 	public void removePosToIgnore(DhChunkPos chunkPos) { this.ignoredChunkPosSet.remove(chunkPos); }
+	
+	//endregion
+	
+	
+	
+	//===================//
+	// update processing //
+	//===================//
+	//region
+	
+	public void processQueue()
+	{
+		// update the center & max size of the queue manager
+		int maxUpdateSizeMultiplier;
+		if (MC_CLIENT != null && MC_CLIENT.playerExists())
+		{
+			// Local worlds & multiplayer
+			this.setCenter(MC_CLIENT.getPlayerChunkPos());
+			maxUpdateSizeMultiplier = MC_CLIENT.clientConnectedToDedicatedServer() ? 1 : MC_SHARED.getPlayerCount();
+		}
+		else
+		{
+			// Dedicated servers
+			// Also includes spawn chunks since they're likely to be intentionally utilized with updates
+			maxUpdateSizeMultiplier = 1 + MC_SHARED.getPlayerCount();
+		}
+		
+		this.maxSize = MAX_UPDATING_CHUNK_COUNT_PER_THREAD_AND_PLAYER
+			* Config.Common.MultiThreading.numberOfThreads.get()
+			* maxUpdateSizeMultiplier;
+		
+		
+		
+		//===============================//
+		// update the necessary chunk(s) //
+		//===============================//
+		
+		this.processQueuedChunkPreUpdate();
+		this.processQueuedChunkUpdate();
+		
+		// queue the next position if there are still positions to process
+		AbstractExecutorService executor = ThreadPoolUtil.getChunkToLodBuilderExecutor();
+		if (executor != null && !this.updateQueuesEmpty())
+		{
+			try
+			{
+				executor.execute(this::processQueue);
+			}
+			catch (RejectedExecutionException ignore)
+			{
+				// the executor was shut down, it should be back up shortly and able to accept new jobs
+			}
+		}
+		
+	}
+	
+	private void processQueuedChunkPreUpdate()
+	{
+		ChunkUpdateData preUpdateData = this.preUpdateQueue.popClosest();
+		if (preUpdateData == null)
+		{
+			return;
+		}
+		
+		IDhLevel dhLevel = preUpdateData.dhLevel;
+		IChunkWrapper chunkWrapper = preUpdateData.chunkWrapper;
+		chunkWrapper.createDhHeightMaps();
+		
+		try
+		{
+			// check if this chunk has been converted into an LOD already
+			boolean checkChunkHash = !Config.Common.LodBuilding.disableUnchangedChunkCheck.get();
+			if (checkChunkHash)
+			{
+				int oldChunkHash = dhLevel.getChunkHash(chunkWrapper.getChunkPos()); // shouldn't happen on the render thread since it may take a few moments to run
+				int newChunkHash = chunkWrapper.getBlockBiomeHashCode();
+				
+				boolean hasNewChunkHash = (oldChunkHash != newChunkHash);
+				if (!hasNewChunkHash)
+				{
+					// do not update the chunk if the hash is the same
+					return;
+				}
+			}
+			
+			this.addItemToUpdateQueue(chunkWrapper.getChunkPos(), preUpdateData);
+		}
+		catch (Exception e)
+		{
+			LOGGER.error("Unexpected error when pre-updating chunk at pos: [" + chunkWrapper.getChunkPos() + "]", e);
+		}
+	}
+	
+	private void processQueuedChunkUpdate()
+	{
+		ChunkUpdateData updateData = this.updateQueue.popClosest();
+		if (updateData == null)
+		{
+			return;
+		}
+		
+		IChunkWrapper chunkWrapper = updateData.chunkWrapper;
+		IDhLevel dhLevel = updateData.dhLevel;
+		ILevelWrapper levelWrapper = dhLevel.getLevelWrapper();
+		
+		// having a list of the nearby chunks is needed for lighting and beacon generation
+		ArrayList<IChunkWrapper> nearbyChunkList  = this.tryGetNeighborChunkListForChunk(chunkWrapper);
+		
+		
+		
+		try
+		{
+			// sky lighting is populated later at the data source level
+			DhLightingEngine.INSTANCE.bakeChunkBlockLighting(chunkWrapper, nearbyChunkList, levelWrapper.hasSkyLight() ? LodUtil.MAX_MC_LIGHT : LodUtil.MIN_MC_LIGHT);
+			
+			dhLevel.updateBeaconBeamsForChunk(chunkWrapper, nearbyChunkList);
+			
+			int newChunkHash = chunkWrapper.getBlockBiomeHashCode();
+			dhLevel.updateChunkAsync(chunkWrapper, newChunkHash);
+		}
+		catch (Exception e)
+		{
+			LOGGER.error("Unexpected error when updating chunk at pos: [" + chunkWrapper.getChunkPos() + "]", e);
+		}
+		
+		this.queuedChunkWrapperByChunkPos.remove(updateData.chunkWrapper.getChunkPos());
+	}
+	private ArrayList<IChunkWrapper> tryGetNeighborChunkListForChunk(IChunkWrapper chunkWrapper)
+	{
+		// get the neighboring chunk list
+		ArrayList<IChunkWrapper> neighborChunkList = new ArrayList<>(9);
+		for (int xOffset = -1; xOffset <= 1; xOffset++)
+		{
+			for (int zOffset = -1; zOffset <= 1; zOffset++)
+			{
+				if (xOffset == 0 && zOffset == 0)
+				{
+					// center chunk
+					neighborChunkList.add(chunkWrapper);
+				}
+				else
+				{
+					// neighboring chunk 
+					DhChunkPos neighborPos = new DhChunkPos(chunkWrapper.getChunkPos().getX() + xOffset, chunkWrapper.getChunkPos().getZ() + zOffset);
+					IChunkWrapper neighborChunk = this.tryGetChunk(neighborPos);
+					if (neighborChunk != null)
+					{
+						neighborChunkList.add(neighborChunk);
+					}
+				}
+			}
+		}
+		return neighborChunkList;
+	}
+	
+	//endregion
 	
 	
 	
 	//==================//
 	// position methods //
 	//==================//
+	//region
 	
 	public void setCenter(DhChunkPos newCenter)
 	{
 		this.updateQueue.setCenter(newCenter);
 		this.preUpdateQueue.setCenter(newCenter);
 	}
+	
+	//endregion
+	
+	
+	
+	//=========//
+	// F3 Menu //
+	//=========//
+	//region
+	
+	public String getDebugMenuString()
+	{
+		String y = MinecraftTextFormat.YELLOW;
+		String o = MinecraftTextFormat.ORANGE;
+		String cf = MinecraftTextFormat.CLEAR_FORMATTING;
+		
+		
+		String preUpdatingCountStr = F3Screen.NUMBER_FORMAT.format(this.preUpdateQueue.getQueuedCount());
+		String updatingCountStr = F3Screen.NUMBER_FORMAT.format(this.updateQueue.getQueuedCount());
+		String queuedCountStr = F3Screen.NUMBER_FORMAT.format(this.getQueuedCount());
+		
+		String maxUpdateCountStr = F3Screen.NUMBER_FORMAT.format(this.maxSize);
+		
+		return "Queued chunk updates: "+"("+y+preUpdatingCountStr+cf+" + "+o+updatingCountStr+cf+") ["+queuedCountStr+"/"+maxUpdateCountStr+"]";
+	}
+	
+	//endregion
+	
 	
 	
 }

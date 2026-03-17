@@ -21,6 +21,7 @@ package com.seibel.distanthorizons.core.dataObjects.render.bufferBuilding;
 
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
+import com.seibel.distanthorizons.core.pos.DhSectionPos;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos;
 import com.seibel.distanthorizons.core.render.glObject.GLProxy;
 import com.seibel.distanthorizons.core.render.glObject.buffer.GLVertexBuffer;
@@ -32,6 +33,7 @@ import org.lwjgl.system.MemoryUtil;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Java representation of one or more OpenGL buffers for rendering.
@@ -43,7 +45,7 @@ public class LodBufferContainer implements AutoCloseable
 	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
 	/** number of bytes a single quad takes */
-	public static final int QUADS_BYTE_SIZE = LodUtil.LOD_VERTEX_FORMAT.getByteSize() * 4;
+	public static final int QUADS_BYTE_SIZE = LodUtil.DH_VERTEX_FORMAT.getByteSize() * 4;
 	/** how big a single VBO can be in bytes */
 	public static final int MAX_VBO_BYTE_SIZE = 10 * 1024 * 1024; // 10 MB
 	public static final int MAX_QUADS_PER_BUFFER = MAX_VBO_BYTE_SIZE / QUADS_BYTE_SIZE;
@@ -59,7 +61,7 @@ public class LodBufferContainer implements AutoCloseable
 	public GLVertexBuffer[] vbos;
 	public GLVertexBuffer[] vbosTransparent;
 	
-	private CompletableFuture<LodBufferContainer> uploadFuture = null;
+	private final AtomicReference<CompletableFuture<LodBufferContainer>> uploadFutureRef = new AtomicReference<>(null);
 	
 	
 	
@@ -85,16 +87,31 @@ public class LodBufferContainer implements AutoCloseable
 	public synchronized CompletableFuture<LodBufferContainer> makeAndUploadBuffersAsync(LodQuadBuilder builder)
 	{
 		// separate variable to prevent race condition when checking null
-		CompletableFuture<LodBufferContainer> future = this.uploadFuture;
-		if (future != null)
+		CompletableFuture<LodBufferContainer> oldFuture = this.uploadFutureRef.get();
+		if (oldFuture != null)
 		{
 			// upload already in process
-			return future;
+			return oldFuture;
 		}
 		
 		// new upload needed
-		future = new CompletableFuture<>();
-		this.uploadFuture = future;
+		CompletableFuture<LodBufferContainer> future = new CompletableFuture<>();
+		future.handle((lodBufferContainer, throwable) -> 
+		{
+			if (!this.uploadFutureRef.compareAndSet(future, null))
+			{
+				LOGGER.warn("upload future ref changed for pos ["+DhSectionPos.toString(this.pos)+"].");
+			}
+			
+			return null;
+		});
+		
+		if (!this.uploadFutureRef.compareAndSet(null, future))
+		{
+			oldFuture = this.uploadFutureRef.get();
+			LodUtil.assertTrue(oldFuture != null, "Concurrency error");
+			return oldFuture;
+		}
 		
 		
 		
@@ -113,7 +130,7 @@ public class LodBufferContainer implements AutoCloseable
 			{
 				// skip this event if requested
 				if (Thread.interrupted() 
-					|| this.uploadFuture.isCancelled())
+					|| future.isCancelled())
 				{
 					throw new InterruptedException();
 				}
@@ -126,20 +143,17 @@ public class LodBufferContainer implements AutoCloseable
 				this.buffersUploaded = true;
 				
 				// success
-				this.uploadFuture.complete(this);
-				this.uploadFuture = null;
+				future.complete(this);
 			}
 			catch (InterruptedException ignore) 
 			{
-				this.uploadFuture.complete(this);
-				this.uploadFuture = null;
+				future.complete(this);
 			}
 			catch (Exception e)
 			{
 				LOGGER.error("Unexpected issue uploading buffer ["+this.minCornerBlockPos +"], error: ["+e.getMessage()+"].", e);
 				
-				this.uploadFuture.completeExceptionally(e);
-				this.uploadFuture = null;
+				future.completeExceptionally(e);
 			}
 			finally
 			{
@@ -207,7 +221,7 @@ public class LodBufferContainer implements AutoCloseable
 			try
 			{
 				vbo.bind();
-				vbo.uploadBuffer(buffer, size / LodUtil.LOD_VERTEX_FORMAT.getByteSize(), uploadMethod, FULL_SIZED_BUFFER);
+				vbo.uploadBuffer(buffer, size / LodUtil.DH_VERTEX_FORMAT.getByteSize(), uploadMethod, FULL_SIZED_BUFFER);
 			}
 			catch (Exception e)
 			{
@@ -252,13 +266,13 @@ public class LodBufferContainer implements AutoCloseable
 		return count;
 	}
 	
-	public boolean uploadInProgress() { return this.uploadFuture != null; }
+	public boolean uploadInProgress() { return this.uploadFutureRef.get() != null; }
 	
 	public void debugDumpStats(StatsMap statsMap)
 	{
 		statsMap.incStat("RenderBuffers");
 		statsMap.incStat("SimpleRenderBuffers");
-		for (GLVertexBuffer vertexBuffer : vbos)
+		for (GLVertexBuffer vertexBuffer : this.vbos)
 		{
 			if (vertexBuffer != null)
 			{
@@ -295,24 +309,21 @@ public class LodBufferContainer implements AutoCloseable
 	{
 		this.buffersUploaded = false;
 		
-		GLProxy.queueRunningOnRenderThread(() ->
+		for (GLVertexBuffer buffer : this.vbos)
 		{
-			for (GLVertexBuffer buffer : this.vbos)
+			if (buffer != null)
 			{
-				if (buffer != null)
-				{
-					buffer.destroyAsync();
-				}
+				buffer.destroyAsync();
 			}
-			
-			for (GLVertexBuffer buffer : this.vbosTransparent)
+		}
+		
+		for (GLVertexBuffer buffer : this.vbosTransparent)
+		{
+			if (buffer != null)
 			{
-				if (buffer != null)
-				{
-					buffer.destroyAsync();
-				}
+				buffer.destroyAsync();
 			}
-		});
+		}
 	}
 	
 }

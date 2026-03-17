@@ -69,6 +69,11 @@ public class FullDataPointUtil
 	public static final int BLOCK_LIGHT_MASK = (int) Math.pow(2, BLOCK_LIGHT_WIDTH) - 1;
 	
 	
+	//==========//
+	// encoding //
+	//==========//
+	//region
+	
 	/**
 	 * creates a new datapoint with the given values 
 	 * @param relMinY relative to the minimum level Y value
@@ -143,6 +148,14 @@ public class FullDataPointUtil
 		}
 	}
 	
+	//endregion
+	
+	
+	
+	//=========//
+	// getters //
+	//=========//
+	//region
 	
 	/** Returns the BlockState/Biome pair ID used to identify this LOD's color */
 	public static int getId(long data) { return (int) (data & ID_MASK); }
@@ -156,25 +169,41 @@ public class FullDataPointUtil
 	public static int getBlockLight(long data) { return (int) ((data >> BLOCK_LIGHT_OFFSET) & BLOCK_LIGHT_MASK); }
 	public static int getSkyLight(long data) { return (int) ((data >> SKY_LIGHT_OFFSET) & SKY_LIGHT_MASK); }
 	
+	//endregion
+	
+	
+	
+	//=========//
+	// setters //
+	//=========//
+	//region
+	
+	public static long setId(long data, int id) { return (data & ~(((ID_MASK)) << ID_OFFSET)) | (((long)(id)) << ID_OFFSET); }
+	public static long setHeight(long data, int height) { return (data & ~(((long)(HEIGHT_MASK)) << HEIGHT_OFFSET)) | (((long)(height)) << HEIGHT_OFFSET); }
+	public static long setBottomY(long data, int bottomY) { return (data & ~(((long)(MIN_Y_MASK)) << MIN_Y_OFFSET)) | (((long)(bottomY)) << MIN_Y_OFFSET); }
 	public static long setBlockLight(long data, byte blockLight) { return (data & ~((long) BLOCK_LIGHT_MASK << BLOCK_LIGHT_OFFSET) | (long) blockLight << BLOCK_LIGHT_OFFSET); }
 	public static long setSkyLight(long data, int skyLight) { return (data & ~((long) SKY_LIGHT_MASK << SKY_LIGHT_OFFSET) | (long) skyLight << SKY_LIGHT_OFFSET); }
 	
-	public static long setBottomY(long data, int bottomY) { return (data & ~(((long)(MIN_Y_MASK)) << MIN_Y_OFFSET)) | (((long)(bottomY)) << MIN_Y_OFFSET); }
-	public static long setHeight(long data, int height) { return (data & ~(((long)(HEIGHT_MASK)) << HEIGHT_OFFSET)) | (((long)(height)) << HEIGHT_OFFSET); }
+	//endregion
+	
+	
+	
+	//================//
+	// helper methods //
+	//================//
+	//region
 	
 	public static String toString(long data) { return "[ID:" + getId(data) + ",Y:" + getBottomY(data) + ",Height:" + getHeight(data) + ",BlockLight:" + getBlockLight(data) + ",SkyLight:" + getSkyLight(data) + "]"; }
 	
-	
-	
 	/** Remaps the biome/blockState ID of the given datapoint */
 	@Contract(pure = true)
-	public static long remap(int[] newIdMapping, long data) throws IndexOutOfBoundsException
+	public static long remap(int[] newIdByOldId, long data) throws IndexOutOfBoundsException
 	{
 		int currentId = getId(data);
 		try
 		{
-			int newId = newIdMapping[currentId];
-			return (data & INVERSE_ID_MASK) | newId;
+			int newId = newIdByOldId[currentId];
+			return setId(data, newId);
 		}
 		catch (IndexOutOfBoundsException e)
 		{
@@ -186,5 +215,9 @@ public class FullDataPointUtil
 			throw new RuntimeException(e);
 		}
 	}
+	
+	//endregion
+	
+	
 	
 }

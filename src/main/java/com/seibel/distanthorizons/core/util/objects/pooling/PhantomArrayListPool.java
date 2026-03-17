@@ -1,8 +1,8 @@
-package com.seibel.distanthorizons.core.pooling;
+package com.seibel.distanthorizons.core.util.objects.pooling;
 
 import com.seibel.distanthorizons.core.api.internal.ClientApi;
 import com.seibel.distanthorizons.core.config.Config;
-import com.seibel.distanthorizons.core.enums.EMinecraftColor;
+import com.seibel.distanthorizons.core.enums.MinecraftTextFormat;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.logging.f3.F3Screen;
@@ -11,9 +11,9 @@ import com.seibel.distanthorizons.core.util.objects.Pair;
 import com.seibel.distanthorizons.coreapi.ModInfo;
 import com.seibel.distanthorizons.coreapi.util.StringUtil;
 import it.unimi.dsi.fastutil.bytes.ByteArrayList;
+import it.unimi.dsi.fastutil.chars.CharArrayList;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.shorts.ShortArrayList;
-import com.seibel.distanthorizons.core.logging.DhLogger;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -98,6 +98,11 @@ public class PhantomArrayListPool
 	private final AtomicInteger totalShortArrayCountRef = new AtomicInteger(0);
 	/** counts how many long arrays have been created by this pool */
 	private final AtomicInteger totalLongArrayCountRef = new AtomicInteger(0);
+	/** counts how many char arrays have been created by this pool */
+	private final AtomicInteger totalCharArrayCountRef = new AtomicInteger(0);
+	// NOTE: if we ever need to add another pool type we should separate out the logic for each individually pooled object.
+	//       Otherwise, this class will just get too cluttered with duplicate code.
+	//       But for now since this works, it'll be fine.
 	
 	/** used for debugging, represents an estimate for how many bytes the byte[] pool contains */
 	private long lastBytePoolSizeInBytes = -1;
@@ -105,6 +110,8 @@ public class PhantomArrayListPool
 	private long lastShortPoolSizeInBytes = -1;
 	/** used for debugging, represents an estimate for how many bytes the long[] pool contains */
 	private long lastLongPoolSizeInBytes = -1;
+	/** used for debugging, represents an estimate for how many bytes the char[] pool contains */
+	private long lastCharPoolSizeInBytes = -1;
 	
 	/** used for debugging, represents an estimate for how many byte[]'s are currently in this pool*/
 	private int lastBytePoolCount = 0;
@@ -112,8 +119,8 @@ public class PhantomArrayListPool
 	private int lastShortPoolCount = 0;
 	/** used for debugging, represents an estimate for how many long[]'s are currently in this pool*/
 	private int lastLongPoolCount = 0;
-	/** used for debugging, represents an estimate for how many checkouts are currently in this pool*/
-	private int lastCheckoutPoolCount = 0;
+	/** used for debugging, represents an estimate for how many char[]'s are currently in this pool*/
+	private int lastCharPoolCount = 0;
 	
 	/** For pools backed by {@link SoftReference}'s we may need to decrease the size when elements are garbage collected */
 	private boolean clearLastRefPoolSizes = false;
@@ -145,12 +152,17 @@ public class PhantomArrayListPool
 	// get checkout //
 	//==============//
 	
+	public PhantomArrayListCheckout checkoutByteArrays(int count) { return this.checkoutArrays(count, 0, 0, 0); }
+	public PhantomArrayListCheckout checkoutShortArrays(int count) { return this.checkoutArrays(0, count, 0, 0); }
+	public PhantomArrayListCheckout checkoutLongArrays(int count) { return this.checkoutArrays(0, 0, count, 0); }
+	public PhantomArrayListCheckout checkoutCharArrays(int count) { return this.checkoutArrays(0, 0, 0, count); }
+	
 	/** 
 	 * If possible all checkouts for a given pool should be the same size,
 	 * since {@link PhantomArrayListCheckout}'s are shared, returning the same size
 	 * prevents accidentally returning a larger checkout than necessary, which wastes memory.
 	 */
-	public PhantomArrayListCheckout checkoutArrays(int byteArrayCount, int shortArrayCount, int longArrayCount)
+	public PhantomArrayListCheckout checkoutArrays(int byteArrayCount, int shortArrayCount, int longArrayCount, int charArrayCount)
 	{
 		PhantomArrayListCheckout checkout = null;
 		while (checkout == null)
@@ -179,7 +191,7 @@ public class PhantomArrayListPool
 					{
 						lowMemoryWarningLogged = true;
 						
-						String message = EMinecraftColor.ORANGE + "Distant Horizons: Insufficient memory detected." + EMinecraftColor.CLEAR_FORMATTING + "\n" +
+						String message = MinecraftTextFormat.ORANGE + "Distant Horizons: Insufficient memory detected." + MinecraftTextFormat.CLEAR_FORMATTING + "\n" +
 								"This may cause stuttering or crashing. \n" +
 								"Potential causes: \n" +
 								"1. your allocated memory isn't high enough \n" +
@@ -220,6 +232,12 @@ public class PhantomArrayListPool
 			checkout.addLongArrayListRef(this.createEmptyLongArrayList());
 		}
 		
+		// char
+		for (int i = checkout.getCharArrayCount(); i < charArrayCount; i++)
+		{
+			checkout.addCharArrayListRef(this.createEmptyCharArrayList());
+		}
+		
 		return checkout;
 	}
 	
@@ -244,12 +262,19 @@ public class PhantomArrayListPool
 		this.totalLongArrayCountRef.getAndIncrement();
 		return new LongArrayList(0);
 	}
+	private CharArrayList createEmptyCharArrayList()
+	{
+		//LOGGER.error("created new char array");
+		this.totalCharArrayCountRef.getAndIncrement();
+		return new CharArrayList(0);
+	}
 	
 	
 	
 	//==================//
 	// phantom recovery //
 	//==================//
+	///region
 	
 	private static void runPhantomReferenceCleanupLoop()
 	{
@@ -274,6 +299,7 @@ public class PhantomArrayListPool
 					int returnedByteArrayCount = 0;
 					int returnedShortArrayCount = 0;
 					int returnedLongArrayCount = 0;
+					int returnedCharArrayCount = 0;
 					int checkoutCount = 0;
 					
 					allocationStackTraceCountPairList.clear();
@@ -288,6 +314,7 @@ public class PhantomArrayListPool
 							returnedByteArrayCount += checkout.getByteArrayCount();
 							returnedShortArrayCount += checkout.getShortArrayCount();
 							returnedLongArrayCount += checkout.getLongArrayCount();
+							returnedCharArrayCount += checkout.getCharArrayCount();
 							checkoutCount++;
 							pool.returnCheckout(checkout);
 							
@@ -312,9 +339,16 @@ public class PhantomArrayListPool
 						if (checkoutCount != 0
 							|| returnedByteArrayCount != 0
 							|| returnedShortArrayCount != 0
-							|| returnedLongArrayCount != 0)
+							|| returnedLongArrayCount != 0
+							|| returnedCharArrayCount != 0)
 						{
-							LOGGER.warn("Pool: ["+ pool.name+"] phantom recovery. Returned checkouts:["+F3Screen.NUMBER_FORMAT.format(checkoutCount)+"], byte:["+F3Screen.NUMBER_FORMAT.format(returnedByteArrayCount)+"], short:["+F3Screen.NUMBER_FORMAT.format(returnedShortArrayCount)+"], long:["+F3Screen.NUMBER_FORMAT.format(returnedLongArrayCount)+"].");
+							LOGGER.warn("Pool: ["+ pool.name+"] phantom recovery. " +
+								"Returned checkouts:["+F3Screen.NUMBER_FORMAT.format(checkoutCount)+"], " +
+								"byte:["+F3Screen.NUMBER_FORMAT.format(returnedByteArrayCount)+"], " +
+								"short:["+F3Screen.NUMBER_FORMAT.format(returnedShortArrayCount)+"], " +
+								"long:["+F3Screen.NUMBER_FORMAT.format(returnedLongArrayCount)+"]," +
+								"char:["+F3Screen.NUMBER_FORMAT.format(returnedCharArrayCount)+"]."
+								);
 							
 							// log stack traces if present
 							if (pool.logGarbageCollectedStacks)
@@ -376,11 +410,14 @@ public class PhantomArrayListPool
 		}
 	}
 	
+	///endregion
+	
 	
 	
 	//=================//
 	// return checkout //
 	//=================//
+	///region
 	
 	public void returnParentPhantomRef(@NotNull PhantomReference<AbstractPhantomArrayList> parentRef)
 	{
@@ -408,18 +445,21 @@ public class PhantomArrayListPool
 		
 		//LOGGER.info("Returned ["+checkout.byteArrayLists.size()+"/"+this.pooledByteArrays.size()+"] bytes and ["+checkout.longArrayLists.size()+"/"+this.pooledLongArrays.size()+"] longs.");\
 	}
-
+	
+	///endregion
+	
 	
 	
 	//===============//
 	// debug methods //
 	//===============//
+	///region
 	
 	public static void addDebugMenuStringsToListForCombinedPools(List<String> messageList)
 	{
-		int totalByteArrayCount = 0, totalShortArrayCount = 0, totalLongArrayCount = 0;
-		int pooledByteArraySize = 0, pooledShortArraySize = 0, pooledLongArraySize = 0;
-		long lastBytePoolSizeInBytes = 0, lastShortPoolSizeInBytes = 0, lastLongPoolSizeInBytes = 0;
+		int totalByteArrayCount = 0, totalShortArrayCount = 0, totalLongArrayCount = 0, totalCharArrayCount = 0;
+		int pooledByteArraySize = 0, pooledShortArraySize = 0, pooledLongArraySize = 0, pooledCharArraySize = 0;
+		long lastBytePoolSizeInBytes = 0, lastShortPoolSizeInBytes = 0, lastLongPoolSizeInBytes = 0, lastCharPoolSizeInBytes = 0;
 		
 		for (int i = 0; i < POOL_LIST.size(); i++)
 		{
@@ -428,21 +468,24 @@ public class PhantomArrayListPool
 			totalByteArrayCount += pool.totalByteArrayCountRef.get();
 			totalShortArrayCount += pool.totalShortArrayCountRef.get();
 			totalLongArrayCount += pool.totalLongArrayCountRef.get();
+			totalCharArrayCount += pool.totalCharArrayCountRef.get();
 			
 			pooledByteArraySize += pool.lastBytePoolCount;
 			pooledShortArraySize += pool.lastShortPoolCount;
 			pooledLongArraySize += pool.lastLongPoolCount;
+			pooledCharArraySize += pool.lastCharPoolCount;
 			
 			lastBytePoolSizeInBytes += pool.lastBytePoolSizeInBytes;
 			lastShortPoolSizeInBytes += pool.lastShortPoolSizeInBytes;
 			lastLongPoolSizeInBytes += pool.lastLongPoolSizeInBytes;
+			lastCharPoolSizeInBytes += pool.lastCharPoolSizeInBytes;
 		}
 		
 		addDebugMenuStringsToList(messageList,
 			"Combined",
-			totalByteArrayCount, totalShortArrayCount, totalLongArrayCount,
-			pooledByteArraySize, pooledShortArraySize, pooledLongArraySize,
-			lastBytePoolSizeInBytes, lastShortPoolSizeInBytes, lastLongPoolSizeInBytes
+			totalByteArrayCount, totalShortArrayCount, totalLongArrayCount, totalCharArrayCount,
+			pooledByteArraySize, pooledShortArraySize, pooledLongArraySize, pooledCharArraySize,
+			lastBytePoolSizeInBytes, lastShortPoolSizeInBytes, lastLongPoolSizeInBytes, lastCharPoolSizeInBytes
 		);
 	}
 	
@@ -459,26 +502,28 @@ public class PhantomArrayListPool
 	{
 		addDebugMenuStringsToList(messageList,
 			this.name,
-			this.totalByteArrayCountRef.get(), this.totalShortArrayCountRef.get(), this.totalLongArrayCountRef.get(),
-			this.lastBytePoolCount, this.lastShortPoolCount, this.lastLongPoolCount,
-			this.lastBytePoolSizeInBytes, this.lastShortPoolSizeInBytes, this.lastLongPoolSizeInBytes
+			this.totalByteArrayCountRef.get(), this.totalShortArrayCountRef.get(), this.totalLongArrayCountRef.get(), this.totalCharArrayCountRef.get(),
+			this.lastBytePoolCount, this.lastShortPoolCount, this.lastLongPoolCount, this.lastCharPoolCount, 
+			this.lastBytePoolSizeInBytes, this.lastShortPoolSizeInBytes, this.lastLongPoolSizeInBytes, this.lastCharPoolSizeInBytes
 		);
 	}
 	private static void addDebugMenuStringsToList(List<String> messageList, 
 			String name,
-			int totalByteArrayCount, int totalShortArrayCount, int totalLongArrayCount,
-			int numbOfByteArraysInPool, int numbOfShortArraysInPool, int numbOfLongArraysInPool,
-			long lastBytePoolSizeInBytes, long lastShortPoolSizeInBytes, long lastLongPoolSizeInBytes)
+			int totalByteArrayCount, int totalShortArrayCount, int totalLongArrayCount, int totalCharArrayCount,
+			int numbOfByteArraysInPool, int numbOfShortArraysInPool, int numbOfLongArraysInPool, int numbOfCharArraysInPool,
+			long lastBytePoolSizeInBytes, long lastShortPoolSizeInBytes, long lastLongPoolSizeInBytes, long lastCharPoolSizeInBytes)
 	{
 		// total (all time created) count
 		String byteArrayTotalCount = F3Screen.NUMBER_FORMAT.format(totalByteArrayCount);
 		String shortArrayTotalCount = F3Screen.NUMBER_FORMAT.format(totalShortArrayCount);
 		String longArrayTotalCount = F3Screen.NUMBER_FORMAT.format(totalLongArrayCount);
+		String charArrayTotalCount = F3Screen.NUMBER_FORMAT.format(totalCharArrayCount);
 		
 		// inactive items in pool
 		String bytePoolCount = F3Screen.NUMBER_FORMAT.format(numbOfByteArraysInPool);
 		String shortPoolCount = F3Screen.NUMBER_FORMAT.format(numbOfShortArraysInPool);
 		String longPoolCount = F3Screen.NUMBER_FORMAT.format(numbOfLongArraysInPool);
+		String charPoolCount = F3Screen.NUMBER_FORMAT.format(numbOfCharArraysInPool);
 		
 		// pool byte size
 		String bytePoolSizeInBytes = (lastBytePoolSizeInBytes != -1)
@@ -490,20 +535,32 @@ public class PhantomArrayListPool
 		String longPoolSizeInBytes = (lastLongPoolSizeInBytes != -1)
 				? " ~" + StringUtil.convertBytesToHumanReadable(lastLongPoolSizeInBytes)
 				: "";
+		String charPoolSizeInBytes = (lastCharPoolSizeInBytes != -1)
+				? " ~" + StringUtil.convertBytesToHumanReadable(lastCharPoolSizeInBytes)
+				: "";
 		
 		
-		messageList.add(name + " - Pools:");
+		
+		String a = MinecraftTextFormat.AQUA;
+		String y = MinecraftTextFormat.YELLOW;
+		String cf = MinecraftTextFormat.CLEAR_FORMATTING;
+		
+		messageList.add(a+name+cf + " - Pools:");
 		if (totalByteArrayCount != 0)
 		{
-			messageList.add("byte[]: " + bytePoolCount + "/" + byteArrayTotalCount + bytePoolSizeInBytes);
+			messageList.add("byte[]: " + bytePoolCount + "/" + byteArrayTotalCount + y+bytePoolSizeInBytes+cf);
 		}
 		if (totalShortArrayCount != 0)
 		{
-			messageList.add("short[]: " + shortPoolCount + "/" + shortArrayTotalCount + shortPoolSizeInBytes);
+			messageList.add("short[]: " + shortPoolCount + "/" + shortArrayTotalCount + y+shortPoolSizeInBytes+cf);
 		}
 		if (totalLongArrayCount != 0)
 		{
-			messageList.add("long[]: " + longPoolCount + "/" + longArrayTotalCount + longPoolSizeInBytes);
+			messageList.add("long[]: " + longPoolCount + "/" + longArrayTotalCount + y+longPoolSizeInBytes+cf);
+		}
+		if (totalCharArrayCount != 0)
+		{
+			messageList.add("char[]: " + charPoolCount + "/" + charArrayTotalCount + y+charPoolSizeInBytes+cf);
 		}
 	}
 	
@@ -517,10 +574,12 @@ public class PhantomArrayListPool
 		long bytePoolByteSize = 0;
 		long shortPoolByteSize = 0;
 		long longPoolByteSize = 0;
+		long charPoolByteSize = 0;
 		
 		int bytePoolCount = 0;
 		int shortPoolCount = 0;
 		int longPoolCount = 0;
+		int charPoolCount = 0;
 		
 		
 		// checkouts //
@@ -538,6 +597,8 @@ public class PhantomArrayListPool
 			shortPoolCount += pooledCheckout.getAllShortArrays().size();
 			longPoolByteSize += estimateMemoryUsage(pooledCheckout.getAllLongArrays(), Long.BYTES);
 			longPoolCount += pooledCheckout.getAllLongArrays().size();
+			charPoolByteSize += estimateMemoryUsage(pooledCheckout.getAllCharArrays(), Character.BYTES);
+			charPoolCount += pooledCheckout.getAllCharArrays().size();
 		}
 		
 		
@@ -547,10 +608,9 @@ public class PhantomArrayListPool
 			this.lastBytePoolSizeInBytes = 0;
 			this.lastShortPoolSizeInBytes = 0;
 			this.lastLongPoolSizeInBytes = 0;
+			this.lastCharPoolSizeInBytes = 0;
 			this.clearLastRefPoolSizes = false;
 		}
-		
-		this.lastCheckoutPoolCount = this.pooledCheckoutsRefs.size();
 		
 		// byte //
 		// math.max is used since the pool should only grow until a soft reference is freed, 
@@ -565,6 +625,10 @@ public class PhantomArrayListPool
 		// long //
 		this.lastLongPoolSizeInBytes = Math.max(longPoolByteSize, this.lastLongPoolSizeInBytes);
 		this.lastLongPoolCount = longPoolCount;
+		
+		// char //
+		this.lastCharPoolSizeInBytes = Math.max(charPoolByteSize, this.lastCharPoolSizeInBytes);
+		this.lastCharPoolCount = charPoolCount;
 	}
 	
 	private static <T extends Collection<?>> long estimateMemoryUsage(Iterable<T> pool, long elementSizeInBytes)
@@ -615,6 +679,10 @@ public class PhantomArrayListPool
 		{
 			elementCount = ((LongArrayList)array).elements().length;
 		}
+		else if (array instanceof CharArrayList)
+		{
+			elementCount = ((CharArrayList)array).elements().length;
+		}
 		else
 		{
 			throw new UnsupportedOperationException("Not implemented for type ["+array.getClass().getSimpleName()+"].");
@@ -622,6 +690,8 @@ public class PhantomArrayListPool
 		
 		return elementCount;
 	}
+	
+	///endregion
 	
 	
 	

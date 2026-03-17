@@ -26,7 +26,7 @@ import com.seibel.distanthorizons.core.file.fullDatafile.IDataSourceUpdateListen
 import com.seibel.distanthorizons.core.file.fullDatafile.V2.FullDataSourceProviderV2;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos2D;
-import com.seibel.distanthorizons.core.render.LodQuadTree;
+import com.seibel.distanthorizons.core.render.QuadTree.LodQuadTree;
 import com.seibel.distanthorizons.core.render.RenderBufferHandler;
 import com.seibel.distanthorizons.core.render.renderer.generic.GenericObjectRenderer;
 import com.seibel.distanthorizons.core.util.LodUtil;
@@ -92,27 +92,19 @@ public class ClientLevelModule implements Closeable, IDataSourceUpdateListenerFu
 			return;
 		}
 		
-		// TODO this should probably be handled via a config change listener
 		// recreate the RenderState if the render distance changes
-		if (clientRenderState.quadtree.blockRenderDistanceDiameter != Config.Client.Advanced.Graphics.Quality.lodChunkRenderDistanceRadius.get() * LodUtil.CHUNK_WIDTH * 2)
+		if (clientRenderState.viewDiameterInBlocks != ClientRenderState.getViewDiameterInBlocks())
 		{
-			if (!this.ClientRenderStateRef.compareAndSet(clientRenderState, null))
-			{
-				return;
-			}
-			
+			// close the older renderer
 			clientRenderState.close();
+			this.ClientRenderStateRef.set(null);
+			
+			// create the new renderer
 			clientRenderState = new ClientRenderState(this.clientLevel, this.clientLevel.getFullDataProvider());
-			if (!this.ClientRenderStateRef.compareAndSet(null, clientRenderState))
-			{
-				//FIXME: How to handle this?
-				LOGGER.warn("Failed to set render state due to concurrency after changing view distance");
-				clientRenderState.close();
-				return;
-			}
+			this.ClientRenderStateRef.set(clientRenderState);
 		}
 		
-		clientRenderState.quadtree.tick(new DhBlockPos2D(MC_CLIENT.getPlayerBlockPos()));
+		clientRenderState.quadtree.tryTick(new DhBlockPos2D(MC_CLIENT.getPlayerBlockPos()));
 	}
 	
 	
@@ -121,14 +113,13 @@ public class ClientLevelModule implements Closeable, IDataSourceUpdateListenerFu
 	// render //
 	//========//
 	
-	// TODO start rendering during frame request
 	public void startRenderer()
 	{
-		ClientRenderState ClientRenderState = new ClientRenderState(this.clientLevel, this.clientLevel.getFullDataProvider());
-		if (!this.ClientRenderStateRef.compareAndSet(null, ClientRenderState))
+		ClientRenderState clientRenderState = new ClientRenderState(this.clientLevel, this.clientLevel.getFullDataProvider());
+		if (!this.ClientRenderStateRef.compareAndSet(null, clientRenderState))
 		{
-			LOGGER.warn("Failed to start renderer due to concurrency");
-			ClientRenderState.close();
+			LOGGER.warn("Renderer already started for ["+this+"].");
+			clientRenderState.close();
 		}
 	}
 	
@@ -136,23 +127,15 @@ public class ClientLevelModule implements Closeable, IDataSourceUpdateListenerFu
 	
 	public void stopRenderer()
 	{
-		LOGGER.info("Stopping renderer for " + this);
-		ClientRenderState ClientRenderState = this.ClientRenderStateRef.get();
-		if (ClientRenderState == null)
+		ClientRenderState clientRenderState = this.ClientRenderStateRef.get();
+		if (clientRenderState == null)
 		{
-			LOGGER.warn("Tried to stop renderer for " + this + " when it was not started!");
+			LOGGER.warn("Tried to stop the renderer for [" + this + "] when it was not started.");
 			return;
 		}
-		// stop the render state
-		while (!this.ClientRenderStateRef.compareAndSet(ClientRenderState, null)) // TODO why is there a while loop here?
-		{
-			ClientRenderState = this.ClientRenderStateRef.get();
-			if (ClientRenderState == null)
-			{
-				return;
-			}
-		}
-		ClientRenderState.close();
+		
+		this.ClientRenderStateRef.compareAndSet(clientRenderState, null);
+		clientRenderState.close();
 	}
 	
 	
@@ -170,7 +153,7 @@ public class ClientLevelModule implements Closeable, IDataSourceUpdateListenerFu
 		ClientRenderState ClientRenderState = this.ClientRenderStateRef.get();
 		if (ClientRenderState != null)
 		{
-			ClientRenderState.quadtree.reloadPos(updatedFullDataSource.getPos());
+			ClientRenderState.quadtree.queuePosToReload(updatedFullDataSource.getPos());
 		}
 	}
 	
@@ -180,20 +163,8 @@ public class ClientLevelModule implements Closeable, IDataSourceUpdateListenerFu
 		ClientRenderState ClientRenderState = this.ClientRenderStateRef.get();
 		if (ClientRenderState != null)
 		{
-			// TODO does this have to be in a while loop, if so why?
-			while (!this.ClientRenderStateRef.compareAndSet(ClientRenderState, null))
-			{
-				ClientRenderState = this.ClientRenderStateRef.get();
-				if (ClientRenderState == null)
-				{
-					break;
-				}
-			}
-			
-			if (ClientRenderState != null)
-			{
-				ClientRenderState.close();
-			}
+			this.ClientRenderStateRef.compareAndSet(ClientRenderState, null);
+			ClientRenderState.close();
 		}
 		
 		this.fullDataSourceProvider.removeDataSourceUpdateListener(this);
@@ -225,7 +196,7 @@ public class ClientLevelModule implements Closeable, IDataSourceUpdateListenerFu
 		ClientRenderState clientRenderState = this.ClientRenderStateRef.get();
 		if (clientRenderState != null && clientRenderState.quadtree != null)
 		{
-			clientRenderState.quadtree.reloadPos(pos);
+			clientRenderState.quadtree.queuePosToReload(pos);
 		}
 	}
 	
@@ -242,6 +213,8 @@ public class ClientLevelModule implements Closeable, IDataSourceUpdateListenerFu
 		public final LodQuadTree quadtree;
 		public final RenderBufferHandler renderBufferHandler;
 		
+		public final int viewDiameterInBlocks;
+		
 		
 		
 		//=============//
@@ -252,14 +225,27 @@ public class ClientLevelModule implements Closeable, IDataSourceUpdateListenerFu
 				IDhClientLevel dhClientLevel, 
 				FullDataSourceProviderV2 fullDataSourceProvider)
 		{
+			this.viewDiameterInBlocks = getViewDiameterInBlocks();
+			
 			this.quadtree = new LodQuadTree(
-					dhClientLevel, 
-					Config.Client.Advanced.Graphics.Quality.lodChunkRenderDistanceRadius.get() * LodUtil.CHUNK_WIDTH * 2,
-					// initial position is (0,0) just in case the player hasn't loaded in yet, the tree will be moved once the level starts ticking
-					0, 0,
-					fullDataSourceProvider);
+				dhClientLevel,
+				this.viewDiameterInBlocks,
+				// initial position is (0,0) just in case the player hasn't loaded in yet, the tree will be moved once the level starts ticking
+				0, 0,
+				fullDataSourceProvider);
 			
 			this.renderBufferHandler = new RenderBufferHandler(this.quadtree);
+		}
+		
+		/**
+		 * Used both during setup and
+		 * to determine if the render distance changed.
+		 */
+		public static int getViewDiameterInBlocks() 
+		{ 
+			return Config.Client.Advanced.Graphics.Quality.lodChunkRenderDistanceRadius.get() 
+				* LodUtil.CHUNK_WIDTH 
+				* 2; 
 		}
 		
 		

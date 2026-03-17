@@ -31,10 +31,9 @@ import com.seibel.distanthorizons.core.enums.EDhDirection;
 import com.seibel.distanthorizons.core.file.fullDatafile.V2.FullDataSourceProviderV2;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
-import com.seibel.distanthorizons.core.pooling.AbstractPhantomArrayList;
-import com.seibel.distanthorizons.core.pooling.PhantomArrayListCheckout;
-import com.seibel.distanthorizons.core.pooling.PhantomArrayListPool;
-import com.seibel.distanthorizons.core.pos.DhLodPos;
+import com.seibel.distanthorizons.core.util.objects.pooling.AbstractPhantomArrayList;
+import com.seibel.distanthorizons.core.util.objects.pooling.PhantomArrayListCheckout;
+import com.seibel.distanthorizons.core.util.objects.pooling.PhantomArrayListPool;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos;
 import com.seibel.distanthorizons.core.sql.dto.util.FullDataMinMaxPosUtil;
@@ -44,6 +43,7 @@ import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.IChunkWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
 import com.seibel.distanthorizons.coreapi.ModInfo;
 import it.unimi.dsi.fastutil.bytes.ByteArrayList;
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import org.jetbrains.annotations.NotNull;
@@ -78,7 +78,9 @@ public class FullDataSourceV2
 	/** how many chunks wide this datasource is at detail level 0. */
 	public static final int NUMB_OF_CHUNKS_WIDE = WIDTH / LodUtil.CHUNK_WIDTH;
 	
-	public static final PhantomArrayListPool ARRAY_LIST_POOL = new PhantomArrayListPool("FullDataV2");
+	private static final PhantomArrayListPool ARRAY_LIST_POOL = new PhantomArrayListPool("FullDataV2");
+	
+	private static final ThreadLocal<FullDataPointIdMap> DATA_MAP_FOR_REMAPPING_REF = ThreadLocal.withInitial(() -> new FullDataPointIdMap(DhSectionPos.encode((byte)0, 0, 0)));
 	
 	
 	
@@ -128,6 +130,7 @@ public class FullDataSourceV2
 	//==============//
 	// constructors //
 	//==============//
+	//region
 	
 	public static FullDataSourceV2 createFromChunk(ILevelWrapper levelWrapper, IChunkWrapper chunkWrapper) { return LodDataBuilder.createFromChunk(levelWrapper, chunkWrapper); }
 	
@@ -222,7 +225,7 @@ public class FullDataSourceV2
 			byte @Nullable [] columnGenerationSteps, byte @Nullable [] columnWorldCompressionMode,
 			boolean empty)
 	{
-		super(ARRAY_LIST_POOL, 2, 0, WIDTH * WIDTH);
+		super(ARRAY_LIST_POOL, 2, 0, WIDTH * WIDTH, 0);
 		
 		LodUtil.assertTrue(data == null || data.length == WIDTH * WIDTH);
 		
@@ -274,11 +277,14 @@ public class FullDataSourceV2
 		}
 	}
 	
+	//endregion
+	
 	
 	
 	//=========//
 	// getters //
 	//=========//
+	//region
 	
 	public LongArrayList getColumnAtRelPos(int relX, int relZ) throws IndexOutOfBoundsException 
 	{ return this.dataPoints[relativePosToIndex(relX, relZ)]; }
@@ -301,16 +307,11 @@ public class FullDataSourceV2
 	 */
 	public long getDataPointAtBlockPos(int blockPosX, int blockPosY, int blockPosZ, int levelMinY)
 	{
-		DhLodPos requestedPos = new DhLodPos(LodUtil.BLOCK_DETAIL_LEVEL, blockPosX, blockPosZ);
+		long requestedPos = DhSectionPos.encode(LodUtil.BLOCK_DETAIL_LEVEL, blockPosX, blockPosZ);
 		
 		// stop if the requested blockPos is outside this datasource
 		{
-			// get the detail levels for this request
-			byte requestedDetailLevel = requestedPos.detailLevel;
-			byte requestedSectionDetailLevel = (byte) (requestedDetailLevel + DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL);
-	
-			// get the positions for this request
-			long sectionPos = requestedPos.getSectionPosWithSectionDetailLevel(requestedSectionDetailLevel);
+			long sectionPos =  DhSectionPos.encodeContaining(DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL, new DhBlockPos(blockPosX, blockPosY, blockPosZ));
 			if (!DhSectionPos.contains(this.pos, sectionPos))
 			{
 				return FullDataPointUtil.EMPTY_DATA_POINT;
@@ -320,10 +321,10 @@ public class FullDataSourceV2
 		
 		// get the relative data source position
 		byte requestDetailLevel = (byte) (DhSectionPos.getDetailLevel(this.pos) - DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL);
-		DhLodPos relativePos = requestedPos.getDhSectionRelativePositionForDetailLevel(requestDetailLevel);
+		long relativePos = DhSectionPos.getDhSectionRelativePositionForDetailLevel(requestedPos, requestDetailLevel);
 		
 		// get the data column
-		LongArrayList dataColumn = this.getColumnAtRelPos(relativePos.x, relativePos.z);
+		LongArrayList dataColumn = this.getColumnAtRelPos(DhSectionPos.getX(relativePos), DhSectionPos.getZ(relativePos));
 		if (dataColumn == null)
 		{
 			return FullDataPointUtil.EMPTY_DATA_POINT;
@@ -361,11 +362,14 @@ public class FullDataSourceV2
 		return FullDataPointUtil.EMPTY_DATA_POINT;
 	}
 	
+	//endregion
+	
 	
 	
 	//==========//
 	// updating //
 	//==========//
+	//region
 	
 	public boolean updateFromDataSource(@NotNull FullDataSourceV2 inputDataSource)
 	{
@@ -439,6 +443,8 @@ public class FullDataSourceV2
 		}
 		
 		
+		// needed to prevent infinite mapped ID growth
+		this.removeUnusedIdsAndRemap();
 		
 		
 		
@@ -676,13 +682,13 @@ public class FullDataSourceV2
 		
 		return dataChanged;
 	}
+	
 	/** 
 	 * The minimum value is used because we don't want to accidentally record that
 	 * something was generated when it wasn't.
 	 */
 	private static byte determineMinWorldGenStepForTwoByTwoColumn(ByteArrayList columnGenerationSteps, int relX, int relZ)
 	{
-		// TODO merge similar logic with determineHighestWorldCompressionForTwoByTwoColumn
 		byte minWorldGenStepValue = Byte.MAX_VALUE;
 		for (int x = 0; x < 2; x++)
 		{
@@ -701,7 +707,6 @@ public class FullDataSourceV2
 	 */
 	private static byte determineHighestWorldCompressionForTwoByTwoColumn(ByteArrayList columnCompressionMode, int relX, int relZ)
 	{
-		// TODO merge similar logic with determineMinWorldGenStepForTwoByTwoColumn
 		byte minWorldGenStepValue = Byte.MIN_VALUE;
 		for (int x = 0; x < 2; x++)
 		{
@@ -777,7 +782,7 @@ public class FullDataSourceV2
 			return newColumnList;
 		}
 		
-		// sort the transitions from bottom to top // TODO
+		// sort the transitions from bottom to top
 		yTransitions.sort(null);
 		
 		// create index trackers for each column, 
@@ -1129,11 +1134,76 @@ public class FullDataSourceV2
 		return dataChanged;
 	}
 	
+	/**
+	 * Should be run at the end of {@link FullDataSourceV2#updateFromDataSource}
+	 * so the {@link FullDataPointIdMap} will only contain ID's that are actively in use. <br><br>
+	 * 
+	 * This prevents the {@link FullDataPointIdMap} from growing infinitely when merged.
+	 * 
+	 * @see FullDataPointIdMap#mergeAndReturnRemappedEntityIds(FullDataPointIdMap) 
+	 */
+	private void removeUnusedIdsAndRemap()
+	{
+		Int2IntOpenHashMap newIdByOldId = new Int2IntOpenHashMap();
+		FullDataPointIdMap newMap = DATA_MAP_FOR_REMAPPING_REF.get();
+		newMap.clear(this.pos);
+		
+		
+		// find all the IDs that are currently in use
+		for (int x = 0; x < WIDTH; x++)
+		{
+			for (int z = 0; z < WIDTH; z++)
+			{
+				int index = relativePosToIndex(x, z);
+				LongArrayList dataColumn = this.dataPoints[index];
+				for (int i = 0; i < dataColumn.size(); i++)
+				{
+					long dataPoint = dataColumn.getLong(i);
+					int oldId = FullDataPointUtil.getId(dataPoint);
+					
+					int newId = newMap.addIfNotPresentAndGetId(
+						this.mapping.getBiomeWrapper(oldId),
+						this.mapping.getBlockStateWrapper(oldId));
+					
+					newIdByOldId.put(oldId, newId);
+				}
+			}
+		}
+		
+		
+		// replace the old entries to remove any unneeded ones
+		this.mapping.clear(this.pos);
+		this.mapping.addAll(newMap);
+		
+		
+		// remap the data
+		for (int x = 0; x < WIDTH; x++)
+		{
+			for (int z = 0; z < WIDTH; z++)
+			{
+				int index = relativePosToIndex(x, z);
+				LongArrayList dataColumn = this.dataPoints[index];
+				for (int i = 0; i < dataColumn.size(); i++)
+				{
+					long oldDataPoint = dataColumn.getLong(i);
+					int oldId = FullDataPointUtil.getId(oldDataPoint);
+					
+					int newId = newIdByOldId.get(oldId);
+					long newDataPoint = FullDataPointUtil.setId(oldDataPoint, newId);
+					dataColumn.set(i, newDataPoint);
+				}
+			}
+		}
+	}
+	
+	//endregion
+	
 	
 	
 	//===================//
 	// adjacent clearing //
 	//===================//
+	//region
 	
 	/** Removes any non-adjacent data from the given direction. */
 	public void clearAllNonAdjData(EDhDirection direction)
@@ -1162,10 +1232,13 @@ public class FullDataSourceV2
 		}
 	}
 	
+	//endregion
+	
 	
 	//================//
 	// helper methods //
 	//================//
+	//region
 	
 	/** 
 	 * Usually this should just be used internally, but there may be instances
@@ -1257,11 +1330,14 @@ public class FullDataSourceV2
 		}
 	}
 	
+	//endregion
+	
 	
 	
 	//=====================//
 	// setters and getters //
 	//=====================//
+	//region
 	
 	public long getPos() { return this.pos; }
 	
@@ -1291,11 +1367,14 @@ public class FullDataSourceV2
 		}
 	}
 	
+	//endregion
+	
 	
 	
 	//=============//
 	// API methods //
 	//=============//
+	//region
 	
 	public void setRunApiSetterValidation(boolean runValidation) { this.runApiSetterValidation = runValidation; }
 	
@@ -1316,7 +1395,6 @@ public class FullDataSourceV2
 			
 			LongArrayList packedDataPoints = LodDataBuilder.convertApiDataPointListToPackedLongArray(columnDataPoints, this, 0, true);
 			
-			// TODO there should be an "unknown" compression and generation step, or be defined via the datapoints
 			this.setSingleColumn(packedDataPoints, relX, relZ, EDhApiWorldGenerationStep.SURFACE, EDhApiWorldCompressionMode.MERGE_SAME_BLOCKS);
 			
 			return columnDataPoints;
@@ -1344,20 +1422,26 @@ public class FullDataSourceV2
 		return apiList;
 	}
 	
+	//endregion
+	
 	
 	
 	//============//
 	// unit tests //
 	//============//
+	//region
 	
 	public PhantomArrayListCheckout getPhantomArrayCheckoutForUnitTesting()
 	{ return this.pooledArraysCheckout; }
+	
+	//endregion
 	
 	
 	
 	//================//
 	// base overrides //
 	//================//
+	//region
 	
 	@Override
 	public String toString() { return DhSectionPos.toString(this.pos); }
@@ -1403,6 +1487,8 @@ public class FullDataSourceV2
 			return other.hashCode() == this.hashCode();
 		}
 	}
+	
+	//endregion
 	
 	
 	

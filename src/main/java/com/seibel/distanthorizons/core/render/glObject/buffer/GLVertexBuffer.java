@@ -61,9 +61,14 @@ public class GLVertexBuffer extends GLBuffer
 	@Override
 	public int getBufferBindingTarget() { return GL32.GL_ARRAY_BUFFER; }
 	
-	public void uploadBuffer(ByteBuffer byteBuffer, int vertCount, EDhApiGpuUploadMethod uploadMethod, int maxExpensionSize)
+	/**
+	 * bufferSize is the number of shared verticies. <br>
+	 * This number will be higher when actually rendered since each box's face needs 2 triangles 
+	 * with 2 shared verticies. 
+	 */
+	public void uploadBuffer(ByteBuffer byteBuffer, int bufferSize, EDhApiGpuUploadMethod uploadMethod, int maxExpensionSize)
 	{
-		if (vertCount < 0)
+		if (bufferSize < 0)
 		{
 			throw new IllegalArgumentException("VertCount is negative!");
 		}
@@ -74,15 +79,10 @@ public class GLVertexBuffer extends GLBuffer
 			boolean useBuffStorage = uploadMethod.useBufferStorage;
 			super.uploadBuffer(byteBuffer, uploadMethod, maxExpensionSize, useBuffStorage ? 0 : GL32.GL_STATIC_DRAW);
 		}
-		this.vertexCount = vertCount;
-	}
-	
-	public ByteBuffer mapBuffer(int targetSize, EDhApiGpuUploadMethod uploadMethod, int maxExpansionSize)
-	{
-		return super.mapBuffer(targetSize, uploadMethod, maxExpansionSize,
-				uploadMethod.useBufferStorage ? GL32.GL_MAP_WRITE_BIT :
-						uploadMethod.useEarlyMapping ? GL32.GL_DYNAMIC_DRAW : GL32.GL_STATIC_DRAW,
-				GL32.GL_MAP_WRITE_BIT | GL32.GL_MAP_UNSYNCHRONIZED_BIT | GL32.GL_MAP_INVALIDATE_BUFFER_BIT);
+		
+		// /4 to get the number of cubes
+		// *6 to get the number of verticies (2 triangles, 3 verticies each) 
+		this.vertexCount = (bufferSize / 4) * 6;
 	}
 	
 }

@@ -52,11 +52,17 @@ public abstract class AbstractConfigBase<T>
 	protected AbstractConfigBase(EConfigEntryAppearance appearance, T defaultValue)
 	{
 		this.defaultValue = defaultValue;
+		if (this.defaultValue == null)
+		{
+			throw new IllegalArgumentException("defaultValue cannot be null");
+		}
+		
 		this.value = defaultValue;
 		this.appearance = appearance;
 		
 		Class<?> defaultValueClass = defaultValue.getClass();
 		this.isFloatingPointNumber = (defaultValueClass == Double.class || defaultValueClass == Float.class);
+		
 	}
 	
 	

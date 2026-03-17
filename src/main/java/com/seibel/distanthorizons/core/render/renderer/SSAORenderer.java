@@ -110,28 +110,27 @@ public class SSAORenderer
 	
 	public void render(Mat4f projectionMatrix, float partialTicks)
 	{
-		GLState state = new GLState();
-		
-		this.init();
-		
-		// resize the framebuffer if necessary
-		int width = MC_RENDER.getTargetFramebufferViewportWidth();
-		int height = MC_RENDER.getTargetFramebufferViewportHeight();
-		if (this.width != width || this.height != height)
+		try(GLState state = new GLState())
 		{
-			this.width = width;
-			this.height = height;
-			this.createFramebuffer(width, height);
+			this.init();
+			
+			// resize the framebuffer if necessary
+			int width = MC_RENDER.getTargetFramebufferViewportWidth();
+			int height = MC_RENDER.getTargetFramebufferViewportHeight();
+			if (this.width != width || this.height != height)
+			{
+				this.width = width;
+				this.height = height;
+				this.createFramebuffer(width, height);
+			}
+			
+			SSAOShader.INSTANCE.frameBuffer = this.ssaoFramebuffer;
+			SSAOShader.INSTANCE.setProjectionMatrix(projectionMatrix);
+			SSAOShader.INSTANCE.render(partialTicks);
+			
+			SSAOApplyShader.INSTANCE.ssaoTexture = this.ssaoTexture;
+			SSAOApplyShader.INSTANCE.render(partialTicks);
 		}
-		
-		SSAOShader.INSTANCE.frameBuffer = this.ssaoFramebuffer;
-		SSAOShader.INSTANCE.setProjectionMatrix(projectionMatrix);
-		SSAOShader.INSTANCE.render(partialTicks);
-		
-		SSAOApplyShader.INSTANCE.ssaoTexture = this.ssaoTexture;
-		SSAOApplyShader.INSTANCE.render(partialTicks);
-		
-		state.restore();
 	}
 	
 	public void free()

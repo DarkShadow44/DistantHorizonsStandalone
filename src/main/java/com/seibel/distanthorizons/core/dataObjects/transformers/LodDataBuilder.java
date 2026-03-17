@@ -154,7 +154,7 @@ public class LodDataBuilder
 					IBlockStateWrapper currentBlockState = AIR;
 					int mappedId = dataSource.mapping.addIfNotPresentAndGetId(currentBiome, currentBlockState);
 					
-					// Determine lighting (we are at the height limit. There are no torches here, and sky is not obscured.) // TODO: Per face lighting someday?
+					// Determine lighting (we are at the height limit. There are no torches here, and sky is not obscured.)
 					byte blockLight = LodUtil.MIN_MC_LIGHT;
 					byte skyLight = LodUtil.MAX_MC_LIGHT;
 					
@@ -321,8 +321,6 @@ public class LodDataBuilder
 				
 				LongArrayList packedDataPoints = convertApiDataPointListToPackedLongArray(columnDataPoints, dataSource, apiChunk.bottomYBlockPos, runAdditionalValidation);
 				
-				// TODO add the ability for API users to define a different compression mode
-				//  or add a "unkown" compression mode
 				dataSource.setSingleColumn(
 						packedDataPoints,
 						relBlockX + relSourceBlockX, relBlockZ + relSourceBlockZ,

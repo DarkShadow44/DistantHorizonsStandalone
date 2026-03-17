@@ -48,8 +48,6 @@ import com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor.ISodiumAcce
 import com.seibel.distanthorizons.coreapi.DependencyInjection.ApiEventInjector;
 import com.seibel.distanthorizons.coreapi.DependencyInjection.OverrideInjector;
 import com.seibel.distanthorizons.coreapi.ModInfo;
-import org.apache.logging.log4j.LogManager;
-import com.seibel.distanthorizons.core.logging.DhLogger;
 import org.lwjgl.opengl.ARBInstancedArrays;
 import org.lwjgl.opengl.GL32;
 import org.lwjgl.opengl.GL33;
@@ -103,6 +101,7 @@ public class GenericObjectRenderer implements IDhApiCustomRenderRegister
 	
 	/** A box from 0,0,0 to 1,1,1 */
 	private static final float[] BOX_VERTICES = {
+	//region
 			// Pos x y z
 			
 			// min X, vertical face
@@ -137,9 +136,12 @@ public class GenericObjectRenderer implements IDhApiCustomRenderRegister
 			1, 1, 1,
 			1, 1, 0,
 			0, 1, 0,
+	//endregion
 	};
 	
+	
 	private static final int[] BOX_INDICES = {
+	//region
 			// min X, vertical face
 			2, 1, 0,    
 			0, 3, 2,
@@ -160,6 +162,7 @@ public class GenericObjectRenderer implements IDhApiCustomRenderRegister
 			// max Y, horizontal face
 			20, 21, 22, 
 			22, 23, 20,
+	//endregion
 	};
 	
 	
@@ -167,6 +170,7 @@ public class GenericObjectRenderer implements IDhApiCustomRenderRegister
 	//=============//
 	// constructor //
 	//=============//
+	//region
 	
 	public GenericObjectRenderer() { }
 	
@@ -186,18 +190,11 @@ public class GenericObjectRenderer implements IDhApiCustomRenderRegister
 		
 		this.vertexAttribDivisorSupported = GLProxy.getInstance().vertexAttribDivisorSupported;
 		this.instancedArraysSupported = GLProxy.getInstance().instancedArraysSupported;
-		this.instancedRenderingAvailable = this.vertexAttribDivisorSupported || this.instancedArraysSupported;
+		boolean isMac = (EPlatform.get() == EPlatform.MACOS);
+		this.instancedRenderingAvailable = (this.vertexAttribDivisorSupported || this.instancedArraysSupported) && !isMac;
 		if (!this.instancedRenderingAvailable)
 		{
 			LOGGER.warn("Instanced rendering not supported by this GPU, falling back to direct rendering. Generic object rendering will be slow and some effects may be disabled.");
-		}
-		else
-		{
-			boolean isMac = (EPlatform.get() == EPlatform.MACOS);
-			if (isMac && SODIUM != null)
-			{
-				LOGGER.warn("There have been reports of instanced rendering causing crashes on macOS when Sodium is present. Instanced rendering can be disabled via the DH config.");
-			}
 		}
 		
 		
@@ -343,11 +340,14 @@ public class GenericObjectRenderer implements IDhApiCustomRenderRegister
 		this.add(massRelativePosBoxGroup);
 	}
 	
+	//endregion
+	
 	
 	
 	//==============//
 	// registration //
 	//==============//
+	//region
 	
 	@Override
 	public void add(IDhApiRenderableBoxGroup iBoxGroup) throws IllegalArgumentException 
@@ -373,11 +373,14 @@ public class GenericObjectRenderer implements IDhApiCustomRenderRegister
 	
 	public void clear() { this.boxGroupById.clear(); }
 	
+	//endregion
+	
 	
 	
 	//===========//
 	// rendering //
 	//===========//
+	//region
 	
 	/**
 	 * @param renderingWithSsao 
@@ -464,6 +467,18 @@ public class GenericObjectRenderer implements IDhApiCustomRenderRegister
 				continue;
 			}
 			
+			// update instanced data if needed
+			if (useInstancedRendering)
+			{
+				boxGroup.tryUpdateInstancedDataAsync();	
+				
+				// skip groups that haven't been uploaded yet
+				if (boxGroup.instancedVbos.state != InstancedVboContainer.EState.RENDER)
+				{
+					continue;
+				}
+			}
+			
 			
 			
 			// render //
@@ -477,7 +492,7 @@ public class GenericObjectRenderer implements IDhApiCustomRenderRegister
 			}
 			else
 			{
-				this.renderBoxGroupDirect(shaderProgram, renderEventParam, boxGroup, camPos);
+				this.renderBoxGroupDirect(shaderProgram, renderEventParam, boxGroup, camPos, profiler);
 			}
 			profiler.pop(); // resource path
 			profiler.pop(); // resource namespace
@@ -506,11 +521,14 @@ public class GenericObjectRenderer implements IDhApiCustomRenderRegister
 		profiler.pop();
 	}
 	
+	//endregion
+	
 	
 	
 	//=====================//
 	// instanced rendering //
 	//=====================//
+	//region
 	
 	private void renderBoxGroupInstanced(
 			IDhApiGenericObjectShaderProgram shaderProgram, DhApiRenderParam renderEventParam, 
@@ -520,7 +538,6 @@ public class GenericObjectRenderer implements IDhApiCustomRenderRegister
 		// update instance data //
 		
 		profiler.push("vertex setup");
-		boxGroup.updateVertexAttributeData();
 		
 		DhApiRenderableBoxGroupShading shading = boxGroup.shading;
 		if (shading == null)
@@ -538,27 +555,27 @@ public class GenericObjectRenderer implements IDhApiCustomRenderRegister
 		// Bind instance data //
 		profiler.popPush("binding");
 		
-		GL32.glBindBuffer(GL32.GL_ARRAY_BUFFER, boxGroup.instanceColorVbo);
+		GL32.glBindBuffer(GL32.GL_ARRAY_BUFFER, boxGroup.instancedVbos.color);
 		GL32.glEnableVertexAttribArray(1);
 		GL32.glVertexAttribPointer(1, 4, GL32.GL_FLOAT, false, 4 * Float.BYTES, 0);
 		this.vertexAttribDivisor(1, 1);
 		
-		GL32.glBindBuffer(GL32.GL_ARRAY_BUFFER, boxGroup.instanceScaleVbo);
+		GL32.glBindBuffer(GL32.GL_ARRAY_BUFFER, boxGroup.instancedVbos.scale);
 		GL32.glEnableVertexAttribArray(2);
 		this.vertexAttribDivisor(2, 1);
 		GL32.glVertexAttribPointer(2, 3, GL32.GL_FLOAT, false, 3 * Float.BYTES, 0);
 		
-		GL32.glBindBuffer(GL32.GL_ARRAY_BUFFER, boxGroup.instanceChunkPosVbo);
+		GL32.glBindBuffer(GL32.GL_ARRAY_BUFFER, boxGroup.instancedVbos.chunkPos);
 		GL32.glEnableVertexAttribArray(3);
 		this.vertexAttribDivisor(3, 1);
 		GL32.glVertexAttribIPointer(3, 3, GL32.GL_INT, 3 * Integer.BYTES, 0);
 		
-		GL32.glBindBuffer(GL32.GL_ARRAY_BUFFER, boxGroup.instanceSubChunkPosVbo);
+		GL32.glBindBuffer(GL32.GL_ARRAY_BUFFER, boxGroup.instancedVbos.subChunkPos);
 		GL32.glEnableVertexAttribArray(4);
 		this.vertexAttribDivisor(4, 1);
 		GL32.glVertexAttribPointer(4, 3, GL32.GL_FLOAT, false, 3 * Float.BYTES, 0);
 		
-		GL32.glBindBuffer(GL32.GL_ARRAY_BUFFER, boxGroup.instanceMaterialVbo);
+		GL32.glBindBuffer(GL32.GL_ARRAY_BUFFER, boxGroup.instancedVbos.material);
 		GL32.glEnableVertexAttribArray(5);
 		this.vertexAttribDivisor(5, 1);
 		GL32.glVertexAttribIPointer(5, 1, GL32.GL_BYTE, Byte.BYTES, 0);
@@ -566,9 +583,9 @@ public class GenericObjectRenderer implements IDhApiCustomRenderRegister
 		
 		// Draw instanced
 		profiler.popPush("render");
-		if (boxGroup.uploadedBoxCount > 0)
+		if (boxGroup.instancedVbos.uploadedBoxCount > 0)
 		{
-			GL32.glDrawElementsInstanced(GL32.GL_TRIANGLES, BOX_INDICES.length, GL32.GL_UNSIGNED_INT, 0, boxGroup.uploadedBoxCount);
+			GL32.glDrawElementsInstanced(GL32.GL_TRIANGLES, BOX_INDICES.length, GL32.GL_UNSIGNED_INT, 0, boxGroup.instancedVbos.uploadedBoxCount);
 		}
 		
 		
@@ -603,15 +620,22 @@ public class GenericObjectRenderer implements IDhApiCustomRenderRegister
 		}
 	}
 	
+	//endregion
 	
 	
 	
 	//==================//
 	// direct rendering //
 	//==================//
+	//region
 	
-	private void renderBoxGroupDirect(IDhApiGenericObjectShaderProgram shaderProgram, DhApiRenderParam renderEventParam, RenderableBoxGroup boxGroup, Vec3d camPos)
+	private void renderBoxGroupDirect(
+		IDhApiGenericObjectShaderProgram shaderProgram, 
+		DhApiRenderParam renderEventParam, 
+		RenderableBoxGroup boxGroup, Vec3d camPos,
+		IProfilerWrapper profiler)
 	{
+		profiler.popPush("shared uniforms");
 		DhApiRenderableBoxGroupShading shading = boxGroup.shading;
 		if (shading == null)
 		{
@@ -627,7 +651,11 @@ public class GenericObjectRenderer implements IDhApiCustomRenderRegister
 				DhApiRenderableBox box = boxGroup.get(i);
 				if (box != null)
 				{
-					this.renderBox(shaderProgram, renderEventParam, boxGroup, box, camPos);
+					profiler.popPush("direct uniforms");
+					shaderProgram.fillDirectUniformData(renderEventParam, boxGroup, box, camPos);
+					
+					profiler.popPush("render");
+					GL32.glDrawElements(GL32.GL_TRIANGLES, BOX_INDICES.length, GL32.GL_UNSIGNED_INT, 0);
 				}
 			}
 			catch (IndexOutOfBoundsException e)
@@ -638,22 +666,18 @@ public class GenericObjectRenderer implements IDhApiCustomRenderRegister
 				break;
 			}
 		}
+		
+		profiler.pop();
 	}
-	private void renderBox(
-			IDhApiGenericObjectShaderProgram shaderProgram, 
-			DhApiRenderParam renderEventParam,
-			RenderableBoxGroup boxGroup, DhApiRenderableBox box,
-			Vec3d camPos)
-	{
-		shaderProgram.fillDirectUniformData(renderEventParam, boxGroup, box, camPos);
-		GL32.glDrawElements(GL32.GL_TRIANGLES, BOX_INDICES.length, GL32.GL_UNSIGNED_INT, 0);
-	}
+	
+	//endregion
 	
 	
 	
 	//=========//
 	// getters //
 	//=========//
+	//region
 	
 	/** @throws IllegalStateException if {@link #init()} function hasn't been called yet */
 	public boolean getInstancedRenderingAvailable() throws IllegalStateException
@@ -666,11 +690,14 @@ public class GenericObjectRenderer implements IDhApiCustomRenderRegister
 		return this.instancedRenderingAvailable; 
 	}
 	
+	//endregion
+	
 	
 	
 	//=========//
 	// F3 menu //
 	//=========//
+	//region
 	
 	public String getVboRenderDebugMenuString()
 	{
@@ -696,5 +723,9 @@ public class GenericObjectRenderer implements IDhApiCustomRenderRegister
 		return "Generic Obj #: " + F3Screen.NUMBER_FORMAT.format(activeGroupCount) + "/" + F3Screen.NUMBER_FORMAT.format(totalGroupCount) + ", " +
 				"Cube #: " + F3Screen.NUMBER_FORMAT.format(activeBoxCount) + "/" + F3Screen.NUMBER_FORMAT.format(totalBoxCount);
 	}
+	
+	//endregion
+	
+	
 	
 }

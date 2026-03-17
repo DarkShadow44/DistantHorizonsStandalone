@@ -33,6 +33,7 @@ import com.seibel.distanthorizons.core.util.LodUtil;
 import com.seibel.distanthorizons.core.util.math.Vec3d;
 import com.seibel.distanthorizons.core.util.math.Vec3f;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
+import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
 import com.seibel.distanthorizons.coreapi.ModInfo;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 
@@ -70,6 +71,8 @@ public class CloudRenderHandler
 	 */
 	private static final int CLOUD_INSTANCE_RADIUS_COUNT = 5;
 	
+	private static final float MOVE_SPEED_IN_BLOCKS_PER_SECOND = 6.0f;
+	
 	
 	private final IDhApiRenderableBoxGroup[][] boxGroupByOffset
 			// radius * 2 to get the diameter
@@ -79,7 +82,17 @@ public class CloudRenderHandler
 	private final IDhClientLevel level;
 	private final GenericObjectRenderer renderer;
 	
-	private float moveSpeedInBlocksPerSecond = 6.0f;
+	/** cached array so we don't need to re-create it each frame for each cloud group */
+	private final Vec3d[] cullingCorners = new Vec3d[]
+		{
+			// the values of each will be overwritten during the culling pass
+			new Vec3d(),
+			new Vec3d(),
+			new Vec3d(),
+			new Vec3d(),
+		};
+	
+	
 	private boolean disabledWarningLogged = false;
 	
 	
@@ -87,6 +100,7 @@ public class CloudRenderHandler
 	//=============//
 	// constructor //
 	//=============//
+	//region
 	
 	public CloudRenderHandler(IDhClientLevel level, GenericObjectRenderer renderer) 
 	{
@@ -98,6 +112,7 @@ public class CloudRenderHandler
 		//=======================//
 		// get the cloud texture //
 		//=======================//
+		//region
 		
 		// default to a single empty slot in case the texture is broken
 		boolean[][] cloudLocations = new boolean[1][1];
@@ -120,11 +135,14 @@ public class CloudRenderHandler
 			LOGGER.warn("Non-square cloud texture found, some parts of the texture will be clipped off.");
 		}
 		
+		//endregion
+		
 		
 		
 		//===================//
 		// parse the texture //
 		//===================//
+		//region
 		
 		int textureWidth = cloudLocations.length; 
 		ArrayList<DhApiRenderableBox> boxList = new ArrayList<>(512);
@@ -231,11 +249,14 @@ public class CloudRenderHandler
 			}
 		}
 		
+		//endregion
+		
 		
 		
 		//========================//
 		// create the renderables //
 		//========================//
+		//region
 		
 		// slightly lighter shading than the default
 		DhApiRenderableBoxGroupShading cloudShading = DhApiRenderableBoxGroupShading.getUnshaded();
@@ -269,6 +290,15 @@ public class CloudRenderHandler
 		}
 	}
 	
+	//endregion
+	
+	
+	
+	//===========//
+ 	// rendering //
+ 	//===========//
+	//region
+	
 	private void preRender(DhApiRenderParam renderParam, CloudParams cloudParams)
 	{
 		IDhApiRenderableBoxGroup boxGroup = this.boxGroupByOffset[cloudParams.instanceOffsetX+CLOUD_INSTANCE_RADIUS_COUNT][cloudParams.instanceOffsetZ+CLOUD_INSTANCE_RADIUS_COUNT];
@@ -297,6 +327,12 @@ public class CloudRenderHandler
 			return;
 		}
 		
+		IClientLevelWrapper clientLevelWrapper = this.level.getClientLevelWrapper();
+		if (clientLevelWrapper == null)
+		{
+			return;
+		}
+		
 		
 		
 		//================//
@@ -307,7 +343,7 @@ public class CloudRenderHandler
 		float deltaTime = (currentTime - cloudParams.lastFrameTime) / 1000.0f; // Delta time in seconds
 		cloudParams.lastFrameTime = currentTime;
 		
-		float deltaX = this.moveSpeedInBlocksPerSecond * deltaTime;
+		float deltaX = MOVE_SPEED_IN_BLOCKS_PER_SECOND * deltaTime;
 		// negative delta is to match vanilla's cloud movement
 		cloudParams.deltaOffsetX -= deltaX;
 		// wrap the cloud around after reaching the edge
@@ -358,16 +394,13 @@ public class CloudRenderHandler
 		// update color and position //
 		//===========================//
 		
-		// FIXME transparency sorting makes having transparent clouds impossible
-		//  maybe someday we could add the option to cull individual faces? a single bit for each direction should be enough 
-		
 		// if debug colors are enabled don't change them
 		if (!DEBUG_BORDER_COLORS
 			// don't modify cloud groups that aren't active
 			&& boxGroup.isActive())
 		{
 			// cloud color changes based on the time of day and weather so we need to get it from the level
-			Color newCloudColor = this.level.getClientLevelWrapper().getCloudColor(renderParam.partialTicks);
+			Color newCloudColor = clientLevelWrapper.getCloudColor(renderParam.partialTicks);
 			
 			
 			// all boxes should have the same color, so we can get their current color
@@ -388,7 +421,6 @@ public class CloudRenderHandler
 			
 			
 			// trigger an update if this cloud section has a different color
-			// TODO merge all cloud VBOs so we only need to trigger this once
 			if (!cloudParams.previousColor.equals(newCloudColor))
 			{
 				cloudParams.previousColor = newCloudColor;
@@ -399,8 +431,7 @@ public class CloudRenderHandler
 		
 		boxGroup.setOriginBlockPos(new DhApiVec3d(newMinPosX, newMinPosY, newMinPosZ));
 	}
-	
-	private synchronized boolean shouldCloudBeCulled(
+	private boolean shouldCloudBeCulled(
 			float minPosX, float minPosY, float minPosZ,
 			CloudParams cloudParams)
 	{
@@ -424,13 +455,21 @@ public class CloudRenderHandler
 		
 		// we need all 4 corners since we want to draw any clouds that
 		// could potentially be within render distance
-		Vec3d[] corners = new Vec3d[] // TODO cache this array?
-		{	
-			new Vec3d(minPosX, minPosY, minPosZ),
-			new Vec3d(minPosX, minPosY, minPosZ + cloudParams.widthInBlocks),
-			new Vec3d(minPosX + cloudParams.widthInBlocks, minPosY, minPosZ),
-			new Vec3d(minPosX + cloudParams.widthInBlocks, minPosY, minPosZ + cloudParams.widthInBlocks),
-		};
+		this.cullingCorners[0].x = minPosX;
+		this.cullingCorners[0].y = minPosY;
+		this.cullingCorners[0].z = minPosZ;
+		
+		this.cullingCorners[1].x = minPosX;
+		this.cullingCorners[1].y = minPosY;
+		this.cullingCorners[1].z = minPosZ + cloudParams.widthInBlocks;
+		
+		this.cullingCorners[2].x = minPosX + cloudParams.widthInBlocks;
+		this.cullingCorners[2].y = minPosY;
+		this.cullingCorners[2].z = minPosZ;
+		
+		this.cullingCorners[3].x = minPosX + cloudParams.widthInBlocks;
+		this.cullingCorners[3].y = minPosY;
+		this.cullingCorners[3].z = minPosZ + cloudParams.widthInBlocks;
 		
 		Vec3d cameraPos = MC_RENDER.getCameraExactPosition();
 		Vec3f cameraLookAtVector = MC_RENDER.getLookAtVector();
@@ -450,7 +489,7 @@ public class CloudRenderHandler
 		boolean allOutsideRenderDistance = true;
 		boolean allBehindCamera = true;
 		
-		for (Vec3d corner : corners)
+		for (Vec3d corner : this.cullingCorners)
 		{
 			// Check if the corner is within the render distance
 			// (ignoring height, since LODs also ignore height)
@@ -484,16 +523,18 @@ public class CloudRenderHandler
 		return allOutsideRenderDistance || allBehindCamera;
 	}
 	
+	//endregion
 	
 	
 	
 	//==================//
 	// texture handling //
 	//==================//
+	//region
 	
 	private static boolean[][] getCloudsFromTexture() throws FileNotFoundException, IOException
 	{
-		final ClassLoader loader = Thread.currentThread().getContextClassLoader();
+		final ClassLoader loader = CloudRenderHandler.class.getClassLoader();
 		
 		boolean[][] whitePixels = null;
 		try(InputStream imageInputStream = loader.getResourceAsStream(CLOUD_RESOURCE_TEXTURE_PATH))
@@ -523,11 +564,14 @@ public class CloudRenderHandler
 		return whitePixels;
 	}
 	
+	//endregion
+	
 	
 	
 	//================//
 	// helper classes //
 	//================//
+	//region
 	
 	private static class CloudParams
 	{
@@ -564,5 +608,9 @@ public class CloudRenderHandler
 		}
 		
 	}
+	
+	//endregion
+	
+	
 	
 }

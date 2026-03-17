@@ -61,10 +61,10 @@ public class FadeApplyShader extends AbstractShaderRenderer
 	public void onInit()
 	{
 		this.shader = new ShaderProgram(
-				"shaders/normal.vert",
-				"shaders/fade/apply.frag",
-				"fragColor",
-				new String[]{ "vPosition" });
+			"shaders/quadApply.vert",
+			"shaders/fade/apply.frag",
+			"vPosition"
+		);
 		
 		// uniform setup
 		this.uFadeColorTextureUniform = this.shader.getUniformLocation("uFadeColorTextureUniform");

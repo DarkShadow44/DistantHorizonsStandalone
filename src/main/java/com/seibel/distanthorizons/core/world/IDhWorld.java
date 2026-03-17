@@ -27,7 +27,18 @@ import org.jetbrains.annotations.Nullable;
 import java.io.Closeable;
 import java.util.concurrent.CompletableFuture;
 
-// TODO why is this exist alongside AbstractDhWorld?
+/**
+ * Shared base between all DH world objects. <br><br>
+ * 
+ * Independent from {@link AbstractDhServerWorld} so we don't
+ * want to deal with generics floating around and so we can
+ * have a shared interface between {@link IDhClientWorld}
+ * and {@link IDhServerWorld}.
+ * 
+ * @see AbstractDhServerWorld
+ * @see IDhClientWorld
+ * @see IDhServerWorld
+ */
 public interface IDhWorld extends Closeable
 {
 	

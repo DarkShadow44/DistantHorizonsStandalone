@@ -51,10 +51,7 @@ public class DhServerLevel extends AbstractDhServerLevel
 	//=======//
 	
 	@Override
-	public boolean shouldDoWorldGen()
-	{
-		return true; //todo;
-	}
+	public boolean shouldDoWorldGen() { return super.shouldDoWorldGen(); }
 	@Override
 	public DhBlockPos2D getTargetPosForGeneration()
 	{

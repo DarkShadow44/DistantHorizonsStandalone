@@ -63,10 +63,10 @@ public class SSAOApplyShader extends AbstractShaderRenderer
 	public void onInit()
 	{
 		this.shader = new ShaderProgram(
-				"shaders/normal.vert",
-				"shaders/ssao/apply.frag",
-				"fragColor",
-				new String[]{"vPosition"});
+			"shaders/quadApply.vert",
+			"shaders/ssao/apply.frag",
+			"vPosition"
+		);
 		
 		// uniform setup
 		this.gSSAOMapUniform = this.shader.getUniformLocation("gSSAOMap");
@@ -94,7 +94,7 @@ public class SSAOApplyShader extends AbstractShaderRenderer
 		GLMC.glBindTexture(this.ssaoTexture);
 		GL32.glUniform1i(this.gSSAOMapUniform, 1);
 		
-		GL32.glUniform1i(this.gBlurRadiusUniform, Config.Client.Advanced.Graphics.Ssao.blurRadius.get());
+		GL32.glUniform1i(this.gBlurRadiusUniform, 2);
 		
 		if (this.gViewSizeUniform >= 0)
 		{
@@ -106,7 +106,7 @@ public class SSAOApplyShader extends AbstractShaderRenderer
 		if (this.gNearUniform >= 0)
 		{
 			GL32.glUniform1f(this.gNearUniform,
-					RenderUtil.getNearClipPlaneDistanceInBlocks(partialTicks));
+					RenderUtil.getNearClipPlaneInBlocks());
 		}
 		
 		if (this.gFarUniform >= 0)

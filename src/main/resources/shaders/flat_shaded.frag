@@ -39,7 +39,7 @@ void applyNoise(inout vec4 fragColor, const in float viewDist)
     // This bit of code is required to fix the vertex position problem cus of floats in the verted world position varuable
     vec3 fixedVPos = vPos.xyz + vertexNormal * 0.001;
 
-    float noiseAmplification = uNoiseIntensity * 0.01;
+    float noiseAmplification = uNoiseIntensity;
     float lum = (fragColor.r + fragColor.g + fragColor.b) / 3.0;
     noiseAmplification = (1.0 - pow(lum * 2.0 - 1.0, 2.0)) * noiseAmplification; // Lessen the effect on depending on how dark the object is, equasion for this is -(2x-1)^{2}+1
     noiseAmplification *= fragColor.a; // The effect would lessen on transparent objects

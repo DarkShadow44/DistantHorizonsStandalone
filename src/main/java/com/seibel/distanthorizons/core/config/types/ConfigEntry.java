@@ -60,6 +60,7 @@ public class ConfigEntry<T> extends AbstractConfigBase<T>
 	//=============//
 	// constructor //
 	//=============//
+	//region
 	
 	private ConfigEntry(
 			EConfigEntryAppearance appearance, 
@@ -78,11 +79,14 @@ public class ConfigEntry<T> extends AbstractConfigBase<T>
 		this.listenerList = listenerList;
 	}
 	
+	//endregion
+	
 	
 	
 	//==========================//
 	// property getters/setters //
 	//==========================//
+	//region
 	
 	/** the string used when entering the config into the command line or chat */
 	public String getChatCommandName() { return this.chatCommandName; }
@@ -100,16 +104,22 @@ public class ConfigEntry<T> extends AbstractConfigBase<T>
 	public T getMax() { return this.max; }
 	public void setMax(T newMax) { this.max = newMax; }
 	
+	//endregion
+	
 	
 	
 	//===============//
 	// value setters //
 	//===============//
+	//region
 	
 	public void setApiValue(T newApiValue)
 	{
 		this.apiValue = newApiValue;
-		this.listenerList.forEach(IConfigListener::onConfigValueSet);
+		synchronized (this.listenerList)
+		{
+			this.listenerList.forEach(IConfigListener::onConfigValueSet);
+		}
 	}
 	
 	public boolean apiIsOverriding() 
@@ -129,7 +139,11 @@ public class ConfigEntry<T> extends AbstractConfigBase<T>
 	public void setWithoutSaving(T newValue)
 	{
 		super.set(newValue);
-		this.listenerList.forEach(IConfigListener::onConfigValueSet);
+		
+		synchronized (this.listenerList)
+		{
+			this.listenerList.forEach(IConfigListener::onConfigValueSet);
+		}
 	}
 	@Override
 	public void set(T newValue)
@@ -141,19 +155,30 @@ public class ConfigEntry<T> extends AbstractConfigBase<T>
 	public void uiSetWithoutSaving(T newValue)
 	{
 		this.setWithoutSaving(newValue);
-		this.listenerList.forEach(IConfigListener::onUiModify);
+		
+		synchronized (this.listenerList)
+		{
+			this.listenerList.forEach(IConfigListener::onUiModify);
+		}
 	}
 	public void uiSet(T newValue)
 	{
 		this.set(newValue);
-		this.listenerList.forEach(IConfigListener::onUiModify);
+		
+		synchronized (this.listenerList)
+		{
+			this.listenerList.forEach(IConfigListener::onUiModify);
+		}
 	}
+	
+	//endregion
 	
 	
 	
 	//===============//
 	// value getters //
 	//===============//
+	//region
 	
 	@Override
 	public T get()
@@ -174,11 +199,14 @@ public class ConfigEntry<T> extends AbstractConfigBase<T>
 	@Nullable
 	public T getApiValue() { return this.apiValue; }
 	
+	//endregion
+	
 	
 	
 	//===========//
 	// listeners //
 	//===========//
+	//region
 	
 	/** Fired whenever the config value changes to a new value. */
 	public void addValueChangeListener(Consumer<T> onValueChangeFunc)
@@ -187,26 +215,38 @@ public class ConfigEntry<T> extends AbstractConfigBase<T>
 		this.addListener(changeListener);
 	}
 	/** Fired whenever the config value is updated, including when the value doesn't change (IE when the UI changes state or the config is reloaded). */
-	public void addListener(IConfigListener newListener) { this.listenerList.add(newListener); }
-	
-	//public void removeValueChangeListener(Consumer<T> onValueChangeFunc) { } // not currently implemented
-	public void removeListener(IConfigListener oldListener) { this.listenerList.remove(oldListener); }
-	
-	public void clearListeners() { this.listenerList.clear(); }
-	public ArrayList<IConfigListener> getListeners() { return this.listenerList; }
-	/** Replaces the listener list */
-	public void setListeners(ArrayList<IConfigListener> newListeners)
+	public void addListener(IConfigListener newListener) 
 	{
-		this.listenerList.clear();
-		this.listenerList.addAll(newListeners);
+		synchronized (this.listenerList)
+		{
+			this.listenerList.add(newListener);
+		}
 	}
-	public void setListeners(IConfigListener... newListeners) { this.listenerList.addAll(Arrays.asList(newListeners)); }
+	
+	public void removeListener(IConfigListener oldListener) 
+	{
+		synchronized (this.listenerList)
+		{
+			this.listenerList.remove(oldListener);
+		}
+	}
+	
+	public void clearListeners() 
+	{
+		synchronized (this.listenerList)
+		{
+			this.listenerList.clear();
+		}
+	}
+	
+	//endregion
 	
 	
 	
 	//====================//
 	// min/max validation //
 	//====================//
+	//region
 	
 	/** Checks if this config's current value is valid */
 	public EConfigValidity getValidity() { return this.getValidity(this.value, this.min, this.max); }
@@ -257,22 +297,31 @@ public class ConfigEntry<T> extends AbstractConfigBase<T>
 		}
 	}
 	
+	//endregion
+	
 	
 	
 	//===============//
 	// file handling //
 	//===============//
+	//region
 	
 	/** This should normally not be called since set() automatically calls this */
 	public void save() { ConfigHandler.INSTANCE.configFileHandler.saveEntry(this); }
 	/** This should normally not be called except for special circumstances */
 	public void load() { ConfigHandler.INSTANCE.configFileHandler.loadEntry(this); }
 	
+	//endregion
+	
 	
 	
 	//================//
 	// base overrides //
 	//================//
+	//region
+	
+	@Override 
+	public String toString() { return this.name + ": [" + this.get() + "]"; }
 	
 	public boolean equals(AbstractConfigBase<?> obj) 
 	{
@@ -294,11 +343,14 @@ public class ConfigEntry<T> extends AbstractConfigBase<T>
 		}
 	}
 	
+	//endregion
+	
 	
 	
 	//=========//
 	// builder //
 	//=========//
+	//region
 	
 	public static class Builder<T> extends AbstractConfigBase.Builder<T, Builder<T>>
 	{
@@ -396,5 +448,9 @@ public class ConfigEntry<T> extends AbstractConfigBase<T>
 		}
 		
 	}
+	
+	//endregion
+	
+	
 	
 }

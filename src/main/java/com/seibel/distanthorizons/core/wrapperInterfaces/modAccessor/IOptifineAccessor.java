@@ -23,7 +23,6 @@ import com.seibel.distanthorizons.core.pos.DhChunkPos;
 
 import java.util.HashSet;
 
-@Deprecated
 public interface IOptifineAccessor extends IModAccessor
 {
 	

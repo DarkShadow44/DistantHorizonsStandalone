@@ -166,8 +166,7 @@ public class FullDataSourceV1
 		this.setDataPoints(dataPoints);
 		
 		
-		FullDataPointIdMap mapping = this.readIdMappings(inputStream, level.getLevelWrapper());
-		this.setIdMapping(mapping);
+		this.readIdMappings(this.mapping, inputStream, level.getLevelWrapper());
 		
 	}
 	
@@ -347,7 +346,7 @@ public class FullDataSourceV1
 		outputStream.writeInt(DATA_GUARD_BYTE);
 		this.mapping.serialize(outputStream);
 	}
-	public FullDataPointIdMap readIdMappings(DhDataInputStream inputStream, ILevelWrapper levelWrapper) throws IOException, InterruptedException, DataCorruptedException
+	public void readIdMappings(FullDataPointIdMap map, DhDataInputStream inputStream, ILevelWrapper levelWrapper) throws IOException, InterruptedException, DataCorruptedException
 	{
 		int guardByte = inputStream.readInt();
 		if (guardByte != DATA_GUARD_BYTE)
@@ -355,9 +354,8 @@ public class FullDataSourceV1
 			throw new IOException("Invalid data content end guard for ID mapping");
 		}
 		
-		return FullDataPointIdMap.deserialize(inputStream, this.pos, levelWrapper);
+		FullDataPointIdMap.deserialize(map, inputStream, this.pos, levelWrapper);
 	}
-	public void setIdMapping(FullDataPointIdMap mappings) { this.mapping.mergeAndReturnRemappedEntityIds(mappings); }
 	
 	
 	

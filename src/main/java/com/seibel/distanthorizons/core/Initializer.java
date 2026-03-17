@@ -21,9 +21,11 @@ package com.seibel.distanthorizons.core;
 
 import com.github.luben.zstd.ZstdOutputStream;
 import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiBeforeRenderEvent;
+import com.seibel.distanthorizons.core.api.internal.ClientApi;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.config.eventHandlers.IgnoredDimensionCsvHandler;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
+import com.seibel.distanthorizons.core.enums.MinecraftTextFormat;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.render.renderer.generic.GenericRenderObjectFactory;
 import com.seibel.distanthorizons.core.sql.DatabaseUpdater;
@@ -55,6 +57,11 @@ public class Initializer
 	
 	public static void init()
 	{
+		//============================//
+		// check referenced libraries //
+		//============================//
+		//region
+		
 		LOGGER.info("Running library validation...");
 		
 		// confirm that all referenced libraries are available to use
@@ -94,7 +101,15 @@ public class Initializer
 			MC_CLIENT.crashMinecraft("Distant Horizons critical setup error: One or more libraries are either in-accessible, corrupted, or overwritten by another mod. Error: [" + e.getMessage() + "].", e);
 		}
 		
-		// confirm the resource directory is present
+		//endregion
+		
+		
+		
+		//==========================//
+		// check resource directory //
+		//==========================//
+		//region
+		
 		try
 		{
 			int scriptCount = DatabaseUpdater.getAutoUpdateScriptCount();
@@ -107,6 +122,15 @@ public class Initializer
 		{
 			MC_CLIENT.crashMinecraft("Critical programmer error: Can't read SQL Scripts resource folder is either missing or malformed. Error: [" + e.getMessage() + "].", e);
 		}
+		
+		//endregion
+		
+		
+		
+		//===========================//
+		// Java AWT Headless setting // 
+		//===========================//
+		//region
 		
 		// This code has been disabled since it can cause Mac
 		// to lock up and refuse the load (there's a bug with Java.awt texture loading)
@@ -124,6 +148,15 @@ public class Initializer
 		//	}
 		//}
 		
+		//endregion
+		
+		
+		
+		//===================//
+		// API delayed setup //
+		//===================//
+		//region
+		
 		// link Core's config to the API
 		DhApi.Delayed.configs = DhApiConfig.INSTANCE;
 		DhApi.Delayed.terrainRepo = DhApiTerrainDataRepo.INSTANCE;
@@ -135,6 +168,18 @@ public class Initializer
 		{
 			LOGGER.error("Programmer Error: No ["+IWrapperFactory.class.getSimpleName()+"] assigned to the DhApi.");
 		}
+		
+		
+		DhApi.events.bind(DhApiBeforeRenderEvent.class, IgnoredDimensionCsvHandler.INSTANCE);
+		
+		//endregion
+		
+		
+		
+		//==============================//
+		// G1 Garbage collector warning //
+		//==============================//
+		//region
 		
 		// log a warning if G1GC is being used
 		// (this garbage collector is known to cause stuttering)
@@ -160,20 +205,37 @@ public class Initializer
 			LOGGER.info("Garbage collectors: ["+garbageCollectorNames+"]");
 			
 			
-			if (g1GcInUse
-				&& Config.Common.Logging.Warning.logGarbageCollectorWarning.get())
+			if (g1GcInUse)
 			{
-				LOGGER.warn(
-					"Distant Horizons: G1 Garbage collector detected. \n" +
-					"This garbage collector can cause FPS stuttering. \n" +
+				String warningMessageHeader = "Distant Horizons: G1 Garbage collector detected.";
+				String warningMessageBody = 
+					"This can cause FPS stuttering. \n" +
 					"It's recommended to use a concurrent garbage collector \n" +
-					"like ZGC (Java 21+) or Shenandoah (Java 8 through 17) for a smoother experience. \n" +
-					"");
+					"like ZGC (Java 21+) or Shenandoah (Java 8 through 17) \n" +
+					"for a smoother experience."
+					;
 				
+				if (Config.Common.Logging.Warning.logGarbageCollectorWarning.get())
+				{
+					LOGGER.warn(
+						warningMessageHeader + "\n" +
+						warningMessageBody +
+						"");
+				}
+				
+				if (Config.Common.Logging.Warning.showGarbageCollectorWarning.get())
+				{
+					ClientApi.INSTANCE.showChatMessageNextFrame(
+						MinecraftTextFormat.ORANGE + warningMessageHeader + MinecraftTextFormat.CLEAR_FORMATTING + "\n" +
+						warningMessageBody +
+						"");
+				}
 			}
 		}
 		
-		DhApi.events.bind(DhApiBeforeRenderEvent.class, IgnoredDimensionCsvHandler.INSTANCE);
+		//endregion
+		
+		
 		
 	}
 	

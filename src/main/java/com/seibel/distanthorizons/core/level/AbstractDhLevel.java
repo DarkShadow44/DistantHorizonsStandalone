@@ -19,16 +19,11 @@
 
 package com.seibel.distanthorizons.core.level;
 
-import com.seibel.distanthorizons.api.enums.rendering.EDhApiBlockMaterial;
-import com.seibel.distanthorizons.api.interfaces.render.IDhApiRenderableBoxGroup;
 import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiChunkModifiedEvent;
-import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam;
-import com.seibel.distanthorizons.api.objects.math.DhApiVec3d;
-import com.seibel.distanthorizons.api.objects.render.DhApiRenderableBox;
-import com.seibel.distanthorizons.api.objects.render.DhApiRenderableBoxGroupShading;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.dataObjects.fullData.sources.FullDataSourceV2;
-import com.seibel.distanthorizons.core.file.fullDatafile.DelayedFullDataSourceSaveCache;
+import com.seibel.distanthorizons.core.util.delayedSaveCache.DelayedBeaconSaveCache;
+import com.seibel.distanthorizons.core.util.delayedSaveCache.DelayedDataSourceSaveCache;
 import com.seibel.distanthorizons.core.generation.DhLightingEngine;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pos.DhChunkPos;
@@ -36,28 +31,21 @@ import com.seibel.distanthorizons.core.pos.DhSectionPos;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos;
 import com.seibel.distanthorizons.core.render.renderer.generic.CloudRenderHandler;
 import com.seibel.distanthorizons.core.render.renderer.generic.GenericObjectRenderer;
-import com.seibel.distanthorizons.core.render.renderer.generic.GenericRenderObjectFactory;
 import com.seibel.distanthorizons.core.sql.dto.BeaconBeamDTO;
 import com.seibel.distanthorizons.core.sql.dto.ChunkHashDTO;
 import com.seibel.distanthorizons.core.sql.repo.AbstractDhRepo;
 import com.seibel.distanthorizons.core.sql.repo.BeaconBeamRepo;
 import com.seibel.distanthorizons.core.sql.repo.ChunkHashRepo;
-import com.seibel.distanthorizons.core.util.ColorUtil;
 import com.seibel.distanthorizons.core.util.KeyedLockContainer;
 import com.seibel.distanthorizons.core.util.LodUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.IChunkWrapper;
-import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
 import com.seibel.distanthorizons.coreapi.DependencyInjection.ApiEventInjector;
-import com.seibel.distanthorizons.coreapi.ModInfo;
-import com.seibel.distanthorizons.coreapi.util.MathUtil;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import org.jetbrains.annotations.Nullable;
 
-import java.awt.*;
 import java.io.File;
 import java.io.IOException;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -77,8 +65,8 @@ public abstract class AbstractDhLevel implements IDhLevel
 	public BeaconBeamRepo beaconBeamRepo;
 	
 	protected final KeyedLockContainer<Long> beaconUpdateLockContainer = new KeyedLockContainer<>();
-	
-	protected final DelayedFullDataSourceSaveCache delayedFullDataSourceSaveCache = new DelayedFullDataSourceSaveCache(this::onDataSourceSaveAsync, 3_000);
+	protected final DelayedDataSourceSaveCache delayedFullDataSourceSaveCache = new DelayedDataSourceSaveCache(this::onDataSourceSaveAsync, 1_000);
+	protected final DelayedBeaconSaveCache delayedBeaconSaveCache = new DelayedBeaconSaveCache(this::updateBeaconBeamsBetweenBlockPos, 1_000);
 	/** contains the {@link DhChunkPos} for each {@link DhSectionPos} that are queued to save */
 	protected final ConcurrentHashMap<Long, HashSet<DhChunkPos>> updatedChunkPosSetBySectionPos = new ConcurrentHashMap<>();
 	protected final ConcurrentHashMap<DhChunkPos, Integer> updatedChunkHashesByChunkPos = new ConcurrentHashMap<>();
@@ -137,8 +125,9 @@ public abstract class AbstractDhLevel implements IDhLevel
 			if (this instanceof IDhClientLevel)
 			{
 				// only add clouds for certain dimension types
-				if (!this.getLevelWrapper().hasCeiling()
-						&& !this.getLevelWrapper().getDimensionType().isTheEnd())
+				String enabledCloudDimensions = Config.Client.Advanced.Graphics.GenericRendering.dimensionEnabledCloudRenderingCsv.get();
+				String dimName = this.getLevelWrapper().getDimensionType().getName();
+				if (enabledCloudDimensions.contains(dimName))
 				{
 					this.cloudRenderHandler = new CloudRenderHandler((IDhClientLevel)this, genericRenderer);
 				}
@@ -177,7 +166,7 @@ public abstract class AbstractDhLevel implements IDhLevel
 			
 			// merging writes together in memory significantly improves throughput, since most
 			// chunk modifications will be right next to each other, IE effecting the same LODs
-			this.delayedFullDataSourceSaveCache.writeDataSourceToMemoryAndQueueSave(dataSource);
+			this.delayedFullDataSourceSaveCache.writeToMemoryAndQueueSave(dataSource);
 		}
 	}
 	
@@ -225,8 +214,6 @@ public abstract class AbstractDhLevel implements IDhLevel
 	// repos //
 	//=======//
 	
-	// chunk hash //
-	
 	@Override
 	public int getChunkHash(DhChunkPos pos)
 	{
@@ -250,12 +237,12 @@ public abstract class AbstractDhLevel implements IDhLevel
 	{
 		int minBlockX = DhSectionPos.getMinCornerBlockX(sectionPos);
 		int minBlockZ = DhSectionPos.getMinCornerBlockZ(sectionPos);
-		// TODO special logic had to be done for DhChunkPos.getMaxBlock,
-		//  does that need to be done here?
-		//  The DhChunkPos issue caused beacons to appear/disappear incorrectly on negative chunk borders
 		int maxBlockX = minBlockX + DhSectionPos.getBlockWidth(sectionPos);
 		int maxBlockZ = minBlockZ + DhSectionPos.getBlockWidth(sectionPos);
 		
+		// no delayed cache needed since each hit will be at a different position
+		// and this is generally called when LODs are received from the
+		// server, so repeat hits to the same position are unlikely
 		this.updateBeaconBeamsBetweenBlockPos(
 				sectionPos,
 				minBlockX, maxBlockX,
@@ -266,22 +253,11 @@ public abstract class AbstractDhLevel implements IDhLevel
 	
 	@Override
 	public void updateBeaconBeamsForChunkPos(DhChunkPos chunkPos, List<BeaconBeamDTO> activeBeamList)
-	{
-		long sectionPos = DhSectionPos.encodeContaining(DhSectionPos.SECTION_BLOCK_DETAIL_LEVEL, chunkPos);
-		
-		int minBlockX = chunkPos.getMinBlockX();
-		int minBlockZ = chunkPos.getMinBlockZ();
-		int maxBlockX = chunkPos.getMaxBlockX();
-		int maxBlockZ = chunkPos.getMaxBlockZ();
-		
-		//LOGGER.info("beacons ["+activeBeamList.size()+"] at ["+chunkPos+"] x["+minBlockX+"]-["+maxBlockX+"] z["+minBlockZ+"]-["+maxBlockZ+"].");
-		
-		this.updateBeaconBeamsBetweenBlockPos(
-				sectionPos,
-				minBlockX, maxBlockX,
-				minBlockZ, maxBlockZ,
-				activeBeamList
-		);
+	{ 
+		// a delayed cache is used to prevent lock contention
+		// when flying through new chunks (or updating modified chunks)
+		// that are right next to each other (requiring up to 16 hits to the same LOD position
+		this.delayedBeaconSaveCache.queueBeaconBeamUpdatesForChunkPos(chunkPos, activeBeamList); 
 	}
 	
 	private void updateBeaconBeamsBetweenBlockPos(
@@ -289,7 +265,7 @@ public abstract class AbstractDhLevel implements IDhLevel
 			int minBlockX, int maxBlockX,
 			int minBlockZ, int maxBlockZ,
 			List<BeaconBeamDTO> activeBeamList
-		) // TODO min/max block pos instead
+		)
 	{
 		if (this.beaconBeamRepo == null)
 		{
@@ -297,8 +273,11 @@ public abstract class AbstractDhLevel implements IDhLevel
 		}
 		
 		
-		// locked to prevent two threads from updating the same section at the same time
-		ReentrantLock lock = this.beaconUpdateLockContainer.getLockForPos(sectionPosForLock); // TODO this can cause a lot of slow-downs
+		//LOGGER.info("beacons ["+activeBeamList.size()+"] at x["+minBlockX+"]-["+maxBlockX+"] z["+minBlockZ+"]-["+maxBlockZ+"].");
+		
+		
+		// locked to prevent two threads from updating the same position at the same time
+		ReentrantLock lock = this.beaconUpdateLockContainer.getLockForPos(sectionPosForLock);
 		try
 		{
 			lock.lock();
@@ -329,14 +308,10 @@ public abstract class AbstractDhLevel implements IDhLevel
 			
 			for (DhBlockPos beaconPos : allPosSet)
 			{
-				if (minBlockX <= beaconPos.getX() && beaconPos.getX() <= maxBlockX
-					&& minBlockZ <= beaconPos.getZ() && beaconPos.getZ() <= maxBlockZ)
+				if (minBlockX > beaconPos.getX() || beaconPos.getX() > maxBlockX
+					|| minBlockZ > beaconPos.getZ() || beaconPos.getZ() > maxBlockZ)
 				{
-					//// don't modify beacons outside the updated range
-					//continue;
-				}
-				else
-				{
+					// don't modify beacons outside the updated range
 					continue;
 				}
 				
@@ -345,12 +320,12 @@ public abstract class AbstractDhLevel implements IDhLevel
 				BeaconBeamDTO activeBeam = activeBeamByPos.get(beaconPos);
 				if (activeBeam != null)
 				{
-					//LOGGER.info("add beacon ["+activeBeam.blockPos+"] x["+minBlockX+"]-["+maxBlockX+"] z["+minBlockZ+"]-["+maxBlockZ+"].");
-					
 					if (existingBeam == null)
 					{
 						// new beam found, add to DB
 						this.beaconBeamRepo.save(activeBeam);
+						
+						//LOGGER.info("new beacon ["+activeBeam+"].");
 					}
 					else
 					{
@@ -359,6 +334,12 @@ public abstract class AbstractDhLevel implements IDhLevel
 						{
 							// beam colors were changed
 							this.beaconBeamRepo.save(activeBeam);
+							
+							//LOGGER.info("change beacon ["+existingBeam+"] -> ["+activeBeam+"].");
+						}
+						else
+						{
+							//LOGGER.info("existing beacon ["+existingBeam+"].");
 						}
 					}
 				}
@@ -366,7 +347,8 @@ public abstract class AbstractDhLevel implements IDhLevel
 				{
 					// beam no longer exists at position, remove from DB
 					this.beaconBeamRepo.deleteWithKey(beaconPos);
-					//LOGGER.info("remove beacon ["+beaconPos+"] x["+minBlockX+"]-["+maxBlockX+"] z["+minBlockZ+"]-["+maxBlockZ+"].");
+					
+					//LOGGER.info("remove beacon ["+existingBeam+"].");
 				}
 			}
 		}

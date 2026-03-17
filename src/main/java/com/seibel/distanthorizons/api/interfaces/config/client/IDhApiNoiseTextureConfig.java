@@ -37,8 +37,8 @@ public interface IDhApiNoiseTextureConfig extends IDhApiConfigGroup
 	/** Defines how many steps of noise should be applied. */
 	IDhApiConfigValue<Integer> noiseSteps();
 	
-	/** Defines how intense the noise will be. */
-	IDhApiConfigValue<Double> noiseIntensity();
+	/** Defines how intense the noise will be, between 0.0 and 1.0. */
+	IDhApiConfigValue<Float> noiseIntensity();
 	
 	/**
 	 * Defines how far should the noise texture render before it fades away. (in blocks) <br>

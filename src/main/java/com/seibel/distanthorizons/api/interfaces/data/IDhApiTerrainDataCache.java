@@ -1,15 +1,18 @@
 package com.seibel.distanthorizons.api.interfaces.data;
 
 /**
- * Can be used to drastically speed up repeat read operations in {@link IDhApiTerrainDataRepo}.
- *
+ * Can be used to drastically speed up repeat read operations in {@link IDhApiTerrainDataRepo}. <br><br>
+ * 
+ * Once you are done with this cache, closing it will free up any objects
+ * the cache is holding. This can reduce Garbage Collector overhead and reduce stuttering.
+ * 
  * @see IDhApiTerrainDataRepo
  * 
  * @author James Seibel
- * @version 2024-7-14
+ * @version 2026-1-29
  * @since API 3.0.0
  */
-public interface IDhApiTerrainDataCache // TODO should this be AutoClosable?
+public interface IDhApiTerrainDataCache extends AutoCloseable
 {
 	/**
 	 * Removes any data that's currently stored in this cache.

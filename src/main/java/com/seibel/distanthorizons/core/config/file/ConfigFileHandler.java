@@ -241,8 +241,8 @@ public class ConfigFileHandler
 		}
 		else if (entry.getTrueValue() == null)
 		{
-			// TODO when can this happen?
-			throw new IllegalArgumentException("BlockBiomeWrapperPair [" + entry.getNameAndCategory() + "] is null, this may be a problem with [" + ModInfo.NAME + "]. Please contact the authors.");
+			// shouldn't happen, but just in case
+			throw new IllegalArgumentException("ConfigEntry [" + entry.getNameAndCategory() + "] is null, how did this happen?");
 		}
 		
 		workConfig.set(entry.getNameAndCategory(), ConfigTypeConverters.attemptToConvertToString(entry.getType(), entry.getTrueValue()));
@@ -360,7 +360,8 @@ public class ConfigFileHandler
 		{
 			LOGGER.error("File creation failed at ["+this.configPath+"], error: ["+e.getMessage()+"].", e);
 			
-			// TODO is there a reason this is lazily gotten?
+			// delayed MC getter since this object may be created before
+			// the singleton has been bound
 			IMinecraftClientWrapper mc = SingletonInjector.INSTANCE.get(IMinecraftClientWrapper.class);
 			mc.crashMinecraft("Loading file and resetting config file failed at path [" + this.configPath + "]. Please check the file is ok and you have the permissions", e);
 		}

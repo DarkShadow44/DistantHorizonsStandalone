@@ -20,10 +20,9 @@
 package com.seibel.distanthorizons.core.util;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.seibel.distanthorizons.core.dataObjects.render.columnViews.ColumnArrayView;
-import com.seibel.distanthorizons.core.dataObjects.render.columnViews.IColumnDataView;
-import com.seibel.distanthorizons.core.pooling.AbstractPhantomArrayList;
-import com.seibel.distanthorizons.core.pooling.PhantomArrayListPool;
+import com.seibel.distanthorizons.core.dataObjects.render.columnViews.ColumnRenderView;
+import com.seibel.distanthorizons.core.util.objects.pooling.AbstractPhantomArrayList;
+import com.seibel.distanthorizons.core.util.objects.pooling.PhantomArrayListPool;
 import com.seibel.distanthorizons.core.util.LodUtil.AssertFailureException;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.shorts.ShortArrayList;
@@ -104,7 +103,7 @@ public class RenderDataPointReducingList extends AbstractPhantomArrayList
 	 */
 	private short lowest, highest, smallest, biggest;
 	private short sizeWithAir, sizeWithoutAir;
-	private final LongArrayList links, data;
+	private LongArrayList links, data;
 	/**
 	 * a temporary array to be used for sorting nodes.
 	 * the array is first populated such that every index
@@ -113,7 +112,7 @@ public class RenderDataPointReducingList extends AbstractPhantomArrayList
 	 * finally, the nodes are re-linked according
 	 * to the order of elements in this array.
 	 */
-	private final ShortArrayList sortingArray;
+	private ShortArrayList sortingArray;
 	
 	
 	
@@ -121,11 +120,19 @@ public class RenderDataPointReducingList extends AbstractPhantomArrayList
 	// constructor //
 	//=============//
 	
-	public RenderDataPointReducingList(IColumnDataView view) 
+	public RenderDataPointReducingList()
 	{
-		super(ARRAY_LIST_POOL, 0, 1, 2);
-		
-		int size = view.size();
+		super(ARRAY_LIST_POOL, 0, 1, 2, 0);
+	}
+	
+	/** 
+	 * Mutates this object so it can be used for the given {@link ColumnRenderView}. <Br>
+	 * Note: this must be called before this list can be used and this
+	 * object can only be used by one thread at a time.
+	 */
+	public void populate(ColumnRenderView view)
+	{
+		int size = view.size;
 		if (size == 0) 
 		{
 			this.setLowest(NULL);
@@ -834,9 +841,9 @@ public class RenderDataPointReducingList extends AbstractPhantomArrayList
 	 *
 	 * @implNote this method does not allocate any objects.
 	 */
-	public static long reduceToOne(IColumnDataView view) 
+	public static long reduceToOne(ColumnRenderView view) 
 	{
-		int size = view.size();
+		int size = view.size;
 		if (size <= 0)
 		{
 			return RenderDataPointUtil.EMPTY_DATA;
@@ -881,7 +888,7 @@ public class RenderDataPointReducingList extends AbstractPhantomArrayList
 	
 	
 	/** transfers the contents of this list to the provided view, in order of highest to lowest. */
-	public void copyTo(ColumnArrayView view)
+	public void copyTo(ColumnRenderView view)
 	{
 		// reminder: DH explodes horribly when I copy the nodes
 		// from lowest to highest instead of highest to lowest.
@@ -902,7 +909,7 @@ public class RenderDataPointReducingList extends AbstractPhantomArrayList
 			view.set(writeIndex++, RenderDataPointUtil.EMPTY_DATA);
 		}
 		
-		for (int size = view.size(); writeIndex < size; writeIndex++)
+		for (int size = view.size; writeIndex < size; writeIndex++)
 		{
 			view.set(writeIndex, RenderDataPointUtil.EMPTY_DATA);
 		}

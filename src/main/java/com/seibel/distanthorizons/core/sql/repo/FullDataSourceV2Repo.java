@@ -24,6 +24,7 @@ import com.seibel.distanthorizons.core.dataObjects.fullData.sources.FullDataSour
 import com.seibel.distanthorizons.core.enums.EDhDirection;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
+import com.seibel.distanthorizons.core.util.objects.pooling.PhantomArrayListCheckout;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
 import com.seibel.distanthorizons.core.sql.DbConnectionClosedException;
 import com.seibel.distanthorizons.core.sql.dto.FullDataSourceV2DTO;
@@ -476,7 +477,10 @@ public class FullDataSourceV2Repo extends AbstractDhRepo<Long, FullDataSourceV2D
 			"   abs((PosX << (6 + DetailLevel)) - ?) + abs((PosZ << (6 + DetailLevel)) - ?) AS Distance " +
 			"FROM " + this.getTableName() + " " +
 			"WHERE ApplyToParent = 1 " +
-			"ORDER BY DetailLevel ASC, Distance ASC " +
+			// sorting by detail level first will reduce the total number of updates required
+			// but makes it feel less responsive since distant updates won't be seen until everything 
+			// underneith is done
+			"ORDER BY Distance ASC " + // DetailLevel ASC,
 			"LIMIT ?; ";
 	public LongArrayList getPositionsToUpdate(int targetBlockPosX, int targetBlockPosZ, int returnCount)
 	{ return this.getPositionsToUpdate(targetBlockPosX, targetBlockPosZ, returnCount, true); }
@@ -487,7 +491,7 @@ public class FullDataSourceV2Repo extends AbstractDhRepo<Long, FullDataSourceV2D
 			"   abs((PosX << (6 + DetailLevel)) - ?) + abs((PosZ << (6 + DetailLevel)) - ?) AS Distance " +
 			"FROM " + this.getTableName() + " " +
 			"WHERE ApplyToChildren = 1 " +
-			"ORDER BY DetailLevel ASC, Distance ASC " +
+			"ORDER BY Distance ASC " + // DetailLevel ASC, 
 			"LIMIT ?; ";
 	public LongArrayList getChildPositionsToUpdate(int targetBlockPosX, int targetBlockPosZ, int returnCount)
 	{ return this.getPositionsToUpdate(targetBlockPosX, targetBlockPosZ, returnCount, false); }
@@ -576,7 +580,8 @@ public class FullDataSourceV2Repo extends AbstractDhRepo<Long, FullDataSourceV2D
 				{
 					ByteArrayList byteArrayList = new ByteArrayList();
 					putAllBytes(result.getBinaryStream("ColumnGenerationStep"), byteArrayList);
-					try(DhDataInputStream compressedIn = DhDataInputStream.create(byteArrayList, compressionModeEnum))
+					try(PhantomArrayListCheckout checkout = FullDataSourceV2DTO.ARRAY_LIST_POOL.checkoutByteArrays(1);
+						DhDataInputStream compressedIn = DhDataInputStream.create(byteArrayList, compressionModeEnum, checkout))
 					{
 						putAllBytes(compressedIn, outputByteArray);
 					}
@@ -592,6 +597,12 @@ public class FullDataSourceV2Repo extends AbstractDhRepo<Long, FullDataSourceV2D
 		}
 		catch (SQLException e)
 		{
+			// done to handle resultSet.get() methods which can throw closed exceptions
+			if (DbConnectionClosedException.isClosedException(e))
+			{
+				return;
+			}
+			
 			throw new RuntimeException(e);
 		}
 	}
@@ -758,7 +769,7 @@ public class FullDataSourceV2Repo extends AbstractDhRepo<Long, FullDataSourceV2D
 			statement.setInt(i++, DhSectionPos.getZ(pos));
 			
 			
-			try (ResultSet result = this.query(statement)) // TODO check other query's
+			try (ResultSet result = this.query(statement))
 			{
 				if (result == null || !result.next())
 				{

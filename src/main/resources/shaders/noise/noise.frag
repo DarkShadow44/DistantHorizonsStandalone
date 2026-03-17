@@ -43,7 +43,7 @@ void main() {
     vec3 fixedVPos = vPos.xyz - vertexNormal * 0.001;
 
 
-    float noiseAmplification = uNoiseIntensity / 100;
+    float noiseAmplification = uNoiseIntensity;
     noiseAmplification = (-1 * pow(2*((vertexColor.x + vertexColor.y + vertexColor.z) / 3) - 1, 2) + 1) * noiseAmplification; // Lessen the effect on depending on how dark the object is, equasion for this is -(2x-1)^{2}+1
     noiseAmplification *= vertexColor.w; // The effect would lessen on transparent objects
 

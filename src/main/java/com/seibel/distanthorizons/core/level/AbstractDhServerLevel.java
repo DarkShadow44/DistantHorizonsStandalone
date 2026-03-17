@@ -46,8 +46,7 @@ public abstract class AbstractDhServerLevel extends AbstractDhLevel implements I
 	
 	/**
 	 * This queue is used for ensuring fair generation speed for each player. <br>
-	 * Every tick the first player gets used for centering generation, and then is immediately moved into the back of the queue. <br>
-	 * TODO only add players that actually have something to generate
+	 * Every tick the first player gets used for centering generation, and then is immediately moved into the back of the queue.
 	 */
 	protected final ConcurrentLinkedQueue<IServerPlayerWrapper> worldGenPlayerCenteringQueue = new ConcurrentLinkedQueue<>();
 	

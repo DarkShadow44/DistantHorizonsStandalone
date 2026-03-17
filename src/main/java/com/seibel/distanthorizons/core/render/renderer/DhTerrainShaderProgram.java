@@ -35,6 +35,7 @@ import com.seibel.distanthorizons.core.util.LodUtil;
 import com.seibel.distanthorizons.core.util.RenderUtil;
 import com.seibel.distanthorizons.core.util.math.Mat4f;
 import com.seibel.distanthorizons.core.util.math.Vec3f;
+import com.seibel.distanthorizons.core.wrapperInterfaces.misc.ILightMapWrapper;
 
 /**
  * Handles rendering the normal LOD terrain.
@@ -76,9 +77,10 @@ public class DhTerrainShaderProgram extends ShaderProgram implements IDhApiShade
 	public DhTerrainShaderProgram()
 	{
 		super(
-			() -> Shader.loadFile("shaders/standard.vert", false, new StringBuilder()).toString(),
-			() -> Shader.loadFile("shaders/flat_shaded.frag", false, new StringBuilder()).toString(),
-			"fragColor", new String[]{"vPosition", "color"});
+			"shaders/standard.vert",
+			"shaders/flat_shaded.frag",
+			new String[]{"vPosition", "color"}
+		);
 		
 		this.uCombinedMatrix = this.getUniformLocation("uCombinedMatrix");
 		this.uModelOffset = this.getUniformLocation("uModelOffset");
@@ -102,8 +104,6 @@ public class DhTerrainShaderProgram extends ShaderProgram implements IDhApiShade
 		this.uIsWhiteWorld = this.getUniformLocation("uIsWhiteWorld");
 		
 		
-		// TODO: Add better use of the LODFormat thing
-		int vertexByteCount = LodUtil.LOD_VERTEX_FORMAT.getByteSize();
 		if (GLProxy.getInstance().vertexAttributeBufferBindingSupported)
 		{
 			this.vao = new VertexAttributePostGL43(); // also binds AbstractVertexAttribute
@@ -124,11 +124,12 @@ public class DhTerrainShaderProgram extends ShaderProgram implements IDhApiShade
 		
 		try
 		{
+			int vertexByteCount = LodUtil.DH_VERTEX_FORMAT.getByteSize();
 			this.vao.completeAndCheck(vertexByteCount);
 		}
 		catch (RuntimeException e)
 		{
-			System.out.println(LodUtil.LOD_VERTEX_FORMAT);
+			System.out.println(LodUtil.DH_VERTEX_FORMAT);
 			throw e;
 		}
 		
@@ -175,8 +176,7 @@ public class DhTerrainShaderProgram extends ShaderProgram implements IDhApiShade
 		this.setUniform(this.uCombinedMatrix, combinedMatrix);
 		this.setUniform(this.uMircoOffset, 0.01f); // 0.01 block offset
 		
-		// setUniform(skyLightUniform, skyLight);
-		this.setUniform(this.uLightMap, 0); // TODO this should probably be passed in
+		this.setUniform(this.uLightMap, ILightMapWrapper.BOUND_INDEX);
 		
 		this.setUniform(this.uWorldYOffset, (float) renderParameters.worldYOffset);
 		
@@ -197,24 +197,18 @@ public class DhTerrainShaderProgram extends ShaderProgram implements IDhApiShade
 		// Noise Uniforms
 		this.setUniform(this.uNoiseEnabled, Config.Client.Advanced.Graphics.NoiseTexture.enableNoiseTexture.get());
 		this.setUniform(this.uNoiseSteps, Config.Client.Advanced.Graphics.NoiseTexture.noiseSteps.get());
-		this.setUniform(this.uNoiseIntensity, Config.Client.Advanced.Graphics.NoiseTexture.noiseIntensity.get().floatValue());
+		this.setUniform(this.uNoiseIntensity, Config.Client.Advanced.Graphics.NoiseTexture.noiseIntensity.get());
 		this.setUniform(this.uNoiseDropoff, Config.Client.Advanced.Graphics.NoiseTexture.noiseDropoff.get());
 		
 		// Debug
 		this.setUniform(this.uIsWhiteWorld, Config.Client.Advanced.Debugging.enableWhiteWorld.get());
 		
 		// Clip Uniform
-		float dhNearClipDistance = RenderUtil.getNearClipPlaneInBlocksForFading(renderParameters.partialTicks);
+		float dhNearClipDistance = RenderUtil.getNearClipPlaneInBlocks();
 		if (!Config.Client.Advanced.Debugging.lodOnlyMode.get())
 		{
 			// this added value prevents the near clip plane and discard circle from touching, which looks bad
 			dhNearClipDistance += 16f;
-		}
-		// if the player is very high up and the near clip plane has been modified, disable the distance clipping
-		// we're high enough that nothing will render on top of the player and this can cause issues otherwise
-		if (RenderUtil.getHeightBasedNearClipOverride() != -1)
-		{
-			dhNearClipDistance = 1.0f;
 		}
 		this.setUniform(this.uClipDistance, dhNearClipDistance);
 	}

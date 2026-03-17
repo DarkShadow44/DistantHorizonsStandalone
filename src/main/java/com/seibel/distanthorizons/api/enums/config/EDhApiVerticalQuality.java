@@ -53,7 +53,7 @@ public enum EDhApiVerticalQuality
 	
 	
 	
-	public int calculateMaxVerticalData(byte dataDetail)
+	public int calculateMaxNumberOfVerticalSlicesAtDetailLevel(byte dataDetail)
 	{
 		// for detail levels lower than what the enum defines, use the lowest quality item
 		int index = MathUtil.clamp(0, dataDetail, this.maxVerticalData.length - 1);

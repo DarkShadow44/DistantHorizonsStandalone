@@ -109,29 +109,28 @@ public class FogRenderer
 	
 	public void render(Mat4f modelViewProjectionMatrix, float partialTicks)
 	{
-		// needed in MC 1.16.5 probably due to MC not manually setting each GL state they need before the next rendering step
-		GLState state = new GLState();
-		
-		this.init();
-		
-		// resize the framebuffer if necessary
-		int width = MC_RENDER.getTargetFramebufferViewportWidth();
-		int height = MC_RENDER.getTargetFramebufferViewportHeight();
-		if (this.width != width || this.height != height)
+		// GLState needed in MC 1.16.5 probably due to MC not manually setting each GL state they need before the next rendering step
+		try (GLState state = new GLState())
 		{
-			this.width = width;
-			this.height = height;
-			this.createFramebuffer(width, height);
+			this.init();
+			
+			// resize the framebuffer if necessary
+			int width = MC_RENDER.getTargetFramebufferViewportWidth();
+			int height = MC_RENDER.getTargetFramebufferViewportHeight();
+			if (this.width != width || this.height != height)
+			{
+				this.width = width;
+				this.height = height;
+				this.createFramebuffer(width, height);
+			}
+			
+			FogShader.INSTANCE.frameBuffer = this.fogFramebuffer;
+			FogShader.INSTANCE.setProjectionMatrix(modelViewProjectionMatrix);
+			FogShader.INSTANCE.render(partialTicks);
+			
+			FogApplyShader.INSTANCE.fogTexture = this.fogTexture;
+			FogApplyShader.INSTANCE.render(partialTicks);
 		}
-		
-		FogShader.INSTANCE.frameBuffer = this.fogFramebuffer;
-		FogShader.INSTANCE.setProjectionMatrix(modelViewProjectionMatrix);
-		FogShader.INSTANCE.render(partialTicks);
-		
-		FogApplyShader.INSTANCE.fogTexture = this.fogTexture;
-		FogApplyShader.INSTANCE.render(partialTicks);
-		
-		state.restore();
 	}
 	
 	public void free()

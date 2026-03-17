@@ -1,8 +1,9 @@
-package com.seibel.distanthorizons.core.pooling;
+package com.seibel.distanthorizons.core.util.objects.pooling;
 
 import com.seibel.distanthorizons.core.util.ListUtil;
 import com.seibel.distanthorizons.coreapi.util.StringUtil;
 import it.unimi.dsi.fastutil.bytes.ByteArrayList;
+import it.unimi.dsi.fastutil.chars.CharArrayList;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.shorts.ShortArrayList;
 import org.jetbrains.annotations.NotNull;
@@ -39,6 +40,7 @@ public class PhantomArrayListCheckout implements AutoCloseable
 	private final ArrayList<ByteArrayList> byteArrayLists = new ArrayList<>();
 	private final ArrayList<ShortArrayList> shortArrayLists = new ArrayList<>();
 	private final ArrayList<LongArrayList> longArrayLists = new ArrayList<>();
+	private final ArrayList<CharArrayList> charArrayLists = new ArrayList<>();
 	
 	
 	
@@ -71,6 +73,7 @@ public class PhantomArrayListCheckout implements AutoCloseable
 	public void addByteArrayList(ByteArrayList list) { this.byteArrayLists.add(list); }
 	public void addShortArrayList(ShortArrayList list) { this.shortArrayLists.add(list); }
 	public void addLongArrayListRef(LongArrayList list) { this.longArrayLists.add(list); }
+	public void addCharArrayListRef(CharArrayList list) { this.charArrayLists.add(list); }
 	
 	
 	
@@ -81,6 +84,7 @@ public class PhantomArrayListCheckout implements AutoCloseable
 	public int getByteArrayCount() { return this.byteArrayLists.size(); }
 	public int getShortArrayCount() { return this.shortArrayLists.size(); }
 	public int getLongArrayCount() { return this.longArrayLists.size(); }
+	public int getCharArrayCount() { return this.charArrayLists.size(); }
 	
 	
 	
@@ -102,10 +106,17 @@ public class PhantomArrayListCheckout implements AutoCloseable
 		ListUtil.clearAndSetSize(list, size);
 		return list;
 	}
+	public CharArrayList getCharArray(int index, int size)
+	{
+		CharArrayList list = this.charArrayLists.get(index);
+		ListUtil.clearAndSetSize(list, size);
+		return list;
+	}
 	
 	public ArrayList<ByteArrayList> getAllByteArrays() { return this.byteArrayLists; }
 	public ArrayList<ShortArrayList> getAllShortArrays() { return this.shortArrayLists; }
 	public ArrayList<LongArrayList> getAllLongArrays() { return this.longArrayLists; }
+	public ArrayList<CharArrayList> getAllCharArrays() { return this.charArrayLists; }
 	
 	
 	

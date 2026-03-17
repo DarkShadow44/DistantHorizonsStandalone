@@ -22,21 +22,17 @@ package com.seibel.distanthorizons.core.util.objects.quadTree;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos2D;
-import com.seibel.distanthorizons.core.pos.DhLodPos;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
-import com.seibel.distanthorizons.core.pos.Pos2D;
 import com.seibel.distanthorizons.core.util.LodUtil;
 import com.seibel.distanthorizons.coreapi.util.BitShiftUtil;
 import com.seibel.distanthorizons.coreapi.util.MathUtil;
 import com.seibel.distanthorizons.core.util.gridList.MovableGridRingList;
 import it.unimi.dsi.fastutil.longs.LongArrayFIFOQueue;
 import it.unimi.dsi.fastutil.longs.LongIterator;
-import com.seibel.distanthorizons.core.logging.DhLogger;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.function.LongConsumer;
 
 /**
@@ -68,6 +64,11 @@ public class QuadTree<T>
 	
 	
 	
+	//=============//
+	// constructor //
+	//=============//
+	//region
+	
 	/**
 	 * Constructor of the quadTree
 	 *
@@ -85,22 +86,109 @@ public class QuadTree<T>
 		int halfSizeInRootNodes = Math.floorDiv(this.diameterInBlocks, 2) / BitShiftUtil.powerOfTwo(this.treeRootDetailLevel);
 		halfSizeInRootNodes = halfSizeInRootNodes + 1; // always add 1 so nodes will always have a parent, even if the tree's center is offset from the root node grid 
 		
-		Pos2D ringListCenterPos = new Pos2D(
+		MovableGridRingList.Pos2D ringListCenterPos = new MovableGridRingList.Pos2D(
 				BitShiftUtil.divideByPowerOfTwo(this.centerBlockPos.x, this.treeRootDetailLevel),
 				BitShiftUtil.divideByPowerOfTwo(this.centerBlockPos.z, this.treeRootDetailLevel));
 		this.topRingList = new MovableGridRingList<>(halfSizeInRootNodes, ringListCenterPos.getX(), ringListCenterPos.getY());
 		
 	}
 	
+	//endregion
 	
 	
-	//=====================//
-	// getters and setters //
-	//=====================//
+	
+	//==================//
+	// property getters //
+	//==================//
+	//region
+	
+	/** @return the number of non-null nodes in the tree */
+	public int nodeCount()
+	{
+		int count = 0;
+		for (QuadNode<T> node : this.topRingList)
+		{
+			if (node == null)
+			{
+				continue;
+			}
+			
+			Iterator<QuadNode<T>> nodeIterator = node.getNodeIterator();
+			while (nodeIterator.hasNext())
+			{
+				if (nodeIterator.next().value != null)
+				{
+					count++;
+				}
+			}
+		}
+		
+		return count;
+	}
+	
+	/** @return the number of leaf nodes in the tree */
+	public int leafNodeCount()
+	{
+		int count = 0;
+		for (QuadNode<T> node : this.topRingList)
+		{
+			if (node == null)
+			{
+				continue;
+			}
+			
+			Iterator<QuadNode<T>> leafNodeIterator = node.getLeafNodeIterator();
+			while (leafNodeIterator.hasNext())
+			{
+				leafNodeIterator.next();
+				count++;
+			}
+		}
+		
+		return count;
+	}
+	
+	
+	/**
+	 * A tree will always have 9 root nodes, 
+	 * this is because the tree will grow all the way up to the top where it is a 3x3 grid.
+	 * If this is ever changed then these values must also change
+	 *
+	 */
+	public int ringListWidth() { return 3; }
+	public int ringListHalfWidth() { return 1; }
+	public int diameterInBlocks() { return this.diameterInBlocks; }
+	
+	//endregion
+	
+	
+	
+	//==========================//
+	// node getters and setters //
+	//==========================//
+	//region
+	
+	/** @return the value at the given section position. Null will be returned if the value is missing or the position is out of bounds. */
+	@Nullable
+	public final T tryGetValue(long pos)
+	{
+		QuadNode<T> node = this.tryGetNode(pos);
+		if (node != null)
+		{
+			return node.value;
+		}
+		return null;
+	}
+	
+	/** @return the node at the given section position, null if out of bounds */
+	@Nullable
+	public final QuadNode<T> tryGetNode(long pos) { return this.getOrSetNode(pos, false, null, false); }
+	
 	
 	/** @return the node at the given section position */
 	@Nullable
 	public final QuadNode<T> getNode(long pos) throws IndexOutOfBoundsException { return this.getOrSetNode(pos, false, null, true); }
+	
 	/** @return the value at the given section position */
 	@Nullable
 	public final T getValue(long pos) throws IndexOutOfBoundsException
@@ -122,16 +210,24 @@ public class QuadTree<T>
 		return previousValue;
 	}
 	
-	/** @param runBoundaryChecks should only ever be set to true internally for removing out of bound nodes */
+	/** @param throwIfOutOfBounds if false returns null */
 	@Nullable
-	protected final QuadNode<T> getOrSetNode(long pos, boolean setNewValue, T newValue, boolean runBoundaryChecks) throws IndexOutOfBoundsException
+	protected final QuadNode<T> getOrSetNode(long pos, boolean setNewValue, T newValue, boolean throwIfOutOfBounds) throws IndexOutOfBoundsException
 	{
-		if (runBoundaryChecks && !this.isSectionPosInBounds(pos))
+		if (!this.isSectionPosInBounds(pos))
 		{
-			int radius = this.diameterInBlocks() / 2;
-			DhBlockPos2D minPos = this.getCenterBlockPos().add(new DhBlockPos2D(-radius, -radius));
-			DhBlockPos2D maxPos = this.getCenterBlockPos().add(new DhBlockPos2D(radius, radius));
-			throw new IndexOutOfBoundsException("QuadTree GetOrSet failed. Position out of bounds, min pos: " + minPos + ", max pos: " + maxPos + ", min detail level: " + this.treeLeafDetailLevel + ", max detail level: " + this.treeRootDetailLevel + ". Given Position: [" + DhSectionPos.toString(pos) + "] = block pos: " + DhSectionPos.convertToDetailLevel(pos, LodUtil.BLOCK_DETAIL_LEVEL));
+			// how should out-of-bounds positions be handled?
+			if (throwIfOutOfBounds)
+			{
+				int radius = this.diameterInBlocks() / 2;
+				DhBlockPos2D minBlockPos = this.getCenterBlockPos().add(new DhBlockPos2D(-radius, -radius));
+				DhBlockPos2D maxBlockPos = this.getCenterBlockPos().add(new DhBlockPos2D(radius, radius));
+				throw new IndexOutOfBoundsException("QuadTree GetOrSet failed. Position out of bounds, min block pos: [" + minBlockPos + "], max block pos: [" + maxBlockPos + "], leaf detail level: [" + this.treeLeafDetailLevel + "], root detail level: [" + this.treeRootDetailLevel + "]. Requested section pos: [" + DhSectionPos.toString(pos) + "].");
+			}
+			else
+			{
+				return null;
+			}
 		}
 		
 		
@@ -182,26 +278,26 @@ public class QuadTree<T>
 		
 		// check if the testPos is within the X,Z boundary of the tree
 		DhBlockPos2D treeBlockCorner = this.centerBlockPos.add(new DhBlockPos2D(-this.diameterInBlocks / 2, -this.diameterInBlocks / 2));
-		DhLodPos treeCornerPos = new DhLodPos((byte) 0, treeBlockCorner.x, treeBlockCorner.z);
+		long treeCornerPos = DhSectionPos.encode((byte) 0, treeBlockCorner.x, treeBlockCorner.z);
 		
 		long inputSectionCorner = DhSectionPos.convertToDetailLevel(testPos, (byte) 0);
-		DhLodPos inputCornerPos = new DhLodPos((byte) 0, DhSectionPos.getX(inputSectionCorner), DhSectionPos.getZ(inputSectionCorner));
+		long inputCornerPos = DhSectionPos.encode((byte) 0, DhSectionPos.getX(inputSectionCorner), DhSectionPos.getZ(inputSectionCorner));
 		int inputBlockWidth = BitShiftUtil.powerOfTwo(DhSectionPos.getDetailLevel(testPos));
 		
 		return DoSquaresOverlap(treeCornerPos, this.diameterInBlocks, inputCornerPos, inputBlockWidth);
 	}
-	private static boolean DoSquaresOverlap(DhLodPos square1Min, int square1Width, DhLodPos square2Min, int square2Width)
+	private static boolean DoSquaresOverlap(long square1Min, int square1Width, long square2Min, int square2Width)
 	{
 		// Determine the coordinates of the squares (the variables say rect[angle] because this logic would also work there and was simplified to work for squares)
-		float rect1MinX = square1Min.x;
-		float rect1MaxX = square1Min.x + square1Width;
-		float rect1MinZ = square1Min.z;
-		float rect1MaxZ = square1Min.z + square1Width;
+		float rect1MinX = DhSectionPos.getX(square1Min);
+		float rect1MaxX = DhSectionPos.getX(square1Min) + square1Width;
+		float rect1MinZ = DhSectionPos.getZ(square1Min);
+		float rect1MaxZ = DhSectionPos.getZ(square1Min) + square1Width;
 		
-		float rect2MinX = square2Min.x;
-		float rect2MaxX = square2Min.x + square2Width;
-		float rect2MinZ = square2Min.z;
-		float rect2MaxZ = square2Min.z + square2Width;
+		float rect2MinX = DhSectionPos.getX(square2Min);
+		float rect2MaxX = DhSectionPos.getX(square2Min) + square2Width;
+		float rect2MinZ = DhSectionPos.getZ(square2Min);
+		float rect2MaxZ = DhSectionPos.getZ(square2Min) + square2Width;
 		
 		// Check if the squares overlap
 		return
@@ -232,11 +328,14 @@ public class QuadTree<T>
 		return childCount;
 	}
 	
+	//endregion
+	
 	
 	
 	//===========//
 	// iterators //
 	//===========//
+	//region
 	
 	/** can include null nodes */
 	public LongIterator rootNodePosIterator() { return new QuadTreeRootPosIterator(true, null); }
@@ -246,18 +345,21 @@ public class QuadTree<T>
 	public Iterator<QuadNode<T>> nodeIterator() { return new QuadTreeNodeIterator(false, null); }
 	public Iterator<QuadNode<T>> leafNodeIterator() { return new QuadTreeNodeIterator(true, null); }
 	
+	//endregion
+	
 	
 	
 	//================//
 	// get/set center //
 	//================//
+	//region
 	
 	public void setCenterBlockPos(DhBlockPos2D newCenterPos) { this.setCenterBlockPos(newCenterPos, null); }
 	public void setCenterBlockPos(DhBlockPos2D newCenterPos, Consumer<? super T> removedItemConsumer)
 	{
 		this.centerBlockPos = newCenterPos;
 		
-		Pos2D expectedCenterPos = new Pos2D(
+		MovableGridRingList.Pos2D expectedCenterPos = new MovableGridRingList.Pos2D(
 				BitShiftUtil.divideByPowerOfTwo(this.centerBlockPos.x, this.treeRootDetailLevel),
 				BitShiftUtil.divideByPowerOfTwo(this.centerBlockPos.z, this.treeRootDetailLevel));
 		
@@ -278,122 +380,20 @@ public class QuadTree<T>
 				removedItemConsumer.accept(quadNode.value);
 			}
 		});
-
-
-//		// remove out of bound nodes and clean up empty nodes
-//		// Note: this will iterate over a lot of unnecessary nodes, hopefully speed won't be an issue
-//		Iterator<DhSectionPos> rootNodePosIterator = this.rootNodePosIterator();
-//		while (rootNodePosIterator.hasNext())
-//		{
-//			// get the root node (regular nodeIterators won't return them if they are out of bounds)
-//			DhSectionPos rootPos = rootNodePosIterator.next();
-//			QuadNode<T> rootNode = this.getOrSetNode(rootPos, false, null, false);
-//			if (rootNode == null)
-//			{
-//				continue;
-//			}
-//			
-//			// remove any child nodes that are out of bounds
-//			Iterator<QuadNode<T>> nodeIterator = this.nodeIterator();
-//			while (nodeIterator.hasNext())
-//			{
-//				QuadNode<T> node = nodeIterator.next();
-//				if(!this.isSectionPosInBounds(node.sectionPos))
-//				{
-//					// node is out of bounds
-//					
-//					// FIXME(?) this appears to potentially return large nodes that are partially or entirely in bounds
-//					
-//					if (node.getNonNullChildCount() == 0)
-//					{
-//						// no child nodes, can be safely removed
-//						nodeIterator.remove();
-//					}
-//					else
-//					{
-//						// node can't be removed, but its value can be set to null
-//						node.value = null;
-//					}
-//				}
-//			}
-//		}
-		
 	}
 	
 	public final DhBlockPos2D getCenterBlockPos() { return this.centerBlockPos; }
+	
+	//endregion
 	
 	
 	
 	//==============//
 	// base methods //
 	//==============//
+	//region
 	
 	public boolean isEmpty() { return this.nodeCount() == 0; } // this should be rewritten to short-circuit
-	
-	/** @return the number of non-null nodes in the tree */
-	public int nodeCount()
-	{
-		int count = 0;
-		for (QuadNode<T> node : this.topRingList)
-		{
-			if (node == null)
-			{
-				continue;
-			}
-			
-			Iterator<QuadNode<T>> nodeIterator = node.getNodeIterator();
-			while (nodeIterator.hasNext())
-			{
-				if (nodeIterator.next().value != null)
-				{
-					count++;
-				}
-			}
-		}
-		
-		return count;
-	}
-	
-	/** @return the number of leaf nodes in the tree */
-	public int leafNodeCount()
-	{
-		int count = 0;
-		for (QuadNode<T> node : this.topRingList)
-		{
-			if (node == null)
-			{
-				continue;
-			}
-			
-			Iterator<QuadNode<T>> leafNodeIterator = node.getLeafNodeIterator();
-			while (leafNodeIterator.hasNext())
-			{
-				leafNodeIterator.next();
-				count++;
-			}
-		}
-		
-		return count;
-	}
-	
-	
-	// TODO comment, currently a tree will always have 9 root nodes, because the tree will grow all the way up to the top, if this is ever changed then these values must also change 
-	public int ringListWidth() { return 3; }
-	public int ringListHalfWidth() { return 1; }
-	public int diameterInBlocks() { return this.diameterInBlocks; }
-
-//	public String getDebugString()
-//	{
-//		StringBuilder sb = new StringBuilder();
-//		for (byte i = 0; i < this.ringLists.length; i++)
-//		{
-//			sb.append("Layer ").append(i + TREE_LOWEST_DETAIL_LEVEL).append(":\n");
-//			sb.append(this.ringLists[i].toDetailString());
-//			sb.append("\n");
-//			sb.append("\n");
-//		}
-//		return sb.toString();
-//	}
 	
 	@Override
 	public String toString() 
@@ -404,11 +404,14 @@ public class QuadTree<T>
 				"leaf #: " + this.leafNodeCount(); 
 	}
 	
+	//endregion
+	
 	
 	
 	//==================//
 	// iterator classes //
 	//==================//
+	//region
 	
 	/** @see INodeIteratorStoppingFunc#iteratorShouldStop(QuadNode)  */
 	@FunctionalInterface
@@ -544,7 +547,9 @@ public class QuadTree<T>
 					&& this.rootNodeIterator.hasNext())
 			{
 				long sectionPos = this.rootNodeIterator.nextLong();
-				QuadNode<T> rootNode = QuadTree.this.getNode(sectionPos);
+				
+				// try-get to prevent concurrency errors if the tree is being moved while we walk through it
+				QuadNode<T> rootNode = QuadTree.this.tryGetNode(sectionPos);
 				if (rootNode != null)
 				{
 					nodeIterator = this.onlyReturnLeaves ? rootNode.getLeafNodeIterator() : rootNode.getNodeIterator(this.stopIteratingFunc);
@@ -574,6 +579,8 @@ public class QuadTree<T>
 		public void forEachRemaining(Consumer<? super QuadNode<T>> action) { Iterator.super.forEachRemaining(action); }
 		
 	}
+	
+	//endregion
 	
 	
 }

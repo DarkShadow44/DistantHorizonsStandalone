@@ -173,7 +173,7 @@ public class DatabaseUpdater
 	/** @throws NullPointerException if any of the script files failed to be read. */
 	private static ArrayList<SqlScript> getAutoUpdateScripts() throws NullPointerException, IOException
 	{
-		final ClassLoader loader = Thread.currentThread().getContextClassLoader();
+		final ClassLoader loader = DatabaseUpdater.class.getClassLoader();
 		
 		
 		// get the script list

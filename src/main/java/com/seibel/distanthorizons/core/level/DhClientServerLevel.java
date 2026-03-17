@@ -21,6 +21,7 @@ package com.seibel.distanthorizons.core.level;
 
 import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
+import com.seibel.distanthorizons.core.enums.MinecraftTextFormat;
 import com.seibel.distanthorizons.core.file.structure.ISaveStructure;
 import com.seibel.distanthorizons.core.multiplayer.server.ServerPlayerStateManager;
 import com.seibel.distanthorizons.core.render.RenderBufferHandler;
@@ -49,6 +50,7 @@ public class DhClientServerLevel extends AbstractDhServerLevel implements IDhCli
 	//=============//
 	// constructor //
 	//=============//
+	//region
 	
 	public DhClientServerLevel(
 		ISaveStructure saveStructure, 
@@ -63,30 +65,42 @@ public class DhClientServerLevel extends AbstractDhServerLevel implements IDhCli
 		this.runRepoReliantSetup();
 	}
 	
+	//endregion
+	
 	
 	
 	//==============//
 	// tick methods //
 	//==============//
+	//region
 	
 	@Override
 	public void clientTick() { this.clientside.clientTick(); }
+	
+	//endregion
 	
 	
 	
 	//========//
 	// render //
 	//========//
+	//region
 	
 	public void startRenderer() { this.clientside.startRenderer(); }
 	
 	public void stopRenderer() { this.clientside.stopRenderer(); }
+	
+	@Override
+	public boolean isRendering() { return this.clientside.isRendering(); }
+	
+	//endregion
 	
 	
 	
 	//================//
 	// level handling //
 	//================//
+	//region
 	
 	@Nullable
 	@Override
@@ -95,19 +109,29 @@ public class DhClientServerLevel extends AbstractDhServerLevel implements IDhCli
 	@Override
 	public void clearRenderCache() { this.clientside.clearRenderCache(); }
 	
+	//endregion
+	
 	
 	
 	//===========//
 	// debugging //
 	//===========//
+	//region
 	
 	@Override
 	public void addDebugMenuStringsToList(List<String> messageList)
 	{
 		// header
+		String o = MinecraftTextFormat.ORANGE;
+		String y = MinecraftTextFormat.YELLOW;
+		String g = MinecraftTextFormat.GREEN;
+		String cf = MinecraftTextFormat.CLEAR_FORMATTING;
+		
+		
 		String dimName = this.serverLevelWrapper.getDhIdentifier();
 		boolean rendering = this.clientside.isRendering();
-		messageList.add("["+dimName+"] rendering: "+(rendering ? "yes" : "no"));
+		String renderingString = rendering ? (g+"yes"+cf) : (o+"no"+cf);
+		messageList.add("["+y+dimName+cf+"] rendering: "+renderingString);
 		
 		super.addDebugMenuStringsToList(messageList);
 	}
@@ -122,11 +146,14 @@ public class DhClientServerLevel extends AbstractDhServerLevel implements IDhCli
 		return (renderState != null) ? renderState.renderBufferHandler : null;
 	}
 	
+	//endregion
+	
 	
 	
 	//===============//
 	// data handling //
 	//===============//
+	//region
 	
 	@Override
 	public void onWorldGenTaskComplete(long pos)
@@ -135,11 +162,14 @@ public class DhClientServerLevel extends AbstractDhServerLevel implements IDhCli
 		this.clientside.reloadPos(pos);
 	}
 	
+	//endregion
+	
 	
 	
 	//================//
 	// base overrides //
 	//================//
+	//region
 	
 	@Override
 	public String toString() { return "DhClientServerLevel{"+this.serverLevelWrapper.getKeyedLevelDimensionName()+"}"; }
@@ -152,5 +182,9 @@ public class DhClientServerLevel extends AbstractDhServerLevel implements IDhCli
 		this.serverside.close();
 		LOGGER.info("Closed " + this.getClass().getSimpleName() + " for " + this.getServerLevelWrapper());
 	}
+	
+	//endregion
+	
+	
 	
 }

@@ -26,8 +26,10 @@ import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.jar.EPlatform;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
+import com.seibel.distanthorizons.core.util.TimerUtil;
 import com.seibel.distanthorizons.core.util.objects.GLMessages.*;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
+import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
 import com.seibel.distanthorizons.coreapi.ModInfo;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.opengl.GL;
@@ -38,6 +40,7 @@ import org.lwjgl.opengl.GLUtil;
 import java.io.PrintStream;
 import java.util.Collections;
 import java.util.Set;
+import java.util.Timer;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -48,6 +51,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public class GLProxy
 {
 	private static final IMinecraftClientWrapper MC = SingletonInjector.INSTANCE.get(IMinecraftClientWrapper.class);
+	private static final IMinecraftRenderWrapper MC_RENDER = SingletonInjector.INSTANCE.get(IMinecraftRenderWrapper.class);
 	
 	public static final DhLogger LOGGER = new DhLoggerBuilder()
 			.fileLevelConfig(Config.Common.Logging.logRendererGLEventToFile)
@@ -57,6 +61,10 @@ public class GLProxy
 	public static final Set<String> LOGGED_GL_MESSAGES = Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
 	
 	private static final ConcurrentLinkedQueue<Runnable> RENDER_THREAD_RUNNABLE_QUEUE = new ConcurrentLinkedQueue<>();
+	
+	private static final Timer TIMER = TimerUtil.CreateTimer("Cleanup timer");
+	private static final long MS_BETWEEN_CLEANUP_TICKS = 1_000L;
+	private static final long MS_BEFORE_RUN_CLEANUP_TIMER = 1_000L;
 	
 	
 	
@@ -98,11 +106,14 @@ public class GLProxy
 			null
 	);
 	
+	private long msSinceGlTasksRun = System.currentTimeMillis(); 
+	
 	
 	
 	//=============//
 	// constructor //
 	//=============//
+	//region
 	
 	private GLProxy() throws IllegalStateException
 	{
@@ -193,6 +204,8 @@ public class GLProxy
 		LOGGER.info("GPU Vendor [" + vendor + "] with OS [" + EPlatform.get().getName() + "], Preferred upload method is [" + this.preferredUploadMethod + "].");
 		
 		
+		TIMER.scheduleAtFixedRate(TimerUtil.createTimerTask(this::manualGlCleanupTick), MS_BETWEEN_CLEANUP_TICKS, MS_BETWEEN_CLEANUP_TICKS);
+		
 		
 		//==========//
 		// clean up //
@@ -202,11 +215,14 @@ public class GLProxy
 		LOGGER.info(GLProxy.class.getSimpleName() + " creation successful. OpenGL smiles upon you this day.");
 	}
 	
+	//endregion
+	
 	
 	
 	//=========//
 	// getters //
 	//=========//
+	//region
 	
 	public static boolean hasInstance() { return instance != null; }
 	/** @throws IllegalStateException if the Proxy hasn't been created yet and this is called outside the render thread */
@@ -237,11 +253,14 @@ public class GLProxy
 		return currentContext != 0L; // if the context isn't null, it's the MC context
 	}
 	
+	//endregion
+	
 	
 	
 	//=========================//
 	// Worker Thread Runnables //
 	//=========================//
+	//region
 	
 	public static void queueRunningOnRenderThread(Runnable renderCall)
 	{
@@ -266,9 +285,22 @@ public class GLProxy
 	 * Doesn't do any thread/GL Context validation.
 	 * Running this outside of the render thread may cause crashes or other issues. 
 	 */
-	public static void runRenderThreadTasks()
+	public void runRenderThreadTasks()
 	{
-		long startTime = System.nanoTime();
+		int frameLimit = MC_RENDER.getFrameLimit();
+		if (frameLimit <= 1)
+		{
+			frameLimit = 4; // 240 FPS
+		}
+		
+		// https://fpstoms.com/
+		int msPerFrame = 1000 / frameLimit;
+		this.runRenderThreadTasks(msPerFrame);
+	}
+	private void runRenderThreadTasks(long msMaxRunTime)
+	{
+		long startTimeMs = System.currentTimeMillis();
+		this.msSinceGlTasksRun = startTimeMs;
 		
 		Runnable runnable = RENDER_THREAD_RUNNABLE_QUEUE.poll();
 		while(runnable != null)
@@ -276,9 +308,9 @@ public class GLProxy
 			runnable.run();
 			
 			// only try running for 4ms (240 FPS) at a time to prevent random lag spikes
-			long currentTime = System.nanoTime();
-			long runDuration = currentTime - startTime;
-			if (runDuration > 4_000_000)
+			long currentTimeMs = System.currentTimeMillis();
+			long runDuration = currentTimeMs - startTimeMs;
+			if (runDuration > msMaxRunTime)
 			{
 				break;
 			}
@@ -287,11 +319,34 @@ public class GLProxy
 		}
 	}
 	
+	/** 
+	 * Should only be called if our render code isn't being hit for some reason.
+	 * Normally this only happens if there's a mod that limits MC's framerate to 0.
+	 */
+	private void manualGlCleanupTick()
+	{
+		long nowMs = System.currentTimeMillis();
+		long msSinceLast = nowMs - this.msSinceGlTasksRun;
+		if (msSinceLast > MS_BEFORE_RUN_CLEANUP_TIMER)
+		{
+			return;
+		}
+		
+		// We haven't gotten a frame for a while,
+		// this means we could have GL jobs building up.
+		// Run the queued tasks on MC's executor (hopefully this should always run,
+		// even if DH's render code isn't being hit).
+		MC.executeOnRenderThread(() -> this.runRenderThreadTasks(1_000));
+	}
+	
+	//endregion
+	
 	
 	
 	//=========//
 	// logging //
 	//=========//
+	//region
 	
 	/** this method is called on the render thread at the point of the GL Error */
 	private static void logMessage(GLMessage msg)
@@ -359,11 +414,14 @@ public class GLProxy
 		}
 	}
 	
+	//endregion
+	
 	
 	
 	//================//
 	// helper methods //
 	//================//
+	//region
 	
 	private String getFailedVersionInfo(GLCapabilities c)
 	{
@@ -383,6 +441,8 @@ public class GLProxy
 				"Vertex Attribute Buffer Binding: [" + (c.glVertexAttribBinding != 0) + "] <- optional improvement\n" +
 				"Buffer Storage: [" + (c.glBufferStorage != 0) + "] <- optional improvement\n";
 	}
+	
+	//endregion
 	
 	
 	

@@ -66,10 +66,9 @@ public class DhFadeShader extends AbstractShaderRenderer
 	public void onInit()
 	{
 		this.shader = new ShaderProgram(
-				"shaders/normal.vert", 
-				"shaders/fade/dhFade.frag",
-				"fragColor", 
-				new String[]{"vPosition"}
+			"shaders/quadApply.vert",
+			"shaders/fade/dhFade.frag",
+			"vPosition"
 		);
 		
 		// all uniforms should be tryGet...
@@ -108,9 +107,9 @@ public class DhFadeShader extends AbstractShaderRenderer
 		
 	}
 	
-	public void setProjectionMatrix(Mat4f mcModelViewMatrix, Mat4f mcProjectionMatrix, float partialTicks)
+	public void setProjectionMatrix(Mat4f mcModelViewMatrix, Mat4f mcProjectionMatrix)
 	{
-		Mat4f dhProjectionMatrix = RenderUtil.createLodProjectionMatrix(mcProjectionMatrix, partialTicks);
+		Mat4f dhProjectionMatrix = RenderUtil.createLodProjectionMatrix(mcProjectionMatrix);
 		Mat4f dhModelViewMatrix = RenderUtil.createLodModelViewMatrix(mcModelViewMatrix);
 		
 		Mat4f inverseDhModelViewProjectionMatrix = new Mat4f(dhProjectionMatrix);

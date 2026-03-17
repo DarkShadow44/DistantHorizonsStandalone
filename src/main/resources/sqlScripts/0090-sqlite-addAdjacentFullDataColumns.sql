@@ -10,4 +10,3 @@ alter table FullData add column SouthAdjData BLOB NULL;
 alter table FullData add column EastAdjData BLOB NULL;
 --batch--
 alter table FullData add column WestAdjData BLOB NULL;
---batch--

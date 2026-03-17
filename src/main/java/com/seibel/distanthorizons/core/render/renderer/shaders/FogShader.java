@@ -64,7 +64,8 @@ public class FogShader extends AbstractShaderRenderer
 	public int uFogColor;
 	public int uFogScale;
 	public int uFogVerticalScale;
-	public int uFullFogMode;
+	public int uFogDebugMode;
+	public int uFogFalloffType;
 	
 	// far fog
 	public int uFarFogStart;
@@ -102,8 +103,9 @@ public class FogShader extends AbstractShaderRenderer
 	public void onInit()
 	{
 		this.shader = new ShaderProgram(
-				"shaders/normal.vert", "shaders/fog/fog.frag",
-				"fragColor", new String[]{"vPosition"}
+			"shaders/quadApply.vert",
+			"shaders/fog/fog.frag",
+			"vPosition"
 		);
 		
 		// all uniforms should be tryGet...
@@ -116,7 +118,8 @@ public class FogShader extends AbstractShaderRenderer
 		this.uFogScale = this.shader.getUniformLocation("uFogScale");
 		this.uFogVerticalScale = this.shader.getUniformLocation("uFogVerticalScale");
 		this.uFogColor = this.shader.getUniformLocation("uFogColor");
-		this.uFullFogMode = this.shader.getUniformLocation("uFullFogMode");
+		this.uFogDebugMode = this.shader.getUniformLocation("uFogDebugMode");
+		this.uFogFalloffType = this.shader.getUniformLocation("uFogFalloffType");
 		
 		// fog config
 		this.uFarFogStart = this.shader.getUniformLocation("uFarFogStart");
@@ -168,15 +171,16 @@ public class FogShader extends AbstractShaderRenderer
 		this.shader.setUniform(this.uFogScale, 1.f / lodDrawDistance);
 		this.shader.setUniform(this.uFogVerticalScale, 1.f / MC.getWrappedClientLevel().getMaxHeight());
 		// only used for debugging
-		this.shader.setUniform(this.uFullFogMode, 0); // 1 = render everything with fog color // 7 = use debug rendering
+		this.shader.setUniform(this.uFogDebugMode, 0); // 1 = render everything with fog color // 7 = use debug rendering
+		this.shader.setUniform(this.uFogFalloffType, Config.Client.Advanced.Graphics.Fog.farFogFalloff.get().value);
 		
 		
 		// fog config
-		float farFogStart = Config.Client.Advanced.Graphics.Fog.farFogStart.get().floatValue();
-		float farFogEnd = Config.Client.Advanced.Graphics.Fog.farFogEnd.get().floatValue();
-		float farFogMin = Config.Client.Advanced.Graphics.Fog.farFogMin.get().floatValue();
-		float farFogMax = Config.Client.Advanced.Graphics.Fog.farFogMax.get().floatValue();
-		float farFogDensity = Config.Client.Advanced.Graphics.Fog.farFogDensity.get().floatValue();
+		float farFogStart = Config.Client.Advanced.Graphics.Fog.farFogStart.get();
+		float farFogEnd = Config.Client.Advanced.Graphics.Fog.farFogEnd.get();
+		float farFogMin = Config.Client.Advanced.Graphics.Fog.farFogMin.get();
+		float farFogMax = Config.Client.Advanced.Graphics.Fog.farFogMax.get();
+		float farFogDensity = Config.Client.Advanced.Graphics.Fog.farFogDensity.get();
 		
 		// override fog if underwater
 		if (MC_RENDER.isFogStateSpecial())
@@ -199,11 +203,11 @@ public class FogShader extends AbstractShaderRenderer
 		boolean useSphericalFog = heightFogMixingMode == EDhApiHeightFogMixMode.SPHERICAL;
 		EDhApiHeightFogDirection heightFogCameraDirection = Config.Client.Advanced.Graphics.Fog.HeightFog.heightFogDirection.get();
 		
-		float heightFogStart = Config.Client.Advanced.Graphics.Fog.HeightFog.heightFogStart.get().floatValue();
-		float heightFogEnd = Config.Client.Advanced.Graphics.Fog.HeightFog.heightFogEnd.get().floatValue();
-		float heightFogMin = Config.Client.Advanced.Graphics.Fog.HeightFog.heightFogMin.get().floatValue();
-		float heightFogMax = Config.Client.Advanced.Graphics.Fog.HeightFog.heightFogMax.get().floatValue();
-		float heightFogDensity = Config.Client.Advanced.Graphics.Fog.HeightFog.heightFogDensity.get().floatValue();
+		float heightFogStart = Config.Client.Advanced.Graphics.Fog.HeightFog.heightFogStart.get();
+		float heightFogEnd = Config.Client.Advanced.Graphics.Fog.HeightFog.heightFogEnd.get();
+		float heightFogMin = Config.Client.Advanced.Graphics.Fog.HeightFog.heightFogMin.get();
+		float heightFogMax = Config.Client.Advanced.Graphics.Fog.HeightFog.heightFogMax.get();
+		float heightFogDensity = Config.Client.Advanced.Graphics.Fog.HeightFog.heightFogDensity.get();
 		
 		this.shader.setUniform(this.uHeightFogStart, heightFogStart);
 		this.shader.setUniform(this.uHeightFogLength, heightFogEnd - heightFogStart);
@@ -214,7 +218,7 @@ public class FogShader extends AbstractShaderRenderer
 		
 		this.shader.setUniform(this.uHeightFogEnabled, heightFogEnabled);
 		this.shader.setUniform(this.uHeightFogFalloffType, Config.Client.Advanced.Graphics.Fog.HeightFog.heightFogFalloff.get().value);
-		this.shader.setUniform(this.uHeightFogBaseHeight, Config.Client.Advanced.Graphics.Fog.HeightFog.heightFogBaseHeight.get().floatValue());
+		this.shader.setUniform(this.uHeightFogBaseHeight, Config.Client.Advanced.Graphics.Fog.HeightFog.heightFogBaseHeight.get());
 		this.shader.setUniform(this.uHeightBasedOnCamera, heightFogCameraDirection.basedOnCamera);
 		this.shader.setUniform(this.uHeightFogAppliesUp, heightFogCameraDirection.fogAppliesUp);
 		this.shader.setUniform(this.uHeightFogAppliesDown, heightFogCameraDirection.fogAppliesDown);

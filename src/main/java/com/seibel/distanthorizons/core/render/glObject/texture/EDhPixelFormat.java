@@ -51,10 +51,10 @@ public enum EDhPixelFormat
 		}
 	}
 	
-	public int getGlFormat() { return glFormat; }
+	public int getGlFormat() { return this.glFormat; }
 	
-	public EGlVersion getMinimumGlVersion() { return minimumGlVersion; }
+	public EGlVersion getMinimumGlVersion() { return this.minimumGlVersion; }
 	
-	public boolean isInteger() { return isInteger; }
+	public boolean isInteger() { return this.isInteger; }
 	
 }

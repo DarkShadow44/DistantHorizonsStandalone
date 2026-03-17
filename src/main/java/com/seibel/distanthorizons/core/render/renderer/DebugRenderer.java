@@ -25,8 +25,6 @@ import com.seibel.distanthorizons.core.config.types.ConfigEntry;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
-import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos2D;
-import com.seibel.distanthorizons.core.pos.DhLodPos;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
 import com.seibel.distanthorizons.core.render.glObject.buffer.GLElementBuffer;
 import com.seibel.distanthorizons.core.render.glObject.buffer.GLVertexBuffer;
@@ -43,7 +41,6 @@ import org.jetbrains.annotations.Nullable;
 import org.lwjgl.opengl.GL32;
 
 import java.awt.*;
-import java.io.Closeable;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -51,7 +48,8 @@ import java.util.*;
 import java.util.concurrent.PriorityBlockingQueue;
 
 /**
- * Handles rendering the wireframe particles that are used for seeing what the system's doing.
+ * Handles rendering the wireframe particles 
+ * that are used for seeing what the system's doing.
  */
 public class DebugRenderer
 {
@@ -86,6 +84,7 @@ public class DebugRenderer
 	
 	/** A box from 0,0,0 to 1,1,1 */
 	private static final float[] BOX_VERTICES = {
+		//region
 			// Pos x y z
 			0, 0, 0,
 			1, 0, 0,
@@ -95,9 +94,11 @@ public class DebugRenderer
 			1, 0, 1,
 			1, 1, 1,
 			0, 1, 1,
+		//endregion
 	};
 	
 	private static final int[] BOX_OUTLINE_INDICES = {
+		//region
 			0, 1,
 			1, 2,
 			2, 3,
@@ -112,6 +113,7 @@ public class DebugRenderer
 			1, 5,
 			2, 6,
 			3, 7,
+		//endregion
 	};
 	
 	
@@ -119,6 +121,7 @@ public class DebugRenderer
 	//=============//
 	// constructor //
 	//=============//
+	//region
 	
 	private DebugRenderer() { }
 	
@@ -135,8 +138,11 @@ public class DebugRenderer
 		// Pos
 		this.va.setVertexAttribute(0, 0, VertexPointer.addVec3Pointer(false));
 		this.va.completeAndCheck(Float.BYTES * 3);
-		this.basicShader = new ShaderProgram("shaders/debug/vert.vert", "shaders/debug/frag.frag",
-				"fragColor", new String[]{"vPosition"});
+		this.basicShader = new ShaderProgram(
+			"shaders/debug/vert.vert",
+			"shaders/debug/frag.frag",
+			"vPosition"
+		);
 		this.createBuffer();
 	}
 	
@@ -162,11 +168,14 @@ public class DebugRenderer
 		
 	}
 	
+	//endregion
+	
 	
 	
 	//==============//
 	// registration //
 	//==============//
+	//region
 	
 	public static void makeParticle(BoxParticle particle)
 	{
@@ -184,11 +193,14 @@ public class DebugRenderer
 	
 	public static void clearRenderables() { INSTANCE.rendererLists.clearRenderables(); }
 	
+	//endregion
+	
 	
 	
 	//===========//
 	// rendering //
 	//===========//
+	//region
 	
 	public void render(Mat4f transform)
 	{
@@ -225,7 +237,8 @@ public class DebugRenderer
 		GL32.glPolygonMode(GL32.GL_FRONT_AND_BACK, GL32.GL_FILL);
 		for (BoxParticle particle : this.particles)
 		{
-			this.renderBox(particle.getBox());
+			// a new box is created each time since the height will be different based on the time it's lived
+			this.renderBox(particle.createNewRenderBox());
 		}
 	}
 	
@@ -233,18 +246,24 @@ public class DebugRenderer
 	{
 		Mat4f boxTransform = Mat4f.createTranslateMatrix(box.minPos.x - this.camPosFloatThisFrame.x, box.minPos.y - this.camPosFloatThisFrame.y, box.minPos.z - this.camPosFloatThisFrame.z);
 		boxTransform.multiply(Mat4f.createScaleMatrix(box.maxPos.x - box.minPos.x, box.maxPos.y - box.minPos.y, box.maxPos.z - box.minPos.z));
-		Mat4f t = this.transformationMatrixThisFrame.copy();
-		t.multiply(boxTransform);
-		this.basicShader.setUniform(this.basicShader.getUniformLocation("uTransform"), t);
+		
+		Mat4f transformMatrix = this.transformationMatrixThisFrame.copy();
+		transformMatrix.multiply(boxTransform);
+		this.basicShader.setUniform(this.basicShader.getUniformLocation("uTransform"), transformMatrix);
+		
 		this.basicShader.setUniform(this.basicShader.getUniformLocation("uColor"), box.color);
+		
 		GL32.glDrawElements(GL32.GL_LINES, BOX_OUTLINE_INDICES.length, GL32.GL_UNSIGNED_INT, 0);
 	}
+	
+	//endregion
 	
 	
 	
 	//================//
 	// helper classes //
 	//================//
+	//region
 	
 	public static final class Box
 	{
@@ -254,55 +273,26 @@ public class DebugRenderer
 		
 		
 		
+		public Box(long pos, float minY, float maxY, float marginPercent, Color color)
+		{
+			float edgeOffset = DhSectionPos.getBlockWidth(pos) * marginPercent;
+			
+			int minBlockPosX = DhSectionPos.getMinCornerBlockX(pos);
+			int minBlockPosZ = DhSectionPos.getMinCornerBlockZ(pos);
+			int maxBlockPosX = minBlockPosX + DhSectionPos.getBlockWidth(pos);
+			int maxBlockPosZ = minBlockPosZ + DhSectionPos.getBlockWidth(pos);
+			
+			this.minPos = new Vec3f(minBlockPosX + edgeOffset, minY, minBlockPosZ + edgeOffset);
+			this.maxPos = new Vec3f(maxBlockPosX - edgeOffset, maxY, maxBlockPosZ - edgeOffset);
+			this.color = color;
+		}
+		
+		/** only used for */
 		public Box(Vec3f minPos, Vec3f maxPos, Color color)
 		{
 			this.minPos = minPos;
 			this.maxPos = maxPos;
 			this.color = color;
-		}
-		
-		public Box(Vec3f minPos, Vec3f maxPos, Color color, Vec3f margin)
-		{
-			this.minPos = minPos;
-			this.minPos.add(margin);
-			this.maxPos = maxPos;
-			this.maxPos.subtract(margin);
-			this.color = color;
-		}
-		
-		public Box(DhLodPos pos, float minY, float maxY, float marginPercent, Color color)
-		{
-			DhBlockPos2D blockMin = pos.getCornerBlockPos();
-			DhBlockPos2D blockMax = blockMin.add(pos.getBlockWidth(), pos.getBlockWidth());
-			float edge = pos.getBlockWidth() * marginPercent;
-			Vec3f a = new Vec3f(blockMin.x + edge, minY, blockMin.z + edge);
-			Vec3f b = new Vec3f(blockMax.x - edge, maxY, blockMax.z - edge);
-			this.minPos = a;
-			this.maxPos = b;
-			this.color = color;
-		}
-		
-		public Box(DhLodPos pos, float y, float yDiff, Object hash, float marginPercent, Color color)
-		{
-			float hashY = ((float) hash.hashCode() / Integer.MAX_VALUE) * yDiff;
-			DhBlockPos2D blockMin = pos.getCornerBlockPos();
-			DhBlockPos2D blockMax = blockMin.add(pos.getBlockWidth(), pos.getBlockWidth());
-			float edge = pos.getBlockWidth() * marginPercent;
-			Vec3f a = new Vec3f(blockMin.x + edge, hashY, blockMin.z + edge);
-			Vec3f b = new Vec3f(blockMax.x - edge, hashY, blockMax.z - edge);
-			this.minPos = a;
-			this.maxPos = b;
-			this.color = color;
-		}
-		
-		public Box(long pos, float minY, float maxY, float marginPercent, Color color)
-		{
-			this(DhSectionPos.getSectionBBoxPos(pos), minY, maxY, marginPercent, color);
-		}
-		
-		public Box(long pos, float y, float yDiff, Object hash, float marginPercent, Color color)
-		{
-			this(DhSectionPos.getSectionBBoxPos(pos), y, yDiff, hash, marginPercent, color);
 		}
 		
 	}
@@ -314,6 +304,7 @@ public class DebugRenderer
 		public long durationInMs;
 		public float yChange;
 		
+		
 		private BoxParticle(Box box, long startMsTime, long durationInMs, float yChange)
 		{
 			this.box = box;
@@ -322,65 +313,32 @@ public class DebugRenderer
 			this.yChange = yChange;
 		}
 		
-		public BoxParticle(Box box, double secondDuration, float yChange) { this(box, System.currentTimeMillis(), (long) (secondDuration * 1_000), yChange); }
+		public BoxParticle(Box box, double secondDuration, float yChange)
+		{ this(box, System.currentTimeMillis(), (long) (secondDuration * 1_000), yChange); }
 		
 		
 		@Override
-		public int compareTo(@NotNull BoxParticle particle)
-		{
-			return Long.compare(this.startMsTime + this.durationInMs, particle.startMsTime + particle.durationInMs);
-		}
+		public int compareTo(@NotNull DebugRenderer.BoxParticle particle)
+		{ return Long.compare(this.startMsTime + this.durationInMs, particle.startMsTime + particle.durationInMs); }
 		
-		public Box getBox()
+		/** will change each time it's called based on the yChange value and time */
+		public Box createNewRenderBox()
 		{
 			long nowMs = System.currentTimeMillis();
+			
 			float percent = (nowMs - this.startMsTime) / (float) this.durationInMs;
 			percent = (float) Math.pow(percent, 4);
 			float yDiff = this.yChange * percent;
-			return new Box(new Vec3f(this.box.minPos.x, this.box.minPos.y + yDiff, this.box.minPos.z), new Vec3f(this.box.maxPos.x, this.box.maxPos.y + yDiff, this.box.maxPos.z), this.box.color);
+			
+			return new Box(
+				new Vec3f(this.box.minPos.x, this.box.minPos.y + yDiff, this.box.minPos.z),
+				new Vec3f(this.box.maxPos.x, this.box.maxPos.y + yDiff, this.box.maxPos.z),
+				this.box.color);
 		}
 		
 		public boolean isDead() { return (System.currentTimeMillis() - this.startMsTime) > this.durationInMs; }
 		
 	}
-	
-	public static final class BoxWithLife implements IDebugRenderable, Closeable
-	{
-		public Box box;
-		public BoxParticle particleOnClose;
-		
-		
-		public BoxWithLife(Box box, long ns, float yChange, Color deathColor)
-		{
-			this.box = box;
-			this.particleOnClose = new BoxParticle(new Box(box.minPos, box.maxPos, deathColor), -1, ns, yChange);
-			register(this, null);
-		}
-		
-		
-		public BoxWithLife(Box box, long ns, float yChange) { this(box, ns, yChange, box.color); }
-		
-		public BoxWithLife(Box box, double s, float yChange, Color deathColor)
-		{
-			this.box = box;
-			this.particleOnClose = new BoxParticle(new Box(box.minPos, box.maxPos, deathColor), s, yChange);
-		}
-		
-		public BoxWithLife(Box box, double s, float yChange) { this(box, s, yChange, box.color); }
-		
-		@Override
-		public void debugRender(DebugRenderer renderer) { renderer.renderBox(this.box); }
-		
-		@Override
-		public void close()
-		{
-			makeParticle(new BoxParticle(this.particleOnClose.getBox(), System.nanoTime(), this.particleOnClose.durationInMs, this.particleOnClose.yChange));
-			unregister(this, null);
-		}
-		
-	}
-	
-	
 	
 	private static class RendererLists
 	{
@@ -390,7 +348,10 @@ public class DebugRenderer
 		
 		
 		
+		//==============//
 		// registration //
+		//==============//
+		//region
 		
 		public void addRenderable(IDebugRenderable renderable, @Nullable ConfigEntry<Boolean> config)
 		{
@@ -463,9 +424,14 @@ public class DebugRenderer
 			}
 		}
 		
+		//endregion
 		
 		
+		
+		//===========//
 		// rendering //
+		//===========//
+		//region
 		
 		public void render(DebugRenderer debugRenderer)
 		{
@@ -506,6 +472,10 @@ public class DebugRenderer
 				}
 			}
 		}
+		
+		//endregion
 	}
+	
+	//endregion
 	
 }

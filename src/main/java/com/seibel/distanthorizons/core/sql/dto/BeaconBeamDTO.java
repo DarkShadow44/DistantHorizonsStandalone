@@ -76,6 +76,9 @@ public class BeaconBeamDTO implements IBaseDTO<DhBlockPos>, INetworkObject
 	public void close()
 	{ /* no closing needed */ }
 	
+	@Override 
+	public String toString() { return this.blockPos + " " + this.color; }
+	
 	
 	
 }

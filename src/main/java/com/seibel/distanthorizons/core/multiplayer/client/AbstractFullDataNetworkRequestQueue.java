@@ -1,7 +1,6 @@
 package com.seibel.distanthorizons.core.multiplayer.client;
 
 import com.google.common.base.Stopwatch;
-import com.google.common.cache.CacheBuilder;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.config.types.ConfigEntry;
 import com.seibel.distanthorizons.core.dataObjects.fullData.sources.FullDataSourceV2;
@@ -24,6 +23,7 @@ import com.seibel.distanthorizons.core.render.renderer.IDebugRenderable;
 import com.seibel.distanthorizons.core.sql.dto.FullDataSourceV2DTO;
 import com.seibel.distanthorizons.core.util.LodUtil;
 import com.seibel.distanthorizons.core.util.ratelimiting.SupplierBasedRateLimiter;
+import com.seibel.distanthorizons.core.util.threading.ThreadPoolUtil;
 import com.seibel.distanthorizons.core.world.DhApiWorldProxy;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
 
@@ -139,9 +139,6 @@ public abstract class AbstractFullDataNetworkRequestQueue implements IDebugRende
 						break;
 					case REQUIRES_SPLITTING:
 						break;
-					case FAIL:
-						this.failedRequests.incrementAndGet();
-						break;
 				}
 			});
 			
@@ -220,11 +217,18 @@ public abstract class AbstractFullDataNetworkRequestQueue implements IDebugRende
 				FullDataSourceResponseMessage.class
 		);
 		requestTask.networkDataSourceFuture = dataSourceNetworkFuture;
-		dataSourceNetworkFuture.handle((FullDataSourceResponseMessage response, Throwable throwable) ->
+		
+		Executor networkCompressionExecutor = ThreadPoolUtil.getNetworkCompressionExecutor();
+		if (networkCompressionExecutor == null)
+		{
+			return;
+		}
+		
+		dataSourceNetworkFuture.handleAsync((FullDataSourceResponseMessage response, Throwable throwable) ->
 		{
 			this.handleNetResponse(requestTask, response, throwable);
 			return null;
-		});
+		}, networkCompressionExecutor);
 	}
 	private void handleNetResponse(NetRequestTask requestTask, FullDataSourceResponseMessage response, Throwable throwable)
 	{
@@ -269,7 +273,7 @@ public abstract class AbstractFullDataNetworkRequestQueue implements IDebugRende
 		catch (RequestRejectedException e)
 		{
 			LOGGER.info("Request rejected by the server, message: [" + e.getMessage() + "].");
-			requestTask.future.complete(DataSourceRetrievalResult.CreateFail());
+			requestTask.future.completeExceptionally(e);
 		}
 		catch (RateLimitedException e)
 		{
@@ -298,7 +302,7 @@ public abstract class AbstractFullDataNetworkRequestQueue implements IDebugRende
 			}
 			else
 			{
-				requestTask.future.complete(DataSourceRetrievalResult.CreateFail());
+				requestTask.future.completeExceptionally(e);
 			}
 		}
 	}

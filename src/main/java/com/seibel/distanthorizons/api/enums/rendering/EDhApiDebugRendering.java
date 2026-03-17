@@ -43,11 +43,7 @@ public enum EDhApiDebugRendering
 	SHOW_BLOCK_MATERIAL,
 	
 	/** Only draw overlapping LOD quads. */
-	SHOW_OVERLAPPING_QUADS,
-	
-	/** LOD colors are based on renderSource flags. */
-	SHOW_RENDER_SOURCE_FLAG;
-	
+	SHOW_OVERLAPPING_QUADS;
 	
 	public static EDhApiDebugRendering next(EDhApiDebugRendering type)
 	{
@@ -60,7 +56,7 @@ public enum EDhApiDebugRendering
 			case SHOW_BLOCK_MATERIAL:
 				return SHOW_OVERLAPPING_QUADS;
 			case SHOW_OVERLAPPING_QUADS:
-				return SHOW_RENDER_SOURCE_FLAG;
+				return OFF;
 			default:
 				return OFF;
 		}
@@ -71,8 +67,6 @@ public enum EDhApiDebugRendering
 		switch (type)
 		{
 			case OFF:
-				return SHOW_RENDER_SOURCE_FLAG;
-			case SHOW_RENDER_SOURCE_FLAG:
 				return SHOW_OVERLAPPING_QUADS;
 			case SHOW_OVERLAPPING_QUADS:
 				return SHOW_DETAIL;

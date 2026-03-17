@@ -26,6 +26,7 @@ import com.seibel.distanthorizons.api.objects.data.DhApiChunk;
 import com.seibel.distanthorizons.api.objects.data.IDhApiFullDataSource;
 import com.seibel.distanthorizons.core.dataObjects.fullData.sources.FullDataSourceV2;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
+import com.seibel.distanthorizons.core.file.fullDatafile.V2.FullDataSourceProviderV2;
 import com.seibel.distanthorizons.core.generation.tasks.DataSourceRetrievalResult;
 import com.seibel.distanthorizons.core.generation.tasks.DataSourceRetrievalTask;
 import com.seibel.distanthorizons.core.level.IDhServerLevel;
@@ -78,11 +79,11 @@ public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDeb
 	/** If not null this generator is in the process of shutting down */
 	private volatile CompletableFuture<Void> generatorClosingFuture = null;
 	
-	// TODO this logic isn't great and can cause a limit to how many threads could be used for world generation, 
-	//  however it won't cause duplicate requests or concurrency issues, so it will be good enough for now.
-	//  A good long term fix may be to either:
-	//  1. allow the generator to deal with larger sections (let the generator threads split up larger tasks into smaller ones
-	//  2. batch requests better. instead of sending 4 individual tasks of detail level N, send 1 task of detail level n+1
+	/** 
+	 * having a single thread queue for world gen can cause a bottleneck,
+	 * however that's usually only for extremely fast custom generators
+	 * and doesn't generally come up in normal gameplay.
+	 */
 	private final ExecutorService queueingThread = ThreadUtil.makeSingleThreadPool("World Gen Queue");
 	private boolean generationQueueRunning = false;
 	private DhBlockPos2D generationTargetPos = DhBlockPos2D.ZERO;
@@ -92,7 +93,7 @@ public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDeb
 	private int estimatedRemainingChunkCount = 0;
 	
 	private final RollingAverage rollingAverageChunkGenTimeInMs = new RollingAverage(Runtime.getRuntime().availableProcessors() * 500);
-	public RollingAverage getRollingAverageChunkGenTimeInMs() { return this.rollingAverageChunkGenTimeInMs; }
+	@Override public RollingAverage getRollingAverageChunkGenTimeInMs() { return this.rollingAverageChunkGenTimeInMs; }
 	
 	
 	
@@ -128,13 +129,18 @@ public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDeb
 		// the generator is shutting down, don't add new tasks
 		if (this.generatorClosingFuture != null)
 		{
-			return CompletableFuture.completedFuture(DataSourceRetrievalResult.CreateFail());
+			CompletableFuture<DataSourceRetrievalResult> f = new CompletableFuture<>();
+			f.completeExceptionally(new CancellationException());
+			return f;
 		}
 		
 		// use the existing task if present
 		DataSourceRetrievalTask existingGenTask = this.waitingTasks.get(pos);
 		if (existingGenTask != null)
 		{
+			// if the same future is returned
+			// the caller shouldn't close the datasource multiple times,
+			// otherwise issues will occur (holes and/or out-of-place LOD data)
 			return existingGenTask.future;
 		}
 		
@@ -362,7 +368,7 @@ public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDeb
 					}
 					
 					LodUtil.assertTrue(fullDataSource == null);
-					worldGenTask.future.complete(DataSourceRetrievalResult.CreateFail());
+					worldGenTask.future.completeExceptionally(exception);
 				}
 				else
 				{
@@ -544,7 +550,8 @@ public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDeb
 		
 		// only apply to children if we aren't at the bottom of the tree
 		pooledDataSource.applyToChildren = DhSectionPos.getDetailLevel(pooledDataSource.getPos()) > DhSectionPos.SECTION_BLOCK_DETAIL_LEVEL;
-		pooledDataSource.applyToParent = DhSectionPos.getDetailLevel(pooledDataSource.getPos()) < DhSectionPos.SECTION_BLOCK_DETAIL_LEVEL + 12; // TODO what does this 12 reference?
+		// apply to parents up to the top of the tree
+		pooledDataSource.applyToParent = DhSectionPos.getDetailLevel(pooledDataSource.getPos()) < FullDataSourceProviderV2.ROOT_SECTION_DETAIL_LEVEL;
 		
 		CompletableFuture<Void> lodGenFuture = this.generator.generateLod(
 			chunkPosMin.getX(), chunkPosMin.getZ(),

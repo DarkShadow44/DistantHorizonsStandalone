@@ -24,6 +24,7 @@ import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos;
 import com.seibel.distanthorizons.core.pos.DhChunkPos;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
+import com.seibel.distanthorizons.core.sql.DbConnectionClosedException;
 import com.seibel.distanthorizons.core.sql.dto.BeaconBeamDTO;
 import com.seibel.distanthorizons.core.util.LodUtil;
 import com.seibel.distanthorizons.core.logging.DhLogger;
@@ -180,7 +181,7 @@ public class BeaconBeamRepo extends AbstractDhRepo<DhBlockPos, BeaconBeamDTO>
 		);
 	}
 	
-	public List<BeaconBeamDTO> getAllBeamsForPos(long pos)
+	public ArrayList<BeaconBeamDTO> getAllBeamsForPos(long pos)
 	{
 		int minBlockX = DhSectionPos.getMinCornerBlockX(pos);
 		int minBlockZ = DhSectionPos.getMinCornerBlockZ(pos);
@@ -199,7 +200,7 @@ public class BeaconBeamRepo extends AbstractDhRepo<DhBlockPos, BeaconBeamDTO>
 			"WHERE " +
 			"? <= BlockPosX AND BlockPosX <= ? AND " +
 			"? <= BlockPosZ AND BlockPosZ <= ?";
-	public List<BeaconBeamDTO> getAllBeamsInBlockPosRange(
+	public ArrayList<BeaconBeamDTO> getAllBeamsInBlockPosRange(
 			int minBlockX, int maxBlockX,
 			int minBlockZ, int maxBlockZ
 		)
@@ -230,6 +231,13 @@ public class BeaconBeamRepo extends AbstractDhRepo<DhBlockPos, BeaconBeamDTO>
 		}
 		catch (Exception e)
 		{
+			// done to handle resultSet.get() methods which can throw closed exceptions
+			if (e instanceof SQLException
+				&& DbConnectionClosedException.isClosedException((SQLException)e))
+			{
+				return beamList;
+			}
+			
 			throw new RuntimeException(e);
 		}
 		

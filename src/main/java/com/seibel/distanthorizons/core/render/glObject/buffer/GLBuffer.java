@@ -58,7 +58,6 @@ public class GLBuffer implements AutoCloseable
 	private static final ConcurrentHashMap<PhantomReference<? extends GLBuffer>, Integer> PHANTOM_TO_BUFFER_ID = new ConcurrentHashMap<>();
 	private static final ConcurrentHashMap<Integer, PhantomReference<? extends GLBuffer>> BUFFER_ID_TO_PHANTOM = new ConcurrentHashMap<>();
 	private static final ReferenceQueue<GLBuffer> PHANTOM_REFERENCE_QUEUE = new ReferenceQueue<>();
-	/** TODO we should make a global cleanup thread that handles all phantom references */
 	private static final ThreadPoolExecutor CLEANUP_THREAD = ThreadUtil.makeSingleDaemonThreadPool("GLBuffer Cleanup");
 	
 	
@@ -250,56 +249,6 @@ public class GLBuffer implements AutoCloseable
 			this.size = newSize;
 		}
 		GL32.glBufferSubData(this.getBufferBindingTarget(), 0, bb);
-	}
-	
-	
-	
-	//================//
-	// buffer mapping //
-	//================//
-	
-	public ByteBuffer mapBuffer(int targetSize, EDhApiGpuUploadMethod uploadMethod, int maxExpansionSize, int bufferHint, int mapFlags)
-	{
-		LodUtil.assertTrue(targetSize != 0, "MapBuffer targetSize is 0");
-		LodUtil.assertTrue(uploadMethod.useEarlyMapping, "Upload method must be one that use early mappings in order to call mapBuffer");
-		LodUtil.assertTrue(!this.isMapped, "Buffer is already mapped");
-		
-		// make sure the buffer is ready for uploading
-		this.createOrChangeBufferTypeForUpload(uploadMethod);
-		
-		ByteBuffer vboBuffer;
-		
-		if (this.size < targetSize || this.size > targetSize * BUFFER_SHRINK_TRIGGER)
-		{
-			int newSize = (int) (targetSize * BUFFER_EXPANSION_MULTIPLIER);
-			if (newSize > maxExpansionSize) newSize = maxExpansionSize;
-			this.size = newSize;
-			if (this.bufferStorage)
-			{
-				GLMC.glDeleteBuffers(this.id);
-				this.id = GLMC.glGenBuffers();
-				GL32.glBindBuffer(this.getBufferBindingTarget(), this.id);
-				GL32.glBindBuffer(this.getBufferBindingTarget(), this.id);
-				GL44.glBufferStorage(this.getBufferBindingTarget(), newSize, bufferHint);
-			}
-			else
-			{
-				GL32.glBufferData(GL32.GL_ARRAY_BUFFER, newSize, bufferHint);
-			}
-		}
-		
-		vboBuffer = GL32.glMapBufferRange(GL32.GL_ARRAY_BUFFER, 0, targetSize, mapFlags);
-		this.isMapped = true;
-		return vboBuffer;
-	}
-	
-	/** Requires the buffer to be bound */
-	public void unmapBuffer()
-	{
-		LodUtil.assertTrue(this.isMapped, "Buffer is not mapped");
-		this.bind();
-		GL32.glUnmapBuffer(this.getBufferBindingTarget());
-		this.isMapped = false;
 	}
 	
 	

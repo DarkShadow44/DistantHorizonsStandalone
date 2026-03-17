@@ -1,9 +1,12 @@
 package com.seibel.distanthorizons.core.file.fullDatafile.V1;
 
+import com.seibel.distanthorizons.api.enums.config.EDhApiDataCompressionMode;
 import com.seibel.distanthorizons.core.dataObjects.fullData.sources.FullDataSourceV1;
 import com.seibel.distanthorizons.core.file.structure.ISaveStructure;
 import com.seibel.distanthorizons.core.level.IDhLevel;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
+import com.seibel.distanthorizons.core.util.objects.pooling.PhantomArrayListCheckout;
+import com.seibel.distanthorizons.core.util.objects.pooling.PhantomArrayListPool;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
 import com.seibel.distanthorizons.core.sql.dto.FullDataSourceV1DTO;
 import com.seibel.distanthorizons.core.sql.repo.AbstractDhRepo;
@@ -28,6 +31,8 @@ public class FullDataSourceProviderV1<TDhLevel extends IDhLevel>
 		implements AutoCloseable
 {
 	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
+	
+	public static final PhantomArrayListPool ARRAY_LIST_POOL = new PhantomArrayListPool("V1DTO");
 	
 	protected final ReentrantLock closeLock = new ReentrantLock();
 	protected volatile boolean isShutdown = false;
@@ -64,7 +69,9 @@ public class FullDataSourceProviderV1<TDhLevel extends IDhLevel>
 	protected FullDataSourceV1 createDataSourceFromDto(FullDataSourceV1DTO dto) throws InterruptedException, IOException, DataCorruptedException
 	{
 		FullDataSourceV1 dataSource = FullDataSourceV1.createEmpty(dto.pos);
-		try (DhDataInputStream inputStream = dto.getInputStream())
+		try (PhantomArrayListCheckout checkout = ARRAY_LIST_POOL.checkoutByteArrays(1);
+			// LZ4 was used by DH before 2.1.0 and as such must be used until the data format is changed to record the compressor)
+			DhDataInputStream inputStream = DhDataInputStream.create(dto.dataArray, EDhApiDataCompressionMode.LZ4, checkout))
 		{
 			dataSource.populateFromStream(dto, inputStream, this.level);
 		}

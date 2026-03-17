@@ -73,10 +73,9 @@ public class VanillaFadeShader extends AbstractShaderRenderer
 	public void onInit()
 	{
 		this.shader = new ShaderProgram(
-				"shaders/normal.vert", 
-				"shaders/fade/vanillaFade.frag",
-				"fragColor", 
-				new String[]{"vPosition"}
+			"shaders/quadApply.vert", 
+			"shaders/fade/vanillaFade.frag",
+			"vPosition"
 		);
 		
 		// all uniforms should be tryGet...
@@ -112,7 +111,7 @@ public class VanillaFadeShader extends AbstractShaderRenderer
 		this.shader.setUniform(this.uDhInvMvmProj, this.inverseDhMvmProjMatrix);
 		
 		
-		float dhNearClipDistance = RenderUtil.getNearClipPlaneInBlocksForFading(partialTicks);
+		float dhNearClipDistance = RenderUtil.getNearClipPlaneInBlocks();
 		// this added value prevents the near clip plane and discard circle from touching, which looks bad
 		dhNearClipDistance += 16f;
 		
@@ -130,7 +129,7 @@ public class VanillaFadeShader extends AbstractShaderRenderer
 		this.shader.setUniform(this.uOnlyRenderLods, Config.Client.Advanced.Debugging.lodOnlyMode.get());
 	}
 	
-	public void setProjectionMatrix(Mat4f mcModelViewMatrix, Mat4f mcProjectionMatrix, float partialTicks)
+	public void setProjectionMatrix(Mat4f mcModelViewMatrix, Mat4f mcProjectionMatrix)
 	{
 		Mat4f inverseMcModelViewProjectionMatrix = new Mat4f(mcProjectionMatrix);
 		inverseMcModelViewProjectionMatrix.multiply(mcModelViewMatrix);
@@ -138,7 +137,7 @@ public class VanillaFadeShader extends AbstractShaderRenderer
 		this.inverseMcMvmProjMatrix = inverseMcModelViewProjectionMatrix;
 		
 		
-		Mat4f dhProjectionMatrix = RenderUtil.createLodProjectionMatrix(mcProjectionMatrix, partialTicks);
+		Mat4f dhProjectionMatrix = RenderUtil.createLodProjectionMatrix(mcProjectionMatrix);
 		Mat4f dhModelViewMatrix = RenderUtil.createLodModelViewMatrix(mcModelViewMatrix);
 		
 		Mat4f inverseDhModelViewProjectionMatrix = new Mat4f(dhProjectionMatrix);

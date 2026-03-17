@@ -85,7 +85,6 @@ public class WebDownloader
 					totalDataRead = totalDataRead + i;
 					bout.write(data, 0, i);
 					
-					// TODO: Link this to an atomic integer rather than printing it to log
                     int newPercent = (int) ((totalDataRead * 100) / filesize);
 					if (percent != newPercent)
 					{
@@ -100,7 +99,6 @@ public class WebDownloader
 	public static String downloadAsString(URL url) throws Exception
 	{
 		StringBuilder stringBuilder = new StringBuilder();
-//        URL url = new URL(urlS);
 		
 		URLConnection urlConnection = url.openConnection();
 		urlConnection.setConnectTimeout(1000);

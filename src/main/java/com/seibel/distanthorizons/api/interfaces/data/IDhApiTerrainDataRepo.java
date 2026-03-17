@@ -32,7 +32,7 @@ import com.seibel.distanthorizons.api.objects.data.DhApiTerrainDataPoint;
  * @see IDhApiTerrainDataCache
  * 
  * @author James Seibel
- * @version 2023-6-22
+ * @version 2026-02-03
  * @since API 1.0.0
  */
 public interface IDhApiTerrainDataRepo
@@ -42,24 +42,17 @@ public interface IDhApiTerrainDataRepo
 	// getters //
 	//=========//
 	
-	/** @see IDhApiTerrainDataRepo#getSingleDataPointAtBlockPos(IDhApiLevelWrapper, int, int, int, IDhApiTerrainDataCache) */
-	default DhApiResult<DhApiTerrainDataPoint> getSingleDataPointAtBlockPos(IDhApiLevelWrapper levelWrapper, int blockPosX, int blockPosY, int blockPosZ) { return this.getSingleDataPointAtBlockPos(levelWrapper, blockPosX, blockPosY, blockPosZ, null); }
 	/** 
 	 * Returns the terrain datapoint at the given block position, at/or containing the given Y position. 
 	 * @since API 3.0.0
 	 */
 	DhApiResult<DhApiTerrainDataPoint> getSingleDataPointAtBlockPos(IDhApiLevelWrapper levelWrapper, int blockPosX, int blockPosY, int blockPosZ, IDhApiTerrainDataCache dataCache);
-	
-	/** @see IDhApiTerrainDataRepo#getColumnDataAtBlockPos(IDhApiLevelWrapper, int, int, IDhApiTerrainDataCache) */
-	default DhApiResult<DhApiTerrainDataPoint[]> getColumnDataAtBlockPos(IDhApiLevelWrapper levelWrapper, int blockPosX, int blockPosZ) { return this.getColumnDataAtBlockPos(levelWrapper, blockPosX, blockPosZ, null); }
 	/** 
 	 * Returns every datapoint in the column located at the given block X and Z position top to bottom. 
 	 * @since API 3.0.0 
 	 */
 	DhApiResult<DhApiTerrainDataPoint[]> getColumnDataAtBlockPos(IDhApiLevelWrapper levelWrapper, int blockPosX, int blockPosZ, IDhApiTerrainDataCache dataCache);
 	
-	/** @see IDhApiTerrainDataRepo#getAllTerrainDataAtChunkPos(IDhApiLevelWrapper, int, int, IDhApiTerrainDataCache) */
-	default DhApiResult<DhApiTerrainDataPoint[][][]> getAllTerrainDataAtChunkPos(IDhApiLevelWrapper levelWrapper, int chunkPosX, int chunkPosZ) { return this.getAllTerrainDataAtChunkPos(levelWrapper, chunkPosX, chunkPosZ, null); }
 	/**
 	 * Returns every datapoint in the given chunk's X and Z position. <br><br>
 	 *
@@ -71,8 +64,6 @@ public interface IDhApiTerrainDataRepo
 	 */
 	DhApiResult<DhApiTerrainDataPoint[][][]> getAllTerrainDataAtChunkPos(IDhApiLevelWrapper levelWrapper, int chunkPosX, int chunkPosZ, IDhApiTerrainDataCache dataCache);
 	
-	/** @see IDhApiTerrainDataRepo#getAllTerrainDataAtRegionPos(IDhApiLevelWrapper, int, int, IDhApiTerrainDataCache) */
-	default DhApiResult<DhApiTerrainDataPoint[][][]> getAllTerrainDataAtRegionPos(IDhApiLevelWrapper levelWrapper, int regionPosX, int regionPosZ) { return this.getAllTerrainDataAtRegionPos(levelWrapper, regionPosX, regionPosZ, null); }
 	/**
 	 * Returns every datapoint in the given region's X and Z position. <br><br>
 	 *
@@ -84,8 +75,6 @@ public interface IDhApiTerrainDataRepo
 	 */
 	DhApiResult<DhApiTerrainDataPoint[][][]> getAllTerrainDataAtRegionPos(IDhApiLevelWrapper levelWrapper, int regionPosX, int regionPosZ, IDhApiTerrainDataCache dataCache);
 	
-	/** @see IDhApiTerrainDataRepo#getAllTerrainDataAtDetailLevelAndPos(IDhApiLevelWrapper, byte, int, int, IDhApiTerrainDataCache) */
-	default DhApiResult<DhApiTerrainDataPoint[][][]> getAllTerrainDataAtRegionPos(IDhApiLevelWrapper levelWrapper, byte detailLevel, int posX, int posZ) { return this.getAllTerrainDataAtDetailLevelAndPos(levelWrapper, detailLevel, posX, posZ, null); }
 	/**
 	 * Returns every datapoint in the column located at the given detail level and X/Z position. <br>
 	 * This can be used to return terrain data for non-standard sizes (IE 2x2 blocks or 2x2 chunks).
@@ -100,21 +89,6 @@ public interface IDhApiTerrainDataRepo
 	DhApiResult<DhApiTerrainDataPoint[][][]> getAllTerrainDataAtDetailLevelAndPos(IDhApiLevelWrapper levelWrapper, byte detailLevel, int posX, int posZ, IDhApiTerrainDataCache dataCache);
 	
 	
-	
-	/** @see IDhApiTerrainDataRepo#raycast(IDhApiLevelWrapper, double, double, double, float, float, float, int, IDhApiTerrainDataCache) */
-	default DhApiResult<DhApiRaycastResult> raycast(
-			IDhApiLevelWrapper levelWrapper,
-			double rayOriginX, double rayOriginY, double rayOriginZ,
-			float rayDirectionX, float rayDirectionY, float rayDirectionZ,
-			int maxRayBlockLength)
-	{
-		return this.raycast(
-				levelWrapper,
-				rayOriginX, rayOriginY, rayOriginZ,
-				rayDirectionX, rayDirectionY, rayDirectionZ,
-				maxRayBlockLength,
-				null);
-	}
 	
 	/**
 	 * Returns the datapoint and position of the LOD

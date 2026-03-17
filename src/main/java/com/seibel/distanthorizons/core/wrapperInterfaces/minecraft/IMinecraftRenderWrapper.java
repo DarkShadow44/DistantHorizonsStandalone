@@ -21,6 +21,7 @@ package com.seibel.distanthorizons.core.wrapperInterfaces.minecraft;
 
 import java.awt.Color;
 
+import com.seibel.distanthorizons.core.api.internal.rendering.DhRenderState;
 import com.seibel.distanthorizons.core.enums.EDhDirection;
 import com.seibel.distanthorizons.core.wrapperInterfaces.misc.ILightMapWrapper;
 import com.seibel.distanthorizons.coreapi.interfaces.dependencyInjection.IBindable;
@@ -43,6 +44,21 @@ public interface IMinecraftRenderWrapper extends IBindable
 	
 	boolean playerHasBlindingEffect();
 	
+	/**
+	 * percentage of time into the current client tick. <br><br>
+	 *
+	 * Can be converted to a millisecond frametime 
+	 * (IE time between frames in milliseconds) using the formula: <br>
+	 * <code>
+	 * (partialTickTime/20*1000)
+	 * </code> <br>
+	 * IE 60 FPS = 16.6 MS <br>
+	 *
+	 * @link https://fpstoms.com/
+	 * @see DhRenderState#partialTickTime
+	 */
+	float getPartialTickTime();
+	
 	Vec3d getCameraExactPosition();
 	
 	Color getFogColor(float partialTicks);
@@ -57,13 +73,17 @@ public interface IMinecraftRenderWrapper extends IBindable
 	/** Measured in chunks */
 	int getRenderDistance();
 	
+	int getFrameLimit();
+	
 	boolean mcRendersToFrameBuffer();
 	boolean runningLegacyOpenGL();
 	
 	/** @return -1 if no valid framebuffer is available yet */
 	int getTargetFramebuffer(); // Note: Iris is now hooking onto this for DH + Iris compat, try not to change (unless we wanna deal with some annoyances)
 								//          Iris commit: https://github.com/IrisShaders/Iris/commit/a76a240527e93780bbcba57c09bef377419d47a7#diff-7b9ded0c79bbcdb130010373387756a28ee8d3640d522c0a5b7acd0abbfc20aeR16
+	/** @return -1 if there was an issue or no texture exists */
 	int getDepthTextureId();
+	/** @return -1 if there was an issue or no texture exists */
 	int getColorTextureId();
 	int getTargetFramebufferViewportWidth();
 	int getTargetFramebufferViewportHeight();

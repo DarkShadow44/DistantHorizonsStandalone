@@ -40,8 +40,7 @@ public interface IDhApiEventInjector extends IDependencyInjector<IDhApiEvent>
 	 * @return true if the handler was unbound, false if the handler wasn't bound.
 	 * @throws IllegalArgumentException if the implementation object doesn't implement the interface
 	 */
-	// Note to self: Don't try adding a generic type to IDhApiEvent, the constructor won't accept it
-	// TODO why are we removing the class instead of an instance?
+	// Note to DH Devs: Don't try adding a generic type to IDhApiEvent, the constructor won't accept it
 	boolean unbind(Class<? extends IDhApiEvent> dependencyInterface, Class<? extends IDhApiEvent> dependencyClassToRemove) throws IllegalArgumentException;
 	
 	

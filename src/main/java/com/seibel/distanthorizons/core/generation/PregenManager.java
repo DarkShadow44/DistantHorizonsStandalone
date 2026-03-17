@@ -157,9 +157,9 @@ public class PregenManager
 					else
 					{
 						this.fullDataSourceProvider.queuePositionForRetrieval(fullDataSource.getPos())
-							.thenAccept((DataSourceRetrievalResult result) ->
+							.whenComplete((DataSourceRetrievalResult result, Throwable throwable) ->
 							{
-								if (result.state == ERetrievalResultState.FAIL)
+								if (throwable != null)
 								{
 									LOGGER.warn("Failed to generate section " + DhSectionPos.toString(result.pos));
 								}

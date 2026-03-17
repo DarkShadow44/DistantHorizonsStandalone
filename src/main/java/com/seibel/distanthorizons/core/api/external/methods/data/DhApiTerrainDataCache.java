@@ -13,7 +13,7 @@ import java.lang.ref.SoftReference;
 public class DhApiTerrainDataCache implements IDhApiTerrainDataCache
 {
 	private final Object modificationLock = new Object();
-	private Long2ReferenceOpenHashMap<SoftReference<FullDataSourceV2>> posToFullDataRef = new Long2ReferenceOpenHashMap<>();
+	private final Long2ReferenceOpenHashMap<SoftReference<FullDataSourceV2>> posToFullDataRef = new Long2ReferenceOpenHashMap<>();
 	
 	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
@@ -22,6 +22,7 @@ public class DhApiTerrainDataCache implements IDhApiTerrainDataCache
 	//==================//
 	// internal methods //
 	//==================//
+	//region
 	
 	public void add(long pos, FullDataSourceV2 dataSource)
 	{
@@ -48,11 +49,14 @@ public class DhApiTerrainDataCache implements IDhApiTerrainDataCache
 		}
 	}
 	
+	//endregion
+	
 	
 	
 	//=============//
 	// API methods //
 	//=============//
+	//region
 	
 	@Override 
 	public void clear()
@@ -81,6 +85,23 @@ public class DhApiTerrainDataCache implements IDhApiTerrainDataCache
 			}
 		}
 	}
+	
+	//endregion
+	
+	
+	
+	//================//
+ 	// base overrides //
+	//================//
+	//region
+	
+	@Override 
+	public void close() { this.clear(); }
+	
+	@Override 
+	public String toString() { return "Size: " + this.posToFullDataRef.size(); }
+	
+	//endregion
 	
 	
 	

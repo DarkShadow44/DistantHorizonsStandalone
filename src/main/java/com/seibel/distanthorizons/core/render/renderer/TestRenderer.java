@@ -35,13 +35,28 @@ import org.lwjgl.opengl.GL32;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-
+/**
+ * Renders a UV colored quad
+ * to the center of the screen to confirm DH's
+ * apply shader is running correctly
+ */
 public class TestRenderer
 {
 	public static final DhLogger LOGGER = new DhLoggerBuilder().build(); 
 	
 	private static final IMinecraftRenderWrapper MC_RENDER = SingletonInjector.INSTANCE.get(IMinecraftRenderWrapper.class);
 	private static final IMinecraftGLWrapper GLMC = SingletonInjector.INSTANCE.get(IMinecraftGLWrapper.class);
+	
+	public static final TestRenderer INSTANCE = new TestRenderer();
+	
+	// Render a square with uv color
+	private static final float[] VERTICES = {
+		// PosX,Y, ColorR,G,B,A
+		-0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f,
+		0.4f, -0.4f, 1.0f, 0.0f, 0.0f, 1.0f,
+		0.3f, 0.3f, 1.0f, 1.0f, 0.0f, 0.0f,
+		-0.2f, 0.2f, 0.0f, 1.0f, 1.0f, 1.0f
+	};
 	
 	
 	
@@ -52,8 +67,12 @@ public class TestRenderer
 	
 	
 	
+	//=============//
+	// constructor //
+	//=============//
+	//region
 	
-	public TestRenderer() { }
+	private TestRenderer() { }
 	
 	public void init()
 	{
@@ -71,47 +90,39 @@ public class TestRenderer
 		// Color
 		this.va.setVertexAttribute(0, 1, VertexPointer.addVec4Pointer(false));
 		this.va.completeAndCheck(Float.BYTES * 6);
-		this.basicShader = new ShaderProgram("shaders/test/vert.vert", "shaders/test/frag.frag",
-				"fragColor", new String[]{"vPosition", "color"});
+		this.basicShader = new ShaderProgram(
+			"shaders/test/vert.vert",
+			"shaders/test/frag.frag",
+			new String[]{"vPosition", "color"});
 		
 		this.createBuffer();
 	}
 	
-	// Render a square with uv color
-	private static final float[] vertices = {
-			// PosX,Y, ColorR,G,B,A
-			-0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f,
-			0.4f, -0.4f, 1.0f, 0.0f, 0.0f, 1.0f,
-			0.3f, 0.3f, 1.0f, 1.0f, 0.0f, 0.0f,
-			-0.2f, 0.2f, 0.0f, 1.0f, 1.0f, 1.0f
-	};
-	
 	private void createBuffer()
 	{
-		ByteBuffer buffer = ByteBuffer.allocateDirect(vertices.length * Float.BYTES);
+		ByteBuffer buffer = ByteBuffer.allocateDirect(VERTICES.length * Float.BYTES);
 		// Fill buffer with vertices.
 		buffer.order(ByteOrder.nativeOrder());
-		buffer.asFloatBuffer().put(vertices);
+		buffer.asFloatBuffer().put(VERTICES);
 		buffer.rewind();
 		
 		this.vbo = new GLVertexBuffer(false);
 		this.vbo.bind();
-		this.vbo.uploadBuffer(buffer, 4, EDhApiGpuUploadMethod.DATA, vertices.length * Float.BYTES);
+		this.vbo.uploadBuffer(buffer, 4, EDhApiGpuUploadMethod.DATA, VERTICES.length * Float.BYTES);
 	}
+	
+	//endregion
+	
+	
+	
+	//========//
+	// render //
+	//========//
+	//region
 	
 	public void render()
 	{
-		// TODO fix for MC 1.21.5+
 		this.init();
-		
-		GLMC.glBindFramebuffer(GL32.GL_FRAMEBUFFER, MC_RENDER.getTargetFramebuffer());
-		GL32.glViewport(0, 0, MC_RENDER.getTargetFramebufferViewportWidth(), MC_RENDER.getTargetFramebufferViewportHeight());
-		GL32.glPolygonMode(GL32.GL_FRONT_AND_BACK, GL32.GL_FILL);
-		
-		GLMC.disableFaceCulling();
-		GLMC.disableDepthTest();
-		GLMC.disableBlend();
-		GLMC.disableScissorTest();
 		
 		this.basicShader.bind();
 		this.va.bind();
@@ -121,8 +132,9 @@ public class TestRenderer
 		
 		// Render the square
 		GL32.glDrawArrays(GL32.GL_TRIANGLE_FAN, 0, 4);
-		GL32.glClear(GL32.GL_DEPTH_BUFFER_BIT);
 	}
+	
+	//endregion
 	
 	
 	

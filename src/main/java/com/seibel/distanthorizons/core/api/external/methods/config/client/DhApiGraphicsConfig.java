@@ -108,16 +108,16 @@ public class DhApiGraphicsConfig implements IDhApiGraphicsConfig
 	//===========================//
 
 	@Override
-	public IDhApiConfigValue<Double> overdrawPreventionRadius()
-	{ return new DhApiConfigValue<Double, Double>(Config.Client.Advanced.Graphics.Culling.overdrawPrevention); }
+	public IDhApiConfigValue<Float> overdrawPreventionRadius()
+	{ return new DhApiConfigValue<Float, Float>(Config.Client.Advanced.Graphics.Culling.overdrawPrevention); }
 	
 	@Override
-	public IDhApiConfigValue<Double> brightnessMultiplier()
-	{ return new DhApiConfigValue<Double, Double>(Config.Client.Advanced.Graphics.Quality.brightnessMultiplier); }
+	public IDhApiConfigValue<Float> brightnessMultiplier()
+	{ return new DhApiConfigValue<Float, Float>(Config.Client.Advanced.Graphics.Quality.brightnessMultiplier); }
 	
 	@Override
-	public IDhApiConfigValue<Double> saturationMultiplier()
-	{ return new DhApiConfigValue<Double, Double>(Config.Client.Advanced.Graphics.Quality.saturationMultiplier); }
+	public IDhApiConfigValue<Float> saturationMultiplier()
+	{ return new DhApiConfigValue<Float, Float>(Config.Client.Advanced.Graphics.Quality.saturationMultiplier); }
 	
 	@Override
 	public IDhApiConfigValue<Boolean> caveCullingEnabled()
@@ -134,10 +134,6 @@ public class DhApiGraphicsConfig implements IDhApiGraphicsConfig
 	@Override
 	public IDhApiConfigValue<Boolean> lodOnlyMode()
 	{ return new DhApiConfigValue<Boolean, Boolean>(Config.Client.Advanced.Debugging.lodOnlyMode); }
-	
-	@Override
-	public IDhApiConfigValue<Double> lodBias()
-	{ return new DhApiConfigValue<Double, Double>(Config.Client.Advanced.Graphics.Quality.lodBias); }
 	
 	@Override
 	public IDhApiConfigValue<EDhApiLodShading> lodShading()

@@ -57,10 +57,10 @@ public class FogApplyShader extends AbstractShaderRenderer
 	public void onInit()
 	{
 		this.shader = new ShaderProgram(
-				"shaders/normal.vert",
-				"shaders/fog/apply.frag",
-				"fragColor",
-				new String[]{ "vPosition" });
+			"shaders/quadApply.vert",
+			"shaders/fog/apply.frag",
+			"vPosition"
+		);
 		
 		// uniform setup
 		this.colorTextureUniform = this.shader.getUniformLocation("uColorTexture");

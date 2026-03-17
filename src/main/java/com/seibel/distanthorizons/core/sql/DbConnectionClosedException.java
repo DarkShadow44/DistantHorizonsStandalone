@@ -18,7 +18,6 @@ public class DbConnectionClosedException extends SQLException
 	
 	public static boolean isClosedException(SQLException e) 
 	{
-		// TODO long term we should prevent using repos that are closed, but for now this is the easier solution
 		String message = e.getMessage().toLowerCase();
 		return message.contains("connection closed")
 				|| message.contains("pointer is closed")

@@ -345,9 +345,10 @@ public class SelfUpdater
 						nextByte = inputStream.read();
 						byteReadIndex++;
 						
-						// TODO it would be better to change this divisor based on the expected size,
-						//  so it would always be split up into 100 1% increments
-						//  but this will work for now when the expected size is about 17 MB, this will log about 170 times
+						// It would be better to change this divisor based on the expected size,
+						// so it would always be split up into 100 1% increments
+						// but this works well enough. 
+						// When the expected size is about 17 MB, this will log about 170 times
 						if (byteReadIndex % 100_000 == 0)
 						{
 							LOGGER.info("Decompressing ["+outputFormat.format(((double)byteReadIndex / expectedSize)*100.0)+"]%");

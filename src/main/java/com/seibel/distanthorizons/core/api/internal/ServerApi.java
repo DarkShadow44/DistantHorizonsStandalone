@@ -101,7 +101,6 @@ public class ServerApi
 		if (serverWorld != null)
 		{
 			serverWorld.unloadLevel(level);
-			SharedApi.INSTANCE.clearQueuedChunkUpdates();
 			ApiEventInjector.INSTANCE.fireAllEvents(DhApiLevelUnloadEvent.class, new DhApiLevelUnloadEvent.EventParam(level));
 		}
 	}
@@ -112,8 +111,8 @@ public class ServerApi
 	// chunk modified events //
 	//=======================//
 	
-	public void serverChunkLoadEvent(IChunkWrapper chunkWrapper, ILevelWrapper level) { SharedApi.INSTANCE.applyChunkUpdate(chunkWrapper, level, false, false); }
-	public void serverChunkSaveEvent(IChunkWrapper chunkWrapper, ILevelWrapper level) { SharedApi.INSTANCE.applyChunkUpdate(chunkWrapper, level, true, false); }
+	public void serverChunkLoadEvent(IChunkWrapper chunkWrapper, ILevelWrapper level) { SharedApi.INSTANCE.applyChunkUpdate(chunkWrapper, level); }
+	public void serverChunkSaveEvent(IChunkWrapper chunkWrapper, ILevelWrapper level) { SharedApi.INSTANCE.applyChunkUpdate(chunkWrapper, level); }
 	
 	
 	

@@ -19,6 +19,7 @@
 
 package com.seibel.distanthorizons.core.level;
 
+import com.seibel.distanthorizons.core.logging.f3.F3Screen;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
 import org.jetbrains.annotations.Nullable;
 
@@ -38,5 +39,13 @@ public interface IDhClientLevel extends IDhLevel
 	 * This method should be called after resource packs are changed or LOD settings are modified.
 	 */
 	void clearRenderCache();
+	
+	/** 
+	 * returns true if this level is currently rendering. <br>
+	 * Designed for use for debugging and the {@link F3Screen}.
+	 */
+	boolean isRendering();
+	
+	
 	
 }

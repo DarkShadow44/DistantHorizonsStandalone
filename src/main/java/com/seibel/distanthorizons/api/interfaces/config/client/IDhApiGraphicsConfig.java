@@ -124,19 +124,19 @@ public interface IDhApiGraphicsConfig extends IDhApiConfigGroup
 	 * 
 	 * @since API 2.0.0
 	 */
-	IDhApiConfigValue<Double> overdrawPreventionRadius();
+	IDhApiConfigValue<Float> overdrawPreventionRadius();
 	
 	/**
 	 * Modifies how bright fake chunks are. <br>
 	 * This is done when generating the vertex data and is applied before any shaders.
 	 */
-	IDhApiConfigValue<Double> brightnessMultiplier();
+	IDhApiConfigValue<Float> brightnessMultiplier();
 	
 	/**
 	 * Modifies how saturated fake chunks are. <br>
 	 * This is done when generating the vertex data and is applied before any shaders.
 	 */
-	IDhApiConfigValue<Double> saturationMultiplier();
+	IDhApiConfigValue<Float> saturationMultiplier();
 	
 	/** Defines if Distant Horizons should attempt to cull fake chunk cave geometry. */
 	IDhApiConfigValue<Boolean> caveCullingEnabled();
@@ -149,12 +149,6 @@ public interface IDhApiGraphicsConfig extends IDhApiConfigGroup
 	
 	/** If enabled vanilla chunk rendering is disabled and only fake chunks are rendered. */
 	IDhApiConfigValue<Boolean> lodOnlyMode();
-	
-	/**
-	 * Setting this to a non-zero number will modify vanilla Minecraft's LOD Bias,
-	 * increasing how quickly its textures fade away.
-	 */
-	IDhApiConfigValue<Double> lodBias();
 	
 	/**
 	 * Determines how LODs should be shaded.

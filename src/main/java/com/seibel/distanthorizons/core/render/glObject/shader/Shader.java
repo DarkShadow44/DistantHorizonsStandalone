@@ -58,40 +58,15 @@ public class Shader
 	//==============//
 	// constructors //
 	//==============//
+	//region
 	
 	/**
 	 * Creates a shader with specified type.
 	 *
 	 * @param type Either GL_VERTEX_SHADER or GL_FRAGMENT_SHADER.
-	 * @param path File path of the shader
-	 * @param absoluteFilePath If false the file path is relative to the resource jar folder.
+	 * @param sourceString File path of the shader
 	 * @throws RuntimeException if the shader fails to compile
 	 */
-	public Shader(int type, String path, boolean absoluteFilePath)
-	{
-		LOGGER.info("Loading shader at [" + path + "]");
-		// Create an empty shader object
-		this.id = GL32.glCreateShader(type);
-		if (this.id == 0)
-		{
-			throw new IllegalArgumentException("Failed to create shader with type ["+type+"].");
-		}
-		
-		StringBuilder source = loadFile(path, absoluteFilePath, new StringBuilder());
-		safeShaderSource(this.id, source);
-		
-		GL32.glCompileShader(this.id);
-		// check if the shader compiled
-		int status = GL32.glGetShaderi(this.id, GL32.GL_COMPILE_STATUS);
-		if (status != GL32.GL_TRUE)
-		{
-			String message = "Shader compiler error. Details: ["+GL32.glGetShaderInfoLog(this.id)+"].";
-			this.free(); // important!
-			throw new RuntimeException(message);
-		}
-		LOGGER.info("Shader at " + path + " loaded successfully.");
-	}
-	
 	public Shader(int type, String sourceString)
 	{
 		LOGGER.info("Loading shader with type: ["+type+"]");
@@ -123,11 +98,14 @@ public class Shader
 		LOGGER.info("Shader loaded sucessfully.");
 	}
 	
+	//endregion
+	
 	
 	
 	//=========//
 	// helpers //
 	//=========//
+	//region
 	
 	/**
 	 * Identical in function to {@link GL32C#glShaderSource(int, CharSequence)} but
@@ -162,8 +140,10 @@ public class Shader
 	
 	public void free() { GL32.glDeleteShader(this.id); }
 	
-	public static StringBuilder loadFile(String path, boolean absoluteFilePath, StringBuilder stringBuilder)
+	public static String loadFile(String path, boolean absoluteFilePath)
 	{
+		StringBuilder stringBuilder = new StringBuilder();
+		
 		try
 		{
 			// open the file
@@ -194,8 +174,11 @@ public class Shader
 		{
 			throw new RuntimeException("Unable to load shader from file [" + path + "]. Error: " + e.getMessage());
 		}
-		return stringBuilder;
+		
+		return stringBuilder.toString();
 	}
+	
+	//endregion
 	
 	
 	

@@ -11,6 +11,7 @@ import java.io.Closeable;
 import java.util.*;
 import java.util.function.BinaryOperator;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class SessionConfig implements INetworkObject
@@ -31,7 +32,23 @@ public class SessionConfig implements INetworkObject
 	{
 		// Note: config values are transmitted in the insertion order
 		
-		registerConfigEntry(Config.Common.WorldGenerator.enableDistantGeneration, Boolean::logicalAnd);
+		registerConfigEntry(Config.Common.WorldGenerator.enableDistantGeneration.getChatCommandName(), new Entry(
+			Config.Server.enableServerGeneration::get,
+			runnable -> new Closeable()
+			{
+				private final ConfigChangeListener<Boolean> distantGenerationChanges = new ConfigChangeListener<>(Config.Common.WorldGenerator.enableDistantGeneration, ignored -> runnable.run());
+				private final ConfigChangeListener<Boolean> serverGenerationChanges = new ConfigChangeListener<>(Config.Server.enableServerGeneration, ignored -> runnable.run());
+				
+				@Override
+				public void close()
+				{
+					this.serverGenerationChanges.close();
+					this.distantGenerationChanges.close();
+				}
+			},
+			(Boolean client, Boolean server) -> client && Config.Common.WorldGenerator.enableDistantGeneration.get()
+		));
+		
 		registerConfigEntry(Config.Server.maxGenerationRequestDistance, Math::min);
 		registerConfigEntry(Config.Common.WorldGenerator.generationCenterChunkX, (x, y) -> y);
 		registerConfigEntry(Config.Common.WorldGenerator.generationCenterChunkZ, (x, y) -> y);
@@ -90,14 +107,24 @@ public class SessionConfig implements INetworkObject
 	
 	private static <T> void registerConfigEntry(ConfigEntry<T> configEntry, BinaryOperator<T> valueConstrainer)
 	{
-		CONFIG_ENTRIES.compute(Objects.requireNonNull(configEntry.getChatCommandName()), (key, existingEntry) -> {
-			if (existingEntry != null)
-			{
-				throw new IllegalArgumentException("Attempted to register config entry with duplicate chatCommandName: " + key);
-			}
-			
-			return new Entry(configEntry, valueConstrainer);
-		});
+		registerConfigEntry(
+			Objects.requireNonNull(configEntry.getChatCommandName()),
+			new Entry(
+				configEntry::get,
+				runnable -> new ConfigChangeListener<>(configEntry, ignored -> runnable.run()),
+				valueConstrainer
+			)
+		);
+	}
+	
+	private static void registerConfigEntry(String key, Entry entry)
+	{
+		if (CONFIG_ENTRIES.containsKey(key))
+		{
+			throw new IllegalArgumentException("Attempted to register config entry with duplicate key: " + key);
+		}
+		
+		CONFIG_ENTRIES.put(key, entry);
 	}
 	
 	
@@ -115,7 +142,7 @@ public class SessionConfig implements INetworkObject
 		T value = (T) this.values.get(name);
 		if (value == null)
 		{
-			value = (T) entry.supplier.get();
+			value = (T) entry.valueSupplier.get();
 		}
 		
 		return (this.constrainingConfig != null
@@ -210,13 +237,15 @@ public class SessionConfig implements INetworkObject
 	
 	private static class Entry
 	{
-		public final ConfigEntry<Object> supplier;
+		public final Supplier<Object> valueSupplier;
+		public final Function<Runnable, Closeable> changeListenerFactory;
 		public final BinaryOperator<Object> valueConstrainer;
 		
 		@SuppressWarnings("unchecked")
-		private <T> Entry(ConfigEntry<T> supplier, BinaryOperator<T> valueConstrainer)
+		private <T> Entry(Supplier<Object> valueSupplier, Function<Runnable, Closeable> changeListenerFactory, BinaryOperator<T> valueConstrainer)
 		{
-			this.supplier = (ConfigEntry<Object>) supplier;
+			this.valueSupplier = valueSupplier;
+			this.changeListenerFactory = changeListenerFactory;
 			this.valueConstrainer = (BinaryOperator<Object>) valueConstrainer;
 		}
 		
@@ -225,23 +254,29 @@ public class SessionConfig implements INetworkObject
 	/** fires if any config value was changed */
 	public static class AnyChangeListener implements Closeable
 	{
-		private final ArrayList<ConfigChangeListener<?>> changeListeners;
+		private final ArrayList<Closeable> changeListeners;
 		
 		public AnyChangeListener(Runnable runnable)
 		{
 			this.changeListeners = new ArrayList<>(CONFIG_ENTRIES.size());
 			for (Entry entry : CONFIG_ENTRIES.values())
 			{
-				this.changeListeners.add(new ConfigChangeListener<>(entry.supplier, ignored -> runnable.run()));
+				this.changeListeners.add(entry.changeListenerFactory.apply(runnable));
 			}
 		}
 		
 		@Override
 		public void close()
 		{
-			for (ConfigChangeListener<?> changeListener : this.changeListeners)
+			for (Closeable changeListener : this.changeListeners)
 			{
-				changeListener.close();
+				try
+				{
+					changeListener.close();
+				}
+				catch (Exception ignored)
+				{
+				}
 			}
 			this.changeListeners.clear();
 		}

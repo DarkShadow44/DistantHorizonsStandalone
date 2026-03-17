@@ -22,7 +22,6 @@ package com.seibel.distanthorizons.core.render.renderer;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
-import com.seibel.distanthorizons.core.render.glObject.GLState;
 import com.seibel.distanthorizons.core.render.renderer.shaders.DhFadeShader;
 import com.seibel.distanthorizons.core.render.renderer.shaders.FadeApplyShader;
 import com.seibel.distanthorizons.core.util.math.Mat4f;
@@ -137,7 +136,7 @@ public class DhFadeRenderer
 			
 			
 			DhFadeShader.INSTANCE.frameBuffer = this.fadeFramebuffer;
-			DhFadeShader.INSTANCE.setProjectionMatrix(mcModelViewMatrix, mcProjectionMatrix, partialTicks);
+			DhFadeShader.INSTANCE.setProjectionMatrix(mcModelViewMatrix, mcProjectionMatrix);
 			DhFadeShader.INSTANCE.render(partialTicks);
 			
 			// restored so we can write the fade texture to the main frame buffer

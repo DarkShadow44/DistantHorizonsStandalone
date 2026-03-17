@@ -23,13 +23,10 @@ import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftGLWrapper;
 import org.lwjgl.opengl.GL32;
 
-// TODO make this Closable or AutoClosable so it can be used with try-resource blocks
-public class GLState
+public class GLState implements AutoCloseable
 {
 	private static final IMinecraftGLWrapper GLMC = SingletonInjector.INSTANCE.get(IMinecraftGLWrapper.class);
 	
-	
-	private static final int FBO_MAX = 4;
 	
 	public int program;
 	public int vao;
@@ -132,26 +129,8 @@ public class GLState
 		this.polyMode = GL32.glGetInteger(GL32.GL_POLYGON_MODE);
 	}
 	
-	@Override
-	public String toString()
-	{
-		return "GLState{" +
-				"program=" + this.program + ", vao=" + this.vao + ", vbo=" + this.vbo + ", ebo=" + this.ebo + ", fbo=" + this.fbo +
-				", text=" + GLEnums.getString(this.texture2D) + "@" + this.activeTextureNumber + ", text0=" + GLEnums.getString(this.texture0) +
-				", FB text0=" + this.frameBufferTexture0 +
-				", FB text1=" + this.frameBufferTexture1 +
-				", FB depth=" + this.frameBufferDepthTexture +
-				", blend=" + this.blend + ", scissor=" + this.scissor + ", blendMode=" + GLEnums.getString(this.blendSrcColor) + "," + GLEnums.getString(this.blendDstColor) +
-				", depth=" + this.depth +
-				", depthFunc=" + GLEnums.getString(this.depthFunc) + ", stencil=" + this.stencil +
-				", stencilFunc=" + GLEnums.getString(this.stencilFunc) + ", stencilRef=" + this.stencilRef + ", stencilMask=" + this.stencilMask +
-				", view={x:" + this.view[0] + ", y:" + this.view[1] +
-				", w:" + this.view[2] + ", h:" + this.view[3] + "}" + ", cull=" + this.cull +
-				", cullMode=" + GLEnums.getString(this.cullMode) + ", polyMode=" + GLEnums.getString(this.polyMode) +
-				'}';
-	}
-	
-	public void restore()
+	@Override 
+	public void close()
 	{
 		// explicitly unbinding the frame buffer is necessary to prevent GL_CLEAR calls from hitting the wrong buffer
 		GLMC.glBindFramebuffer(GL32.GL_FRAMEBUFFER, 0);
@@ -255,4 +234,26 @@ public class GLState
 		GL32.glCullFace(this.cullMode);
 		GL32.glPolygonMode(GL32.GL_FRONT_AND_BACK, this.polyMode);
 	}
+	
+	@Override
+	public String toString()
+	{
+		return "GLState{" +
+			"program=" + this.program + ", vao=" + this.vao + ", vbo=" + this.vbo + ", ebo=" + this.ebo + ", fbo=" + this.fbo +
+			", text=" + GLEnums.getString(this.texture2D) + "@" + this.activeTextureNumber + ", text0=" + GLEnums.getString(this.texture0) +
+			", FB text0=" + this.frameBufferTexture0 +
+			", FB text1=" + this.frameBufferTexture1 +
+			", FB depth=" + this.frameBufferDepthTexture +
+			", blend=" + this.blend + ", scissor=" + this.scissor + ", blendMode=" + GLEnums.getString(this.blendSrcColor) + "," + GLEnums.getString(this.blendDstColor) +
+			", depth=" + this.depth +
+			", depthFunc=" + GLEnums.getString(this.depthFunc) + ", stencil=" + this.stencil +
+			", stencilFunc=" + GLEnums.getString(this.stencilFunc) + ", stencilRef=" + this.stencilRef + ", stencilMask=" + this.stencilMask +
+			", view={x:" + this.view[0] + ", y:" + this.view[1] +
+			", w:" + this.view[2] + ", h:" + this.view[3] + "}" + ", cull=" + this.cull +
+			", cullMode=" + GLEnums.getString(this.cullMode) + ", polyMode=" + GLEnums.getString(this.polyMode) +
+			'}';
+	}
+	
+	
+	
 }

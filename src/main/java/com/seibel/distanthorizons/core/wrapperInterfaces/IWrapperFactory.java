@@ -27,6 +27,7 @@ import com.seibel.distanthorizons.core.wrapperInterfaces.world.IBiomeWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.worldGeneration.IBatchGeneratorEnvironmentWrapper;
 import com.seibel.distanthorizons.coreapi.interfaces.dependencyInjection.IBindable;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
 import java.io.IOException;
 import java.util.HashSet;
@@ -42,7 +43,7 @@ public interface IWrapperFactory extends IDhApiWrapperFactory, IBindable
 	IBatchGeneratorEnvironmentWrapper createBatchGenerator(IDhLevel targetLevel);
 	
 	IBiomeWrapper deserializeBiomeWrapper(String str, ILevelWrapper levelWrapper) throws IOException;
-	IBiomeWrapper getPlainsBiomeWrapper(ILevelWrapper levelWrapper); // TODO it would be nice to remove the level wrapper if possible to put this in line with getAirBlockStateWrapper() but it isn't necessary 
+	IBiomeWrapper getPlainsBiomeWrapper(ILevelWrapper levelWrapper); 
 	default IBiomeWrapper deserializeBiomeWrapperOrGetDefault(String str, ILevelWrapper levelWrapper)
 	{
 		IBiomeWrapper biome;
@@ -81,12 +82,12 @@ public interface IWrapperFactory extends IDhApiWrapperFactory, IBindable
 	 * Returns the set of {@link IBlockStateWrapper}'s that shouldn't be rendered. <br>
 	 * Generally this contains blocks like: air, barriers, light blocks, etc. 
 	 */
-	HashSet<IBlockStateWrapper> getRendererIgnoredBlocks(ILevelWrapper levelWrapper);
+	ObjectOpenHashSet<IBlockStateWrapper> getRendererIgnoredBlocks(ILevelWrapper levelWrapper);
 	/**
 	 * Returns the set of {@link IBlockStateWrapper}'s that shouldn't be rendered in caves. <br>
 	 * Generally this contains blocks like: air, rails, glow lichen, etc. 
 	 */
-	HashSet<IBlockStateWrapper> getRendererIgnoredCaveBlocks(ILevelWrapper levelWrapper);
+	ObjectOpenHashSet<IBlockStateWrapper> getRendererIgnoredCaveBlocks(ILevelWrapper levelWrapper);
 	
 	/** clears the cached values */
 	void resetRendererIgnoredCaveBlocks();

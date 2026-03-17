@@ -103,6 +103,6 @@ public class DhApiRenderProxy implements IDhApiRenderProxy
 	public boolean getDeferTransparentRendering() { return this.deferTransparentRendering; }
 	
 	@Override
-	public float getNearClipPlaneDistanceInBlocks(float partialTicks) { return RenderUtil.getNearClipPlaneDistanceInBlocks(partialTicks); }
+	public float getNearClipPlaneDistanceInBlocks(float partialTicks) { return RenderUtil.getNearClipPlaneInBlocks(); }
 	
 }

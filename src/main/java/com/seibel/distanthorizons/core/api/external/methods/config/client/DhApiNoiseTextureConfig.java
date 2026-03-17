@@ -41,8 +41,8 @@ public class DhApiNoiseTextureConfig implements IDhApiNoiseTextureConfig
 	{ return new DhApiConfigValue<Integer, Integer>(Config.Client.Advanced.Graphics.NoiseTexture.noiseSteps); }
 	
 	@Override
-	public IDhApiConfigValue<Double> noiseIntensity()
-	{ return new DhApiConfigValue<Double, Double>(Config.Client.Advanced.Graphics.NoiseTexture.noiseIntensity); }
+	public IDhApiConfigValue<Float> noiseIntensity()
+	{ return new DhApiConfigValue<Float, Float>(Config.Client.Advanced.Graphics.NoiseTexture.noiseIntensity); }
 	
 	@Override
 	public IDhApiConfigValue<Integer> noiseDropoff()

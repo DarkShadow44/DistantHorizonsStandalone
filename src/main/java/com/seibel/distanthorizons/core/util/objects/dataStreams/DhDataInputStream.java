@@ -19,11 +19,10 @@
 
 package com.seibel.distanthorizons.core.util.objects.dataStreams;
 
-import com.github.luben.zstd.RecyclingBufferPool;
-import com.github.luben.zstd.Zstd;
-import com.github.luben.zstd.ZstdInputStream;
+import com.github.luben.zstd.*;
 import com.seibel.distanthorizons.api.enums.config.EDhApiDataCompressionMode;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
+import com.seibel.distanthorizons.core.util.objects.pooling.PhantomArrayListCheckout;
 import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import net.jpountz.lz4.LZ4FrameInputStream;
 import com.seibel.distanthorizons.core.logging.DhLogger;
@@ -54,15 +53,16 @@ public class DhDataInputStream extends DataInputStream
 	// constructor //
 	//=============//
 	
-	public static DhDataInputStream create(ByteArrayList byteArrayList, EDhApiDataCompressionMode compressionMode) throws IOException
-	{ return create(byteArrayList.toByteArray(), compressionMode); }
-	public static DhDataInputStream create(byte[] byteArray, EDhApiDataCompressionMode compressionMode) throws IOException
+	public static DhDataInputStream create(ByteArrayList byteArrayList, EDhApiDataCompressionMode compressionMode, PhantomArrayListCheckout checkout) throws IOException
+	{ return create(byteArrayList.toByteArray(), compressionMode, checkout); }
+	public static DhDataInputStream create(byte[] byteArray, EDhApiDataCompressionMode compressionMode, PhantomArrayListCheckout checkout) throws IOException
 	{
 		// Z_Std handling compression outside the stream provides a significant performance boost
 		ByteArrayInputStream byteArrayInputStream;
 		if (compressionMode == EDhApiDataCompressionMode.Z_STD_BLOCK)
 		{
-			byteArrayInputStream = new ByteArrayInputStream(Zstd.decompress(byteArray));
+			ByteArrayList pooledByteArrayList = PooledZstdDecompressor.decompressFrame(byteArray, checkout);
+			byteArrayInputStream = new ByteArrayInputStream(pooledByteArrayList.elements(), 0, pooledByteArrayList.size());
 		}
 		else
 		{

@@ -71,8 +71,10 @@ public class SSAOShader extends AbstractShaderRenderer
 	@Override
 	public void onInit()
 	{
-		this.shader = new ShaderProgram("shaders/normal.vert", "shaders/ssao/ao.frag",
-				"fragColor", new String[]{ "vPosition" }
+		this.shader = new ShaderProgram(
+			"shaders/quadApply.vert",
+			"shaders/ssao/ao.frag",
+			"vPosition"
 		);
 		
 		// uniform setup
@@ -108,26 +110,15 @@ public class SSAOShader extends AbstractShaderRenderer
 		
 		this.shader.setUniform(this.uInvProj, this.invertedProjection);
 		
-		this.shader.setUniform(this.uSampleCount, Config.Client.Advanced.Graphics.Ssao.sampleCount.get());
-		
-		// Explicit Number casts need to be done to prevent issues with the default value being an int
-		Number radius = Config.Client.Advanced.Graphics.Ssao.radius.get(); 
-		this.shader.setUniform(this.uRadius, radius.floatValue());
-		
-		Number strength = Config.Client.Advanced.Graphics.Ssao.strength.get();
-		this.shader.setUniform(this.uStrength, strength.floatValue());
-		
-		Number minLight = Config.Client.Advanced.Graphics.Ssao.minLight.get();
-		this.shader.setUniform(this.uMinLight, minLight.floatValue());
-		
-		Number bias = Config.Client.Advanced.Graphics.Ssao.bias.get();
-		this.shader.setUniform(this.uBias, bias.floatValue());
+		this.shader.setUniform(this.uSampleCount, 6);
+		this.shader.setUniform(this.uRadius, 4.0f);
+		this.shader.setUniform(this.uStrength, 0.2f);
+		this.shader.setUniform(this.uMinLight, 0.25f);
+		this.shader.setUniform(this.uBias, 0.02f);
+		this.shader.setUniform(this.uFadeDistanceInBlocks, 1_600.0f);
 		
 		GL32.glUniform1i(this.uDepthMap, 0);
 		
-		float fadeDistanceInBlocks = Config.Client.Advanced.Graphics.Ssao.fadeDistanceInBlocks.get().floatValue();
-		fadeDistanceInBlocks = MathUtil.clamp(0.0f, fadeDistanceInBlocks, Float.MAX_VALUE); // clamp to prevent accidentally setting a negative number
-		this.shader.setUniform(this.uFadeDistanceInBlocks, fadeDistanceInBlocks);
 	}
 	
 	

@@ -20,6 +20,7 @@
 package com.seibel.distanthorizons.core.wrapperInterfaces.misc;
 
 import com.seibel.distanthorizons.coreapi.interfaces.dependencyInjection.IBindable;
+import org.lwjgl.opengl.GL32;
 
 /**
  * @author James Seibel
@@ -27,8 +28,12 @@ import com.seibel.distanthorizons.coreapi.interfaces.dependencyInjection.IBindab
  */
 public interface ILightMapWrapper extends IBindable
 {
+	/** 
+	 * which texture index IE 0,1,2... the lightmap will be bound to. <Br> 
+	 * Related to but different from {@link GL32#GL_TEXTURE0}.
+	 */
+	int BOUND_INDEX = 0;
 	
-	/** Returns the bound texture position */
 	void bind();
 	void unbind();
 	

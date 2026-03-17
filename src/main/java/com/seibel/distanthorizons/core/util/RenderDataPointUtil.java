@@ -20,9 +20,6 @@
 package com.seibel.distanthorizons.core.util;
 
 import com.seibel.distanthorizons.api.enums.rendering.EDhApiBlockMaterial;
-import com.seibel.distanthorizons.core.level.AbstractDhLevel;
-import com.seibel.distanthorizons.core.dataObjects.render.columnViews.ColumnArrayView;
-import com.seibel.distanthorizons.core.dataObjects.render.columnViews.IColumnDataView;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
 import com.seibel.distanthorizons.coreapi.ModInfo;
@@ -260,57 +257,5 @@ public class RenderDataPointUtil
 	}
 	
 	
-	
-	//=================//
-	// ColumnArrayView //
-	//=================//
-	// TODO this should probably be moved
-	
-	// TODO what is the purpose of these?
-	//these were needed by the old logic for mergeMultiData(),
-	//which has now been replaced by RenderDataPointReducingList.
-	//so, these are no longer necessary, but left here for the same
-	//reason the old logic is left here: in case it's ever needed again.
-	/*
-	private static final ThreadLocal<int[]> tLocalIndices = new ThreadLocal<>();
-	private static final ThreadLocal<boolean[]> tLocalIncreaseIndex = new ThreadLocal<>();
-	private static final ThreadLocal<boolean[]> tLocalIndexHandled = new ThreadLocal<>();
-	private static final ThreadLocal<short[]> tLocalHeightAndDepth = new ThreadLocal<>();
-	private static final ThreadLocal<int[]> tDataIndexCache = new ThreadLocal<>();
-	*/
-	
-	/**
-	 * This method merge column of multiple data together
-	 *
-	 * @param sourceData one or more columns of data
-	 * @param output one column of space for the result to be written to
-	 */
-	public static void mergeMultiData(IColumnDataView sourceData, ColumnArrayView output)
-	{
-		int target = output.verticalSize();
-		if (target <= 0)
-		{
-			// I expect this to never be the case,
-			// but RenderDataPointReducingList handles it sanely,
-			// so I might as well handle it sanely here too.
-			output.fill(EMPTY_DATA);
-		}
-		else if (target == 1)
-		{
-			output.set(0, RenderDataPointReducingList.reduceToOne(sourceData));
-			for (int index = 1, size = output.size(); index < size; index++)
-			{
-				output.set(index, EMPTY_DATA);
-			}
-		}
-		else
-		{
-			try (RenderDataPointReducingList list = new RenderDataPointReducingList(sourceData))
-			{
-				list.reduce(output.verticalSize());
-				list.copyTo(output);
-			}
-		}
-	}
 	
 }

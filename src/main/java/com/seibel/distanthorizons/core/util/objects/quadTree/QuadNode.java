@@ -43,6 +43,7 @@ public class QuadNode<T>
 	 * IE the detail levels that the root nodes in the tree are.
 	 */
 	public final byte parentTreeLeafDetailLevel;
+	@Nullable
 	public T value;
 	
 	
@@ -51,24 +52,28 @@ public class QuadNode<T>
 	 * index 0 <br>
 	 * relative pos (0,0)
 	 */
+	@Nullable
 	public QuadNode<T> nwChild;
 	/**
 	 * North East <br>
 	 * index 1 <br>
 	 * relative (1,0)
 	 */
+	@Nullable
 	public QuadNode<T> neChild;
 	/**
 	 * South West <br>
 	 * index 2 <br>
 	 * relative (0,1)
 	 */
+	@Nullable
 	public QuadNode<T> swChild;
 	/**
 	 * South East <br>
 	 * index 3 <br>
 	 * relative (1,1)
 	 */
+	@Nullable
 	public QuadNode<T> seChild;
 	
 	
@@ -127,18 +132,18 @@ public class QuadNode<T>
 	 *
 	 * @param child0to3 must be an int between 0 and 3
 	 */
-	public QuadNode<T> getChildByIndex(int child0to3) throws IllegalArgumentException
+	public @Nullable QuadNode<T> getChildByIndex(int child0to3) throws IllegalArgumentException
 	{
 		switch (child0to3)
 		{
 			case 0:
-				return nwChild;
+				return this.nwChild;
 			case 1:
-				return swChild;
+				return this.swChild;
 			case 2:
-				return neChild;
+				return this.neChild;
 			case 3:
-				return seChild;
+				return this.seChild;
 			
 			default:
 				throw new IllegalArgumentException("child0to3 must be between 0 and 3");
@@ -232,7 +237,8 @@ public class QuadNode<T>
 			QuadNode<T> childNode;
 			if (DhSectionPos.contains(nwPos, inputSectionPos))
 			{
-				// TODO merge duplicate code
+				// there's a bunch of duplicate code between the 4 children, but the code works, so leaving it duplicated will be fine
+				
 				if (replaceValue && this.nwChild == null)
 				{
 					// if no node exists for this position, but we want to insert a new value at this position, create a new node
@@ -245,7 +251,6 @@ public class QuadNode<T>
 			}
 			else if (DhSectionPos.contains(swPos, inputSectionPos))
 			{
-				// TODO merge duplicate code
 				if (replaceValue && this.swChild == null)
 				{
 					// if no node exists for this position, but we want to insert a new value at this position, create a new node
@@ -258,7 +263,6 @@ public class QuadNode<T>
 			}
 			else if (DhSectionPos.contains(nePos, inputSectionPos))
 			{
-				// TODO merge duplicate code
 				if (replaceValue && this.neChild == null)
 				{
 					// if no node exists for this position, but we want to insert a new value at this position, create a new node
@@ -271,7 +275,6 @@ public class QuadNode<T>
 			}
 			else if (DhSectionPos.contains(sePos, inputSectionPos))
 			{
-				// TODO merge duplicate code
 				if (replaceValue && this.seChild == null)
 				{
 					// if no node exists for this position, but we want to insert a new value at this position, create a new node

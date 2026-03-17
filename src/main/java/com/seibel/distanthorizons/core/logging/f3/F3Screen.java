@@ -23,10 +23,12 @@ import com.seibel.distanthorizons.core.api.internal.ClientApi;
 import com.seibel.distanthorizons.core.api.internal.SharedApi;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
+import com.seibel.distanthorizons.core.enums.MinecraftTextFormat;
 import com.seibel.distanthorizons.core.jar.ModJarInfo;
+import com.seibel.distanthorizons.core.level.IDhClientLevel;
 import com.seibel.distanthorizons.core.level.IDhLevel;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
-import com.seibel.distanthorizons.core.pooling.PhantomArrayListPool;
+import com.seibel.distanthorizons.core.util.objects.pooling.PhantomArrayListPool;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
 import com.seibel.distanthorizons.core.render.RenderBufferHandler;
 import com.seibel.distanthorizons.core.render.renderer.generic.GenericObjectRenderer;
@@ -36,7 +38,6 @@ import com.seibel.distanthorizons.core.world.AbstractDhWorld;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
 import com.seibel.distanthorizons.coreapi.ModInfo;
 import com.seibel.distanthorizons.coreapi.util.StringUtil;
-import org.apache.logging.log4j.LogManager;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 
 import java.text.NumberFormat;
@@ -81,18 +82,11 @@ public class F3Screen
 	 */
 	public static void addStringToDisplay(List<String> messageList)
 	{
-		// multi thread pools
-		PriorityTaskPicker.Executor worldGenPool = ThreadPoolUtil.getWorldGenExecutor();
-		PriorityTaskPicker.Executor fileHandlerPool = ThreadPoolUtil.getFileHandlerExecutor();
-		PriorityTaskPicker.Executor renderLoadingPool = ThreadPoolUtil.getRenderLoadingExecutor();
-		PriorityTaskPicker.Executor updatePool = ThreadPoolUtil.getUpdatePropagatorExecutor();
-		PriorityTaskPicker.Executor lodBuilderPool = ThreadPoolUtil.getChunkToLodBuilderExecutor();
-		PriorityTaskPicker.Executor networkPool = ThreadPoolUtil.getNetworkCompressionExecutor();
+		String r = MinecraftTextFormat.RED;
+		String y = MinecraftTextFormat.YELLOW;
+		String cf = MinecraftTextFormat.CLEAR_FORMATTING;
 		
-		// single thread pools
-		ThreadPoolExecutor cleanupPool = ThreadPoolUtil.getCleanupExecutor();
-		ThreadPoolExecutor beaconCullingPool = ThreadPoolUtil.getBeaconCullingExecutor();
-		ThreadPoolExecutor migrationPool = ThreadPoolUtil.getFullDataMigrationExecutor();
+		
 		
 		AbstractDhWorld world = SharedApi.getAbstractDhWorld();
 		if (world == null)
@@ -114,7 +108,7 @@ public class F3Screen
 		// render validation error
 		if (ClientApi.INSTANCE.lastRenderParamValidationMessage != null)
 		{
-			messageList.add("Render Validation Err: " + ClientApi.INSTANCE.lastRenderParamValidationMessage);
+			messageList.add("Render Validation Err: " + r + ClientApi.INSTANCE.lastRenderParamValidationMessage + cf);
 		}
 		
 		
@@ -129,7 +123,7 @@ public class F3Screen
 				int detailLevel = DhSectionPos.getDetailLevel(sectionPos);
 				int posX = DhSectionPos.getX(sectionPos);
 				int posZ = DhSectionPos.getZ(sectionPos);
-				messageList.add("LOD Pos: " + detailLevel + "*"+posX+","+posZ);
+				messageList.add("LOD Pos: "+y+detailLevel+"*"+posX+","+posZ+cf);
 			}
 			messageList.add("");
 		}
@@ -138,16 +132,16 @@ public class F3Screen
 		if (Config.Client.Advanced.Debugging.F3Screen.showThreadPools.get())
 		{
 			// multi thread pools
-			messageList.add(getThreadPoolStatString("World Gen/Import", worldGenPool));
-			messageList.add(getThreadPoolStatString("Render Load", renderLoadingPool));
-			messageList.add(getThreadPoolStatString("File Handler", fileHandlerPool));
-			messageList.add(getThreadPoolStatString("Update Propagator", updatePool));
-			messageList.add(getThreadPoolStatString("LOD Builder", lodBuilderPool));
-			messageList.add(getThreadPoolStatString("Networking", networkPool));
+			messageList.add(PriorityTaskPicker.Executor.getThreadPoolStatString("World Gen/Import", ThreadPoolUtil.getWorldGenExecutor()));
+			messageList.add(PriorityTaskPicker.Executor.getThreadPoolStatString("Render Load", ThreadPoolUtil.getFileHandlerExecutor()));
+			messageList.add(PriorityTaskPicker.Executor.getThreadPoolStatString("File Handler", ThreadPoolUtil.getRenderLoadingExecutor()));
+			messageList.add(PriorityTaskPicker.Executor.getThreadPoolStatString("Update Propagator", ThreadPoolUtil.getUpdatePropagatorExecutor()));
+			messageList.add(PriorityTaskPicker.Executor.getThreadPoolStatString("LOD Builder", ThreadPoolUtil.getChunkToLodBuilderExecutor()));
+			messageList.add(PriorityTaskPicker.Executor.getThreadPoolStatString("Networking", ThreadPoolUtil.getNetworkCompressionExecutor()));
 			//// single thread pools
-			//messageList.add(getThreadPoolStatString("Cleanup", cleanupPool));
-			//messageList.add(getThreadPoolStatString("Beacon Culling", beaconCullingPool));
-			//messageList.add(getThreadPoolStatString("Migration", migrationPool));
+			//messageList.add(PriorityTaskPicker.Executor.getThreadPoolStatString("Cleanup", ThreadPoolUtil.getCleanupExecutor()));
+			//messageList.add(PriorityTaskPicker.Executor.getThreadPoolStatString("Beacon Culling", ThreadPoolUtil.getBeaconCullingExecutor()));
+			//messageList.add(PriorityTaskPicker.Executor.getThreadPoolStatString("Migration", ThreadPoolUtil.getFullDataMigrationExecutor()));
 			messageList.add("");
 		}
 		
@@ -167,7 +161,8 @@ public class F3Screen
 		// chunk updates
 		if (Config.Client.Advanced.Debugging.F3Screen.showQueuedChunkUpdateCount.get())
 		{
-			messageList.add(SharedApi.INSTANCE.getDebugMenuString());
+			ArrayList<String> chunkQueueList = SharedApi.INSTANCE.getDebugMenuString();
+			messageList.addAll(chunkQueueList);
 			messageList.add("");
 		}
 		
@@ -178,7 +173,23 @@ public class F3Screen
 			messageList.add("");
 			for (IDhLevel level : levelIterator)
 			{
+				// skip non-rendering levels if requested
+				if (Config.Client.Advanced.Debugging.F3Screen.onlyShowRenderingLevels.get())
+				{
+					if (level instanceof IDhClientLevel)
+					{
+						IDhClientLevel clientLevel = (IDhClientLevel) level;
+						if (!clientLevel.isRendering())
+						{
+							continue;
+						}
+					}
+				}
+				
+				
+				
 				level.addDebugMenuStringsToList(messageList);
+				
 				// LOD rendering
 				RenderBufferHandler renderBufferHandler = level.getRenderBufferHandler();
 				if (renderBufferHandler != null)
@@ -190,6 +201,7 @@ public class F3Screen
 						messageList.add(showPassString);
 					}
 				}
+				
 				// Generic rendering
 				GenericObjectRenderer genericRenderer = level.getGenericRenderer();
 				if (genericRenderer != null)
@@ -199,45 +211,6 @@ public class F3Screen
 				messageList.add("");
 			}
 		}
-	}
-	
-	
-	
-	//================//
-	// helper methods //
-	//================//
-	
-	private static String getThreadPoolStatString(String name, PriorityTaskPicker.Executor pool)
-	{
-		String queueSize = (pool != null) ? NUMBER_FORMAT.format(pool.getQueueSize()) : "-";
-		String completedCount = (pool != null) ? NUMBER_FORMAT.format(pool.getCompletedTaskCount()) : "-";
-		
-		String message = name+", Tasks: "+queueSize+", Done: "+completedCount;
-		
-		if (pool != null)
-		{
-			// active threads
-			int activeThreadCount = pool.getRunningTaskCount();
-			int threadCount = pool.getPoolSize();
-			message += ", Active: "+activeThreadCount+"/"+threadCount;
-			
-			// thread runtime
-			String runTimeAvgStr;
-			double runTimeAvgInMs = pool.getAverageRunTimeInMs();
-			if (!Double.isNaN(runTimeAvgInMs))
-			{
-				runTimeAvgStr = NUMBER_FORMAT.format(runTimeAvgInMs);
-			}
-			else
-			{
-				runTimeAvgStr = "<0";
-			}
-			
-			message += ", Avg: "+runTimeAvgStr+"ms";
-		}
-		
-		
-		return message;
 	}
 	
 	

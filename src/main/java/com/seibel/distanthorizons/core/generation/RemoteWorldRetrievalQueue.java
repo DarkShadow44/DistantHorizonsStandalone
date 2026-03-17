@@ -1,6 +1,7 @@
 package com.seibel.distanthorizons.core.generation;
 
 import com.seibel.distanthorizons.core.config.Config;
+import com.seibel.distanthorizons.core.file.fullDatafile.V2.FullDataSourceProviderV2;
 import com.seibel.distanthorizons.core.generation.tasks.DataSourceRetrievalResult;
 import com.seibel.distanthorizons.core.generation.tasks.ERetrievalResultState;
 import com.seibel.distanthorizons.core.level.DhClientLevel;
@@ -47,7 +48,7 @@ public class RemoteWorldRetrievalQueue extends AbstractFullDataNetworkRequestQue
 	public void startAndSetTargetPos(DhBlockPos2D targetPos) { super.tick(targetPos); }
 	
 	@Override
-	public byte lowestDataDetail() { return LodUtil.BLOCK_DETAIL_LEVEL + 12; } // TODO should be the same as what the server's update propagator can provide
+	public byte lowestDataDetail() { return FullDataSourceProviderV2.ROOT_SECTION_DETAIL_LEVEL; }
 	@Override
 	public byte highestDataDetail() { return LodUtil.BLOCK_DETAIL_LEVEL; }
 	

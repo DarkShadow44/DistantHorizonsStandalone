@@ -63,7 +63,7 @@ public class PosArrayGridList<T> extends ArrayGridList<T>
 	}
 	
 	@Override
-	protected int _indexOf(int x, int y)
+	protected int getIndexOf(int x, int y)
 	{
 		return (x - offsetX) + (y - offsetY) * gridSize;
 	}

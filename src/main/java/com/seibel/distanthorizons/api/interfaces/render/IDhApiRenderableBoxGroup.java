@@ -73,7 +73,7 @@ public interface IDhApiRenderableBoxGroup extends List<DhApiRenderableBox>
 	 * This is a good place to change the origin or notify of any box changes. 
 	 */
 	void setPreRenderFunc(Consumer<DhApiRenderParam> renderEventParam);
-	void setPostRenderFunc(Consumer<DhApiRenderParam> renderEventParam); // TODO name?
+	void setPostRenderFunc(Consumer<DhApiRenderParam> renderEventParam);
 	
 	/**
 	 * If a cube's color, position, or other property is changed this method

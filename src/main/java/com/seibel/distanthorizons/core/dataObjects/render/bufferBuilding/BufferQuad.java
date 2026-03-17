@@ -47,7 +47,7 @@ public final class BufferQuad
 	
 	public short widthEastWest;
 	/** This is both North/South and Up/Down since the merging logic is the same either way */
-	public short widthNorthSouthOrUpDown;
+	public short widthNorthSouthOrHeight;
 	
 	public final int color;
 	/** used by the Iris shader mod to determine how each LOD should be rendered */
@@ -62,20 +62,24 @@ public final class BufferQuad
 	
 	
 	BufferQuad(
-			short x, short y, short z, short widthEastWest, short widthNorthSouthOrUpDown,
+			short x, short y, short z, short widthEastWest, short widthNorthSouthOrHeight,
 			int color, byte irisBlockMaterialId, byte skylight, byte blockLight,
 			EDhDirection direction)
 	{
-		if (widthEastWest == 0 || widthNorthSouthOrUpDown == 0)
+		if (widthEastWest == 0 || widthNorthSouthOrHeight == 0)
+		{
 			throw new IllegalArgumentException("Size 0 quad!");
-		if (widthEastWest < 0 || widthNorthSouthOrUpDown < 0)
+		}
+		if (widthEastWest < 0 || widthNorthSouthOrHeight < 0)
+		{
 			throw new IllegalArgumentException("Negative sized quad!");
+		}
 		
 		this.x = x;
 		this.y = y;
 		this.z = z;
 		this.widthEastWest = widthEastWest;
-		this.widthNorthSouthOrUpDown = widthNorthSouthOrUpDown;
+		this.widthNorthSouthOrHeight = widthNorthSouthOrHeight;
 		this.color = color;
 		this.irisBlockMaterialId = irisBlockMaterialId;
 		this.skyLight = skylight;
@@ -238,17 +242,17 @@ public final class BufferQuad
 		if (mergeDirection == BufferMergeDirectionEnum.EastWest)
 		{
 			thisPerpendicularCompareWidth = this.widthEastWest;
-			thisParallelCompareWidth = this.widthNorthSouthOrUpDown;
+			thisParallelCompareWidth = this.widthNorthSouthOrHeight;
 			
 			otherPerpendicularCompareWidth = quad.widthEastWest;
-			otherParallelCompareWidth = quad.widthNorthSouthOrUpDown;
+			otherParallelCompareWidth = quad.widthNorthSouthOrHeight;
 		}
 		else
 		{
-			thisPerpendicularCompareWidth = this.widthNorthSouthOrUpDown;
+			thisPerpendicularCompareWidth = this.widthNorthSouthOrHeight;
 			thisParallelCompareWidth = this.widthEastWest;
 			
-			otherPerpendicularCompareWidth = quad.widthNorthSouthOrUpDown;
+			otherPerpendicularCompareWidth = quad.widthNorthSouthOrHeight;
 			otherParallelCompareWidth = quad.widthEastWest;
 		}
 		
@@ -318,7 +322,7 @@ public final class BufferQuad
 		// merge the two quads
 		if (mergeDirection == BufferMergeDirectionEnum.NorthSouthOrUpDown)
 		{
-			this.widthNorthSouthOrUpDown += quad.widthNorthSouthOrUpDown;
+			this.widthNorthSouthOrHeight += quad.widthNorthSouthOrHeight;
 		}
 		else // if (mergeDirection == MergeDirection.EastWest)
 		{

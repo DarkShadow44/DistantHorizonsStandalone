@@ -37,14 +37,94 @@ public class QuadElementBuffer extends GLElementBuffer
 	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
 	
-	public QuadElementBuffer()
+	
+	//=============//
+	// constructor //
+	//=============//
+	//region
+	
+	public QuadElementBuffer() { super(false); }
+	
+	public void reserve(int quadCount)
 	{
-		super(GLProxy.getInstance().bufferStorageSupported);
+		if (quadCount < 0)
+		{
+			throw new IllegalArgumentException("quadCount must be greater than 0");
+		}
+		if (quadCount == 0)
+		{
+			// shouldn't happen, but just in case
+			return;
+		}
+		
+		this.indicesCount = quadCount * 6; // 2 triangles per quad
+		if (this.indicesCount >= this.getCapacity()
+			&& this.indicesCount < this.getCapacity() * BUFFER_SHRINK_TRIGGER)
+		{
+			return;
+		}
+		int vertexCount = quadCount * 4; // 4 vertices per quad
+		
+		if (vertexCount < 255)
+		{
+			// Reserve 1 for the reset index
+			this.type = GL32.GL_UNSIGNED_BYTE;
+		}
+		else if (vertexCount < 65535)
+		{
+			// Reserve 1 for the reset index
+			this.type = GL32.GL_UNSIGNED_SHORT;
+		}
+		else
+		{
+			this.type = GL32.GL_UNSIGNED_INT;
+		}
+		
+		ByteBuffer buffer = MemoryUtil.memAlloc(this.indicesCount * GLEnums.getTypeSize(this.type));
+		buildBuffer(quadCount, buffer, this.type);
+		this.bind();
+		super.uploadBuffer(buffer, EDhApiGpuUploadMethod.DATA,
+			this.indicesCount * GLEnums.getTypeSize(this.type), GL32.GL_STATIC_DRAW);
+		
+		MemoryUtil.memFree(buffer);
 	}
 	
-	public int getCapacity()
+	//endregion
+	
+	
+	
+	//=========//
+	// getters //
+	//=========//
+	//region
+	
+	public int getCapacity() { return super.getSize() / GLEnums.getTypeSize(this.getType()); }
+	
+	//endregion
+	
+	
+	
+	//==========//
+	// building //
+	//==========//
+	//region
+	
+	private static void buildBuffer(int quadCount, ByteBuffer buffer, int type)
 	{
-		return super.getSize() / GLEnums.getTypeSize(this.getType());
+		switch (type)
+		{
+			case GL32.GL_UNSIGNED_BYTE:
+				buildBufferByte(quadCount, buffer);
+				break;
+			case GL32.GL_UNSIGNED_SHORT:
+				buildBufferShort(quadCount, buffer);
+				break;
+			case GL32.GL_UNSIGNED_INT:
+				buildBufferInt(quadCount, buffer);
+				break;
+			default:
+				throw new IllegalStateException("Unknown buffer type: [" + type + "].");
+		}
 	}
 	
 	private static void buildBufferByte(int quadCount, ByteBuffer buffer)
@@ -108,70 +188,8 @@ public class QuadElementBuffer extends GLElementBuffer
 		buffer.rewind();
 	}
 	
-	private static void buildBuffer(int quadCount, ByteBuffer buffer, int type)
-	{
-		switch (type)
-		{
-			case GL32.GL_UNSIGNED_BYTE:
-				buildBufferByte(quadCount, buffer);
-				break;
-			case GL32.GL_UNSIGNED_SHORT:
-				buildBufferShort(quadCount, buffer);
-				break;
-			case GL32.GL_UNSIGNED_INT:
-				buildBufferInt(quadCount, buffer);
-				break;
-			default:
-				throw new IllegalStateException("Unknown type: " + type);
-		}
-	}
+	//endregion
 	
-	public void reserve(int quadCount)
-	{
-		if (quadCount < 0)
-		{
-			throw new IllegalArgumentException("quadCount must be greater than 0");
-		}
-		if (quadCount == 0) return; // FIXME: This doesn't happens yet, but just add this since everything will break if it does
-		
-		this.indicesCount = quadCount * 6; // 2 triangles per quad
-		if (this.indicesCount >= this.getCapacity() && this.indicesCount < this.getCapacity() * BUFFER_SHRINK_TRIGGER)
-		{
-			return;
-		}
-		int vertexCount = quadCount * 4; // 4 vertices per quad
-		
-		if (vertexCount < 255)
-		{ // Reserve 1 for the reset index
-			this.type = GL32.GL_UNSIGNED_BYTE;
-		}
-		else if (vertexCount < 65535)
-		{  // Reserve 1 for the reset index
-			this.type = GL32.GL_UNSIGNED_SHORT;
-		}
-		else
-		{
-			this.type = GL32.GL_UNSIGNED_INT;
-		}
-		//LOGGER.info("Quad IBO Resizing from [" + getCapacity() + "] to [" + quadCount + "]" + " with type: [" + GLEnums.getString(this.type) + "].");
-		
-		ByteBuffer buffer = MemoryUtil.memAlloc(this.indicesCount * GLEnums.getTypeSize(this.type));
-		buildBuffer(quadCount, buffer, this.type);
-		if (!GLProxy.getInstance().bufferStorageSupported)
-		{
-			
-			this.bind();
-			super.uploadBuffer(buffer, EDhApiGpuUploadMethod.DATA,
-					this.indicesCount * GLEnums.getTypeSize(this.type), GL32.GL_STATIC_DRAW);
-		}
-		else
-		{
-			this.bind();
-			super.uploadBuffer(buffer, EDhApiGpuUploadMethod.BUFFER_STORAGE,
-					this.indicesCount * GLEnums.getTypeSize(this.type), 0);
-		}
-		
-		MemoryUtil.memFree(buffer);
-	}
+	
 	
 }

@@ -99,8 +99,8 @@ public interface IMinecraftClientWrapper extends IBindable
 	//==========================//
 	
 	void disableVanillaClouds();
-	
 	void disableVanillaChunkFadeIn();
+	void disableFabulousTransparency();
 	
 	
 	
@@ -119,6 +119,18 @@ public interface IMinecraftClientWrapper extends IBindable
 	 * Exit Code: -1  <br>
 	 */
 	void crashMinecraft(String errorMessage, Throwable exception);
+	
+	/** 
+	 * This is only designed to be used internally by {@link GLProxy}
+	 * since it handles task frame limiting (reducing/preventing stuttering)
+	 * whereas this method causes the task to be run whenever MC decides to 
+	 * (likely all at once the next frame). <br><br>
+	 * 
+	 * Any tasks submitted here will be run on the render thread. 
+	 * 
+	 * @see GLProxy#queueRunningOnRenderThread(Runnable) 
+	 */
+	void executeOnRenderThread(Runnable runnable);
 	
 	
 	

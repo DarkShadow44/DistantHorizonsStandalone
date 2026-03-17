@@ -20,37 +20,42 @@
 package com.seibel.distanthorizons.core.dataObjects.fullData;
 
 import com.seibel.distanthorizons.core.dataObjects.BlockBiomeWrapperPair;
+import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
+import com.seibel.distanthorizons.core.util.objects.pooling.PhantomArrayListCheckout;
+import com.seibel.distanthorizons.core.util.objects.pooling.PhantomArrayListPool;
+import com.seibel.distanthorizons.core.util.objects.pooling.StringPool;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
 import com.seibel.distanthorizons.core.util.LodUtil;
 import com.seibel.distanthorizons.core.util.objects.DataCorruptedException;
 import com.seibel.distanthorizons.core.util.objects.dataStreams.DhDataInputStream;
 import com.seibel.distanthorizons.core.util.objects.dataStreams.DhDataOutputStream;
+import com.seibel.distanthorizons.core.wrapperInterfaces.IWrapperFactory;
 import com.seibel.distanthorizons.core.wrapperInterfaces.block.IBlockStateWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IBiomeWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
 import com.seibel.distanthorizons.core.logging.DhLogger;
+import it.unimi.dsi.fastutil.chars.CharArrayList;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * WARNING: This is not THREAD-SAFE! <br><br>
- * 
- * Used to map a numerical IDs to a Biome/BlockState pair. <br><br>
- * 
- * TODO the serializing of this map might be really big
- *  since it stringifies every block and biome name, which is quite bulky.
- *  It might be worth while to have a biome and block ID that then both get mapped
- *  to the data point ID to reduce file size.
- *  And/or it would be good to dynamically remove IDs that aren't currently in use.
+ * Used to map a numerical IDs to a Biome/BlockState pair. <br>
+ * Note: This is not thread safe. <br>
  * 
  * @author Leetom
  */
 public class FullDataPointIdMap
 {
 	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
+	
+	private static final IWrapperFactory WRAPPER_FACTORY = SingletonInjector.INSTANCE.get(IWrapperFactory.class);
+	
+	public static final PhantomArrayListPool ARRAY_LIST_POOL = new PhantomArrayListPool("IdMap");
+	
 	/**
 	 * Should only be enabled when debugging.
 	 * Has the system check if any duplicate Entries were read/written
@@ -75,14 +80,18 @@ public class FullDataPointIdMap
 	//=============//
 	// constructor //
 	//=============//
+	//region
 	
 	public FullDataPointIdMap(long pos) { this.pos = pos; }
+	
+	//endregion
 	
 	
 	
 	//=========//
 	// getters //
 	//=========//
+	//region
 	
 	/** @see FullDataPointIdMap#getEntry(int) */
 	public IBiomeWrapper getBiomeWrapper(int id) throws IndexOutOfBoundsException { return this.getEntry(id).biome; }
@@ -113,11 +122,14 @@ public class FullDataPointIdMap
 	
 	public long getPos() { return this.pos; }
 	
+	//endregion
+	
 	
 	
 	//=========//
 	// setters //
 	//=========//
+	//region
 	
 	/**
 	 * If an entry with the given values already exists nothing will
@@ -215,11 +227,14 @@ public class FullDataPointIdMap
 		this.cachedHashCode = 0;
 	}
 	
+	//endregion
+	
 	
 	
 	//=============//
 	// serializing //
 	//=============//
+	//region
 	
 	/** Serializes all contained entries into the given stream, formatted in UTF */
 	public void serialize(DhDataOutputStream outputStream) throws IOException
@@ -249,8 +264,9 @@ public class FullDataPointIdMap
 		}
 	}
 	
-	/** Creates a new IdBiomeBlockStateMap from the given UTF formatted stream */
-	public static FullDataPointIdMap deserialize(DhDataInputStream inputStream, long pos, ILevelWrapper levelWrapper) throws IOException, InterruptedException, DataCorruptedException
+	/** Clears and populates the given {@link FullDataPointIdMap} from the given UTF formatted stream */
+	public static void deserialize(@NotNull FullDataPointIdMap map, DhDataInputStream inputStream, long pos, ILevelWrapper levelWrapper) 
+		throws IOException, InterruptedException, DataCorruptedException
 	{
 		int entityCount = inputStream.readInt();
 		if (entityCount < 0)
@@ -258,52 +274,140 @@ public class FullDataPointIdMap
 			throw new DataCorruptedException("FullDataPointIdMap deserialize entry count should have a number greater than or equal to 0, returned value ["+entityCount+"].");
 		}
 		
+		// clearing the old values is necessary so we can re-use the same map multiple times
+		map.clear(pos);
 		
 		// only used when debugging
 		HashMap<String, BlockBiomeWrapperPair> dataPointEntryBySerialization = new HashMap<>();
 		
-		FullDataPointIdMap newMap = new FullDataPointIdMap(pos);
-		for (int i = 0; i < entityCount; i++)
+		try(PhantomArrayListCheckout checkout = ARRAY_LIST_POOL.checkoutArrays(0, 0, 0, 3))
 		{
-			// necessary to prevent issues with deserializing objects after the level has been closed
-			if (Thread.interrupted())
+			for (int i = 0; i < entityCount; i++)
 			{
-				throw new InterruptedException("[" + FullDataPointIdMap.class.getSimpleName() + "] deserializing interrupted.");
-			}
-			
-			
-			String entryString = inputStream.readUTF();
-			BlockBiomeWrapperPair newPair = BlockBiomeWrapperPair.deserialize(entryString, levelWrapper);
-			newMap.blockBiomePairList.add(newPair);
-			
-			if (RUN_SERIALIZATION_DUPLICATE_VALIDATION)
-			{
-				if (dataPointEntryBySerialization.containsKey(entryString))
+				// necessary to prevent issues with deserializing objects after the level has been closed
+				if (Thread.interrupted())
 				{
-					LOGGER.error("Duplicate deserialized entry found with serial: " + entryString);
+					throw new InterruptedException("[" + FullDataPointIdMap.class.getSimpleName() + "] deserializing interrupted.");
 				}
-				if (dataPointEntryBySerialization.containsValue(newPair))
+				
+				int length = inputStream.readUnsignedShort();
+				
+				CharArrayList fullCharList = checkout.getCharArray(0, length);
+				CharArrayList biomeCharList = checkout.getCharArray(1, length);
+				CharArrayList blockCharList = checkout.getCharArray(2, length);
+				
+				// parse the full UTF string
+				for (int stringIndex = 0; stringIndex < length; stringIndex++)
 				{
-					LOGGER.error("Duplicate deserialized entry found with value: " + newPair.serialize());
+					byte b = inputStream.readByte();
+					char c = (char) (b & 0xFF);
+					fullCharList.set(stringIndex, c);
 				}
-				dataPointEntryBySerialization.put(entryString, newPair);
+				splitCharArray(fullCharList, biomeCharList, blockCharList);
+				
+				String biomeString = StringPool.INSTANCE.getPooledString(biomeCharList);
+				IBiomeWrapper biome = WRAPPER_FACTORY.deserializeBiomeWrapperOrGetDefault(biomeString, levelWrapper);
+				
+				String blockStateString = StringPool.INSTANCE.getPooledString(blockCharList);
+				IBlockStateWrapper blockState = WRAPPER_FACTORY.deserializeBlockStateWrapperOrGetDefault(blockStateString, levelWrapper);
+				
+				BlockBiomeWrapperPair newPair = BlockBiomeWrapperPair.get(blockState, biome);
+				map.blockBiomePairList.add(newPair);
+				
+				
+				if (RUN_SERIALIZATION_DUPLICATE_VALIDATION)
+				{
+					String entryString = StringPool.INSTANCE.getPooledString(fullCharList); 
+					if (dataPointEntryBySerialization.containsKey(entryString))
+					{
+						LOGGER.error("Duplicate deserialized entry found with serial: " + entryString);
+					}
+					if (dataPointEntryBySerialization.containsValue(newPair))
+					{
+						LOGGER.error("Duplicate deserialized entry found with value: " + newPair.serialize());
+					}
+					dataPointEntryBySerialization.put(entryString, newPair);
+				}
 			}
 		}
 		
-		if (newMap.size() != entityCount)
+		if (map.size() != entityCount)
 		{
 			// if the mappings are out of sync then the LODs will render incorrectly due to IDs being wrong
-			LodUtil.assertNotReach("ID maps failed to deserialize for pos: ["+ DhSectionPos.toString(pos)+"], incorrect entity count. Expected count ["+entityCount+"], actual count ["+newMap.size()+"]");
+			LodUtil.assertNotReach("ID maps failed to deserialize for pos: ["+ DhSectionPos.toString(pos)+"], incorrect entity count. Expected count ["+entityCount+"], actual count ["+map.size()+"]");
+		}
+	}
+	/**
+	 * Splits up the given input {@link CharArrayList} into the
+	 * necessary biome and blockstate lists based on the location of
+	 * {@link FullDataPointIdMap#BLOCK_STATE_SEPARATOR_STRING}
+	 */
+	private static void splitCharArray(
+		CharArrayList input,
+		CharArrayList biomeString, CharArrayList blockString) throws DataCorruptedException
+	{
+		boolean separatorFound = false;
+		
+		int foundStartIndex = -1;
+		int separatorIndex = 0;
+		for (int inputIndex = 0; inputIndex < input.size(); inputIndex++)
+		{
+			char ch = input.getChar(inputIndex);
+			if (ch == FullDataPointIdMap.BLOCK_STATE_SEPARATOR_STRING.charAt(separatorIndex))
+			{
+				if (!separatorFound)
+				{
+					foundStartIndex = inputIndex;
+				}
+				separatorFound = true;
+				separatorIndex++;
+			}
+			else
+			{
+				separatorFound = false;
+				foundStartIndex = -1;
+				separatorIndex = 0;
+			}
+			
+			if (separatorFound
+				&& separatorIndex == FullDataPointIdMap.BLOCK_STATE_SEPARATOR_STRING.length())
+			{
+				break;
+			}
 		}
 		
-		return newMap;
+		
+		if (foundStartIndex == -1)
+		{
+			throw new DataCorruptedException("Failed to deserialize BiomeBlockStateEntry ["+input.toString()+"], unable to find separator.");
+		}
+		
+		biomeString.clear();
+		for (int i = 0; i < foundStartIndex; i++)
+		{
+			biomeString.push(input.getChar(i));
+		}
+		
+		blockString.clear();
+		for (int i = foundStartIndex + FullDataPointIdMap.BLOCK_STATE_SEPARATOR_STRING.length();
+			i < input.size();
+			i++)
+		{
+			blockString.push(input.getChar(i));
+		}
 	}
+	
+	//endregion
 	
 	
 	
 	//===========//
 	// overrides //
 	//===========//
+	//region
+	
+	@Override 
+	public String toString() { return DhSectionPos.toString(this.pos) + " size: " + this.blockBiomePairList.size(); }
 	
 	@Override
 	public boolean equals(Object other)
@@ -338,6 +442,8 @@ public class FullDataPointIdMap
 		}
 		this.cachedHashCode = result;
 	}
+	
+	//endregion
 	
 	
 	

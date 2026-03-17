@@ -3,13 +3,17 @@ package com.seibel.distanthorizons.core.render.renderer;
 import com.seibel.distanthorizons.api.enums.rendering.EDhApiRenderPass;
 import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam;
 import com.seibel.distanthorizons.core.api.internal.SharedApi;
+import com.seibel.distanthorizons.core.api.internal.rendering.DhRenderState;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
+import com.seibel.distanthorizons.core.jar.EPlatform;
 import com.seibel.distanthorizons.core.level.IDhClientLevel;
 import com.seibel.distanthorizons.core.render.RenderBufferHandler;
 import com.seibel.distanthorizons.core.render.renderer.generic.GenericObjectRenderer;
 import com.seibel.distanthorizons.core.util.RenderUtil;
 import com.seibel.distanthorizons.core.util.math.Mat4f;
 import com.seibel.distanthorizons.core.util.math.Vec3d;
+import com.seibel.distanthorizons.core.util.threading.PriorityTaskPicker;
+import com.seibel.distanthorizons.core.util.threading.ThreadPoolUtil;
 import com.seibel.distanthorizons.core.world.IDhClientWorld;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
@@ -27,6 +31,9 @@ public class RenderParams extends DhApiRenderParam
 	private static final IMinecraftClientWrapper MC_CLIENT = SingletonInjector.INSTANCE.get(IMinecraftClientWrapper.class);
 	private static final IMinecraftRenderWrapper MC_RENDER = SingletonInjector.INSTANCE.get(IMinecraftRenderWrapper.class);
 	
+	private static final long TIME_FOR_MAC_TO_FINISH_COMPILING_IN_MS = 10_000;
+	private static boolean initialLoadingComplete = false;
+	
 	
 	public IDhClientWorld dhClientWorld;
 	public IDhClientLevel dhClientLevel;
@@ -36,6 +43,8 @@ public class RenderParams extends DhApiRenderParam
 	public RenderBufferHandler renderBufferHandler;
 	public GenericObjectRenderer genericRenderer;
 	public Vec3d exactCameraPosition;
+	/** @see DhRenderState#vanillaFogEnabled */
+	public boolean vanillaFogEnabled;
 	
 	public boolean validationRun = false;
 	
@@ -44,19 +53,30 @@ public class RenderParams extends DhApiRenderParam
 	//=============//
 	// constructor //
 	//=============//
+	//region
 	
-	public RenderParams(
+	public RenderParams(EDhApiRenderPass renderPass, DhRenderState renderState)
+	{
+		this(renderPass,
+			renderState.partialTickTime,
+			renderState.mcProjectionMatrix, renderState.mcModelViewMatrix,
+			renderState.clientLevelWrapper,
+			renderState.vanillaFogEnabled
+		);
+	}
+	private RenderParams(
 			EDhApiRenderPass renderPass,
 			float newPartialTicks,
 			Mat4f newMcProjectionMatrix, Mat4f newMcModelViewMatrix,
-			IClientLevelWrapper clientLevelWrapper
+			IClientLevelWrapper clientLevelWrapper,
+			boolean vanillaFogEnabled
 		)
 	{
 		super(renderPass,
 			newPartialTicks,
-			RenderUtil.getNearClipPlaneDistanceInBlocks(newPartialTicks), RenderUtil.getFarClipPlaneDistanceInBlocks(),
+			RenderUtil.getNearClipPlaneInBlocks(), RenderUtil.getFarClipPlaneDistanceInBlocks(),
 			newMcProjectionMatrix, newMcModelViewMatrix,
-			RenderUtil.createLodProjectionMatrix(newMcProjectionMatrix, newPartialTicks), RenderUtil.createLodModelViewMatrix(newMcModelViewMatrix),
+			RenderUtil.createLodProjectionMatrix(newMcProjectionMatrix), RenderUtil.createLodModelViewMatrix(newMcModelViewMatrix),
 			clientLevelWrapper.getMinHeight(),
 			clientLevelWrapper);
 		
@@ -64,9 +84,6 @@ public class RenderParams extends DhApiRenderParam
 		this.dhClientWorld = SharedApi.tryGetDhClientWorld();
 		if (this.dhClientWorld != null)
 		{
-			// TODO changing to getOrLoadClientLevel() fixes Immersive Portals only rendering the level the user starts in
-			//  however this may break how other level handling is done so James doesn't want to change it.
-			//  Special handling may be necessary when Immersive Portals is present, although additional testing is needed.
 			this.dhClientLevel = (IDhClientLevel) this.dhClientWorld.getLevel(clientLevelWrapper);
 			if (this.dhClientLevel != null)
 			{
@@ -83,19 +100,24 @@ public class RenderParams extends DhApiRenderParam
 			this.exactCameraPosition = MC_RENDER.getCameraExactPosition();
 		}
 		
+		this.vanillaFogEnabled = vanillaFogEnabled;
+		
 	}
+	
+	//endregion
 	
 	
 	
 	//======================//
 	// parameter validation //
 	//======================//
+	//region
 	
 	/** 
 	 * Should be called before rendering is done.
 	 * @return a message if LODs shouldn't be rendered, null if the LODs can render 
 	 */
-	public String getValidationErrorMessage()
+	public String getValidationErrorMessage(long firstRenderTimeMs)
 	{
 		// Note: all strings here should be constants to prevent String allocations
 		
@@ -151,8 +173,49 @@ public class RenderParams extends DhApiRenderParam
 		}
 		
 		
+		// potential fix for a segfault when
+		// Sodium and DH are running together
+		if (EPlatform.get() == EPlatform.MACOS
+			&& !initialLoadingComplete)
+		{
+			// Once MC starts rendering, wait a few seconds so
+			// MC/Sodium can finish their shader compiling before DH does its own.
+			// This will allow DH to compile its own shaders after Sodium finishes
+			// compiling its own.
+			long nowMs = System.currentTimeMillis();
+			long firstAllowedRenderTimeMs = firstRenderTimeMs + TIME_FOR_MAC_TO_FINISH_COMPILING_IN_MS;
+			if (nowMs < firstAllowedRenderTimeMs)
+			{
+				return "Waiting for initial MC compile...";
+			}
+			
+			
+			// null shouldn't happen, but just in case
+			PriorityTaskPicker.Executor renderLoadExecutor = ThreadPoolUtil.getRenderLoadingExecutor();
+			if (renderLoadExecutor == null)
+			{
+				return "Waiting for DH Threadpool...";
+			}
+			
+			// wait for DH to finish loading, by the time that's done
+			// java should have finished all of DH's JIT compiling,
+			// which will hopefully mean less concurrency and thus a lower
+			// chance of breaking
+			// (plus this gives Sodium/vanill a bit longer to finish their setup)
+			int taskCount = renderLoadExecutor.getQueueSize();
+			if (taskCount > 0)
+			{
+				return "Waiting for DH JIT compiling...";
+			}
+			
+			initialLoadingComplete = true;
+		}
+		
+		
 		return null;
 	}
+	
+	//endregion
 	
 	
 	

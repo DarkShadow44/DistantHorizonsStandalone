@@ -42,8 +42,6 @@ import java.util.function.LongConsumer;
  * <strong>Too big</strong>, and the LOD dropoff will be very noticeable.<br>
  * With those thoughts in mind we decided on a smallest section size of 64 data points square (IE 4x4 chunks).
  *
- * TODO absolute vs section detail levels
- * 
  * @author Leetom
  */
 public class DhSectionPos
@@ -81,6 +79,7 @@ public class DhSectionPos
 	//==============//
 	// constructors //
 	//==============//
+	//region
 	
 	/** 
 	 * This class just holds utility methods for handling a packed
@@ -134,11 +133,14 @@ public class DhSectionPos
 		return sectionPos;
 	}
 	
+	//endregion
+	
 	
 	
 	//============//
 	// converters //
 	//============//
+	//region
 
 	/** uses the absolute detail level aka detail levels like {@link LodUtil#CHUNK_DETAIL_LEVEL} instead of the dhSectionPos detailLevels. */
 	public static long convertToDetailLevel(long pos, byte newDetailLevel)
@@ -162,11 +164,14 @@ public class DhSectionPos
 		return encode(newDetailLevel, x, z);
 	}
 	
+	//endregion
+	
 	
 	
 	//==================//
 	// property getters //
 	//==================//
+	//region
 	
 	public static byte getDetailLevel(long pos) { return (byte) ((pos >> DETAIL_LEVEL_OFFSET) & DETAIL_LEVEL_MASK); }
 	public static int getX(long pos)
@@ -184,11 +189,14 @@ public class DhSectionPos
 		return Z;
 	}
 	
+	//endregion
 	
 	
-	//=========//
-	// getters //
-	//=========//
+	
+	//=================//
+	// complex getters //
+	//=================//
+	//region
 
 	/** @return the block X pos that represents the smallest X coordinate of this section */
 	public static int getMinCornerBlockX(long pos)
@@ -303,11 +311,64 @@ public class DhSectionPos
 	}
 	
 	
+	/**
+	 * Returns a {@link DhSectionPos} with the given detail level and an X/Z position somewhere between (0,0) and (63,63).
+	 * This is done to access specific sections from a {@link FullDataSourceV2} where LOD columns are stored
+	 * in 64 x 64 blocks.
+	 *
+	 * @throws IllegalArgumentException if this position's detail level is lower than the output detail level
+	 * @see FullDataSourceV2#WIDTH
+	 */
+	public static long getDhSectionRelativePositionForDetailLevel(long pos, byte outputDetailLevel) throws IllegalArgumentException
+	{
+		final int xInputOriginal = DhSectionPos.getX(pos);
+		final int zInputOriginal = DhSectionPos.getZ(pos);
+		
+		byte detailLevelDifference = (byte) (outputDetailLevel - DhSectionPos.getDetailLevel(pos));
+		if (outputDetailLevel < DhSectionPos.getDetailLevel(pos))
+		{
+			throw new IllegalArgumentException("The output Detail Level [" + outputDetailLevel + "] is less than the input pos's detail level [" + DhSectionPos.getDetailLevel(pos) + "].");
+		}
+		
+		
+		
+		// negative values need to be offset by the detail level difference squared (in blocks)
+		// to skip over -0 (relative position) to -1 (relative position)
+		int blockOffset = BitShiftUtil.powerOfTwo(detailLevelDifference) - 1;
+		blockOffset = Math.max(1, blockOffset);
+		
+		int xInput = xInputOriginal;
+		xInput += (xInputOriginal < 0) ? blockOffset : 0;
+		
+		int zInput = zInputOriginal;
+		zInput += (zInputOriginal < 0) ? blockOffset : 0;
+		
+		// convert the input positions into the new detail level
+		int xRelativePos = xInput / BitShiftUtil.powerOfTwo(detailLevelDifference);
+		int zRelativePos = zInput / BitShiftUtil.powerOfTwo(detailLevelDifference);
+		
+		
+		// width inclusive
+		final int WIDTH_IN = FullDataSourceV2.WIDTH;
+		// width exclusive
+		final int WIDTH_EX = FullDataSourceV2.WIDTH - 1; 
+		
+		// convert the positions into section relative space (0-63)
+		xRelativePos = xInputOriginal >= 0 ? (xRelativePos % WIDTH_IN) : WIDTH_EX + (xRelativePos % WIDTH_IN);
+		zRelativePos = zInputOriginal >= 0 ? (zRelativePos % WIDTH_IN) : WIDTH_EX + (zRelativePos % WIDTH_IN);
+		
+		return DhSectionPos.encode(outputDetailLevel, xRelativePos, zRelativePos);
+	}
+	
+	//endregion
+	
+	
 	
 	//==================//
 	// parent child pos //
 	//==================//
-
+	//region
+	
 	/**
 	 * Returns a position 1 detail level lower. <br><br>
 	 *
@@ -343,7 +404,8 @@ public class DhSectionPos
 	
 	public static long getParentPos(long pos) { return DhSectionPos.encode((byte) (getDetailLevel(pos) + 1), BitShiftUtil.half(getX(pos)), BitShiftUtil.half(getZ(pos))); }
 	
-
+	//endregion
+	
 
 	public static long getAdjacentPos(long pos, EDhDirection dir) throws IllegalArgumentException
 	{
@@ -357,14 +419,14 @@ public class DhSectionPos
 				getZ(pos) + dir.normal.z);
 	}
 	
-	@Deprecated
-	public static DhLodPos getSectionBBoxPos(long pos) { return new DhLodPos(getDetailLevel(pos), getX(pos), getZ(pos)); }
-
-
-
+	
+	
+	
+	
 	//=============//
 	// comparisons //
 	//=============//
+	//region
 	
 	public static boolean contains(long aPos, long bPos)
 	{
@@ -397,13 +459,16 @@ public class DhSectionPos
 		return sectionMinX <= blockX && blockX <= sectionMaxX &&
 				sectionMinZ <= blockZ && blockZ <= sectionMaxZ;
 	}
-
-
-
+	
+	//endregion
+	
+	
+	
 	//===========//
 	// iterators //
 	//===========//
-
+	//region
+	
 	/** Applies the given consumer to all 4 of this position's children. */
 	public static void forEachChild(long pos, LongConsumer callback) throws IllegalArgumentException, IllegalStateException
 	{
@@ -412,7 +477,7 @@ public class DhSectionPos
 			callback.accept(getChildByIndex(pos, i));
 		}
 	}
-
+	
 	/** Applies the given consumer to all children of the position at the given section detail level. */
 	public static void forEachChildDownToDetailLevel(long pos, byte minSectionDetailLevel, ICancelablePrimitiveLongConsumer callback) throws IllegalArgumentException, IllegalStateException
 	{
@@ -427,7 +492,7 @@ public class DhSectionPos
 			forEachChildDownToDetailLevel(getChildByIndex(pos, i), minSectionDetailLevel, callback);
 		}
 	}
-
+	
 	/** Applies the given consumer to all children of the position at the given section detail level. */
 	public static void forEachChildAtDetailLevel(long pos, byte sectionDetailLevel, LongConsumer callback) throws IllegalArgumentException, IllegalStateException
 	{
@@ -442,7 +507,7 @@ public class DhSectionPos
 			forEachChildAtDetailLevel(getChildByIndex(pos, i), sectionDetailLevel, callback);
 		}
 	}
-
+	
 	/** Applies the given consumer to all children of the position at the given section detail level. */
 	public static void forEachPosUpToDetailLevel(long pos, byte maxSectionDetailLevel, LongConsumer callback)
 	{
@@ -455,21 +520,27 @@ public class DhSectionPos
 		forEachPosUpToDetailLevel(getParentPos(pos), maxSectionDetailLevel, callback);
 	}
 	
+	//endregion
+	
 	
 	
 	//==============//
 	// Base methods //
 	//==============//
+	//region
 	
 	/** Example: "6*1,-3" */
 	public static String toString(long pos) { return getDetailLevel(pos) + "*" + getX(pos) + "," + getZ(pos); }
 	public static int hashCode(long pos) { return Long.hashCode(pos); }
 	
+	//endregion
+	
 	
 	
 	//================//
-	// helper methods //
+	// helper classes //
 	//================//
+	//region
 	
 	/** Used instead of {@link java.util.function.Function} to prevent unnecessary (un)wrapping. */
 	@FunctionalInterface
@@ -478,5 +549,8 @@ public class DhSectionPos
 		/** @return true if this method should cancel further consumers. */
 		boolean accept(long value);
 	}
+	
+	//endregion
+	
 	
 }

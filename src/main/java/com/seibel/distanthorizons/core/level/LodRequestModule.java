@@ -298,7 +298,7 @@ public class LodRequestModule implements Closeable
 			remainingChunkCount += this.retrievalQueue.getQueuedChunkCount();
 			String remainingChunkCountStr = F3Screen.NUMBER_FORMAT.format(remainingChunkCount);
 			
-			String message = "DH is generating chunks. " + remainingChunkCountStr + " left.";
+			String message = "DH is generating chunks. " + remainingChunkCountStr + " left."; // TODO getting stuck at 32 chunks remaining
 			
 			// show a message about how to disable progress logging if requested
 			int msToShowDisableInstructions = Config.Common.WorldGenerator.generationProgressDisableMessageDisplayTimeInSeconds.get() * 1_000;

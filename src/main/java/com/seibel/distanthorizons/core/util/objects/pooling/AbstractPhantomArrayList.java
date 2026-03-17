@@ -1,7 +1,6 @@
-package com.seibel.distanthorizons.core.pooling;
+package com.seibel.distanthorizons.core.util.objects.pooling;
 
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
-import org.apache.logging.log4j.LogManager;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 
 import java.lang.ref.PhantomReference;
@@ -38,18 +37,19 @@ public abstract class AbstractPhantomArrayList implements AutoCloseable
 	//=============//
 	
 	/** The Array counts can be 0 or greater. */
-	public AbstractPhantomArrayList(PhantomArrayListPool phantomArrayListPool, int byteArrayCount, int shortArrayCount, int longArrayCount) 
+	public AbstractPhantomArrayList(PhantomArrayListPool phantomArrayListPool, int byteArrayCount, int shortArrayCount, int longArrayCount, int charArrayCount) 
 	{
 		if (byteArrayCount < 0 
 			|| shortArrayCount < 0 
-			|| longArrayCount < 0)
+			|| longArrayCount < 0
+			|| charArrayCount < 0)
 		{
 			throw new IllegalArgumentException("Can't get a negative number of pooled arrays.");
 		}
 		
 		this.phantomArrayListPool = phantomArrayListPool;
 		this.phantomReference = new PhantomReference<>(this, this.phantomArrayListPool.phantomRefQueue);
-		this.pooledArraysCheckout = this.phantomArrayListPool.checkoutArrays(byteArrayCount, shortArrayCount, longArrayCount);
+		this.pooledArraysCheckout = this.phantomArrayListPool.checkoutArrays(byteArrayCount, shortArrayCount, longArrayCount, charArrayCount);
 		this.phantomArrayListPool.phantomRefToCheckout.put(this.phantomReference, this.pooledArraysCheckout);
 	}
 	

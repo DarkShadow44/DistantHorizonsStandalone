@@ -46,6 +46,12 @@ public class DhApiConfigValue<coreType, apiType> implements IDhApiConfigValue<ap
 	private final IConverter<coreType, apiType> configConverter;
 	
 	
+	
+	//==============//
+ 	// constructors //
+	//==============//
+	//region
+	
 	/**
 	 * This constructor should only be called internally. <br>
 	 * There is no reason for API users to create this object. <br><br>
@@ -69,11 +75,29 @@ public class DhApiConfigValue<coreType, apiType> implements IDhApiConfigValue<ap
 		this.configConverter = newConverter;
 	}
 	
+	//endregion
 	
-	public apiType getValue() { return this.configConverter.convertToApiType(this.configBase.get()); }
-	public apiType getTrueValue() { return this.configConverter.convertToApiType(this.configBase.getTrueValue()); }
-	public apiType getApiValue() { return this.configConverter.convertToApiType(this.configBase.getApiValue()); }
 	
+	
+	//===========//
+ 	// overrides //
+	//===========//
+	//region
+	
+	@Override public apiType getValue() { return this.configConverter.convertToApiType(this.configBase.get()); }
+	@Override public apiType getTrueValue() { return this.configConverter.convertToApiType(this.configBase.getTrueValue()); }
+	@Override public apiType getApiValue() 
+	{
+		// if no API value is set, this should return null
+		if (this.configBase.getApiValue() == null)
+		{
+			return null;
+		}
+		
+		return this.configConverter.convertToApiType(this.configBase.getApiValue()); 
+	}
+	
+	@Override
 	public boolean setValue(apiType newValue)
 	{
 		if (this.configBase.getAllowApiOverride())
@@ -87,12 +111,12 @@ public class DhApiConfigValue<coreType, apiType> implements IDhApiConfigValue<ap
 		}
 	}
 	
+	@Override
 	public boolean clearValue()
 	{
 		if (this.configBase.getAllowApiOverride())
 		{
 			// no converter should be used here since null objects may need to be handled differently
-			// TODO the API should just have a bool to keep track of whether the API value is in use instead of using NULL
 			this.configBase.setApiValue(null);
 			return true;
 		}
@@ -102,13 +126,15 @@ public class DhApiConfigValue<coreType, apiType> implements IDhApiConfigValue<ap
 		}
 	}
 	
+	@Override
 	public boolean getCanBeOverrodeByApi() { return this.configBase.getAllowApiOverride(); }
 	
-	public apiType getDefaultValue() { return this.configConverter.convertToApiType(this.configBase.getDefaultValue()); }
-	public apiType getMaxValue() { return this.configConverter.convertToApiType(this.configBase.getMax()); }
-	public apiType getMinValue() { return this.configConverter.convertToApiType(this.configBase.getMin()); }
+	@Override public apiType getDefaultValue() { return this.configConverter.convertToApiType(this.configBase.getDefaultValue()); }
+	@Override public apiType getMaxValue() { return this.configConverter.convertToApiType(this.configBase.getMax()); }
+	@Override public apiType getMinValue() { return this.configConverter.convertToApiType(this.configBase.getMin()); }
 	
 	
+	@Override
 	public void addChangeListener(Consumer<apiType> onValueChangeFunc) 
 	{
 		this.configBase.addValueChangeListener((coreValue) -> 
@@ -117,5 +143,7 @@ public class DhApiConfigValue<coreType, apiType> implements IDhApiConfigValue<ap
 			onValueChangeFunc.accept(apiValue);
 		}); 
 	}
+	
+	//endregion
 	
 }

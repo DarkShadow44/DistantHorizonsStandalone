@@ -19,7 +19,6 @@
 
 package com.seibel.distanthorizons.core.sql.dto;
 
-import com.github.luben.zstd.Zstd;
 import com.google.common.base.MoreObjects;
 import com.seibel.distanthorizons.api.enums.config.EDhApiDataCompressionMode;
 import com.seibel.distanthorizons.api.enums.config.EDhApiWorldCompressionMode;
@@ -27,8 +26,9 @@ import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiWorldGeneratio
 import com.seibel.distanthorizons.core.dataObjects.fullData.FullDataPointIdMap;
 import com.seibel.distanthorizons.core.dataObjects.fullData.sources.FullDataSourceV2;
 import com.seibel.distanthorizons.core.enums.EDhDirection;
-import com.seibel.distanthorizons.core.pooling.AbstractPhantomArrayList;
-import com.seibel.distanthorizons.core.pooling.PhantomArrayListPool;
+import com.seibel.distanthorizons.core.util.objects.pooling.AbstractPhantomArrayList;
+import com.seibel.distanthorizons.core.util.objects.pooling.PhantomArrayListCheckout;
+import com.seibel.distanthorizons.core.util.objects.pooling.PhantomArrayListPool;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
 import com.seibel.distanthorizons.core.network.INetworkObject;
 import com.seibel.distanthorizons.core.sql.dto.util.FullDataMinMaxPosUtil;
@@ -55,6 +55,8 @@ public class FullDataSourceV2DTO
 		implements IBaseDTO<Long>, INetworkObject, AutoCloseable
 {
 	public static final boolean VALIDATE_INPUT_DATAPOINTS = true;
+	
+	public static final PhantomArrayListPool ARRAY_LIST_POOL = new PhantomArrayListPool("V2DTO");
 	
 	public static class DATA_FORMAT
 	{
@@ -94,9 +96,6 @@ public class FullDataSourceV2DTO
 	
 	public long lastModifiedUnixDateTime;
 	public long createdUnixDateTime;
-	
-	
-	public static final PhantomArrayListPool ARRAY_LIST_POOL = new PhantomArrayListPool("V2DTO");
 	
 	
 	
@@ -140,7 +139,7 @@ public class FullDataSourceV2DTO
 	public static FullDataSourceV2DTO CreateEmptyDataSourceForDecoding() { return new FullDataSourceV2DTO(); }
 	private FullDataSourceV2DTO() 
 	{
-		super(ARRAY_LIST_POOL, 8, 0, 0);
+		super(ARRAY_LIST_POOL, 8, 0, 0, 0);
 		
 		// Expected sizes here are 0 since we don't know how big these arrays need to be,
 		// they depend on compression settings and world complexity.
@@ -278,13 +277,7 @@ public class FullDataSourceV2DTO
 				throw new NullPointerException("No level wrapper present, unable to deserialize data map. This should only be used for unit tests.");
 			}
 			
-			FullDataPointIdMap newMap = readBlobToDataMapping(this.compressedMappingByteArray, dataSource.getPos(), levelWrapper,  compressionModeEnum);
-			dataSource.mapping.addAll(newMap);
-			if (dataSource.mapping.size() != newMap.size())
-			{
-				// if the mappings are out of sync then the LODs will render incorrectly due to IDs being wrong
-				LodUtil.assertNotReach("ID maps out of sync for pos: "+this.pos);
-			}
+			readBlobToDataMapping(dataSource.mapping, this.compressedMappingByteArray, dataSource.getPos(), levelWrapper,  compressionModeEnum);
 		}
 		
 		
@@ -344,7 +337,8 @@ public class FullDataSourceV2DTO
 			ByteArrayList inputCompressedDataByteArray, LongArrayList[] outputDataLongArray, 
 			EDhApiDataCompressionMode compressionModeEnum) throws IOException, DataCorruptedException
 	{
-		try (DhDataInputStream compressedIn = DhDataInputStream.create(inputCompressedDataByteArray, compressionModeEnum))
+		try (PhantomArrayListCheckout checkout = ARRAY_LIST_POOL.checkoutByteArrays(1);
+			DhDataInputStream compressedIn = DhDataInputStream.create(inputCompressedDataByteArray, compressionModeEnum, checkout))
 		{
 			// read the data
 			int dataArrayLength = FullDataSourceV2.WIDTH * FullDataSourceV2.WIDTH;
@@ -540,7 +534,8 @@ public class FullDataSourceV2DTO
 		}
 		
 		
-		try (DhDataInputStream compressedIn = DhDataInputStream.create(inputCompressedDataByteArray, compressionModeEnum))
+		try (PhantomArrayListCheckout checkout = ARRAY_LIST_POOL.checkoutByteArrays(1);
+			DhDataInputStream compressedIn = DhDataInputStream.create(inputCompressedDataByteArray, compressionModeEnum, checkout))
 		{
 			// 1. column counts, preallocate
 			for (int x = minX; x < maxX; x++)
@@ -676,7 +671,8 @@ public class FullDataSourceV2DTO
 	}
 	private static void readBlobToGenerationSteps(ByteArrayList inputCompressedDataByteArray, ByteArrayList outputByteArray, EDhApiDataCompressionMode compressionModeEnum) throws IOException, DataCorruptedException
 	{
-		try(DhDataInputStream compressedIn = DhDataInputStream.create(inputCompressedDataByteArray, compressionModeEnum))
+		try(PhantomArrayListCheckout checkout = ARRAY_LIST_POOL.checkoutByteArrays(1);
+			DhDataInputStream compressedIn = DhDataInputStream.create(inputCompressedDataByteArray, compressionModeEnum, checkout))
 		{
 			compressedIn.readFully(outputByteArray.elements(), 0, FullDataSourceV2.WIDTH * FullDataSourceV2.WIDTH);
 		}
@@ -699,7 +695,8 @@ public class FullDataSourceV2DTO
 	}
 	private static void readBlobToWorldCompressionMode(ByteArrayList inputCompressedDataByteArray, ByteArrayList outputByteArray, EDhApiDataCompressionMode compressionModeEnum) throws IOException, DataCorruptedException
 	{
-		try(DhDataInputStream compressedIn = DhDataInputStream.create(inputCompressedDataByteArray, compressionModeEnum))
+		try(PhantomArrayListCheckout checkout = ARRAY_LIST_POOL.checkoutByteArrays(1);
+			DhDataInputStream compressedIn = DhDataInputStream.create(inputCompressedDataByteArray, compressionModeEnum, checkout))
 		{
 			compressedIn.readFully(outputByteArray.elements(), 0, FullDataSourceV2.WIDTH * FullDataSourceV2.WIDTH);
 		}
@@ -717,12 +714,12 @@ public class FullDataSourceV2DTO
 			mapping.serialize(compressedOut);
 		}
 	}
-	private static FullDataPointIdMap readBlobToDataMapping(ByteArrayList inputCompressedDataByteArray, long pos, @NotNull ILevelWrapper levelWrapper, EDhApiDataCompressionMode compressionModeEnum) throws IOException, InterruptedException, DataCorruptedException
+	private static void readBlobToDataMapping(FullDataPointIdMap mapping, ByteArrayList inputCompressedDataByteArray, long pos, @NotNull ILevelWrapper levelWrapper, EDhApiDataCompressionMode compressionModeEnum) throws IOException, InterruptedException, DataCorruptedException
 	{
-		try (DhDataInputStream compressedIn = DhDataInputStream.create(inputCompressedDataByteArray, compressionModeEnum))
+		try (PhantomArrayListCheckout checkout = ARRAY_LIST_POOL.checkoutByteArrays(1);
+			DhDataInputStream compressedIn = DhDataInputStream.create(inputCompressedDataByteArray, compressionModeEnum, checkout))
 		{
-			FullDataPointIdMap mapping = FullDataPointIdMap.deserialize(compressedIn, pos, levelWrapper);
-			return mapping;
+			FullDataPointIdMap.deserialize(mapping, compressedIn, pos, levelWrapper);
 		}
 	}
 	

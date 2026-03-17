@@ -9,8 +9,6 @@ import java.util.Optional;
 
 public enum EDhInternalTextureFormat
 {
-	// Default
-	/** TODO: This technically shouldn't be exposed to shaders since it's not in the specification, it's the default anyways */
 	RGBA(GL11C.GL_RGBA, EGlVersion.GL_11, EDhPixelFormat.RGBA),
 	
 	// 8-bit normalized
@@ -121,9 +119,12 @@ public enum EDhInternalTextureFormat
 		}
 	}
 	
-	public int getGlFormat() { return glFormat; }
+	public int getGlFormat() { return this.glFormat; }
 	
-	public EDhPixelFormat getPixelFormat() { return expectedPixelFormat; }
+	public EDhPixelFormat getPixelFormat() { return this.expectedPixelFormat; }
 	
-	public EGlVersion getMinimumGlVersion() { return minimumGlVersion; }
+	public EGlVersion getMinimumGlVersion() { return this.minimumGlVersion; }
+	
+	
+	
 }

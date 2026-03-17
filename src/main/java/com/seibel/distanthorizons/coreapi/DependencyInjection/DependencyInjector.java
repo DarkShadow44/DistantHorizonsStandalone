@@ -43,9 +43,11 @@ public class DependencyInjector<BindableType extends IBindable> implements IDepe
 	protected final boolean allowDuplicateBindings;
 	
 	
+	
 	//==============//
 	// constructors //
 	//==============//
+	//region
 	
 	public DependencyInjector(Class<BindableType> newBindableInterface, boolean newAllowDuplicateBindings)
 	{
@@ -53,11 +55,14 @@ public class DependencyInjector<BindableType extends IBindable> implements IDepe
 		this.allowDuplicateBindings = newAllowDuplicateBindings;
 	}
 	
+	//endregion
+	
 	
 	
 	//=========//
 	// binding //
 	//=========//
+	//region
 	
 	@Override
 	public void bind(Class<? extends BindableType> dependencyInterface, BindableType dependencyImplementation) throws IllegalStateException, IllegalArgumentException
@@ -131,13 +136,27 @@ public class DependencyInjector<BindableType extends IBindable> implements IDepe
 	@Override
 	public boolean checkIfClassExtends(Class<?> classToTest, Class<?> extensionToLookFor) { return extensionToLookFor.isAssignableFrom(classToTest); }
 	
+	//endregion
+	
 	
 	
 	//===========//
 	// unbinding //
 	//===========//
+	//region
 	
-	// TODO having a bindOrReplace method would probably be better since it wouldn't have the possiblity of having nothing bound
+	public void replaceBinding(Class<? extends BindableType> dependencyInterface, BindableType dependencyImplementation) throws IllegalStateException, IllegalArgumentException
+	{
+		this.unbindAll(dependencyInterface);
+		this.bind(dependencyInterface, dependencyImplementation);
+	}
+	
+	public void unbindAll(Class<? extends BindableType> dependencyInterface) throws IllegalStateException, IllegalArgumentException
+	{
+		// remove the dependency if present
+		this.dependencies.remove(dependencyInterface);
+	}
+	
 	public void unbind(Class<? extends BindableType> dependencyInterface, BindableType dependencyImplementation) throws IllegalStateException, IllegalArgumentException
 	{
 		// check if this object is bound
@@ -174,30 +193,27 @@ public class DependencyInjector<BindableType extends IBindable> implements IDepe
 		this.dependencies.remove(dependencyInterface);
 	}
 	
+	//endregion
+	
 	
 	
 	//=========//
 	// getters //
 	//=========//
+	//region
 	
 	@SuppressWarnings("unchecked")
 	@Override
 	public <T extends BindableType> T get(Class<T> interfaceClass) throws ClassCastException
-	{
-		return (T) this.getInternalLogic(interfaceClass, false).get(0);
-	}
+	{ return (T) this.getInternalLogic(interfaceClass, false).get(0); }
 	
 	@Override
 	public <T extends BindableType> ArrayList<T> getAll(Class<T> interfaceClass) throws ClassCastException
-	{
-		return this.getInternalLogic(interfaceClass, false);
-	}
+	{ return this.getInternalLogic(interfaceClass, false); }
 	
 	@Override
 	public <T extends BindableType> T get(Class<T> interfaceClass, boolean allowIncompleteDependencies) throws ClassCastException
-	{
-		return (T) this.getInternalLogic(interfaceClass, allowIncompleteDependencies).get(0);
-	}
+	{ return (T) this.getInternalLogic(interfaceClass, allowIncompleteDependencies).get(0); }
 	
 	/**
 	 * Always returns a list of size 1 or greater,
@@ -230,6 +246,7 @@ public class DependencyInjector<BindableType extends IBindable> implements IDepe
 		return emptyList;
 	}
 	
+	//endregion
 	
 	
 	/** Removes all bound dependencies. */

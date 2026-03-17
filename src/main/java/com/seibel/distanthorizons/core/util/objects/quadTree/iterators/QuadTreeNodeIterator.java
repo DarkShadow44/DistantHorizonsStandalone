@@ -30,7 +30,7 @@ import java.util.function.Consumer;
 public class QuadTreeNodeIterator<T> implements Iterator<QuadNode<T>>
 {
 	/** lowest numerical value, inclusive */
-	private final byte highestDetailLevel;
+	private final byte leafDetailLevel;
 	
 	
 	private final Queue<QuadNode<T>> validNodesForDetailLevel = new ArrayDeque<>();
@@ -48,8 +48,7 @@ public class QuadTreeNodeIterator<T> implements Iterator<QuadNode<T>>
 	{
 		this.onlyReturnLeafValues = onlyReturnLeafValues;
 		this.stopIteratingFunc = stopIteratingFunc;
-		// TODO the naming conversion for these are flipped in a lot of places
-		this.highestDetailLevel = rootNode.parentTreeLeafDetailLevel;
+		this.leafDetailLevel = rootNode.parentTreeLeafDetailLevel;
 		this.iteratorDetailLevel = DhSectionPos.getDetailLevel(rootNode.sectionPos);
 		
 		
@@ -110,9 +109,9 @@ public class QuadTreeNodeIterator<T> implements Iterator<QuadNode<T>>
 	@Override
 	public QuadNode<T> next()
 	{
-		if (this.iteratorDetailLevel < this.highestDetailLevel)
+		if (this.iteratorDetailLevel < this.leafDetailLevel)
 		{
-			throw new NoSuchElementException("Highest detail level reached [" + this.highestDetailLevel + "].");
+			throw new NoSuchElementException("Leaf detail level reached [" + this.leafDetailLevel + "].");
 		}
 		if (this.iteratorNodeQueue.size() == 0)
 		{
@@ -133,7 +132,7 @@ public class QuadTreeNodeIterator<T> implements Iterator<QuadNode<T>>
 			
 			this.iteratorDetailLevel--;
 			// only continue if we can go down farther
-			if (this.iteratorDetailLevel >= this.highestDetailLevel)
+			if (this.iteratorDetailLevel >= this.leafDetailLevel)
 			{
 				Queue<QuadNode<T>> parentNodes = new LinkedList<>(this.validNodesForDetailLevel);
 				this.validNodesForDetailLevel.clear();

@@ -42,7 +42,6 @@ public class QuadNodeChildIndexIterator<T> implements Iterator<Integer>
 				// add index to queue if either not null or we want to return null values as well
 				if (returnNullChildPos || parentNode.getChildByIndex(i) != null)
 				{
-					// TODO is it possible that a child could be outside the parent QuadTree's radius?
 					this.iteratorQueue.add(i);
 				}
 			}

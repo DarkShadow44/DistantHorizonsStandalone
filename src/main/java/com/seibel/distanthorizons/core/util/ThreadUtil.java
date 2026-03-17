@@ -40,8 +40,6 @@ public class ThreadUtil
 	
 	public static final String THREAD_NAME_PREFIX = ModInfo.THREAD_NAME_PREFIX;
 	
-	// TODO move all "Runtime.getRuntime().availableProcessors()" calls here
-	
 	
 	
 	//===============//

@@ -2,11 +2,9 @@ package com.seibel.distanthorizons.core.dataObjects;
 
 import com.seibel.distanthorizons.core.dataObjects.fullData.FullDataPointIdMap;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
-import com.seibel.distanthorizons.core.util.objects.DataCorruptedException;
 import com.seibel.distanthorizons.core.wrapperInterfaces.IWrapperFactory;
 import com.seibel.distanthorizons.core.wrapperInterfaces.block.IBlockStateWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IBiomeWrapper;
-import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
 
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -121,9 +119,9 @@ public class BlockBiomeWrapperPair
 	
 	
 	
-	//=================//
-	// (de)serializing //
-	//=================//
+	//=============//
+	// serializing //
+	//=============//
 	
 	public String serialize() 
 	{
@@ -135,17 +133,6 @@ public class BlockBiomeWrapperPair
 		return this.serialString;
 	}
 	
-	public static BlockBiomeWrapperPair deserialize(String str, ILevelWrapper levelWrapper) throws DataCorruptedException
-	{
-		int separatorIndex = str.indexOf(FullDataPointIdMap.BLOCK_STATE_SEPARATOR_STRING);
-		if (separatorIndex == -1)
-		{
-			throw new DataCorruptedException("Failed to deserialize BiomeBlockStateEntry ["+str+"], unable to find separator.");
-		}
-		
-		IBiomeWrapper biome = WRAPPER_FACTORY.deserializeBiomeWrapperOrGetDefault(str.substring(0, separatorIndex), levelWrapper);
-		IBlockStateWrapper blockState = WRAPPER_FACTORY.deserializeBlockStateWrapperOrGetDefault(str.substring(separatorIndex+FullDataPointIdMap.BLOCK_STATE_SEPARATOR_STRING.length()), levelWrapper);
-		return BlockBiomeWrapperPair.get(blockState, biome);
-	}
+	
 	
 }
