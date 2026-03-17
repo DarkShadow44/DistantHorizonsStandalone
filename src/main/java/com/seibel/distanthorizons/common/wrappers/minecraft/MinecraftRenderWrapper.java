@@ -23,7 +23,6 @@ import java.awt.Color;
 import java.lang.invoke.MethodHandles;
 
 import com.seibel.distanthorizons.forge.ForgeMain;
-import com.seibel.distanthorizons.interfaces.IMixinFramebuffer;
 import copy.com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.seibel.distanthorizons.common.wrappers.WrapperFactory;
 
@@ -200,7 +199,7 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
             return ForgeMain.angelicaCompat.getDepthTextureId(framebuffer);
         }
 
-        return ((IMixinFramebuffer)framebuffer).distanthorizons$getDepthTexture();
+        return framebuffer.depthBuffer;
     }
 
     @Override
