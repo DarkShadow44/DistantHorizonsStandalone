@@ -576,7 +576,7 @@ public class ClassicConfigGUI {
                 indexButton.yPosition = y;
                 //indexButton.drawButton(Minecraft.getMinecraft(), mouseX, mouseY);
             }
-            if (text != null && (!text.contains("spacer") || button != null))
+            if (button != null && text != null && !text.contains("spacer"))
                 button.drawString(Minecraft.getMinecraft().fontRenderer, text, 12, y + 5, 0xFFFFFF);
         }
     }
