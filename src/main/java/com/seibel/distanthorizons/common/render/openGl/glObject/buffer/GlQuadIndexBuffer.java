@@ -31,162 +31,162 @@ import java.nio.ByteBuffer;
 /** aka GlQuadElementBuffer */
 public class GlQuadIndexBuffer extends GLIndexBuffer
 {
-    private static final DhLogger LOGGER = new DhLoggerBuilder().build();
-
-
-
-    //=============//
-    // constructor //
-    //=============//
-    //region
-
-    public GlQuadIndexBuffer() { super(false); }
-
-    public void reserve(int quadCount)
-    {
-        if (quadCount < 0)
-        {
-            throw new IllegalArgumentException("quadCount must be greater than 0");
-        }
-        if (quadCount == 0)
-        {
-            // shouldn't happen, but just in case
-            return;
-        }
-
-        this.indicesCount = quadCount * 6; // 2 triangles per quad
-        if (this.indicesCount >= this.getCapacity()
-            && this.indicesCount < this.getCapacity() * BUFFER_SHRINK_TRIGGER)
-        {
-            return;
-        }
-        int vertexCount = quadCount * 4; // 4 vertices per quad
-
-        if (vertexCount < 255)
-        {
-            // Reserve 1 for the reset index
-            this.type = GL32.GL_UNSIGNED_BYTE;
-        }
-        else if (vertexCount < 65535)
-        {
-            // Reserve 1 for the reset index
-            this.type = GL32.GL_UNSIGNED_SHORT;
-        }
-        else
-        {
-            this.type = GL32.GL_UNSIGNED_INT;
-        }
-
-        ByteBuffer buffer = MemoryUtil.memAlloc(this.indicesCount * GLEnums.getTypeSize(this.type));
-        buildBuffer(quadCount, buffer, this.type);
-        this.bind();
-        super.uploadBuffer(buffer, EDhApiGpuUploadMethod.DATA,
-            this.indicesCount * GLEnums.getTypeSize(this.type), GL32.GL_STATIC_DRAW);
-
-        MemoryUtil.memFree(buffer);
-    }
-
-    //endregion
-
-
-
-    //=========//
-    // getters //
-    //=========//
-    //region
-
-    public int getCapacity() { return super.getSize() / GLEnums.getTypeSize(this.getType()); }
-
-    //endregion
-
-
-
-    //==========//
-    // building //
-    //==========//
-    //region
-
-    public static void buildBuffer(int quadCount, ByteBuffer buffer, int type)
-    {
-        switch (type)
-        {
-            case GL32.GL_UNSIGNED_BYTE:
-                buildBufferByte(quadCount, buffer);
-                break;
-            case GL32.GL_UNSIGNED_SHORT:
-                buildBufferShort(quadCount, buffer);
-                break;
-            case GL32.GL_UNSIGNED_INT:
-                buildBufferInt(quadCount, buffer);
-                break;
-            default:
-                throw new IllegalStateException("Unknown buffer type: [" + type + "].");
-        }
-    }
-
-    private static void buildBufferByte(int quadCount, ByteBuffer buffer)
-    {
-        for (int i = 0; i < quadCount; i++)
-        {
-            int vIndex = i * 4;
-            // First triangle
-            buffer.put((byte) (vIndex));
-            buffer.put((byte) (vIndex + 1));
-            buffer.put((byte) (vIndex + 2));
-            // Second triangle
-            buffer.put((byte) (vIndex + 2));
-            buffer.put((byte) (vIndex + 3));
-            buffer.put((byte) (vIndex));
-        }
-        if (buffer.hasRemaining())
-        {
-            throw new IllegalStateException("QuadElementBuffer is not full somehow after building");
-        }
-        buffer.rewind();
-    }
-    private static void buildBufferShort(int quadCount, ByteBuffer buffer)
-    {
-        for (int i = 0; i < quadCount; i++)
-        {
-            int vIndex = i * 4;
-            // First triangle
-            buffer.putShort((short) (vIndex));
-            buffer.putShort((short) (vIndex + 1));
-            buffer.putShort((short) (vIndex + 2));
-            // Second triangle
-            buffer.putShort((short) (vIndex + 2));
-            buffer.putShort((short) (vIndex + 3));
-            buffer.putShort((short) (vIndex));
-        }
-        if (buffer.hasRemaining())
-        {
-            throw new IllegalStateException("QuadElementBuffer is not full somehow after building");
-        }
-        buffer.rewind();
-    }
-    private static void buildBufferInt(int quadCount, ByteBuffer buffer)
-    {
-        for (int i = 0; i < quadCount; i++)
-        {
-            int vIndex = i * 4;
-            // First triangle
-            buffer.putInt(vIndex);
-            buffer.putInt(vIndex + 1);
-            buffer.putInt(vIndex + 2);
-            // Second triangle
-            buffer.putInt(vIndex + 2);
-            buffer.putInt(vIndex + 3);
-            buffer.putInt(vIndex);
-        }
-        if (buffer.hasRemaining())
-        {
-            throw new IllegalStateException("QuadElementBuffer is not full somehow after building");
-        }
-        buffer.rewind();
-    }
-
-    //endregion
-
-
-
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
+	
+	
+	
+	//=============//
+	// constructor //
+	//=============//
+	//region
+	
+	public GlQuadIndexBuffer() { super(false); }
+	
+	public void reserve(int quadCount)
+	{
+		if (quadCount < 0)
+		{
+			throw new IllegalArgumentException("quadCount must be greater than 0");
+		}
+		if (quadCount == 0)
+		{
+			// shouldn't happen, but just in case
+			return;
+		}
+		
+		this.indicesCount = quadCount * 6; // 2 triangles per quad
+		if (this.indicesCount >= this.getCapacity()
+			&& this.indicesCount < this.getCapacity() * BUFFER_SHRINK_TRIGGER)
+		{
+			return;
+		}
+		int vertexCount = quadCount * 4; // 4 vertices per quad
+		
+		if (vertexCount < 255)
+		{
+			// Reserve 1 for the reset index
+			this.type = GL32.GL_UNSIGNED_BYTE;
+		}
+		else if (vertexCount < 65535)
+		{
+			// Reserve 1 for the reset index
+			this.type = GL32.GL_UNSIGNED_SHORT;
+		}
+		else
+		{
+			this.type = GL32.GL_UNSIGNED_INT;
+		}
+		
+		ByteBuffer buffer = MemoryUtil.memAlloc(this.indicesCount * GLEnums.getTypeSize(this.type));
+		buildBuffer(quadCount, buffer, this.type);
+		this.bind();
+		super.uploadBuffer(buffer, EDhApiGpuUploadMethod.DATA,
+			this.indicesCount * GLEnums.getTypeSize(this.type), GL32.GL_STATIC_DRAW);
+		
+		MemoryUtil.memFree(buffer);
+	}
+	
+	//endregion
+	
+	
+	
+	//=========//
+	// getters //
+	//=========//
+	//region
+	
+	public int getCapacity() { return super.getSize() / GLEnums.getTypeSize(this.getType()); }
+	
+	//endregion
+	
+	
+	
+	//==========//
+	// building //
+	//==========//
+	//region
+	
+	public static void buildBuffer(int quadCount, ByteBuffer buffer, int type)
+	{
+		switch (type)
+		{
+			case GL32.GL_UNSIGNED_BYTE:
+				buildBufferByte(quadCount, buffer);
+				break;
+			case GL32.GL_UNSIGNED_SHORT:
+				buildBufferShort(quadCount, buffer);
+				break;
+			case GL32.GL_UNSIGNED_INT:
+				buildBufferInt(quadCount, buffer);
+				break;
+			default:
+				throw new IllegalStateException("Unknown buffer type: [" + type + "].");
+		}
+	}
+	
+	private static void buildBufferByte(int quadCount, ByteBuffer buffer)
+	{
+		for (int i = 0; i < quadCount; i++)
+		{
+			int vIndex = i * 4;
+			// First triangle
+			buffer.put((byte) (vIndex));
+			buffer.put((byte) (vIndex + 1));
+			buffer.put((byte) (vIndex + 2));
+			// Second triangle
+			buffer.put((byte) (vIndex + 2));
+			buffer.put((byte) (vIndex + 3));
+			buffer.put((byte) (vIndex));
+		}
+		if (buffer.hasRemaining())
+		{
+			throw new IllegalStateException("QuadElementBuffer is not full somehow after building");
+		}
+		buffer.rewind();
+	}
+	private static void buildBufferShort(int quadCount, ByteBuffer buffer)
+	{
+		for (int i = 0; i < quadCount; i++)
+		{
+			int vIndex = i * 4;
+			// First triangle
+			buffer.putShort((short) (vIndex));
+			buffer.putShort((short) (vIndex + 1));
+			buffer.putShort((short) (vIndex + 2));
+			// Second triangle
+			buffer.putShort((short) (vIndex + 2));
+			buffer.putShort((short) (vIndex + 3));
+			buffer.putShort((short) (vIndex));
+		}
+		if (buffer.hasRemaining())
+		{
+			throw new IllegalStateException("QuadElementBuffer is not full somehow after building");
+		}
+		buffer.rewind();
+	}
+	private static void buildBufferInt(int quadCount, ByteBuffer buffer)
+	{
+		for (int i = 0; i < quadCount; i++)
+		{
+			int vIndex = i * 4;
+			// First triangle
+			buffer.putInt(vIndex);
+			buffer.putInt(vIndex + 1);
+			buffer.putInt(vIndex + 2);
+			// Second triangle
+			buffer.putInt(vIndex + 2);
+			buffer.putInt(vIndex + 3);
+			buffer.putInt(vIndex);
+		}
+		if (buffer.hasRemaining())
+		{
+			throw new IllegalStateException("QuadElementBuffer is not full somehow after building");
+		}
+		buffer.rewind();
+	}
+	
+	//endregion
+	
+	
+	
 }

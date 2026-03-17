@@ -27,86 +27,86 @@ import org.lwjgl.opengl.GL32;
 
 public abstract class GlAbstractShaderRenderer
 {
-    protected static final IMinecraftRenderWrapper MC_RENDER = SingletonInjector.INSTANCE.get(IMinecraftRenderWrapper.class);
-
-
-    protected GlShaderProgram shader;
-    protected boolean init = false;
-
-
-    //=======//
-    // setup //
-    //=======//
-    //region
-
-    protected GlAbstractShaderRenderer() {}
-
-    public void init()
-    {
-        if (this.init) return;
-        this.init = true;
-
-        this.onInit();
-    }
-
-    //endregion
-
-
-    //==================//
-    // abstract methods //
-    //==================//
-    //region
-
-    protected void onInit() {}
-
-    protected void onApplyUniforms(RenderParams renderParams) {}
-
-    protected void onRender() {}
-
-    //endregion
-
-
-
-    //===========//
-    // rendering //
-    //===========//
-    //region
-
-    public void render(RenderParams renderParams)
-    {
-        this.init();
-
-        this.shader.bind();
-
-        this.onApplyUniforms(renderParams);
-
-        int width = MC_RENDER.getTargetFramebufferViewportWidth();
-        int height = MC_RENDER.getTargetFramebufferViewportHeight();
-        GL32.glViewport(0, 0, width, height);
-
-        this.onRender();
-
-        this.shader.unbind();
-    }
-
-    //endregion
-
-
-    //================//
-    // base overrides //
-    //================//
-    //region
-
-    public void free()
-    {
-        if (this.shader != null)
-        {
-            this.shader.free();
-        }
-    }
-
-    // endregion
-
-
-
+	protected static final IMinecraftRenderWrapper MC_RENDER = SingletonInjector.INSTANCE.get(IMinecraftRenderWrapper.class);
+	
+	
+	protected GlShaderProgram shader;
+	protected boolean init = false;
+	
+	
+	//=======//
+	// setup //
+	//=======//
+	//region
+	
+	protected GlAbstractShaderRenderer() {}
+	
+	public void init()
+	{
+		if (this.init) return;
+		this.init = true;
+		
+		this.onInit();
+	}
+	
+	//endregion
+	
+	
+	//==================//
+	// abstract methods //
+	//==================//
+	//region
+	
+	protected void onInit() {}
+	
+	protected void onApplyUniforms(RenderParams renderParams) {}
+	
+	protected void onRender() {}
+	
+	//endregion
+	
+	
+	
+	//===========//
+	// rendering //
+	//===========//
+	//region
+	
+	public void render(RenderParams renderParams)
+	{
+		this.init();
+		
+		this.shader.bind();
+		
+		this.onApplyUniforms(renderParams);
+		
+		int width = MC_RENDER.getTargetFramebufferViewportWidth();
+		int height = MC_RENDER.getTargetFramebufferViewportHeight();
+		GL32.glViewport(0, 0, width, height);
+		
+		this.onRender();
+		
+		this.shader.unbind();
+	}
+	
+	//endregion
+	
+	
+	//================//
+	// base overrides //
+	//================//
+	//region
+	
+	public void free()
+	{
+		if (this.shader != null)
+		{
+			this.shader.free();
+		}
+	}
+	
+	// endregion
+	
+	
+	
 }

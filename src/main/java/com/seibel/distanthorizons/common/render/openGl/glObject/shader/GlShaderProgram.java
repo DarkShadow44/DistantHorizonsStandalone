@@ -38,188 +38,188 @@ import com.seibel.distanthorizons.core.util.math.Vec3f;
  */
 public class GlShaderProgram
 {
-    /** Stores the handle of the program. */
-    public final int id;
-
-
-
-    //=============//
-    // constructor //
-    //=============//
-    //region
-
-    public GlShaderProgram(String vertResourcePath, String fragResourcePath, String attribute) { this(vertResourcePath, fragResourcePath, new String[]{ attribute }); }
-    /**
-     * @param vertResourcePath the relative path the vertex shader should be found
-     * @param fragResourcePath the relative path the fragment shader should be found
-     */
-    public GlShaderProgram(String vertResourcePath, String fragResourcePath, String[] attributes)
-    {
-        this.id = GL32.glCreateProgram();
-
-        {
-            String shaderString = GlShader.loadFile(vertResourcePath, false);
-            GlShader vertShader = new GlShader(GL32.GL_VERTEX_SHADER, shaderString);
-            GL32.glAttachShader(this.id, vertShader.id);
-            vertShader.free();
-        }
-
-        {
-            String shaderString = GlShader.loadFile(fragResourcePath, false);
-            GlShader fragShader = new GlShader(GL32.GL_FRAGMENT_SHADER, shaderString);
-            GL32.glAttachShader(this.id, fragShader.id);
-            fragShader.free();
-        }
-
-        for (int i = 0; i < attributes.length; i++)
-        {
-            GL32.glBindAttribLocation(this.id, i, attributes[i]);
-        }
-        GL32.glLinkProgram(this.id);
-
-        int status = GL32.glGetProgrami(this.id, GL32.GL_LINK_STATUS);
-        if (status != GL32.GL_TRUE)
-        {
-            String message = "Shader Link Error. Details: " + GL32.glGetProgramInfoLog(this.id);
-            this.free(); // important!
-            throw new RuntimeException(message);
-        }
-        GL32.glUseProgram(this.id); // This HAVE to be a direct call to prevent calling the overloaded version
-    }
-
-    //endregion
-
-
-
-    //=========//
-    // binding //
-    //=========//
-    //region
-
-    public void bind() { GL32.glUseProgram(this.id); }
-    public void unbind() { GL32.glUseProgram(0); }
-
-    public void free() { GL32.glDeleteProgram(this.id); }
-
-    //endregion
-
-
-
-    //============//
-    // attributes //
-    //============//
-    //region
-
-    /**
-     * WARNING: Slow native call! Cache it if possible!
-     * Gets the location of an attribute variable with specified name.
-     * Calls GL20.glGetAttribLocation(id, name)
-     *
-     * @param name Attribute name
-     * @return Location of the attribute
-     * @throws RuntimeException if attribute not found
-     */
-    public int getAttributeLocation(CharSequence name)
-    {
-        int i = GL32.glGetAttribLocation(id, name);
-        if (i == -1) throw new RuntimeException("Attribute name not found: " + name);
-        return i;
-    }
-    /**
-     * Same as above but without throwing errors. <br>
-     * Returns -1 if the attribute doesn't exist or has been optimized out.
-     */
-    public int tryGetAttributeLocation(CharSequence name)
-    { return GL32.glGetAttribLocation(this.id, name); }
-
-    //endregion
-
-
-
-    //==========//
-    // uniforms //
-    //==========//
-    //region
-
-    /**
-     * WARNING: Slow native call! Cache it if possible!
-     * Gets the location of a uniform variable with specified name.
-     * Calls GL20.glGetUniformLocation(id, name)
-     *
-     * @param name Uniform name
-     * @return Location of the Uniform
-     * @throws RuntimeException if uniform not found
-     */
-    public int getUniformLocation(CharSequence name) throws RuntimeException
-    {
-        int i = GL32.glGetUniformLocation(id, name);
-        if (i == -1)
-        {
-            throw new RuntimeException("Uniform name not found: " + name);
-        }
-        return i;
-    }
-
-    // Same as above but without throwing errors.
-    // Return -1 if uniform doesn't exist or has been optimized out
-    public int tryGetUniformLocation(CharSequence name)
-    { return GL32.glGetUniformLocation(this.id, name); }
-
-    /** Requires a bound ShaderProgram. */
-    public void setUniform(int location, boolean value) { GL32.glUniform1i(location, value ? 1 : 0); }
-    /** @see GlShaderProgram#setUniform(int, boolean) */
-    public void trySetUniform(int location, boolean value) { if (location != -1) { this.setUniform(location, value); } }
-
-    /** Requires a bound ShaderProgram. */
-    public void setUniform(int location, int value) { GL32.glUniform1i(location, value); }
-    /** @see GlShaderProgram#setUniform(int, int) */
-    public void trySetUniform(int location, int value) { if (location != -1) { this.setUniform(location, value); } }
-
-    /** Requires a bound ShaderProgram. */
-    public void setUniform(int location, float value) { GL32.glUniform1f(location, value); }
-    /** @see GlShaderProgram#setUniform(int, float) */
-    public void trySetUniform(int location, float value) { if (location != -1) { this.setUniform(location, value); } }
-
-    /** Requires a bound ShaderProgram. */
-    public void setUniform(int location, Vec3f value) { GL32.glUniform3f(location, value.x, value.y, value.z); }
-    /** @see GlShaderProgram#setUniform(int, Vec3f) */
-    public void trySetUniform(int location, Vec3f value) { if (location != -1) { this.setUniform(location, value); } }
-
-    /** Requires a bound ShaderProgram. */
-    public void setUniform(int location, DhApiVec3i value) { GL32.glUniform3i(location, value.x, value.y, value.z); }
-    /** @see GlShaderProgram#setUniform(int, Mat4f) */
-    public void trySetUniform(int location, DhApiVec3i value) { if (location != -1) { this.setUniform(location, value); } }
-
-    /** Requires a bound ShaderProgram. */
-    public void setUniform(int location, Mat4f value)
-    {
-        try (MemoryStack stack = MemoryStack.stackPush())
-        {
-            FloatBuffer buffer = stack.mallocFloat(4 * 4);
-            value.store(buffer);
-            GL32.glUniformMatrix4fv(location, false, buffer);
-        }
-    }
-    /** @see GlShaderProgram#setUniform(int, Mat4f) */
-    public void trySetUniform(int location, Mat4f value) { if (location != -1) { this.setUniform(location, value); } }
-
-    /**
-     * Converts the color's RGBA values into values between 0 and 1. <br>
-     * Requires a bound ShaderProgram.
-     */
-    public void setUniform(int location, Color value)
-    {
-        GL32.glUniform4f(location,
-            value.getRed()   / 256.0f,
-            value.getGreen() / 256.0f,
-            value.getBlue()  / 256.0f,
-            value.getAlpha() / 256.0f);
-    }
-    /** @see GlShaderProgram#setUniform(int, Color) */
-    public void trySetUniform(int location, Color value) { if (location != -1) { this.setUniform(location, value); } }
-
-    //endregion
-
-
-
+	/** Stores the handle of the program. */
+	public final int id;
+	
+	
+	
+	//=============//
+	// constructor //
+	//=============//
+	//region
+	
+	public GlShaderProgram(String vertResourcePath, String fragResourcePath, String attribute) { this(vertResourcePath, fragResourcePath, new String[]{ attribute }); }
+	/**
+	 * @param vertResourcePath the relative path the vertex shader should be found 
+	 * @param fragResourcePath the relative path the fragment shader should be found 
+	 */
+	public GlShaderProgram(String vertResourcePath, String fragResourcePath, String[] attributes)
+	{
+		this.id = GL32.glCreateProgram();
+		
+		{
+			String shaderString = GlShader.loadFile(vertResourcePath, false);
+			GlShader vertShader = new GlShader(GL32.GL_VERTEX_SHADER, shaderString);
+			GL32.glAttachShader(this.id, vertShader.id);
+			vertShader.free();
+		}
+		
+		{
+			String shaderString = GlShader.loadFile(fragResourcePath, false);
+			GlShader fragShader = new GlShader(GL32.GL_FRAGMENT_SHADER, shaderString);
+			GL32.glAttachShader(this.id, fragShader.id);
+			fragShader.free();
+		}
+		
+		for (int i = 0; i < attributes.length; i++)
+		{
+			GL32.glBindAttribLocation(this.id, i, attributes[i]);
+		}
+		GL32.glLinkProgram(this.id);
+		
+		int status = GL32.glGetProgrami(this.id, GL32.GL_LINK_STATUS);
+		if (status != GL32.GL_TRUE)
+		{
+			String message = "Shader Link Error. Details: " + GL32.glGetProgramInfoLog(this.id);
+			this.free(); // important!
+			throw new RuntimeException(message);
+		}
+		GL32.glUseProgram(this.id); // This HAVE to be a direct call to prevent calling the overloaded version
+	}
+	
+	//endregion
+	
+	
+	
+	//=========//
+	// binding //
+	//=========//
+	//region
+	
+	public void bind() { GL32.glUseProgram(this.id); }
+	public void unbind() { GL32.glUseProgram(0); }
+	
+	public void free() { GL32.glDeleteProgram(this.id); }
+	
+	//endregion
+	
+	
+	
+	//============//
+	// attributes //
+	//============//
+	//region
+	
+	/**
+	 * WARNING: Slow native call! Cache it if possible!
+	 * Gets the location of an attribute variable with specified name.
+	 * Calls GL20.glGetAttribLocation(id, name)
+	 *
+	 * @param name Attribute name
+	 * @return Location of the attribute
+	 * @throws RuntimeException if attribute not found
+	 */
+	public int getAttributeLocation(CharSequence name)
+	{
+		int i = GL32.glGetAttribLocation(id, name);
+		if (i == -1) throw new RuntimeException("Attribute name not found: " + name);
+		return i;
+	}
+	/**
+	 * Same as above but without throwing errors. <br>
+	 * Returns -1 if the attribute doesn't exist or has been optimized out.
+	 */
+	public int tryGetAttributeLocation(CharSequence name)
+	{ return GL32.glGetAttribLocation(this.id, name); }
+	
+	//endregion
+	
+	
+	
+	//==========//
+	// uniforms //
+	//==========//
+	//region
+	
+	/**
+	 * WARNING: Slow native call! Cache it if possible!
+	 * Gets the location of a uniform variable with specified name.
+	 * Calls GL20.glGetUniformLocation(id, name)
+	 *
+	 * @param name Uniform name
+	 * @return Location of the Uniform
+	 * @throws RuntimeException if uniform not found
+	 */
+	public int getUniformLocation(CharSequence name) throws RuntimeException
+	{
+		int i = GL32.glGetUniformLocation(id, name);
+		if (i == -1)
+		{
+			throw new RuntimeException("Uniform name not found: " + name);
+		}
+		return i;
+	}
+	
+	// Same as above but without throwing errors.
+	// Return -1 if uniform doesn't exist or has been optimized out
+	public int tryGetUniformLocation(CharSequence name)
+	{ return GL32.glGetUniformLocation(this.id, name); }
+	
+	/** Requires a bound ShaderProgram. */
+	public void setUniform(int location, boolean value) { GL32.glUniform1i(location, value ? 1 : 0); }
+	/** @see GlShaderProgram#setUniform(int, boolean) */
+	public void trySetUniform(int location, boolean value) { if (location != -1) { this.setUniform(location, value); } }
+	
+	/** Requires a bound ShaderProgram. */
+	public void setUniform(int location, int value) { GL32.glUniform1i(location, value); }
+	/** @see GlShaderProgram#setUniform(int, int) */
+	public void trySetUniform(int location, int value) { if (location != -1) { this.setUniform(location, value); } }
+	
+	/** Requires a bound ShaderProgram. */
+	public void setUniform(int location, float value) { GL32.glUniform1f(location, value); }
+	/** @see GlShaderProgram#setUniform(int, float) */
+	public void trySetUniform(int location, float value) { if (location != -1) { this.setUniform(location, value); } }
+	
+	/** Requires a bound ShaderProgram. */
+	public void setUniform(int location, Vec3f value) { GL32.glUniform3f(location, value.x, value.y, value.z); }
+	/** @see GlShaderProgram#setUniform(int, Vec3f) */
+	public void trySetUniform(int location, Vec3f value) { if (location != -1) { this.setUniform(location, value); } }
+	
+	/** Requires a bound ShaderProgram. */
+	public void setUniform(int location, DhApiVec3i value) { GL32.glUniform3i(location, value.x, value.y, value.z); }
+	/** @see GlShaderProgram#setUniform(int, Mat4f) */
+	public void trySetUniform(int location, DhApiVec3i value) { if (location != -1) { this.setUniform(location, value); } }
+	
+	/** Requires a bound ShaderProgram. */
+	public void setUniform(int location, Mat4f value)
+	{
+		try (MemoryStack stack = MemoryStack.stackPush())
+		{
+			FloatBuffer buffer = stack.mallocFloat(4 * 4);
+			value.store(buffer);
+			GL32.glUniformMatrix4fv(location, false, buffer);
+		}
+	}
+	/** @see GlShaderProgram#setUniform(int, Mat4f) */
+	public void trySetUniform(int location, Mat4f value) { if (location != -1) { this.setUniform(location, value); } }
+	
+	/**
+	 * Converts the color's RGBA values into values between 0 and 1. <br>
+	 * Requires a bound ShaderProgram.
+	 */
+	public void setUniform(int location, Color value)
+	{
+		GL32.glUniform4f(location, 
+				value.getRed()   / 256.0f, 
+				value.getGreen() / 256.0f, 
+				value.getBlue()  / 256.0f, 
+				value.getAlpha() / 256.0f);
+	}
+	/** @see GlShaderProgram#setUniform(int, Color) */
+	public void trySetUniform(int location, Color value) { if (location != -1) { this.setUniform(location, value); } }
+	
+	//endregion
+	
+	
+	
 }

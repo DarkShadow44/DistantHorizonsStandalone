@@ -9,9 +9,9 @@ import com.seibel.distanthorizons.core.wrapperInterfaces.render.objects.ILodCont
  */
 public class GlDummyUniformData implements ILodContainerUniformBufferWrapper
 {
-    @Override public void createUniformData(LodBufferContainer bufferContainer) { }
-    @Override public void tryUpload() { }
-    @Override public void upload() { }
-    @Override public void close() { }
-
+	@Override public void createUniformData(LodBufferContainer bufferContainer) { }
+	@Override public void tryUpload() { }
+	@Override public void upload() { }
+	@Override public void close() { }
+	
 }

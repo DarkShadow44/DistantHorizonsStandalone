@@ -29,88 +29,88 @@ import org.lwjgl.system.MemoryUtil;
 import java.nio.ByteBuffer;
 
 /**
- * Renders a full-screen textured quad to the screen.
+ * Renders a full-screen textured quad to the screen. 
  * Used in composite / deferred rendering (IE fog).
  */
 public class GlScreenQuad
 {
-    public static GlScreenQuad INSTANCE = new GlScreenQuad();
+	public static GlScreenQuad INSTANCE = new GlScreenQuad();
+	
+	private static final float[] BOX_VERTICES = {
+			-1, -1,
+			1, -1,
+			1, 1,
+		
+			-1, -1,
+			1, 1,
+			-1, 1,
+	};
+	
+	private GLVertexBuffer boxBuffer;
+	private GlAbstractVertexAttribute va;
+	private boolean init = false;
 
-    private static final float[] BOX_VERTICES = {
-        -1, -1,
-        1, -1,
-        1, 1,
-
-        -1, -1,
-        1, 1,
-        -1, 1,
-    };
-
-    private GLVertexBuffer boxBuffer;
-    private GlAbstractVertexAttribute va;
-    private boolean init = false;
-
-
-
-    //=============//
-    // constructor //
-    //=============//
-    //region
-
-    private GlScreenQuad() { }
-
-    public void init()
-    {
-        if (this.init) return;
-        this.init = true;
-
-        this.va = GlAbstractVertexAttribute.create();
-        this.va.bind();
-
-        // Pos
-        this.va.setVertexAttribute(0, 0, GlVertexPointer.addVec2Pointer(false));
-        this.va.completeAndCheck(Float.BYTES * 2);
-
-        // Framebuffer
-        this.createBuffer();
-    }
-    private void createBuffer()
-    {
-        ByteBuffer buffer = MemoryUtil.memAlloc(BOX_VERTICES.length * Float.BYTES);
-        buffer.asFloatBuffer().put(BOX_VERTICES);
-        buffer.rewind();
-
-        this.boxBuffer = new GLVertexBuffer(false);
-        this.boxBuffer.bind();
-        this.boxBuffer.uploadBuffer(buffer, BOX_VERTICES.length, EDhApiGpuUploadMethod.DATA, BOX_VERTICES.length * Float.BYTES);
-        MemoryUtil.memFree(buffer);
-    }
-
-    //endregion
-
-
-
-    //===========//
-    // rendering //
-    //===========//
-    //region
-
-    public void render()
-    {
-        this.init();
-
-        this.boxBuffer.bind();
-
-        this.va.bind();
-        this.va.bindBufferToAllBindingPoints(this.boxBuffer.getId());
-
-        GL32.glPolygonMode(GL32.GL_FRONT_AND_BACK, GL32.GL_FILL);
-
-        GL32.glDrawArrays(GL32.GL_TRIANGLES, 0, 6);
-    }
-
-    //endregion
-
-
-
+	
+	
+	//=============//
+	// constructor //
+	//=============//
+	//region
+	
+	private GlScreenQuad() { }
+	
+	public void init()
+	{
+		if (this.init) return;
+		this.init = true;
+		
+		this.va = GlAbstractVertexAttribute.create();
+		this.va.bind();
+		
+		// Pos
+		this.va.setVertexAttribute(0, 0, GlVertexPointer.addVec2Pointer(false));
+		this.va.completeAndCheck(Float.BYTES * 2);
+		
+		// Framebuffer
+		this.createBuffer();
+	}
+	private void createBuffer()
+	{
+		ByteBuffer buffer = MemoryUtil.memAlloc(BOX_VERTICES.length * Float.BYTES);
+		buffer.asFloatBuffer().put(BOX_VERTICES);
+		buffer.rewind();
+		
+		this.boxBuffer = new GLVertexBuffer(false);
+		this.boxBuffer.bind();
+		this.boxBuffer.uploadBuffer(buffer, BOX_VERTICES.length, EDhApiGpuUploadMethod.DATA, BOX_VERTICES.length * Float.BYTES);
+		MemoryUtil.memFree(buffer);
+	}
+	
+	//endregion
+	
+	
+	
+	//===========//
+	// rendering //
+	//===========//
+	//region
+	
+	public void render()
+	{
+		this.init();
+		
+		this.boxBuffer.bind();
+		
+		this.va.bind();
+		this.va.bindBufferToAllBindingPoints(this.boxBuffer.getId());
+		
+		GL32.glPolygonMode(GL32.GL_FRONT_AND_BACK, GL32.GL_FILL);
+		
+		GL32.glDrawArrays(GL32.GL_TRIANGLES, 0, 6);
+	}
+	
+	//endregion
+	
+	
+	
 }

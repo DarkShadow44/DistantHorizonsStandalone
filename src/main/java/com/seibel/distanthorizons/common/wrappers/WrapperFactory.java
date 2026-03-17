@@ -151,7 +151,7 @@ public class WrapperFactory implements IWrapperFactory
         BlockStateWrapper.clearRendererIgnoredCaveBlocks();
         BlockStateWrapper.clearRendererIgnoredBlocks();
     }
-    
+
 	/**
 	 * Note: when this is updated for different MC versions, make sure you also update the documentation in
 	 * {@link IDhApiWorldGenerator#generateChunks} and the type list in {@link WrapperFactory#createChunkWrapperErrorMessage}. <br><br>
