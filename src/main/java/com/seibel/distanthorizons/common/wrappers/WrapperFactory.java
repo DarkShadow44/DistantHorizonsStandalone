@@ -24,6 +24,10 @@ import com.seibel.distanthorizons.api.interfaces.block.IDhApiBlockStateWrapper;
 import com.seibel.distanthorizons.api.interfaces.override.worldGenerator.IDhApiWorldGenerator;
 import com.seibel.distanthorizons.api.interfaces.world.IDhApiLevelWrapper;
 import com.seibel.distanthorizons.api.interfaces.factories.IDhApiWrapperFactory;
+import com.seibel.distanthorizons.common.render.openGl.generic.GlGenericObjectRenderer;
+import com.seibel.distanthorizons.common.render.openGl.generic.GlGenericObjectVertexContainer;
+import com.seibel.distanthorizons.common.render.openGl.glObject.GlDummyUniformData;
+import com.seibel.distanthorizons.common.render.openGl.glObject.buffer.GLVertexBuffer;
 import com.seibel.distanthorizons.common.wrappers.block.BiomeWrapper;
 import com.seibel.distanthorizons.common.wrappers.block.BlockStateWrapper;
 import com.seibel.distanthorizons.common.wrappers.chunk.ChunkWrapper;
@@ -36,6 +40,10 @@ import com.seibel.distanthorizons.core.util.LodUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.IWrapperFactory;
 import com.seibel.distanthorizons.core.wrapperInterfaces.block.IBlockStateWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.IChunkWrapper;
+import com.seibel.distanthorizons.core.wrapperInterfaces.render.objects.IDhGenericObjectVertexBufferContainer;
+import com.seibel.distanthorizons.core.wrapperInterfaces.render.objects.ILodContainerUniformBufferWrapper;
+import com.seibel.distanthorizons.core.wrapperInterfaces.render.objects.IVertexBufferWrapper;
+import com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass.IDhGenericRenderer;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IBiomeWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.worldGeneration.IBatchGeneratorEnvironmentWrapper;
@@ -189,7 +197,28 @@ public class WrapperFactory implements IWrapperFactory
 		}
 		//#endif
 	}
-	/**
+
+    @Override
+    public IVertexBufferWrapper createVboWrapper(String name) {
+        return new GLVertexBuffer();
+    }
+
+    @Override
+    public ILodContainerUniformBufferWrapper createLodContainerUniformWrapper() {
+        return new GlDummyUniformData();
+    }
+
+    @Override
+    public IDhGenericObjectVertexBufferContainer createGenericObjectVboContainer() {
+        return new GlGenericObjectVertexContainer();
+    }
+
+    @Override
+    public IDhGenericRenderer createGenericRenderer() {
+        return GlGenericObjectRenderer.INSTANCE;
+    }
+
+    /**
 	 * Note: when this is updated for different MC versions,
 	 * make sure you also update the documentation in {@link IDhApiWorldGenerator#generateChunks}.
 	 */

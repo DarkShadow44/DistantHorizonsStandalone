@@ -17,35 +17,40 @@
  *    along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.seibel.distanthorizons.common.wrappers;
+package com.seibel.distanthorizons.common.render.openGl.glObject.buffer;
 
-import com.seibel.distanthorizons.api.enums.config.EDhApiRenderApi;
-import com.seibel.distanthorizons.core.wrapperInterfaces.IVersionConstants;
+import org.lwjgl.opengl.GL32;
 
 /**
+ * AKA the GLElementBuffer
+ *
  * @author James Seibel
- * @version 12-11-2021
+ * @version 11-20-2021
  */
-public class VersionConstants implements IVersionConstants
+public class GLIndexBuffer extends GLBuffer
 {
-	public static final VersionConstants INSTANCE = new VersionConstants();
+    /**
+     * When uploading to a buffer that is too small, recreate it this many times
+     * bigger than the upload payload
+     */
+    protected int indicesCount = 0;
+    public int getIndicesCount() { return this.indicesCount; }
+    protected int type = GL32.GL_UNSIGNED_INT;
+    public int getType() { return type; }
 
-
-	private VersionConstants()
-	{
-
-	}
-
-
-	@Override
-	public String getMinecraftVersion()
-	{
-		return "1.7.10";
-	}
+    public GLIndexBuffer(boolean isBufferStorage)
+    {
+        super(isBufferStorage);
+    }
 
     @Override
-    public EDhApiRenderApi getDefaultRenderingApi() {
-        return EDhApiRenderApi.OPEN_GL;
+    public void destroyAsync()
+    {
+        super.destroyAsync();
+        this.indicesCount = 0;
     }
+
+    @Override
+    public int getBufferBindingTarget() { return GL32.GL_ELEMENT_ARRAY_BUFFER; }
 
 }

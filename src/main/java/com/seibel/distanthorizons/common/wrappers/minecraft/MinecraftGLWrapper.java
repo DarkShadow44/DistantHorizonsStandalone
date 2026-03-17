@@ -21,12 +21,11 @@ package com.seibel.distanthorizons.common.wrappers.minecraft;
 
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
-import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftGLWrapper;
 
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.opengl.GL32;
 
-public class MinecraftGLWrapper implements IMinecraftGLWrapper
+public class MinecraftGLWrapper
 {
     public static final MinecraftGLWrapper INSTANCE = new MinecraftGLWrapper();
 
@@ -42,13 +41,11 @@ public class MinecraftGLWrapper implements IMinecraftGLWrapper
     // scissor //
 
     /** @see GL32#GL_SCISSOR_TEST */
-    @Override
     public void enableScissorTest()
     {
         GL32.glEnable(GL32.GL_SCISSOR_TEST);
     }
     /** @see GL32#GL_SCISSOR_TEST */
-    @Override
     public void disableScissorTest()
     {
         GL32.glDisable(GL32.GL_SCISSOR_TEST);
@@ -66,33 +63,28 @@ public class MinecraftGLWrapper implements IMinecraftGLWrapper
     // depth //
 
     /** @see GL32#GL_DEPTH_TEST */
-    @Override
     public void enableDepthTest()
     {
         GL32.glEnable(GL32.GL_DEPTH_TEST);
     }
     /** @see GL32#GL_DEPTH_TEST */
-    @Override
     public void disableDepthTest()
     {
         GL32.glDisable(GL32.GL_DEPTH_TEST);
     }
 
     /** @see GL32#glDepthFunc(int)  */
-    @Override
     public void glDepthFunc(int func)
     {
         GL32.glDepthFunc(func);
     }
 
     /** @see GL32#glDepthMask(boolean) */
-    @Override
     public void enableDepthMask()
     {
         GL32.glDepthMask(true);
     }
     /** @see GL32#glDepthMask(boolean) */
-    @Override
     public void disableDepthMask()
     {
         GL32.glDepthMask(false);
@@ -102,26 +94,22 @@ public class MinecraftGLWrapper implements IMinecraftGLWrapper
     // blending //
 
     /** @see GL32#GL_BLEND */
-    @Override
     public void enableBlend()
     {
         GL32.glEnable(GL32.GL_BLEND);
     }
     /** @see GL32#GL_BLEND */
-    @Override
     public void disableBlend()
     {
         GL32.glDisable(GL32.GL_BLEND);
     }
 
     /** @see GL32#glBlendFunc */
-    @Override
     public void glBlendFunc(int sfactor, int dfactor)
     {
         GL32.glBlendFunc(sfactor, dfactor);
     }
     /** @see GL32#glBlendFuncSeparate */
-    @Override
     public void glBlendFuncSeparate(int sfactorRGB, int dfactorRGB, int sfactorAlpha, int dfactorAlpha)
     {
         GL32.glBlendFuncSeparate(sfactorRGB, dfactorRGB, sfactorAlpha, dfactorAlpha);
@@ -131,7 +119,6 @@ public class MinecraftGLWrapper implements IMinecraftGLWrapper
     // frame buffers //
 
     /** @see GL32#glBindFramebuffer */
-    @Override
     public void glBindFramebuffer(int target, int framebuffer)
     {
         GL32.glBindFramebuffer(target, framebuffer);
@@ -141,12 +128,10 @@ public class MinecraftGLWrapper implements IMinecraftGLWrapper
     // buffers //
 
     /** @see GL32#glGenBuffers() */
-    @Override
     public int glGenBuffers()
     { return GL32.glGenBuffers(); }
 
     /** @see GL32#glDeleteBuffers(int)  */
-    @Override
     public void glDeleteBuffers(int buffer)
     { GL32.glDeleteBuffers(buffer); }
 
@@ -154,13 +139,11 @@ public class MinecraftGLWrapper implements IMinecraftGLWrapper
     // culling //
 
     /** @see GL32#GL_CULL_FACE */
-    @Override
     public void enableFaceCulling()
     {
         GL32.glEnable(GL32.GL_CULL_FACE);
     }
     /** @see GL32#GL_CULL_FACE */
-    @Override
     public void disableFaceCulling()
     {
         GL32.glDisable(GL32.GL_CULL_FACE);
@@ -170,28 +153,23 @@ public class MinecraftGLWrapper implements IMinecraftGLWrapper
     // textures //
 
     /** @see GL32#glGenTextures() */
-    @Override
     public int glGenTextures() { return GL32.glGenTextures(); }
     /** @see GL32#glDeleteTextures(int) */
-    @Override
     public void glDeleteTextures(int texture) {
         GL32.glDeleteTextures(texture);
     }
 
     /** @see GL32#glActiveTexture(int) */
-    @Override
     public void glActiveTexture(int textureId)
     {
         GL32.glActiveTexture(textureId);
     }
-    @Override
     public int getActiveTexture() { return GL32.glGetInteger(GL32.GL_ACTIVE_TEXTURE); }
 
     /**
      * Always binds to {@link GL32#GL_TEXTURE_2D}
      * @see GL32#glBindTexture(int, int)
      */
-    @Override
     public void glBindTexture(int texture)
     {
         GL32.glBindTexture(GL32.GL_TEXTURE_2D, texture);
