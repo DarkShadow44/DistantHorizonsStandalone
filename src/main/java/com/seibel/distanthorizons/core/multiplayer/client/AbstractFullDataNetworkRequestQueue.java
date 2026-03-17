@@ -18,7 +18,7 @@ import com.seibel.distanthorizons.core.network.messages.fullData.FullDataSourceR
 import com.seibel.distanthorizons.core.network.messages.fullData.FullDataSourceResponseMessage;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos2D;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
-import com.seibel.distanthorizons.core.render.renderer.DebugRenderer;
+import com.seibel.distanthorizons.core.render.renderer.AbstractDebugWireframeRenderer;
 import com.seibel.distanthorizons.core.render.renderer.IDebugRenderable;
 import com.seibel.distanthorizons.core.sql.dto.FullDataSourceV2DTO;
 import com.seibel.distanthorizons.core.util.LodUtil;
@@ -43,6 +43,7 @@ public abstract class AbstractFullDataNetworkRequestQueue implements IDebugRende
 			.build();
 	
 	private static final IMinecraftClientWrapper MC_CLIENT = SingletonInjector.INSTANCE.get(IMinecraftClientWrapper.class);
+	private static final AbstractDebugWireframeRenderer DEBUG_RENDERER = SingletonInjector.INSTANCE.get(AbstractDebugWireframeRenderer.class);
 	
 	private static final int MAX_RETRY_ATTEMPTS = 3;
 	
@@ -86,7 +87,7 @@ public abstract class AbstractFullDataNetworkRequestQueue implements IDebugRende
 		this.level = level;
 		this.changedOnly = changedOnly;
 		this.showDebugWireframeConfig = showDebugWireframeConfig;
-		DebugRenderer.register(this, this.showDebugWireframeConfig);
+		DEBUG_RENDERER.register(this, this.showDebugWireframeConfig);
 	}
 	
 	
@@ -385,10 +386,7 @@ public abstract class AbstractFullDataNetworkRequestQueue implements IDebugRende
 	}
 	
 	@Override
-	public void close()
-	{
-		DebugRenderer.unregister(this, this.showDebugWireframeConfig);
-	}
+	public void close() { DEBUG_RENDERER.unregister(this, this.showDebugWireframeConfig); }
 	
 	
 	
@@ -397,7 +395,7 @@ public abstract class AbstractFullDataNetworkRequestQueue implements IDebugRende
 	//===========//
 	
 	@Override
-	public void debugRender(DebugRenderer renderer)
+	public void debugRender(AbstractDebugWireframeRenderer renderer)
 	{
 		if (MC_CLIENT.getWrappedClientLevel() != this.level.getClientLevelWrapper())
 		{
@@ -428,7 +426,7 @@ public abstract class AbstractFullDataNetworkRequestQueue implements IDebugRende
 				}
 			}
 			
-			renderer.renderBox(new DebugRenderer.Box(pos, -32f, 64f, 0.05f, color));
+			renderer.renderBox(new AbstractDebugWireframeRenderer.Box(pos, -32f, 64f, 0.05f, color));
 		}
 	}
 	

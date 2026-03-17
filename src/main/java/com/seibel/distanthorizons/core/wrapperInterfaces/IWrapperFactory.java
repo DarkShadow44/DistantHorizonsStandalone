@@ -23,6 +23,10 @@ import com.seibel.distanthorizons.api.interfaces.factories.IDhApiWrapperFactory;
 import com.seibel.distanthorizons.core.level.IDhLevel;
 import com.seibel.distanthorizons.core.wrapperInterfaces.block.IBlockStateWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.IChunkWrapper;
+import com.seibel.distanthorizons.core.wrapperInterfaces.render.objects.IDhGenericObjectVertexBufferContainer;
+import com.seibel.distanthorizons.core.wrapperInterfaces.render.objects.ILodContainerUniformBufferWrapper;
+import com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass.IDhGenericRenderer;
+import com.seibel.distanthorizons.core.wrapperInterfaces.render.objects.IVertexBufferWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IBiomeWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.worldGeneration.IBatchGeneratorEnvironmentWrapper;
@@ -30,7 +34,6 @@ import com.seibel.distanthorizons.coreapi.interfaces.dependencyInjection.IBindab
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
 import java.io.IOException;
-import java.util.HashSet;
 
 /**
  * This handles creating abstract wrapper objects.
@@ -101,5 +104,14 @@ public interface IWrapperFactory extends IDhApiWrapperFactory, IBindable
 	 * @throws ClassCastException with instructions on expected objects if the object couldn't be cast
 	 */
 	IChunkWrapper createChunkWrapper(Object[] objectArray) throws ClassCastException;
+	
+	
+	
+	IVertexBufferWrapper createVboWrapper(String name);
+	ILodContainerUniformBufferWrapper createLodContainerUniformWrapper();
+	
+	IDhGenericObjectVertexBufferContainer createGenericObjectVboContainer();
+	
+	IDhGenericRenderer createGenericRenderer();
 	
 }

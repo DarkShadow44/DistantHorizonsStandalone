@@ -168,7 +168,7 @@ public class WorldChunkUpdateManager
 		
 		// replace the first line with the number of total/active queues
 		// (helpful if we need to diagnose a leak due to a massive number of queue level wrappers)
-		stringList.set(0, "Chunk Update Queues: "+totalQueueCountRef.get()+"/"+activeQueueCountRef.get());
+		stringList.set(0, "Chunk Update Queues: "+activeQueueCountRef.get()+"/"+totalQueueCountRef.get());
 		
 		return stringList;
 	}

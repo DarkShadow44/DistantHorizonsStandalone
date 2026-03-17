@@ -19,6 +19,7 @@
 
 package com.seibel.distanthorizons.core.util;
 
+import com.seibel.distanthorizons.api.objects.math.DhApiMat4f;
 import com.seibel.distanthorizons.core.api.internal.ClientApi;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
@@ -64,7 +65,7 @@ public class RenderUtil
 	 *
 	 * @param mcProjMat Minecraft's current projection matrix
 	 */
-	public static Mat4f createLodProjectionMatrix(Mat4f mcProjMat)
+	public static Mat4f createLodProjectionMatrix(DhApiMat4f mcProjMat)
 	{
 		// in James' testing a near clip plane distance of 2 blocks is enough to allow the fragment
 		// culling to take effect instead of seeing the near clip plane.
@@ -81,18 +82,18 @@ public class RenderUtil
 		float farClipDist = (float) RenderUtil.getFarClipPlaneDistanceInBlocks();
 		
 		// Create a copy of the current matrix, so it won't be modified.
-		Mat4f lodProj = mcProjMat.copy();
+		Mat4f lodProj = new Mat4f(mcProjMat);
 		// Set new far and near clip plane values.
 		lodProj.setClipPlanes(nearClipDist, farClipDist);
 		return lodProj;
 	}
 	
 	/** create and return a new projection matrix based on MC's modelView and projection matrices */
-	public static Mat4f createLodModelViewMatrix(Mat4f mcModelViewMat)
+	public static Mat4f createLodModelViewMatrix(DhApiMat4f mcModelViewMat)
 	{
 		// nothing beyond copying needs to be done to MC's MVM currently,
 		// this method is just here in case that changes in the future
-		return mcModelViewMat.copy();
+		return new Mat4f(mcModelViewMat);
 	}
 	
 	//endregion

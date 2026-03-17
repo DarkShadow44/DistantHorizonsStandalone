@@ -74,6 +74,11 @@ public class DependencyInjector<BindableType extends IBindable> implements IDepe
 			throw new IllegalStateException("The dependency [" + dependencyInterface.getSimpleName() + "] has already been bound.");
 		}
 		
+		if (dependencyImplementation == null)
+		{
+			throw new NullPointerException("Can't bind null to ["+dependencyInterface.getSimpleName()+"]");
+		}
+		
 		
 		// make sure the given dependency implements the necessary interfaces
 		boolean implementsInterface = this.checkIfClassImplements(dependencyImplementation.getClass(), dependencyInterface) ||

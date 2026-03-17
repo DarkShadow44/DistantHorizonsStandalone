@@ -36,7 +36,7 @@ import com.seibel.distanthorizons.core.pos.DhChunkPos;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.dataObjects.transformers.LodDataBuilder;
-import com.seibel.distanthorizons.core.render.renderer.DebugRenderer;
+import com.seibel.distanthorizons.core.render.renderer.AbstractDebugWireframeRenderer;
 import com.seibel.distanthorizons.core.render.renderer.IDebugRenderable;
 import com.seibel.distanthorizons.core.util.ExceptionUtil;
 import com.seibel.distanthorizons.core.util.LodUtil.AssertFailureException;
@@ -61,6 +61,7 @@ public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDeb
 {
 	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	private static final IWrapperFactory WRAPPER_FACTORY = SingletonInjector.INSTANCE.get(IWrapperFactory.class);
+	private static final AbstractDebugWireframeRenderer DEBUG_RENDERER = SingletonInjector.INSTANCE.get(AbstractDebugWireframeRenderer.class);
 	
 	
 	private final IDhApiWorldGenerator generator;
@@ -110,7 +111,7 @@ public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDeb
 		this.lowestDataDetail = generator.getLargestDataDetailLevel();
 		this.highestDataDetail = generator.getSmallestDataDetailLevel();
 		
-		DebugRenderer.register(this, Config.Client.Advanced.Debugging.DebugWireframe.showWorldGenQueue);
+		DEBUG_RENDERER.register(this, Config.Client.Advanced.Debugging.DebugWireframe.showWorldGenQueue);
 		LOGGER.info("Created world gen queue");
 	}
 	
@@ -623,7 +624,7 @@ public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDeb
 	///region debug
 	
 	@Override
-	public void debugRender(DebugRenderer renderer)
+	public void debugRender(AbstractDebugWireframeRenderer renderer)
 	{
 		int levelMinY = this.level.getLevelWrapper().getMinHeight();
 		int levelMaxY = this.level.getLevelWrapper().getMaxHeight();
@@ -638,7 +639,7 @@ public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDeb
 		this.waitingTasks.keySet().forEach((Long pos) -> 
 		{ 
 			renderer.renderBox(
-				new DebugRenderer.Box(pos, levelMinY, maxY, 0.05f, Color.blue)
+				new AbstractDebugWireframeRenderer.Box(pos, levelMinY, maxY, 0.05f, Color.blue)
 			); 
 		});
 		
@@ -646,7 +647,7 @@ public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDeb
 		this.inProgressGenTasksByLodPos.forEach((Long pos, DataSourceRetrievalTask task) -> 
 		{ 
 			renderer.renderBox(
-				new DebugRenderer.Box(pos, levelMinY, maxY, 0.05f, Color.red)
+				new AbstractDebugWireframeRenderer.Box(pos, levelMinY, maxY, 0.05f, Color.red)
 			); 
 		});
 	}
@@ -732,7 +733,7 @@ public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDeb
 		
 		
 		this.generator.close();
-		DebugRenderer.unregister(this, Config.Client.Advanced.Debugging.DebugWireframe.showWorldGenQueue);
+		DEBUG_RENDERER.unregister(this, Config.Client.Advanced.Debugging.DebugWireframe.showWorldGenQueue);
 		
 		
 		try

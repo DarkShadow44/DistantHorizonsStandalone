@@ -20,6 +20,7 @@
 package com.seibel.distanthorizons.core;
 
 import com.github.luben.zstd.ZstdOutputStream;
+import com.seibel.distanthorizons.api.interfaces.render.IDhApiCustomRenderObjectFactory;
 import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiBeforeRenderEvent;
 import com.seibel.distanthorizons.core.api.internal.ClientApi;
 import com.seibel.distanthorizons.core.config.Config;
@@ -27,7 +28,6 @@ import com.seibel.distanthorizons.core.config.eventHandlers.IgnoredDimensionCsvH
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.enums.MinecraftTextFormat;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
-import com.seibel.distanthorizons.core.render.renderer.generic.GenericRenderObjectFactory;
 import com.seibel.distanthorizons.core.sql.DatabaseUpdater;
 import com.seibel.distanthorizons.core.wrapperInterfaces.IWrapperFactory;
 import com.seibel.distanthorizons.core.world.DhApiWorldProxy;
@@ -36,7 +36,6 @@ import com.seibel.distanthorizons.core.api.external.methods.data.DhApiTerrainDat
 import com.seibel.distanthorizons.api.DhApi;
 import com.seibel.distanthorizons.core.render.DhApiRenderProxy;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
-import com.seibel.distanthorizons.coreapi.util.StringUtil;
 import net.jpountz.lz4.LZ4FrameOutputStream;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import org.sqlite.SQLiteJDBCLoader;
@@ -162,13 +161,17 @@ public class Initializer
 		DhApi.Delayed.terrainRepo = DhApiTerrainDataRepo.INSTANCE;
 		DhApi.Delayed.worldProxy = DhApiWorldProxy.INSTANCE;
 		DhApi.Delayed.renderProxy = DhApiRenderProxy.INSTANCE;
-		DhApi.Delayed.customRenderObjectFactory = GenericRenderObjectFactory.INSTANCE;
 		DhApi.Delayed.wrapperFactory = SingletonInjector.INSTANCE.get(IWrapperFactory.class);
 		if (DhApi.Delayed.wrapperFactory == null)
 		{
-			LOGGER.error("Programmer Error: No ["+IWrapperFactory.class.getSimpleName()+"] assigned to the DhApi.");
+			MC_CLIENT.crashMinecraft("Programmer Error: No ["+IWrapperFactory.class.getSimpleName()+"] assigned to the DhApi.", new Exception());
 		}
 		
+		DhApi.Delayed.customRenderObjectFactory = SingletonInjector.INSTANCE.get(IDhApiCustomRenderObjectFactory.class);
+		if (DhApi.Delayed.customRenderObjectFactory == null)
+		{
+			MC_CLIENT.crashMinecraft("Programmer Error: No ["+IDhApiCustomRenderObjectFactory.class.getSimpleName()+"] assigned to the DhApi.", new Exception());
+		}
 		
 		DhApi.events.bind(DhApiBeforeRenderEvent.class, IgnoredDimensionCsvHandler.INSTANCE);
 		

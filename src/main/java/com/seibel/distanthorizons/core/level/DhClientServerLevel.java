@@ -19,21 +19,17 @@
 
 package com.seibel.distanthorizons.core.level;
 
-import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.enums.MinecraftTextFormat;
 import com.seibel.distanthorizons.core.file.structure.ISaveStructure;
 import com.seibel.distanthorizons.core.multiplayer.server.ServerPlayerStateManager;
 import com.seibel.distanthorizons.core.render.RenderBufferHandler;
-import com.seibel.distanthorizons.core.render.renderer.DebugRenderer;
-import com.seibel.distanthorizons.core.render.renderer.generic.GenericObjectRenderer;
-import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IProfilerWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
+import com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass.IDhGenericRenderer;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IServerLevelWrapper;
 import org.jetbrains.annotations.Nullable;
 
-import java.awt.*;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.List;
@@ -138,7 +134,7 @@ public class DhClientServerLevel extends AbstractDhServerLevel implements IDhCli
 	
 	
 	@Override
-	public GenericObjectRenderer getGenericRenderer() { return this.clientside.genericRenderer; }
+	public IDhGenericRenderer getGenericRenderer() { return this.clientside.genericRenderer; }
 	@Override
 	public RenderBufferHandler getRenderBufferHandler()
 	{

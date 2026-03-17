@@ -9,8 +9,6 @@ import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.logging.f3.F3Screen;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
-import com.seibel.distanthorizons.core.render.renderer.DebugRenderer;
-import com.seibel.distanthorizons.core.render.renderer.IDebugRenderable;
 import com.seibel.distanthorizons.core.util.threading.ThreadPoolUtil;
 
 import java.io.File;
@@ -22,7 +20,7 @@ import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class DataMigratorV1 implements IDebugRenderable, AutoCloseable
+public class DataMigratorV1 implements AutoCloseable
 {
 	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
@@ -331,12 +329,6 @@ public class DataMigratorV1 implements IDebugRenderable, AutoCloseable
 	//===========//
 	// overrides //
 	//===========//
-	
-	@Override
-	public void debugRender(DebugRenderer renderer)
-	{
-		// nothing currently needed
-	}
 	
 	@Override
 	public void close()

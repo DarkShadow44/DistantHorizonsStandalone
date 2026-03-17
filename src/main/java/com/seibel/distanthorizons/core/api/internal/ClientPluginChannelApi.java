@@ -9,7 +9,7 @@ import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.network.event.internal.CloseInternalEvent;
 import com.seibel.distanthorizons.core.network.messages.base.LevelInitMessage;
 import com.seibel.distanthorizons.core.network.session.NetworkSession;
-import com.seibel.distanthorizons.core.render.glObject.GLProxy;
+import com.seibel.distanthorizons.core.render.RenderThreadTaskHandler;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
 import org.jetbrains.annotations.NotNull;
@@ -90,7 +90,7 @@ public class ClientPluginChannelApi
 		
 		LOGGER.info("Server level key received: [" + msg.levelKey + "].");
 		
-		GLProxy.queueRunningOnRenderThread(() -> 
+		RenderThreadTaskHandler.INSTANCE.queueRunningOnRenderThread(() -> 
 		{
 			IClientLevelWrapper clientLevel = MC.getWrappedClientLevel(true);
 			IServerKeyedClientLevel existingKeyedClientLevel = KEYED_CLIENT_LEVEL_MANAGER.getServerKeyedLevel();

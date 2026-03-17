@@ -19,15 +19,17 @@
 
 package com.seibel.distanthorizons.core.dataObjects.render.bufferBuilding;
 
+import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos;
-import com.seibel.distanthorizons.core.render.glObject.GLProxy;
-import com.seibel.distanthorizons.core.render.glObject.buffer.GLVertexBuffer;
+import com.seibel.distanthorizons.core.render.RenderThreadTaskHandler;
 import com.seibel.distanthorizons.core.util.LodUtil;
-import com.seibel.distanthorizons.core.util.objects.StatsMap;
-import com.seibel.distanthorizons.api.enums.config.EDhApiGpuUploadMethod;
+import com.seibel.distanthorizons.core.wrapperInterfaces.IWrapperFactory;
+import com.seibel.distanthorizons.core.wrapperInterfaces.render.objects.ILodContainerUniformBufferWrapper;
+import com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass.IDhTerrainRenderer;
+import com.seibel.distanthorizons.core.wrapperInterfaces.render.objects.IVertexBufferWrapper;
 import org.lwjgl.system.MemoryUtil;
 
 import java.nio.ByteBuffer;
@@ -44,12 +46,7 @@ public class LodBufferContainer implements AutoCloseable
 {
 	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
-	/** number of bytes a single quad takes */
-	public static final int QUADS_BYTE_SIZE = LodUtil.DH_VERTEX_FORMAT.getByteSize() * 4;
-	/** how big a single VBO can be in bytes */
-	public static final int MAX_VBO_BYTE_SIZE = 10 * 1024 * 1024; // 10 MB
-	public static final int MAX_QUADS_PER_BUFFER = MAX_VBO_BYTE_SIZE / QUADS_BYTE_SIZE;
-	public static final int FULL_SIZED_BUFFER = MAX_QUADS_PER_BUFFER * QUADS_BYTE_SIZE;
+	private static final IWrapperFactory WRAPPER_FACTORY = SingletonInjector.INSTANCE.get(IWrapperFactory.class);
 	
 	
 	/** the position closest to minimum X/Z infinity and the level's lowest Y */
@@ -58,8 +55,10 @@ public class LodBufferContainer implements AutoCloseable
 	
 	public boolean buffersUploaded = false;
 	
-	public GLVertexBuffer[] vbos;
-	public GLVertexBuffer[] vbosTransparent;
+	public IVertexBufferWrapper[] vbos;
+	public IVertexBufferWrapper[] vbosTransparent;
+	
+	public ILodContainerUniformBufferWrapper uniformContainer = WRAPPER_FACTORY.createLodContainerUniformWrapper();
 	
 	private final AtomicReference<CompletableFuture<LodBufferContainer>> uploadFutureRef = new AtomicReference<>(null);
 	
@@ -68,20 +67,26 @@ public class LodBufferContainer implements AutoCloseable
 	//==============//
 	// constructors //
 	//==============//
+	//region
 	
 	public LodBufferContainer(long pos, DhBlockPos minCornerBlockPos)
 	{
 		this.pos = pos;
 		this.minCornerBlockPos = minCornerBlockPos;
-		this.vbos = new GLVertexBuffer[0];
-		this.vbosTransparent = new GLVertexBuffer[0];
+		this.vbos = new IVertexBufferWrapper[0];
+		this.vbosTransparent = new IVertexBufferWrapper[0];
+		
+		this.uniformContainer.createUniformData(this);
 	}
+	
+	//endregion
 	
 	
 	
 	//==================//
 	// buffer uploading //
 	//==================//
+	//region
 	
 	/** Should be run on a DH thread. */
 	public synchronized CompletableFuture<LodBufferContainer> makeAndUploadBuffersAsync(LodQuadBuilder builder)
@@ -119,12 +124,12 @@ public class LodBufferContainer implements AutoCloseable
 		ArrayList<ByteBuffer> opaqueBuffers = builder.makeOpaqueVertexBuffers();
 		ArrayList<ByteBuffer> transparentBuffers = builder.makeTransparentVertexBuffers();
 		
-		this.vbos = resizeBuffer(this.vbos, opaqueBuffers.size());
-		this.vbosTransparent = resizeBuffer(this.vbosTransparent, transparentBuffers.size());
+		this.vbos = resizeBufferArray(this.vbos, opaqueBuffers.size());
+		this.vbosTransparent = resizeBufferArray(this.vbosTransparent, transparentBuffers.size());
 		
 		
 		// upload on MC's render thread
-		GLProxy.queueRunningOnRenderThread(() ->
+		RenderThreadTaskHandler.INSTANCE.queueRunningOnRenderThread(() ->
 		{
 			try
 			{
@@ -135,11 +140,9 @@ public class LodBufferContainer implements AutoCloseable
 					throw new InterruptedException();
 				}
 				
-				EDhApiGpuUploadMethod gpuUploadMethod = GLProxy.getInstance().getGpuUploadMethod();
-				
 				// upload on the render thread
-				uploadBuffersDirect(this.vbos, opaqueBuffers, gpuUploadMethod);
-				uploadBuffersDirect(this.vbosTransparent, transparentBuffers, gpuUploadMethod);
+				uploadBuffers(this.vbos, opaqueBuffers);
+				uploadBuffers(this.vbosTransparent, transparentBuffers);
 				this.buffersUploaded = true;
 				
 				// success
@@ -173,14 +176,14 @@ public class LodBufferContainer implements AutoCloseable
 		
 		return future;
 	}
-	private static GLVertexBuffer[] resizeBuffer(GLVertexBuffer[] vbos, int newSize)
+	private static IVertexBufferWrapper[] resizeBufferArray(IVertexBufferWrapper[] vbos, int newSize)
 	{
 		if (vbos.length == newSize)
 		{
 			return vbos;
 		}
 		
-		GLVertexBuffer[] newVbos = new GLVertexBuffer[newSize];
+		IVertexBufferWrapper[] newVbos = new IVertexBufferWrapper[newSize];
 		System.arraycopy(vbos, 0, newVbos, 0, Math.min(vbos.length, newSize));
 		if (newSize < vbos.length)
 		{
@@ -194,9 +197,7 @@ public class LodBufferContainer implements AutoCloseable
 		}
 		return newVbos;
 	}
-	private static void uploadBuffersDirect(
-			GLVertexBuffer[] vbos, ArrayList<ByteBuffer> byteBuffers, 
-			EDhApiGpuUploadMethod uploadMethod) throws InterruptedException
+	private static void uploadBuffers(IVertexBufferWrapper[] vbos, ArrayList<ByteBuffer> byteBuffers) throws InterruptedException
 	{
 		int vboIndex = 0;
 		for (int i = 0; i < byteBuffers.size(); i++)
@@ -210,18 +211,17 @@ public class LodBufferContainer implements AutoCloseable
 			// get or create the VBO
 			if (vbos[vboIndex] == null)
 			{
-				vbos[vboIndex] = new GLVertexBuffer(uploadMethod.useBufferStorage);
+				vbos[vboIndex] = SingletonInjector.INSTANCE.get(IWrapperFactory.class).createVboWrapper("distantHorizons:McLodRenderer");
 			}
-			GLVertexBuffer vbo = vbos[vboIndex];
-			
+			IVertexBufferWrapper vbo = vbos[vboIndex];
 			
 			ByteBuffer buffer = byteBuffers.get(i);
 			int size = buffer.limit() - buffer.position();
+			int vertexCount = size / LodQuadBuilder.BYTES_PER_VERTEX;
 			
 			try
 			{
-				vbo.bind();
-				vbo.uploadBuffer(buffer, size / LodUtil.DH_VERTEX_FORMAT.getByteSize(), uploadMethod, FULL_SIZED_BUFFER);
+				vbo.upload(buffer, vertexCount);
 			}
 			catch (Exception e)
 			{
@@ -239,11 +239,14 @@ public class LodBufferContainer implements AutoCloseable
 		}
 	}
 	
+	//endregion
+	
 	
 	
 	//================//
 	// helper methods //
 	//================//
+	//region
 	
 	/** can be used when debugging */
 	public boolean hasNonNullVbos() { return this.vbos != null || this.vbosTransparent != null; }
@@ -268,35 +271,14 @@ public class LodBufferContainer implements AutoCloseable
 	
 	public boolean uploadInProgress() { return this.uploadFutureRef.get() != null; }
 	
-	public void debugDumpStats(StatsMap statsMap)
-	{
-		statsMap.incStat("RenderBuffers");
-		statsMap.incStat("SimpleRenderBuffers");
-		for (GLVertexBuffer vertexBuffer : this.vbos)
-		{
-			if (vertexBuffer != null)
-			{
-				statsMap.incStat("VBOs");
-				if (vertexBuffer.getSize() == FULL_SIZED_BUFFER)
-				{
-					statsMap.incStat("FullsizedVBOs");
-				}
-				
-				if (vertexBuffer.getSize() == 0)
-				{
-					GLProxy.LOGGER.warn("VBO with size 0");
-				}
-				statsMap.incBytesStat("TotalUsage", vertexBuffer.getSize());
-			}
-		}
-	}
-	
+	//endregion
 	
 	
 	
 	//================//
 	// base overrides //
 	//================//
+	//region
 	
 	/**
 	 * This method is called when object is no longer in use.
@@ -309,21 +291,30 @@ public class LodBufferContainer implements AutoCloseable
 	{
 		this.buffersUploaded = false;
 		
-		for (GLVertexBuffer buffer : this.vbos)
+		RenderThreadTaskHandler.INSTANCE.queueRunningOnRenderThread(() -> 
 		{
-			if (buffer != null)
+			for (IVertexBufferWrapper buffer : this.vbos)
 			{
-				buffer.destroyAsync();
+				if (buffer != null)
+				{
+					buffer.close();
+				}
 			}
-		}
-		
-		for (GLVertexBuffer buffer : this.vbosTransparent)
-		{
-			if (buffer != null)
+			
+			for (IVertexBufferWrapper buffer : this.vbosTransparent)
 			{
-				buffer.destroyAsync();
+				if (buffer != null)
+				{
+					buffer.close();
+				}
 			}
-		}
+			
+			this.uniformContainer.close();
+		});
 	}
+	
+	//endregion
+	
+	
 	
 }

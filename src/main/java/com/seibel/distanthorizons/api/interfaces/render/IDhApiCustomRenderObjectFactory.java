@@ -3,6 +3,7 @@ package com.seibel.distanthorizons.api.interfaces.render;
 import com.seibel.distanthorizons.api.objects.math.DhApiVec3d;
 import com.seibel.distanthorizons.api.objects.math.DhApiVec3f;
 import com.seibel.distanthorizons.api.objects.render.DhApiRenderableBox;
+import com.seibel.distanthorizons.coreapi.interfaces.dependencyInjection.IBindable;
 
 import java.util.List;
 
@@ -18,7 +19,7 @@ import java.util.List;
  * @version 2024-7-3
  * @since API 3.0.0
  */
-public interface IDhApiCustomRenderObjectFactory
+public interface IDhApiCustomRenderObjectFactory extends IBindable
 {
 	/**
 	 * Creates a {@link IDhApiRenderableBoxGroup} from for the given {@link DhApiRenderableBox}

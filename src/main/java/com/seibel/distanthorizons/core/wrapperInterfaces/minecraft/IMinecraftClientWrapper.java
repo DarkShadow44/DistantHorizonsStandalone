@@ -19,18 +19,10 @@
 
 package com.seibel.distanthorizons.core.wrapperInterfaces.minecraft;
 
-import java.util.ArrayList;
-import java.util.UUID;
-
-import com.seibel.distanthorizons.core.enums.EDhDirection;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos;
 import com.seibel.distanthorizons.core.pos.DhChunkPos;
-import com.seibel.distanthorizons.core.render.glObject.GLProxy;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
-import com.seibel.distanthorizons.coreapi.ModInfo;
 import com.seibel.distanthorizons.coreapi.interfaces.dependencyInjection.IBindable;
-import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
-import org.apache.logging.log4j.Level;
 
 public interface IMinecraftClientWrapper extends IBindable
 {

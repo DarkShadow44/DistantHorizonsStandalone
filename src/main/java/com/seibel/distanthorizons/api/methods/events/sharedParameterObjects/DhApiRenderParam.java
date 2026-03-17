@@ -60,6 +60,8 @@ public class DhApiRenderParam implements IDhApiEventParam
 	public final DhApiMat4f dhProjectionMatrix;
 	/** The model view matrix Distant Horizons is using to render this frame. */
 	public final DhApiMat4f dhModelViewMatrix;
+	/** combination of the MVM and projection matrices */
+	public final DhApiMat4f dhMvmProjMatrix;
 	
 	public final int worldYOffset;
 	
@@ -110,6 +112,10 @@ public class DhApiRenderParam implements IDhApiEventParam
 		
 		this.dhProjectionMatrix = newDhProjectionMatrix;
 		this.dhModelViewMatrix = newDhModelViewMatrix;
+		
+		DhApiMat4f combinedMatrix = new DhApiMat4f(this.dhProjectionMatrix);
+		combinedMatrix.multiply(this.dhModelViewMatrix);
+		this.dhMvmProjMatrix = combinedMatrix;
 		
 		this.worldYOffset = worldYOffset;
 		this.clientLevelWrapper = clientLevelWrapper;

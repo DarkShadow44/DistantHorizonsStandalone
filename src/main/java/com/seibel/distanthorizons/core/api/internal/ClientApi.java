@@ -31,6 +31,8 @@ import com.seibel.distanthorizons.core.logging.f3.F3Screen;
 import com.seibel.distanthorizons.core.network.messages.MessageRegistry;
 import com.seibel.distanthorizons.core.pos.DhChunkPos;
 import com.seibel.distanthorizons.core.render.DhApiRenderProxy;
+import com.seibel.distanthorizons.core.render.RenderParams;
+import com.seibel.distanthorizons.core.render.RenderThreadTaskHandler;
 import com.seibel.distanthorizons.core.render.renderer.*;
 import com.seibel.distanthorizons.core.util.TimerUtil;
 import com.seibel.distanthorizons.core.util.math.Vec3d;
@@ -38,6 +40,10 @@ import com.seibel.distanthorizons.core.util.objects.Pair;
 import com.seibel.distanthorizons.core.util.objects.RollingAverage;
 import com.seibel.distanthorizons.core.util.threading.ThreadPoolUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
+import com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass.IDhMetaRenderer;
+import com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass.IDhTerrainRenderer;
+import com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass.IDhVanillaFadeRenderer;
+import com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass.IDhTestTriangleRenderer;
 import com.seibel.distanthorizons.coreapi.DependencyInjection.ApiEventInjector;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.network.messages.AbstractNetworkMessage;
@@ -47,7 +53,6 @@ import com.seibel.distanthorizons.api.enums.rendering.EDhApiDebugRendering;
 import com.seibel.distanthorizons.api.enums.rendering.EDhApiRendererMode;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.level.IServerKeyedClientLevel;
-import com.seibel.distanthorizons.core.render.glObject.GLProxy;
 import com.seibel.distanthorizons.core.world.AbstractDhWorld;
 import com.seibel.distanthorizons.core.world.DhClientWorld;
 import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.IChunkWrapper;
@@ -73,6 +78,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 public class ClientApi
 {
 	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
+	private static final DhLogger RATE_LIMITED_LOGGER = new DhLoggerBuilder().maxCountPerSecond(1).build();
 	
 	public static final ClientApi INSTANCE = new ClientApi();
 	
@@ -414,8 +420,23 @@ public class ClientApi
 	private void renderLodLayer(boolean renderingDeferredLayer)
 	{
 		IProfilerWrapper profiler = MC_CLIENT.getProfiler();
-		profiler.pop(); // get out of "terrain"
 		profiler.push("DH-RenderLevel");
+		
+		
+		
+		//===========//
+		// debugging //
+		//===========//
+		//region
+		
+		//DhApiTerrainDataRepo.asyncDebugMethod(
+		//	RENDER_STATE.clientLevelWrapper,
+		//	MC_CLIENT.getPlayerBlockPos().getX(),
+		//	MC_CLIENT.getPlayerBlockPos().getY(),
+		//	MC_CLIENT.getPlayerBlockPos().getZ()
+		//);
+		
+		//endregion
 		
 		
 		
@@ -445,11 +466,8 @@ public class ClientApi
 			
 			try
 			{
-				// make sure the GLProxy is created for future use
-				GLProxy glProxy = GLProxy.getInstance();
-				
 				// these tasks always need to be called, regardless of whether the renderer is enabled or not to prevent memory leaks
-				glProxy.runRenderThreadTasks();
+				RenderThreadTaskHandler.INSTANCE.runRenderThreadTasks();
 			}
 			catch (Exception e)
 			{
@@ -484,6 +502,7 @@ public class ClientApi
 		}
 		
 		///endregion
+		
 		
 		
 		
@@ -571,32 +590,57 @@ public class ClientApi
 		try
 		{
 			// render pass //
-			
-			if (!renderingDeferredLayer)
+			if (Config.Client.Advanced.Debugging.rendererMode.get() == EDhApiRendererMode.DEFAULT)
 			{
-				boolean renderingCancelled = ApiEventInjector.INSTANCE.fireAllEvents(DhApiBeforeRenderEvent.class, renderParams);
-				if (!renderingCancelled)
+				if (!renderingDeferredLayer)
 				{
-					LodRenderer.INSTANCE.render(renderParams, profiler);
+					boolean renderingCancelled = ApiEventInjector.INSTANCE.fireAllEvents(DhApiBeforeRenderEvent.class, renderParams);
+					if (!renderingCancelled)
+					{
+						LodRenderer.INSTANCE.render(renderParams, profiler);
+					}
+					
+					if (!DhApi.Delayed.renderProxy.getDeferTransparentRendering())
+					{
+						ApiEventInjector.INSTANCE.fireAllEvents(DhApiAfterRenderEvent.class, null);
+					}
 				}
-				
-				if (!DhApi.Delayed.renderProxy.getDeferTransparentRendering())
+				else
 				{
-					ApiEventInjector.INSTANCE.fireAllEvents(DhApiAfterRenderEvent.class, null);
+					boolean renderingCancelled = ApiEventInjector.INSTANCE.fireAllEvents(DhApiBeforeDeferredRenderEvent.class, renderParams);
+					if (!renderingCancelled)
+					{
+						LodRenderer.INSTANCE.renderDeferred(renderParams, profiler);
+					}
+					
+					
+					if (DhApi.Delayed.renderProxy.getDeferTransparentRendering())
+					{
+						ApiEventInjector.INSTANCE.fireAllEvents(DhApiAfterRenderEvent.class, null);
+					}
 				}
 			}
 			else
 			{
-				boolean renderingCancelled = ApiEventInjector.INSTANCE.fireAllEvents(DhApiBeforeDeferredRenderEvent.class, renderParams);
-				if (!renderingCancelled)
+				if (!renderingDeferredLayer)
 				{
-					LodRenderer.INSTANCE.renderDeferred(renderParams, profiler);
-				}
-				
-				
-				if (DhApi.Delayed.renderProxy.getDeferTransparentRendering())
-				{
-					ApiEventInjector.INSTANCE.fireAllEvents(DhApiAfterRenderEvent.class, null);
+					IDhMetaRenderer metaRenderer = SingletonInjector.INSTANCE.get(IDhMetaRenderer.class);
+					IDhTestTriangleRenderer testRenderer = SingletonInjector.INSTANCE.get(IDhTestTriangleRenderer.class);
+					if (testRenderer != null
+						&& metaRenderer != null)
+					{
+						// meta renderer needed for render state/texture
+						// for setup on some APIs (IE openGL)
+						metaRenderer.runRenderPassSetup(renderParams);
+						
+						testRenderer.render(renderParams);
+						
+						metaRenderer.runRenderPassCleanup(renderParams);
+					}
+					else
+					{
+						RATE_LIMITED_LOGGER.warn("Unable to find singleton [" + IDhTestTriangleRenderer.class.getSimpleName() + "]");
+					}
 				}
 			}
 		}
@@ -616,7 +660,6 @@ public class ClientApi
 		
 		
 		profiler.pop(); // end LOD
-		profiler.push("terrain"); // go back into "terrain"
 	}
 	
 	///endregion
@@ -634,6 +677,12 @@ public class ClientApi
 	 */
 	public void renderFadeOpaque()
 	{
+		IDhVanillaFadeRenderer fadeRenderer = SingletonInjector.INSTANCE.get(IDhVanillaFadeRenderer.class);
+		if (fadeRenderer == null)
+		{
+			return;
+		}
+		
 		// only fade when DH is rendering
 		if (Config.Client.Advanced.Debugging.rendererMode.get() != EDhApiRendererMode.DISABLED
 			&&
@@ -646,7 +695,8 @@ public class ClientApi
 			// don't fade when Iris shaders are active, otherwise the rendering can get weird
 			&& !DhApiRenderProxy.INSTANCE.getDeferTransparentRendering())
 		{
-			VanillaFadeRenderer.INSTANCE.render(RENDER_STATE.mcModelViewMatrix, RENDER_STATE.mcProjectionMatrix, RENDER_STATE.partialTickTime, RENDER_STATE.clientLevelWrapper);
+			RenderParams renderParams = new RenderParams(EDhApiRenderPass.OPAQUE, RENDER_STATE);
+			fadeRenderer.render(renderParams);
 		}
 	}
 	/** 
@@ -656,6 +706,12 @@ public class ClientApi
 	 */
 	public void renderFadeTransparent()
 	{
+		IDhVanillaFadeRenderer fadeRenderer = SingletonInjector.INSTANCE.get(IDhVanillaFadeRenderer.class);
+		if (fadeRenderer == null)
+		{
+			return;
+		}
+		
 		// only fade when DH is rendering
 		if (Config.Client.Advanced.Debugging.rendererMode.get() != EDhApiRendererMode.DISABLED)
 		{
@@ -670,7 +726,8 @@ public class ClientApi
 				&& !DhApiRenderProxy.INSTANCE.getDeferTransparentRendering();
 			if (renderFade)
 			{
-				VanillaFadeRenderer.INSTANCE.render(RENDER_STATE.mcModelViewMatrix, RENDER_STATE.mcProjectionMatrix, RENDER_STATE.partialTickTime, RENDER_STATE.clientLevelWrapper);
+				RenderParams renderParams = new RenderParams(EDhApiRenderPass.TRANSPARENT, RENDER_STATE);
+				fadeRenderer.render(renderParams);
 			}
 		}
 	}

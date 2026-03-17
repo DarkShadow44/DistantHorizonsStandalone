@@ -22,6 +22,7 @@ package com.seibel.distanthorizons.core.level;
 import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiChunkModifiedEvent;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.dataObjects.fullData.sources.FullDataSourceV2;
+import com.seibel.distanthorizons.core.render.renderer.CloudRenderHandler;
 import com.seibel.distanthorizons.core.util.delayedSaveCache.DelayedBeaconSaveCache;
 import com.seibel.distanthorizons.core.util.delayedSaveCache.DelayedDataSourceSaveCache;
 import com.seibel.distanthorizons.core.generation.DhLightingEngine;
@@ -29,8 +30,6 @@ import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pos.DhChunkPos;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos;
-import com.seibel.distanthorizons.core.render.renderer.generic.CloudRenderHandler;
-import com.seibel.distanthorizons.core.render.renderer.generic.GenericObjectRenderer;
 import com.seibel.distanthorizons.core.sql.dto.BeaconBeamDTO;
 import com.seibel.distanthorizons.core.sql.dto.ChunkHashDTO;
 import com.seibel.distanthorizons.core.sql.repo.AbstractDhRepo;
@@ -39,6 +38,7 @@ import com.seibel.distanthorizons.core.sql.repo.ChunkHashRepo;
 import com.seibel.distanthorizons.core.util.KeyedLockContainer;
 import com.seibel.distanthorizons.core.util.LodUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.IChunkWrapper;
+import com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass.IDhGenericRenderer;
 import com.seibel.distanthorizons.coreapi.DependencyInjection.ApiEventInjector;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import org.jetbrains.annotations.Nullable;
@@ -118,7 +118,7 @@ public abstract class AbstractDhLevel implements IDhLevel
 	/** handles any setup that needs the repos to be created */
 	protected void runRepoReliantSetup()
 	{
-		GenericObjectRenderer genericRenderer = this.getGenericRenderer();
+		IDhGenericRenderer genericRenderer = this.getGenericRenderer();
 		if (genericRenderer != null)
 		{
 			// only client levels can render clouds

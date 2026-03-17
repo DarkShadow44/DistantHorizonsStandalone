@@ -20,13 +20,14 @@
 package com.seibel.distanthorizons.core.generation;
 
 import com.seibel.distanthorizons.core.dataObjects.fullData.sources.FullDataSourceV2;
+import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.enums.EDhDirection;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPosMutable;
 import com.seibel.distanthorizons.core.pos.DhChunkPos;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
-import com.seibel.distanthorizons.core.render.renderer.DebugRenderer;
+import com.seibel.distanthorizons.core.render.renderer.AbstractDebugWireframeRenderer;
 import com.seibel.distanthorizons.core.util.FullDataPointUtil;
 import com.seibel.distanthorizons.core.util.LodUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.block.IBlockStateWrapper;
@@ -51,6 +52,8 @@ public class DhLightingEngine
 {
 	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	public static final DhLightingEngine INSTANCE = new DhLightingEngine();
+	
+	private static final AbstractDebugWireframeRenderer DEBUG_RENDERER = SingletonInjector.INSTANCE.get(AbstractDebugWireframeRenderer.class);
 	
 	/** 
 	 * Minor garbage collection optimization. <br>
@@ -725,9 +728,9 @@ public class DhLightingEngine
 							// a color can be set to null if you only want to troubleshoot up to a certain light level
 							if (color != null)
 							{
-								DebugRenderer.makeParticle(
-									new DebugRenderer.BoxParticle(
-										new DebugRenderer.Box(DhSectionPos.encode((byte) 0, chunkMinX + x, chunkMinZ + z), y, y + 1, 0.2f, color),
+								DEBUG_RENDERER.makeParticle(
+									new AbstractDebugWireframeRenderer.BoxParticle(
+										new AbstractDebugWireframeRenderer.Box(DhSectionPos.encode((byte) 0, chunkMinX + x, chunkMinZ + z), y, y + 1, 0.2f, color),
 										10.0, 0f
 									)
 								);

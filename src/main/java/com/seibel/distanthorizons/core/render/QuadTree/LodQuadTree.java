@@ -21,6 +21,7 @@ package com.seibel.distanthorizons.core.render.QuadTree;
 
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.config.listeners.IConfigListener;
+import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.enums.EDhDirection;
 import com.seibel.distanthorizons.core.file.fullDatafile.V2.FullDataSourceProviderV2;
 import com.seibel.distanthorizons.core.file.fullDatafile.V2.FullDataUpdatePropagatorV2;
@@ -33,10 +34,9 @@ import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos2D;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
 import com.seibel.distanthorizons.core.render.RenderBufferHandler;
-import com.seibel.distanthorizons.core.render.renderer.DebugRenderer;
+import com.seibel.distanthorizons.core.render.renderer.AbstractDebugWireframeRenderer;
+import com.seibel.distanthorizons.core.render.renderer.BeaconRenderHandler;
 import com.seibel.distanthorizons.core.render.renderer.IDebugRenderable;
-import com.seibel.distanthorizons.core.render.renderer.generic.BeaconRenderHandler;
-import com.seibel.distanthorizons.core.render.renderer.generic.GenericObjectRenderer;
 import com.seibel.distanthorizons.core.util.LodUtil;
 import com.seibel.distanthorizons.core.util.ThreadUtil;
 import com.seibel.distanthorizons.core.util.WorldGenUtil;
@@ -44,6 +44,7 @@ import com.seibel.distanthorizons.core.util.objects.quadTree.QuadNode;
 import com.seibel.distanthorizons.core.util.objects.quadTree.QuadTree;
 import com.seibel.distanthorizons.core.util.threading.PriorityTaskPicker;
 import com.seibel.distanthorizons.core.util.threading.ThreadPoolUtil;
+import com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass.IDhGenericRenderer;
 import com.seibel.distanthorizons.coreapi.util.MathUtil;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongIterator;
@@ -67,6 +68,9 @@ import java.util.concurrent.locks.ReentrantLock;
 public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRenderable, IConfigListener, AutoCloseable
 {
 	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
+	
+	private static final AbstractDebugWireframeRenderer DEBUG_RENDERER = SingletonInjector.INSTANCE.get(AbstractDebugWireframeRenderer.class);
+	
 	/** there should only ever be one {@link LodQuadTree} so having the thread static should be fine */
 	private static final ThreadPoolExecutor FULL_DATA_RETRIEVAL_QUEUE_THREAD = ThreadUtil.makeSingleThreadPool("LodQuadTree Data Retrieval Queue");
 	
@@ -135,13 +139,13 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 	{
 		super(viewDiameterInBlocks, new DhBlockPos2D(initialPlayerBlockX, initialPlayerBlockZ), DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL);
 		
-		DebugRenderer.register(this, Config.Client.Advanced.Debugging.DebugWireframe.showQuadTreeRenderStatus);
+		DEBUG_RENDERER.register(this, Config.Client.Advanced.Debugging.DebugWireframe.showQuadTreeRenderStatus);
 		
 		this.level = level;
 		this.fullDataSourceProvider = fullDataSourceProvider;
 		this.blockRenderDistanceDiameter = viewDiameterInBlocks;
 		
-		GenericObjectRenderer genericObjectRenderer = this.level.getGenericRenderer();
+		IDhGenericRenderer genericObjectRenderer = this.level.getGenericRenderer();
 		this.beaconRenderHandler = (genericObjectRenderer != null) ? new BeaconRenderHandler(genericObjectRenderer) : null;
 		
 		Config.Common.WorldGenerator.enableDistantGeneration.addListener(this);
@@ -973,7 +977,7 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 	//region debugging
 	
 	@Override
-	public void debugRender(DebugRenderer debugRenderer)
+	public void debugRender(AbstractDebugWireframeRenderer debugRenderer)
 	{
 		this.populateListWithEnabledRenderSections(this.debugNodeList);
 		
@@ -1012,7 +1016,7 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 			int levelHeightRange = (levelMaxY - levelMinY);
 			int maxY = levelMaxY - (levelHeightRange / 2);
 			
-			debugRenderer.renderBox(new DebugRenderer.Box(renderSection.pos, levelMinY, maxY, 0.05f, color));
+			debugRenderer.renderBox(new AbstractDebugWireframeRenderer.Box(renderSection.pos, levelMinY, maxY, 0.05f, color));
 		}
 	}
 	
@@ -1030,7 +1034,7 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 	{
 		LOGGER.info("Shutting down LodQuadTree...");
 		
-		DebugRenderer.unregister(this, Config.Client.Advanced.Debugging.DebugWireframe.showQuadTreeRenderStatus);
+		DEBUG_RENDERER.unregister(this, Config.Client.Advanced.Debugging.DebugWireframe.showQuadTreeRenderStatus);
 		Config.Common.WorldGenerator.enableDistantGeneration.removeListener(this);
 		Config.Server.enableServerGeneration.removeListener(this);
 		

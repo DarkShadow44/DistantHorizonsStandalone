@@ -833,6 +833,20 @@ public class Config
 						.addListener(IgnoredDimensionCsvHandler.INSTANCE)
 						.build();
 					
+					public static ConfigEntry<EDhApiRenderApi> renderingApi = new ConfigEntry.Builder<EDhApiRenderApi>()
+						.set(EDhApiRenderApi.AUTO)
+						.setAppearance(EConfigEntryAppearance.ONLY_IN_FILE) // very experimental option and only supported 
+						.comment(""
+							+ "Requires a restart to change. \n"
+							+ " \n"
+							+ "Options: \n"
+							+ EDhApiRenderApi.AUTO + " - changes based on the most likely API for that MC version \n"
+							+ EDhApiRenderApi.OPEN_GL + " - Default \n"
+							+ EDhApiRenderApi.BLAZE_3D + " - Only supported on MC 1.21.11 \n"
+							+ "")
+						.build();
+					
+					
 				}
 				
 			}

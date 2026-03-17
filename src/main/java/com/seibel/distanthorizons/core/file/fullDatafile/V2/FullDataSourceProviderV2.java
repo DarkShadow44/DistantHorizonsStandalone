@@ -22,6 +22,7 @@ package com.seibel.distanthorizons.core.file.fullDatafile.V2;
 import com.seibel.distanthorizons.api.enums.config.EDhApiDataCompressionMode;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.dataObjects.fullData.sources.FullDataSourceV2;
+import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.enums.EDhDirection;
 import com.seibel.distanthorizons.core.file.fullDatafile.IDataSourceUpdateListenerFunc;
 import com.seibel.distanthorizons.core.file.structure.ISaveStructure;
@@ -30,7 +31,7 @@ import com.seibel.distanthorizons.core.level.IDhLevel;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
-import com.seibel.distanthorizons.core.render.renderer.DebugRenderer;
+import com.seibel.distanthorizons.core.render.renderer.AbstractDebugWireframeRenderer;
 import com.seibel.distanthorizons.core.render.renderer.IDebugRenderable;
 import com.seibel.distanthorizons.core.sql.dto.FullDataSourceV2DTO;
 import com.seibel.distanthorizons.core.sql.repo.AbstractDhRepo;
@@ -56,7 +57,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class FullDataSourceProviderV2 implements IDebugRenderable, AutoCloseable
 {
 	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
-
+	
+	private static final AbstractDebugWireframeRenderer DEBUG_WIREFRAME_RENDERER = SingletonInjector.INSTANCE.get(AbstractDebugWireframeRenderer.class);
+	
 	private static final Set<String> CORRUPT_DATA_ERRORS_LOGGED = Collections.newSetFromMap(new ConcurrentHashMap<>());
 	
 	/**
@@ -108,7 +111,7 @@ public class FullDataSourceProviderV2 implements IDebugRenderable, AutoCloseable
 		this.updatePropagator = new FullDataUpdatePropagatorV2(this, this.dataUpdater, this.levelId);
 		this.dataMigratorV1 = new DataMigratorV1(this.dataUpdater, this.level, this.levelId, this.saveDir);
 		
-		DebugRenderer.register(this, Config.Client.Advanced.Debugging.DebugWireframe.showFullDataUpdateStatus);
+		DEBUG_WIREFRAME_RENDERER.register(this, Config.Client.Advanced.Debugging.DebugWireframe.showFullDataUpdateStatus);
 		
 	}
 	
@@ -447,11 +450,10 @@ public class FullDataSourceProviderV2 implements IDebugRenderable, AutoCloseable
 	//===========//
 	
 	@Override
-	public void debugRender(DebugRenderer renderer)
+	public void debugRender(AbstractDebugWireframeRenderer renderer)
 	{
 		this.dataUpdater.debugRender(renderer);
 		this.updatePropagator.debugRender(renderer);
-		this.dataMigratorV1.debugRender(renderer);
 	}
 	
 	@Override 
@@ -464,6 +466,8 @@ public class FullDataSourceProviderV2 implements IDebugRenderable, AutoCloseable
 		this.dataUpdater.close();
 		this.updatePropagator.close();
 		this.dataMigratorV1.close();
+		
+		DEBUG_WIREFRAME_RENDERER.unregister(this, Config.Client.Advanced.Debugging.DebugWireframe.showFullDataUpdateStatus);
 		
 		this.repo.close();
 	}
