@@ -29,7 +29,7 @@ import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.util.objects.GLMessages.*;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
 import com.seibel.distanthorizons.coreapi.ModInfo;
-import org.lwjgl.glfw.GLFW;
+import net.minecraft.client.Minecraft;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL32;
 import org.lwjgl.opengl.GLCapabilities;
@@ -50,26 +50,26 @@ public class GLProxy
 			.fileLevelConfig(Config.Common.Logging.logRendererGLEventToFile)
 			.chatLevelConfig(Config.Common.Logging.logRendererGLEventToChat)
 			.build();
-	
+
 	public static final Set<String> LOGGED_GL_MESSAGES = Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
-	
-	
-	
+
+
+
 	private static GLProxy instance = null;
-	
-	
+
+
 	/** Minecraft's GL capabilities */
 	public final GLCapabilities glCapabilities;
-	
+
 	public boolean namedObjectSupported = false; // ~OpenGL 4.5 (UNUSED CURRENTLY)
 	public boolean bufferStorageSupported = false; // ~OpenGL 4.4
 	public boolean vertexAttributeBufferBindingSupported = false; // ~OpenGL 4.3
 	public boolean instancedArraysSupported = false;
 	public boolean vertexAttribDivisorSupported = false; // OpenGL 3.3 or newer
-	
+
 	private final EDhApiGpuUploadMethod preferredUploadMethod;
-	
-	public final GLMessageBuilder vanillaDebugMessageBuilder = 
+
+	public final GLMessageBuilder vanillaDebugMessageBuilder =
 		new GLMessageBuilder(
 			(type) ->
 			{
@@ -92,40 +92,40 @@ public class GLProxy
 			},
 			null
 	);
-	
-	
-	
+
+
+
 	//=============//
 	// constructor //
 	//=============//
 	//region
-	
+
 	private GLProxy() throws IllegalStateException
 	{
 		// this must be created on minecraft's render context to work correctly
-		if (GLFW.glfwGetCurrentContext() == 0L)
+		if (!runningOnRenderThread())
 		{
 			throw new IllegalStateException(GLProxy.class.getSimpleName() + " was created outside the render thread!");
 		}
-		
+
 		LOGGER.info("Creating " + GLProxy.class.getSimpleName() + "... If this is the last message you see there must have been an OpenGL error.");
 		LOGGER.info("Lod Render OpenGL version [" + GL32.glGetString(GL32.GL_VERSION) + "].");
-		
-		
-		
-		
+
+
+
+
 		//============================//
 		// get Minecraft's GL context //
 		//============================//
-		
+
 		// get Minecraft's capabilities
 		this.glCapabilities = GL.getCapabilities();
-		
+
 		// crash the game if the GPU doesn't support OpenGL 3.2
 		if (!this.glCapabilities.OpenGL32)
 		{
 			String supportedVersionInfo = this.getFailedVersionInfo(this.glCapabilities);
-			
+
 			// See full requirement at above.
 			String errorMessage = ModInfo.READABLE_NAME + " was initializing " + GLProxy.class.getSimpleName()
 					+ " and discovered this GPU doesn't meet the OpenGL requirements. Sorry I couldn't tell you sooner :(\n" +
@@ -134,38 +134,38 @@ public class GLProxy
 			MC.crashMinecraft(errorMessage, new UnsupportedOperationException("Distant Horizon OpenGL requirements not met"));
 		}
 	 	LOGGER.info("minecraftGlCapabilities:\n" + this.versionInfoToString(this.glCapabilities));
-		
+
 		if (Config.Client.Advanced.Debugging.OpenGl.overrideVanillaGLLogger.get())
 		{
 			//GLUtil.setupDebugMessageCallback(new PrintStream(new GLMessageOutputStream(GLProxy::logMessage, this.vanillaDebugMessageBuilder), true));
 		}
-		
-		
-		
+
+
+
 		//======================//
 		// get GPU capabilities //
 		//======================//
-		
+
 		// UNUSED currently
 		// Check if we can use the named version of all calls, which is available in GL4.5 or after
 		this.namedObjectSupported = this.glCapabilities.glNamedBufferData != 0L; //Nullptr
-		
+
 		// Check if we can use the Buffer Storage, which is available in GL4.4 or after
 		this.bufferStorageSupported = this.glCapabilities.glBufferStorage != 0L; // Nullptr
 		if (!this.bufferStorageSupported)
 		{
 			LOGGER.info("This GPU doesn't support Buffer Storage (OpenGL 4.4), falling back to using other methods.");
 		}
-		
+
 		// Check if we can use the make-over version of Vertex Attribute, which is available in GL4.3 or after
 		this.vertexAttributeBufferBindingSupported = this.glCapabilities.glBindVertexBuffer != 0L; // Nullptr
-		
+
 		// used by instanced rendering
 		this.vertexAttribDivisorSupported = this.glCapabilities.OpenGL33;
 		// denotes if ARBInstancedArrays.glVertexAttribDivisorARB() is available or not
 		// can be used as a backup if MC didn't create a GL 3.3+ context
 		this.instancedArraysSupported = this.glCapabilities.GL_ARB_instanced_arrays;
-		
+
 		// get the best automatic upload method
 		String vendor = GL32.glGetString(GL32.GL_VENDOR).toUpperCase(); // example return: "NVIDIA CORPORATION"
 		if (EPlatform.get() != EPlatform.MACOS)
@@ -188,26 +188,26 @@ public class GLProxy
 			this.preferredUploadMethod = EDhApiGpuUploadMethod.DATA;
 		}
 		LOGGER.info("GPU Vendor [" + vendor + "] with OS [" + EPlatform.get().getName() + "], Preferred upload method is [" + this.preferredUploadMethod + "].");
-		
-		
-		
+
+
+
 		//==========//
 		// clean up //
 		//==========//
-		
+
 		// GLProxy creation success
 		LOGGER.info(GLProxy.class.getSimpleName() + " creation successful. OpenGL smiles upon you this day.");
 	}
-	
+
 	//endregion
-	
-	
-	
+
+
+
 	//=========//
 	// getters //
 	//=========//
 	//region
-	
+
 	public static boolean hasInstance() { return instance != null; }
 	/** @throws IllegalStateException if the Proxy hasn't been created yet and this is called outside the render thread */
 	public static GLProxy getInstance() throws IllegalStateException
@@ -216,36 +216,35 @@ public class GLProxy
 		{
 			instance = new GLProxy();
 		}
-		
+
 		return instance;
 	}
-	
-	public EDhApiGpuUploadMethod getGpuUploadMethod() 
+
+	public EDhApiGpuUploadMethod getGpuUploadMethod()
 	{
 		EDhApiGpuUploadMethod uploadOverride = Config.Client.Advanced.Debugging.OpenGl.glUploadMode.get();
 		if (uploadOverride == EDhApiGpuUploadMethod.AUTO)
 		{
 			return this.preferredUploadMethod;
 		}
-		
+
 		return uploadOverride;
 	}
-	
+
 	public static boolean runningOnRenderThread()
 	{
-		long currentContext = GLFW.glfwGetCurrentContext();
-		return currentContext != 0L; // if the context isn't null, it's the MC context
+        return Minecraft.getMinecraft().func_152345_ab();
 	}
-	
+
 	//endregion
-	
-	
-	
+
+
+
 	//=========//
 	// logging //
 	//=========//
 	//region
-	
+
 	/** this method is called on the render thread at the point of the GL Error */
 	private static void logMessage(GLMessage msg)
 	{
@@ -254,9 +253,9 @@ public class GLProxy
 		{
 			return;
 		}
-		
-		
-		
+
+
+
 		boolean onlyLogOnce = Config.Client.Advanced.Debugging.OpenGl.onlyLogGlErrorsOnce.get();
 		String errorMessage = "GL ERROR [" + msg.id + "] from [" + msg.source + "]: [" + msg.message + "]"+(onlyLogOnce ? " this message will only be logged once" : "")+".";
 		if (onlyLogOnce
@@ -265,17 +264,17 @@ public class GLProxy
 			// this message has already been logged
 			return;
 		}
-		
-		
+
+
 		// create an exception so we get a stacktrace of where the message was triggered from
 		RuntimeException exception = new RuntimeException(errorMessage);
-		
+
 		if (msg.type == EGLMessageType.ERROR || msg.type == EGLMessageType.UNDEFINED_BEHAVIOR)
 		{
 			// critical error
-			
+
 			LOGGER.error(exception.getMessage(), exception);
-			
+
 			if (errorHandlingMode == EDhApiGLErrorHandlingMode.LOG_THROW)
 			{
 				// will probably crash the game,
@@ -286,14 +285,14 @@ public class GLProxy
 		else
 		{
 			// non-critical log
-			
+
 			EGLMessageSeverity severity = msg.severity;
 			if (severity == null)
 			{
 				// just in case the message was malformed
 				severity = EGLMessageSeverity.LOW;
 			}
-			
+
 			switch (severity)
 			{
 				case HIGH:
@@ -311,16 +310,16 @@ public class GLProxy
 			}
 		}
 	}
-	
+
 	//endregion
-	
-	
-	
+
+
+
 	//================//
 	// helper methods //
 	//================//
 	//region
-	
+
 	private String getFailedVersionInfo(GLCapabilities c)
 	{
 		return "Your OpenGL support:\n" +
@@ -331,7 +330,7 @@ public class GLProxy
 				+ " but not the required version, try running the game in compatibility mode."
 				+ " (How you turn that on, I have no clue~)";
 	}
-	
+
 	private String versionInfoToString(GLCapabilities c)
 	{
 		return "Your OpenGL support:\n" +
@@ -339,9 +338,9 @@ public class GLProxy
 				"Vertex Attribute Buffer Binding: [" + (c.glVertexAttribBinding != 0) + "] <- optional improvement\n" +
 				"Buffer Storage: [" + (c.glBufferStorage != 0) + "] <- optional improvement\n";
 	}
-	
+
 	//endregion
-	
-	
-	
+
+
+
 }

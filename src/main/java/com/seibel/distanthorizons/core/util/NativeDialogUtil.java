@@ -6,7 +6,7 @@ import org.lwjgl.util.tinyfd.TinyFileDialogs;
  * Should be used instead of the direct call to {@link TinyFileDialogs}
  * so we can run additional validation and/or string cleanup.
  * Otherwise, we may get error messages back.
- * 
+ *
  * @see TinyFileDialogs
  */
 public class NativeDialogUtil
@@ -20,11 +20,11 @@ public class NativeDialogUtil
 		// Tinyfd doesn't support the following characters, attempting to display them will cause the message
 		// to be replaced with an error message
 		String unsafeCharsRegex = "['\"`]";
-		
+
 		title = title.replaceAll(unsafeCharsRegex, "`");
 		message = message.replaceAll(unsafeCharsRegex, "`");
-		
-		return TinyFileDialogs.tinyfd_messageBox(title, message, dialogType, iconType, false);
+
+		return false;
 	}
-	
+
 }

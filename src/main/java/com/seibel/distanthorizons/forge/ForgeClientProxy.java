@@ -60,7 +60,6 @@ import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 
 import net.minecraftforge.common.MinecraftForge;
 import org.apache.logging.log4j.Logger;
-import org.lwjgl.glfw.GLFW;
 
 import com.seibel.distanthorizons.common.wrappers.chunk.ChunkWrapper;
 
