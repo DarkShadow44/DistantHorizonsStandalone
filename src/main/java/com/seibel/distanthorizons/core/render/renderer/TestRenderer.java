@@ -20,10 +20,9 @@
 package com.seibel.distanthorizons.core.render.renderer;
 
 import com.seibel.distanthorizons.api.enums.config.EDhApiGpuUploadMethod;
-import com.seibel.distanthorizons.api.enums.config.EDhApiLoggerMode;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
-import com.seibel.distanthorizons.core.logging.ConfigBasedLogger;
-import com.seibel.distanthorizons.core.logging.ConfigBasedSpamLogger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
+import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.render.glObject.buffer.GLVertexBuffer;
 import com.seibel.distanthorizons.core.render.glObject.shader.ShaderProgram;
 import com.seibel.distanthorizons.core.render.glObject.vertexAttribute.AbstractVertexAttribute;
@@ -31,7 +30,6 @@ import com.seibel.distanthorizons.core.render.glObject.vertexAttribute.VertexPoi
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftGLWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
 
-import org.apache.logging.log4j.LogManager;
 import org.lwjgl.opengl.GL32;
 
 import java.nio.ByteBuffer;
@@ -40,10 +38,7 @@ import java.nio.ByteOrder;
 
 public class TestRenderer
 {
-	public static final ConfigBasedLogger logger = new ConfigBasedLogger(
-			LogManager.getLogger(TestRenderer.class), () -> EDhApiLoggerMode.LOG_ALL_TO_CHAT);
-	public static final ConfigBasedSpamLogger spamLogger = new ConfigBasedSpamLogger(
-			LogManager.getLogger(TestRenderer.class), () -> EDhApiLoggerMode.LOG_ALL_TO_CHAT, 1);
+	public static final DhLogger LOGGER = new DhLoggerBuilder().build(); 
 	
 	private static final IMinecraftRenderWrapper MC_RENDER = SingletonInjector.INSTANCE.get(IMinecraftRenderWrapper.class);
 	private static final IMinecraftGLWrapper GLMC = SingletonInjector.INSTANCE.get(IMinecraftGLWrapper.class);
@@ -67,7 +62,7 @@ public class TestRenderer
 			return;
 		}
 		
-		logger.info("init");
+		LOGGER.info("init");
 		this.init = true;
 		this.va = AbstractVertexAttribute.create();
 		this.va.bind();
@@ -106,11 +101,11 @@ public class TestRenderer
 	
 	public void render()
 	{
-		// TODO fix for MC 1.21.5
+		// TODO fix for MC 1.21.5+
 		this.init();
 		
-		GLMC.glBindFramebuffer(GL32.GL_FRAMEBUFFER, MC_RENDER.getTargetFrameBuffer());
-		GL32.glViewport(0, 0, MC_RENDER.getTargetFrameBufferViewportWidth(), MC_RENDER.getTargetFrameBufferViewportHeight());
+		GLMC.glBindFramebuffer(GL32.GL_FRAMEBUFFER, MC_RENDER.getTargetFramebuffer());
+		GL32.glViewport(0, 0, MC_RENDER.getTargetFramebufferViewportWidth(), MC_RENDER.getTargetFramebufferViewportHeight());
 		GL32.glPolygonMode(GL32.GL_FRONT_AND_BACK, GL32.GL_FILL);
 		
 		GLMC.disableFaceCulling();
@@ -127,8 +122,6 @@ public class TestRenderer
 		// Render the square
 		GL32.glDrawArrays(GL32.GL_TRIANGLE_FAN, 0, 4);
 		GL32.glClear(GL32.GL_DEPTH_BUFFER_BIT);
-		
-		spamLogger.incLogTries();
 	}
 	
 	

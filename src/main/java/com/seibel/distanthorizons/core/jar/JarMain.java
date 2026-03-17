@@ -19,18 +19,19 @@
 package com.seibel.distanthorizons.core.jar;
 
 
+import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
 import com.seibel.distanthorizons.core.sql.dto.FullDataSourceV2DTO;
 import com.seibel.distanthorizons.core.sql.repo.FullDataSourceV2Repo;
+import com.seibel.distanthorizons.core.util.NativeDialogUtil;
 import com.seibel.distanthorizons.coreapi.ModInfo;
 import com.seibel.distanthorizons.core.jar.gui.BaseJFrame;
 import com.seibel.distanthorizons.core.jar.gui.cusomJObject.JBox;
 import com.seibel.distanthorizons.core.jar.installer.ModrinthGetter;
 import com.seibel.distanthorizons.core.jar.installer.WebDownloader;
 import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 import org.apache.logging.log4j.core.LoggerContext;
-import org.lwjgl.util.tinyfd.TinyFileDialogs;
 
 import javax.swing.*;
 import java.awt.*;
@@ -49,7 +50,7 @@ import java.util.concurrent.atomic.AtomicReference;
 // Once built it would be in core/build/libs/DistantHorizons-<Version>-dev-all.jar
 public class JarMain
 {
-	public static final Logger logger = LogManager.getLogger(JarMain.class.getSimpleName());
+	public static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	public static List<String> argList;
 	public static final boolean isDarkTheme = DarkModeDetector.isDarkMode();
 	public static boolean isOffline = WebDownloader.netIsAvailable();
@@ -71,15 +72,15 @@ public class JarMain
 			}
 			catch (Exception e)
 			{
-				logger.error("Failed to set log4j config. Try running with the \"--no-custom-logger\" argument");
+				LOGGER.error("Failed to set log4j config. Try running with the \"--no-custom-logger\" argument");
 				e.printStackTrace();
 			}
 		}
 		
-		logger.debug("Running " + ModInfo.READABLE_NAME + " standalone jar");
-		logger.warn("The standalone jar is still a massive WIP, expect bugs");
-		logger.debug("Java version " + System.getProperty("java.version"));
-		//logger.debug(argList);
+		LOGGER.debug("Running " + ModInfo.READABLE_NAME + " standalone jar");
+		LOGGER.warn("The standalone jar is still a massive WIP, expect bugs");
+		LOGGER.debug("Java version " + System.getProperty("java.version"));
+		//LOGGER.debug(argList);
 		
 		
 		if (args.length == 0 || Arrays.asList(args).contains("--gui"))
@@ -87,7 +88,7 @@ public class JarMain
 			// Sets up the local
 			if (JarUtils.accessFile("assets/lod/lang/" + Locale.getDefault().toString().toLowerCase() + ".json") == null)
 			{
-				logger.warn("The language setting [" + Locale.getDefault().toString().toLowerCase() + "] isn't allowed yet. Defaulting to [" + Locale.US.toString().toLowerCase() + "].");
+				LOGGER.warn("The language setting [" + Locale.getDefault().toString().toLowerCase() + "] isn't allowed yet. Defaulting to [" + Locale.US.toString().toLowerCase() + "].");
 				Locale.setDefault(Locale.US);
 			}
 			JarDependencySetup.createInitialBindings();
@@ -124,7 +125,7 @@ public class JarMain
 					}
 					catch (NumberFormatException e)
 					{
-						logger.error("Unable to parse detail level ["+detailLevelString+"], error: ["+e.getMessage()+"].");
+						LOGGER.error("Unable to parse detail level ["+detailLevelString+"], error: ["+e.getMessage()+"].");
 					}
 				}
 				else if (argList.size() == 4)
@@ -145,14 +146,14 @@ public class JarMain
 					}
 					catch (NumberFormatException e)
 					{
-						logger.error("Unable to parse position ["+detailLevelString+"], ["+posXString+"], ["+posZString+"], error: ["+e.getMessage()+"].");
+						LOGGER.error("Unable to parse position ["+detailLevelString+"], ["+posXString+"], ["+posZString+"], error: ["+e.getMessage()+"].");
 					}
 				}
 			}
 			
 			if (showHelp)
 			{
-				logger.info("--export parses the 'DistantHorizons.sqlite' file next to this jar and exports the given data into a CSV file. \n" +
+				LOGGER.info("--export parses the 'DistantHorizons.sqlite' file next to this jar and exports the given data into a CSV file. \n" +
 						"Usage: \n" +
 						"--export [LOD position Detail Level] [LOD position X] [LOD position Z] \n" +
 						"\tExport the given position's data if present. \n" +
@@ -170,7 +171,7 @@ public class JarMain
 			File dbFile = new File("./DistantHorizons.sqlite");
 			if (!dbFile.exists())
 			{
-				logger.error("Unable to find a database to parse at: ["+dbFile.getAbsolutePath()+"].");
+				LOGGER.error("Unable to find a database to parse at: ["+dbFile.getAbsolutePath()+"].");
 				return;
 			}
 			
@@ -180,7 +181,7 @@ public class JarMain
 			File exportFile = new File("DistantHorizons-export.csv"); // TODO allow setting an export folder
 			if (exportFile.isDirectory())
 			{
-				logger.error("Export file can't be a folder. Given path: ["+exportFile+"].");
+				LOGGER.error("Export file can't be a folder. Given path: ["+exportFile+"].");
 				return;
 			}
 			
@@ -192,22 +193,22 @@ public class JarMain
 				
 				if (exportFile.exists())
 				{
-					logger.error("Export file already exists: ["+exportFile.getAbsolutePath()+"].");
+					LOGGER.error("Export file already exists: ["+exportFile.getAbsolutePath()+"].");
 					return;
 				}
 				else if (exportFile.createNewFile())
 				{
-					logger.error("Failed to create file: ["+exportFile.getAbsolutePath()+"].");
+					LOGGER.error("Failed to create file: ["+exportFile.getAbsolutePath()+"].");
 					return;
 				}
 			}
 			catch (Exception e)
 			{
-				logger.error("Unable to create export file: ["+exportFile.getAbsolutePath()+"].");
+				LOGGER.error("Unable to create export file: ["+exportFile.getAbsolutePath()+"].");
 				return;
 			}
 			
-			logger.info("LOD data will be exported to ["+exportFile.getAbsolutePath()+"].");
+			LOGGER.info("LOD data will be exported to ["+exportFile.getAbsolutePath()+"].");
 			
 			
 			FullDataSourceV2Repo repo;
@@ -215,9 +216,9 @@ public class JarMain
 			{
 				repo = new FullDataSourceV2Repo(FullDataSourceV2Repo.DEFAULT_DATABASE_TYPE, dbFile);
 			}
-			catch (SQLException e)
+			catch (SQLException | IOException e)
 			{
-				logger.error("Failed to initialize connection with database: ["+exportFile.getAbsolutePath()+"], error: ["+e.getMessage()+"].", e);
+				LOGGER.error("Failed to initialize connection with database: ["+exportFile.getAbsolutePath()+"], error: ["+e.getMessage()+"].", e);
 				return;
 			}
 			
@@ -241,7 +242,7 @@ public class JarMain
 		FullDataSourceV2DTO dto = repo.getByKey(pos);
 		if (dto == null)
 		{
-			logger.error("Unable to find any data at the position ["+DhSectionPos.toString(pos)+"].");
+			LOGGER.error("Unable to find any data at the position ["+DhSectionPos.toString(pos)+"].");
 			return;
 		}
 		// TODO need a way to create datasources (specifically data mappings) without a MC level object to deserialize with
@@ -440,7 +441,7 @@ public class JarMain
 		installMod.addActionListener(e -> {
 			if (minecraftDirPop.getSelectedFile() == null)
 			{
-				TinyFileDialogs.tinyfd_messageBox(ModInfo.READABLE_NAME, "Please select your install directory", "ok", "warning", false);
+				NativeDialogUtil.showDialog(ModInfo.READABLE_NAME, "Please select your install directory", "ok", "warning");
 				return;
 			}
 			
@@ -454,11 +455,11 @@ public class JarMain
 								ModInfo.NAME + "-" + ModrinthGetter.releaseNames.get(downloadID.get()) + ".jar"
 						).toFile());
 				
-				TinyFileDialogs.tinyfd_messageBox(ModInfo.READABLE_NAME, "Installation done. \nYou can now close the installer", "ok", "info", false);
+				NativeDialogUtil.showDialog(ModInfo.READABLE_NAME, "Installation done. \nYou can now close the installer", "ok", "info");
 			}
 			catch (Exception f)
 			{
-				TinyFileDialogs.tinyfd_messageBox(ModInfo.READABLE_NAME, "Download failed. Check your internet connection \nStacktrace: " + f.getMessage(), "error", "info", false);
+				NativeDialogUtil.showDialog(ModInfo.READABLE_NAME, "Download failed. Check your internet connection \nStacktrace: " + f.getMessage(), "error", "info");
 			}
 		});
 		frame.add(installMod);

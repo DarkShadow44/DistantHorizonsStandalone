@@ -20,6 +20,8 @@
 package com.seibel.distanthorizons.api.methods.events.sharedParameterObjects;
 
 import com.seibel.distanthorizons.api.enums.rendering.EDhApiRenderPass;
+import com.seibel.distanthorizons.api.interfaces.world.IDhApiLevelWrapper;
+import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiWorldLoadEvent;
 import com.seibel.distanthorizons.api.methods.events.interfaces.IDhApiEventParam;
 import com.seibel.distanthorizons.api.objects.math.DhApiMat4f;
 
@@ -27,7 +29,7 @@ import com.seibel.distanthorizons.api.objects.math.DhApiMat4f;
  * Contains information relevant to Distant Horizons and Minecraft rendering.
  *
  * @author James Seibel
- * @version 2024-1-31
+ * @version 2025-12-23
  * @since API 1.0.0
  */
 public class DhApiRenderParam implements IDhApiEventParam
@@ -38,7 +40,7 @@ public class DhApiRenderParam implements IDhApiEventParam
 	/** Indicates how far into this tick the frame is. */
 	public final float partialTicks;
 	
-	/** 
+	/**
 	 * Indicates DH's near clip plane, measured in blocks. 
 	 * Note: this may change based on time, player speed, and other factors. 
 	 */
@@ -61,22 +63,29 @@ public class DhApiRenderParam implements IDhApiEventParam
 	
 	public final int worldYOffset;
 	
+	/**
+	 * The level currently being rendered.
+	 * 
+	 * @since API 5.1.0 
+	 */
+	public final IDhApiLevelWrapper clientLevelWrapper;
+	
 	
 	
 	//==============//
 	// constructors //
 	//==============//
 	
-	
 	public DhApiRenderParam(DhApiRenderParam parent)
 	{
 		this(
-				parent.renderPass,
-				parent.partialTicks,
-				parent.nearClipPlane, parent.farClipPlane,
-				parent.mcProjectionMatrix.copy(), parent.mcModelViewMatrix.copy(),
-				parent.dhProjectionMatrix.copy(), parent.dhModelViewMatrix.copy(),
-				parent.worldYOffset
+			parent.renderPass,
+			parent.partialTicks,
+			parent.nearClipPlane, parent.farClipPlane,
+			parent.mcProjectionMatrix.copy(), parent.mcModelViewMatrix.copy(),
+			parent.dhProjectionMatrix.copy(), parent.dhModelViewMatrix.copy(),
+			parent.worldYOffset,
+			parent.clientLevelWrapper
 		);
 	}
 	public DhApiRenderParam(
@@ -85,8 +94,9 @@ public class DhApiRenderParam implements IDhApiEventParam
 			float nearClipPlane, float farClipPlane,
 			DhApiMat4f newMcProjectionMatrix, DhApiMat4f newMcModelViewMatrix,
 			DhApiMat4f newDhProjectionMatrix, DhApiMat4f newDhModelViewMatrix,
-			int worldYOffset
-			)
+			int worldYOffset,
+			IDhApiLevelWrapper clientLevelWrapper
+		)
 	{
 		this.renderPass = renderPass;
 		
@@ -102,6 +112,7 @@ public class DhApiRenderParam implements IDhApiEventParam
 		this.dhModelViewMatrix = newDhModelViewMatrix;
 		
 		this.worldYOffset = worldYOffset;
+		this.clientLevelWrapper = clientLevelWrapper;
 		
 	}
 	
@@ -111,10 +122,9 @@ public class DhApiRenderParam implements IDhApiEventParam
 	// base overrides //
 	//================//
 	
-	@Override 
-	public DhApiRenderParam copy()
-	{
-		return new DhApiRenderParam(this); 
-	}
+	@Override
+	public DhApiRenderParam copy() { return new DhApiRenderParam(this); }
+	
+	
 	
 }

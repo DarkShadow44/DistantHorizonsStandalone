@@ -21,7 +21,7 @@ package com.seibel.distanthorizons.core.api.external.methods.config.client;
 
 import com.seibel.distanthorizons.api.interfaces.config.IDhApiConfigValue;
 import com.seibel.distanthorizons.api.interfaces.config.client.IDhApiGenericRenderingConfig;
-import com.seibel.distanthorizons.api.objects.config.DhApiConfigValue;
+import com.seibel.distanthorizons.core.config.api.DhApiConfigValue;
 import com.seibel.distanthorizons.core.config.Config;
 
 public class DhApiGenericRenderingConfig implements IDhApiGenericRenderingConfig

@@ -2,7 +2,8 @@ package com.seibel.distanthorizons.core.network.session;
 
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
-import com.seibel.distanthorizons.core.logging.ConfigBasedLogger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
+import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.network.event.AbstractNetworkEventSource;
 import com.seibel.distanthorizons.core.network.event.internal.CloseInternalEvent;
 import com.seibel.distanthorizons.core.network.event.internal.ProtocolErrorInternalEvent;
@@ -11,7 +12,6 @@ import com.seibel.distanthorizons.core.network.messages.AbstractTrackableMessage
 import com.seibel.distanthorizons.core.network.messages.base.CloseReasonMessage;
 import com.seibel.distanthorizons.core.wrapperInterfaces.misc.IPluginPacketSender;
 import com.seibel.distanthorizons.core.wrapperInterfaces.misc.IServerPlayerWrapper;
-import org.apache.logging.log4j.LogManager;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.CompletableFuture;
@@ -21,8 +21,9 @@ import java.util.function.Consumer;
 
 public class NetworkSession extends AbstractNetworkEventSource
 {
-	private static final ConfigBasedLogger LOGGER = new ConfigBasedLogger(LogManager.getLogger(),
-			() -> Config.Common.Logging.logNetworkEvent.get());
+	private static final DhLogger LOGGER = new DhLoggerBuilder()
+			.fileLevelConfig(Config.Common.Logging.logNetworkEventToFile)
+			.build();
 	
 	private static final IPluginPacketSender PACKET_SENDER = SingletonInjector.INSTANCE.get(IPluginPacketSender.class);
 	
@@ -91,7 +92,8 @@ public class NetworkSession extends AbstractNetworkEventSource
 		{
 			LOGGER.error("Failed to handle the message. New messages will be ignored.", e);
 			LOGGER.error("Message: ["+message+"]");
-			this.close();
+			
+			this.close(e);
 		}
 	}
 	

@@ -22,7 +22,7 @@ package com.seibel.distanthorizons.core.sql;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.sql.dto.IBaseDTO;
 import com.seibel.distanthorizons.core.sql.repo.AbstractDhRepo;
-import org.apache.logging.log4j.Logger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -34,7 +34,7 @@ import java.util.Scanner;
 /** Handles both initial setup and updating of the sql databases. */
 public class DatabaseUpdater
 {
-	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
 	public static final String SCHEMA_TABLE_NAME = "Schema";
 	/** Since java can only run one sql query at a time this string is used to split up our scripts into individual queries. */

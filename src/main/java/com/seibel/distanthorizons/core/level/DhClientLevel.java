@@ -20,16 +20,14 @@
 package com.seibel.distanthorizons.core.level;
 
 import com.google.common.cache.CacheBuilder;
-import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam;
-import com.seibel.distanthorizons.core.config.AppliedConfigState;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.dataObjects.fullData.sources.FullDataSourceV2;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
-import com.seibel.distanthorizons.core.file.fullDatafile.FullDataSourceProviderV2;
+import com.seibel.distanthorizons.core.file.fullDatafile.V2.FullDataSourceProviderV2;
 import com.seibel.distanthorizons.core.file.fullDatafile.RemoteFullDataSourceProvider;
 import com.seibel.distanthorizons.core.file.structure.ISaveStructure;
 import com.seibel.distanthorizons.core.generation.RemoteWorldRetrievalQueue;
-import com.seibel.distanthorizons.core.logging.ConfigBasedLogger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.multiplayer.client.ClientNetworkState;
 import com.seibel.distanthorizons.core.multiplayer.client.SyncOnLoadRequestQueue;
@@ -43,16 +41,16 @@ import com.seibel.distanthorizons.core.render.renderer.DebugRenderer;
 import com.seibel.distanthorizons.core.sql.dto.FullDataSourceV2DTO;
 import com.seibel.distanthorizons.core.util.threading.ThreadPoolUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
-import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IProfilerWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.annotation.CheckForNull;
 import java.awt.*;
 import java.io.File;
+import java.io.IOException;
+import java.sql.SQLException;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -62,22 +60,24 @@ import java.util.concurrent.TimeUnit;
 /** The level used when connected to a server */
 public class DhClientLevel extends AbstractDhLevel implements IDhClientLevel
 {
-	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
-	protected static final ConfigBasedLogger NETWORK_LOGGER = new ConfigBasedLogger(LogManager.getLogger(),
-			() -> Config.Common.Logging.logNetworkEvent.get());
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
+	private static final DhLogger NETWORK_LOGGER = new DhLoggerBuilder()
+			.fileLevelConfig(Config.Common.Logging.logNetworkEventToFile)
+			.build();
 	
 	private static final IMinecraftClientWrapper MC_CLIENT = SingletonInjector.INSTANCE.get(IMinecraftClientWrapper.class);
 	
 	public final ClientLevelModule clientside;
 	public final IClientLevelWrapper levelWrapper;
 	public final ISaveStructure saveStructure;
-	public final RemoteFullDataSourceProvider dataFileHandler;
+	public final RemoteFullDataSourceProvider remoteDataSourceProvider;
 	
 	@CheckForNull
 	private final ClientNetworkState networkState;
 	@Nullable
 	private final ScopedNetworkEventSource networkEventSource;
 	
+	/** used when connected to a DH supported server so we don't process the same chunks multiple times */
 	private final Set<DhChunkPos> loadedOnceChunks = Collections.newSetFromMap(
 			CacheBuilder.newBuilder()
 					.expireAfterWrite(10, TimeUnit.MINUTES)
@@ -85,8 +85,7 @@ public class DhClientLevel extends AbstractDhLevel implements IDhClientLevel
 					.asMap()
 	);
 	
-	public final WorldGenModule worldGenModule;
-	public final AppliedConfigState<Boolean> worldGeneratorEnabledConfig;
+	public final LodRequestModule lodRequestModule;
 	
 	@Nullable
 	private final SyncOnLoadRequestQueue syncOnLoadRequestQueue;
@@ -97,9 +96,18 @@ public class DhClientLevel extends AbstractDhLevel implements IDhClientLevel
 	// constructor //
 	//=============//
 	
-	public DhClientLevel(ISaveStructure saveStructure, IClientLevelWrapper clientLevelWrapper, @Nullable ClientNetworkState networkState) 
-	{ this(saveStructure, clientLevelWrapper, null, true, networkState); }
-	public DhClientLevel(ISaveStructure saveStructure, IClientLevelWrapper clientLevelWrapper, @Nullable File fullDataSaveDirOverride, boolean enableRendering, @Nullable ClientNetworkState networkState)
+	public DhClientLevel(
+		ISaveStructure saveStructure, 
+		IClientLevelWrapper clientLevelWrapper, 
+		@Nullable ClientNetworkState networkState
+		) throws SQLException, IOException
+	{ this(saveStructure, clientLevelWrapper, null, networkState); }
+	public DhClientLevel(
+		ISaveStructure saveStructure, 
+		IClientLevelWrapper clientLevelWrapper, 
+		@Nullable File fullDataSaveDirOverride, 
+		@Nullable ClientNetworkState networkState
+		) throws SQLException, IOException
 	{
 		File saveFolder = saveStructure.getSaveFolder(clientLevelWrapper);
 		File pre23Folder = saveStructure.getPre23SaveFolder(clientLevelWrapper);
@@ -117,7 +125,7 @@ public class DhClientLevel extends AbstractDhLevel implements IDhClientLevel
 		}
 		
 		this.levelWrapper = clientLevelWrapper;
-		this.levelWrapper.setParentLevel(this);
+		this.levelWrapper.setDhLevel(this);
 		this.saveStructure = saveStructure;
 		
 		this.networkState = networkState;
@@ -133,20 +141,16 @@ public class DhClientLevel extends AbstractDhLevel implements IDhClientLevel
 			this.syncOnLoadRequestQueue = null;
 		}
 		
-		this.dataFileHandler = new RemoteFullDataSourceProvider(this, saveStructure, fullDataSaveDirOverride, this.syncOnLoadRequestQueue);
-		this.worldGeneratorEnabledConfig = new AppliedConfigState<>(Config.Common.WorldGenerator.enableDistantGeneration);
-		this.worldGenModule = new WorldGenModule(this, this.dataFileHandler, () -> new WorldGenState(this, networkState));
+		this.remoteDataSourceProvider = new RemoteFullDataSourceProvider(this, saveStructure, fullDataSaveDirOverride, this.syncOnLoadRequestQueue);
+		this.lodRequestModule = new LodRequestModule(this,this, this.remoteDataSourceProvider, () -> new LodRequestState(this, networkState));
 		
 		this.clientside = new ClientLevelModule(this);
 		
-		this.createAndSetSupportingRepos(this.dataFileHandler.repo.databaseFile);
+		this.createAndSetSupportingRepos(this.remoteDataSourceProvider.repo.databaseFile);
 		this.runRepoReliantSetup();
 		
-		if (enableRendering)
-		{
-			this.clientside.startRenderer(clientLevelWrapper);
-			LOGGER.info("Started DHLevel for " + this.levelWrapper + " with saves at " + this.saveStructure);
-		}
+		this.clientside.startRenderer();
+		LOGGER.info("Started DHLevel for " + this.levelWrapper + " with saves at " + this.saveStructure);
 	}
 	private void registerNetworkHandlers()
 	{
@@ -164,7 +168,7 @@ public class DhClientLevel extends AbstractDhLevel implements IDhClientLevel
 			try (FullDataSourceV2DTO dataSourceDto = this.networkState.fullDataPayloadReceiver.decodeDataSource(message.payload))
 			{
 				boolean isSameLevel = message.isSameLevelAs(this.levelWrapper);
-				NETWORK_LOGGER.debug("Buffer {} isSameLevel: {}", message.payload.dtoBufferId, isSameLevel);
+				NETWORK_LOGGER.debug("Buffer ["+message.payload.dtoBufferId+"] isSameLevel: ["+isSameLevel+"]");
 				if (!isSameLevel)
 				{
 					return;
@@ -189,7 +193,7 @@ public class DhClientLevel extends AbstractDhLevel implements IDhClientLevel
 				}
 				
 				
-				FullDataSourceV2 fullDataSource = dataSourceDto.createDataSource(this.levelWrapper);
+				FullDataSourceV2 fullDataSource = dataSourceDto.createDataSource(this.levelWrapper, null);
 				this.updateDataSourcesAsync(fullDataSource)
 						.whenComplete((result, e) -> fullDataSource.close());
 			}
@@ -243,31 +247,7 @@ public class DhClientLevel extends AbstractDhLevel implements IDhClientLevel
 	}
 	
 	@Override
-	@Nullable
-	public DhBlockPos2D getTargetPosForGeneration()
-	{
-		return new DhBlockPos2D(MC_CLIENT.getPlayerBlockPos());
-	}
-	
-	@Override
-	public void worldGenTick()
-	{
-		this.worldGenModule.worldGenTick();
-	}
-	
-	
-	
-	//===========//
-	// rendering //
-	//===========//
-	
-	@Override
-	public void render(DhApiRenderParam renderEventParam, IProfilerWrapper profiler)
-	{ this.clientside.render(renderEventParam, profiler); }
-	
-	@Override
-	public void renderDeferred(DhApiRenderParam renderEventParam, IProfilerWrapper profiler)
-	{ this.clientside.renderDeferred(renderEventParam, profiler); }
+	public DhBlockPos2D getTargetPosForGeneration() { return new DhBlockPos2D(MC_CLIENT.getPlayerBlockPos()); }
 	
 	
 	
@@ -278,13 +258,6 @@ public class DhClientLevel extends AbstractDhLevel implements IDhClientLevel
 	@Override
 	public void onWorldGenTaskComplete(long pos)
 	{
-		DebugRenderer.makeParticle(
-				new DebugRenderer.BoxParticle(
-						new DebugRenderer.Box(pos, 128f, 156f, 0.09f, Color.red.darker()),
-						0.2, 32f
-				)
-		);
-		
 		this.clientside.reloadPos(pos);
 	}
 	
@@ -301,24 +274,17 @@ public class DhClientLevel extends AbstractDhLevel implements IDhClientLevel
 	public void clearRenderCache() { this.clientside.clearRenderCache(); }
 	
 	@Override
+	@NotNull
 	public ILevelWrapper getLevelWrapper() { return this.levelWrapper; }
 	
 	@Override
 	public CompletableFuture<Void> updateDataSourcesAsync(FullDataSourceV2 data) { return this.clientside.updateDataSourcesAsync(data); }
 	
 	@Override
-	public int getMinY() { return this.levelWrapper.getMinHeight(); }
-	@Override
-	public int getMaxY() { return this.levelWrapper.getMaxHeight(); }
-	
-	@Override
-	public FullDataSourceProviderV2 getFullDataProvider() { return this.dataFileHandler; }
+	public FullDataSourceProviderV2 getFullDataProvider() { return this.remoteDataSourceProvider; }
 	
 	@Override
 	public ISaveStructure getSaveStructure() { return this.saveStructure; }
-	
-	@Override
-	public boolean hasSkyLight() { return this.levelWrapper.hasSkyLight(); }
 	
 	@Override
 	public GenericObjectRenderer getGenericRenderer() { return this.clientside.genericRenderer; }
@@ -353,28 +319,11 @@ public class DhClientLevel extends AbstractDhLevel implements IDhClientLevel
 		messageList.add("["+dimName+"] rendering: "+(rendering ? "yes" : "no"));
 		
 		
-		boolean migrationErrored = this.dataFileHandler.getMigrationStoppedWithError();
-		if (!migrationErrored)
-		{
-			long legacyDeletionCount = this.dataFileHandler.getLegacyDeletionCount();
-			if (legacyDeletionCount > 0)
-			{
-				messageList.add("  Migrating - Deleting #: " + legacyDeletionCount);
-			}
-			long migrationCount = this.dataFileHandler.getTotalMigrationCount();
-			if (migrationCount > 0)
-			{
-				messageList.add("  Migrating - Conversion #: " + migrationCount);
-			}
-		}
-		else
-		{
-			messageList.add("  Migration Failed");
-		}
+		this.remoteDataSourceProvider.addDebugMenuStringsToList(messageList);
 		
 		
 		// world gen
-		this.worldGenModule.addDebugMenuStringsToList(messageList);
+		this.lodRequestModule.addDebugMenuStringsToList(messageList);
 		if (this.syncOnLoadRequestQueue != null)
 		{
 			assert this.networkState != null;
@@ -397,9 +346,9 @@ public class DhClientLevel extends AbstractDhLevel implements IDhClientLevel
 	@Override
 	public void close()
 	{
-		if (this.worldGenModule != null)
+		if (this.lodRequestModule != null)
 		{
-			this.worldGenModule.close();
+			this.lodRequestModule.close();
 		}
 		
 		if (this.networkEventSource != null)
@@ -407,10 +356,10 @@ public class DhClientLevel extends AbstractDhLevel implements IDhClientLevel
 			this.networkEventSource.close();
 		}
 		
-		this.levelWrapper.setParentLevel(null);
+		this.levelWrapper.setDhLevel(null);
 		this.clientside.close();
 		super.close();
-		this.dataFileHandler.close();
+		this.remoteDataSourceProvider.close();
 		LOGGER.info("Closed [" + DhClientLevel.class.getSimpleName() + "] for [" + this.levelWrapper + "]");
 	}
 	
@@ -420,11 +369,11 @@ public class DhClientLevel extends AbstractDhLevel implements IDhClientLevel
 	// helper classes //
 	//================//
 	
-	private static class WorldGenState extends WorldGenModule.AbstractWorldGenState
+	private static class LodRequestState extends LodRequestModule.AbstractLodRequestState
 	{
-		WorldGenState(DhClientLevel level, ClientNetworkState networkState)
+		LodRequestState(DhClientLevel clientLevel, ClientNetworkState networkState)
 		{
-			this.worldGenerationQueue = new RemoteWorldRetrievalQueue(networkState, level);
+			this.retrievalQueue = new RemoteWorldRetrievalQueue(networkState, clientLevel);
 		}
 	}
 	

@@ -1,7 +1,8 @@
 package com.seibel.distanthorizons.core.pooling;
 
+import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 
 import java.lang.ref.PhantomReference;
 
@@ -18,7 +19,7 @@ import java.lang.ref.PhantomReference;
  */
 public abstract class AbstractPhantomArrayList implements AutoCloseable
 {
-	private static final Logger LOGGER = LogManager.getLogger();
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
 	
 	private final PhantomArrayListPool phantomArrayListPool;
@@ -39,7 +40,9 @@ public abstract class AbstractPhantomArrayList implements AutoCloseable
 	/** The Array counts can be 0 or greater. */
 	public AbstractPhantomArrayList(PhantomArrayListPool phantomArrayListPool, int byteArrayCount, int shortArrayCount, int longArrayCount) 
 	{
-		if (byteArrayCount < 0 || shortArrayCount < 0 || longArrayCount < 0)
+		if (byteArrayCount < 0 
+			|| shortArrayCount < 0 
+			|| longArrayCount < 0)
 		{
 			throw new IllegalArgumentException("Can't get a negative number of pooled arrays.");
 		}

@@ -35,11 +35,6 @@ package com.seibel.distanthorizons.api.enums.config;
  */
 public enum EDhApiServerFolderNameMode
 {
-	// Reminder:
-	// when adding items up the API minor version
-	// when removing items up the API major version
-	
-	
 	/** Only use the server name */
 	NAME_ONLY,
 	

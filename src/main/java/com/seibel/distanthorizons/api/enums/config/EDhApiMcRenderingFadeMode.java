@@ -33,10 +33,6 @@ package com.seibel.distanthorizons.api.enums.config;
  */
 public enum EDhApiMcRenderingFadeMode
 {
-	// Reminder:
-	// when adding items up the API minor version
-	// when removing items up the API major version
-	
 	/**
 	 * No fading is done, there will be a pronounced border between
 	 * Minecraft and Distant Horizons. <br>

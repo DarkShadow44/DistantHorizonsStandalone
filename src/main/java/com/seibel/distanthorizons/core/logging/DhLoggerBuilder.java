@@ -19,52 +19,37 @@
 
 package com.seibel.distanthorizons.core.logging;
 
+import com.seibel.distanthorizons.api.enums.config.EDhApiLoggerLevel;
+import com.seibel.distanthorizons.core.config.listeners.IConfigListener;
+import com.seibel.distanthorizons.core.config.types.AbstractConfigBase;
+import com.seibel.distanthorizons.core.config.types.ConfigEntry;
 import com.seibel.distanthorizons.coreapi.ModInfo;
 import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.ArrayList;
+import java.util.Arrays;
 
 /**
- * Used to create loggers with specific names.
- *
- * @author James Seibel
- * @version 2022-4-24
+ * @see DhLogger
  */
 public class DhLoggerBuilder
 {
-	/**
-	 * Creates a logger in the format <br>
-	 * "ModInfo.Name-className" <br>
-	 * For example: <br>
-	 * "DistantHorizons-ReflectionHandler" <br><br>
-	 *
-	 * The suggested way to use this method is like this: <br><br>
-	 * <code>
-	 * private static final Logger LOGGER = DhLoggerBuilder.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
-	 * </code> <br><br>
-	 * By using MethodHandles you don't have to manually enter the class name,
-	 * Java figures that out for you. Even in a static context.
-	 *
-	 * @param className name of the class this logger will be named after.
-	 */
-	public static Logger getLogger(String className)
-	{
-		return LogManager.getLogger(ModInfo.NAME + "-" + className);
-	}
+	private String name;
+	private @Nullable ConfigEntry<EDhApiLoggerLevel> chatLevelConfig;
+	private @Nullable ConfigEntry<EDhApiLoggerLevel> fileLevelConfig;
+	private int maxLogPerSec = -1;
 	
-	/** Returns a logger for the given class. */
-	public static Logger getLogger(Class<?> clazz)
-	{
-		return LogManager.getLogger(ModInfo.NAME + "-" + clazz.getSimpleName());
-	}
 	
-	/** Attempts to return the logger for this containing class. */
-	public static Logger getLogger()
-	{
-		return LogManager.getLogger(ModInfo.NAME + "-" + getCallingClassName());
-	}
 	
+	//=============//
+	// constructor //
+	//=============//
+	
+	public DhLoggerBuilder() { this.name = ModInfo.NAME + "-" + getCallingClassName(); }
 	/** @return "??" if no name could be found */
-	public static String getCallingClassName()
+	private static String getCallingClassName()
 	{
 		StackTraceElement[] stElements = Thread.currentThread().getStackTrace();
 		String callerClassName = "??";
@@ -81,6 +66,59 @@ public class DhLoggerBuilder
 		
 		return callerClassName;
 	}
+	
+	
+	
+	//===========//
+	// variables //
+	//===========//
+	
+	public DhLoggerBuilder name(String name)
+	{
+		this.name = name;
+		return this;
+	}
+	
+	public DhLoggerBuilder chatLevelConfig(ConfigEntry<EDhApiLoggerLevel> chatLevelConfig)
+	{
+		this.chatLevelConfig = chatLevelConfig;
+		return this;
+	}
+	
+	public DhLoggerBuilder fileLevelConfig(ConfigEntry<EDhApiLoggerLevel> fileLevelConfig)
+	{
+		this.fileLevelConfig = fileLevelConfig;
+		return this;
+	}
+	
+	public DhLoggerBuilder maxCountPerSecond(int maxLogPerSec)
+	{
+		this.maxLogPerSec = maxLogPerSec;
+		return this;
+	}
+	
+	
+	
+	//=======//
+	// build //
+	//=======//
+	
+	public DhLogger build()
+	{
+		try
+		{
+			return new DhLogger(
+					this.name,
+					this.chatLevelConfig, this.fileLevelConfig,
+					this.maxLogPerSec
+			);
+		}
+		catch (Exception e)
+		{
+			throw new RuntimeException(e);
+		}
+	}
+	
 	
 	
 }

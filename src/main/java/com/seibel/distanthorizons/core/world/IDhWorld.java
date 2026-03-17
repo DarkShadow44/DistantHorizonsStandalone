@@ -31,6 +31,7 @@ import java.util.concurrent.CompletableFuture;
 public interface IDhWorld extends Closeable
 {
 	
+	@Nullable
 	IDhLevel getOrLoadLevel(@NotNull ILevelWrapper levelWrapper);
 	@Nullable
 	IDhLevel getLevel(@NotNull ILevelWrapper wrapper);
@@ -38,7 +39,5 @@ public interface IDhWorld extends Closeable
 	int getLoadedLevelCount();
 	
 	void unloadLevel(@NotNull ILevelWrapper levelWrapper);
-	
-	void worldGenTick();
 	
 }

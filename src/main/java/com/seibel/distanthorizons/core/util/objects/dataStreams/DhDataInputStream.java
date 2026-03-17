@@ -20,11 +20,13 @@
 package com.seibel.distanthorizons.core.util.objects.dataStreams;
 
 import com.github.luben.zstd.RecyclingBufferPool;
+import com.github.luben.zstd.Zstd;
 import com.github.luben.zstd.ZstdInputStream;
 import com.seibel.distanthorizons.api.enums.config.EDhApiDataCompressionMode;
+import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
+import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import net.jpountz.lz4.LZ4FrameInputStream;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 import org.tukaani.xz.ResettableArrayCache;
 import org.tukaani.xz.XZInputStream;
 
@@ -44,14 +46,37 @@ public class DhDataInputStream extends DataInputStream
 {
 	private static final ThreadLocal<ResettableArrayCache> LZMA_RESETTABLE_ARRAY_CACHE_GETTER = ThreadLocal.withInitial(() -> new ResettableArrayCache(new LzmaArrayCache()));
 	
-	private static final Logger LOGGER = LogManager.getLogger();
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
 	
-	public DhDataInputStream(InputStream stream, EDhApiDataCompressionMode compressionMode) throws IOException
-	{ 
-		super(warpStream(new BufferedInputStream(stream), compressionMode)); 
+	
+	//=============//
+	// constructor //
+	//=============//
+	
+	public static DhDataInputStream create(ByteArrayList byteArrayList, EDhApiDataCompressionMode compressionMode) throws IOException
+	{ return create(byteArrayList.toByteArray(), compressionMode); }
+	public static DhDataInputStream create(byte[] byteArray, EDhApiDataCompressionMode compressionMode) throws IOException
+	{
+		// Z_Std handling compression outside the stream provides a significant performance boost
+		ByteArrayInputStream byteArrayInputStream;
+		if (compressionMode == EDhApiDataCompressionMode.Z_STD_BLOCK)
+		{
+			byteArrayInputStream = new ByteArrayInputStream(Zstd.decompress(byteArray));
+		}
+		else
+		{
+			byteArrayInputStream = new ByteArrayInputStream(byteArray);
+		}
+		
+		return new DhDataInputStream(byteArrayInputStream, compressionMode);
 	}
-	private static InputStream warpStream(InputStream stream, EDhApiDataCompressionMode compressionMode) throws IOException
+	private DhDataInputStream(ByteArrayInputStream stream, EDhApiDataCompressionMode compressionMode) throws IOException
+	{ 
+		super(warpStream(stream, compressionMode)); 
+	}
+	@SuppressWarnings("deprecation")
+	private static InputStream warpStream(ByteArrayInputStream stream, EDhApiDataCompressionMode compressionMode) throws IOException
 	{
 		try
 		{
@@ -61,16 +86,20 @@ public class DhDataInputStream extends DataInputStream
 					return stream;
 				case LZ4:
 					return new LZ4FrameInputStream(stream);
-				case Z_STD:
-					return new ZstdInputStream(stream, RecyclingBufferPool.INSTANCE);
+				case Z_STD_BLOCK:
+					// ZStd compression should be handled before this point
+					// just return the stream
+					return stream;
 				case LZMA2:
 					// using an array cache significantly reduces GC pressure
 					ResettableArrayCache arrayCache = LZMA_RESETTABLE_ARRAY_CACHE_GETTER.get();
 					arrayCache.reset();
-					
 					// Note: all LZMA/XZ compressors can be decompressed using this same InputStream
 					return new XZInputStream(stream, arrayCache);
 				
+				case Z_STD_STREAM: // deprecated, only used for legacy support
+					return new ZstdInputStream(stream, RecyclingBufferPool.INSTANCE);
+					
 				default:
 					throw new IllegalArgumentException("No compressor defined for [" + compressionMode + "]");
 			}
@@ -83,6 +112,11 @@ public class DhDataInputStream extends DataInputStream
 		}
 	}
 	
+	
+	
+	//================//
+	// base overrides //
+	//================//
 	
 	@Override 
 	public int read() throws IOException
@@ -113,10 +147,6 @@ public class DhDataInputStream extends DataInputStream
 		}
 	}
 	
-	// TODO at one point closing the streams caused errors, is that due to a bug with LZMA streams or some bug in DH's code that was since fixed?
-	//  if streams aren't closed that cause cause higher-than-expected native memory use if the GC decides
-	//  it doesn't want to clear the stream objects
-	//@Override
-	//public void close() throws IOException { /* Do nothing. */ }
+	
 	
 }

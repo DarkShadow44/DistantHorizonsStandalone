@@ -35,7 +35,7 @@ public final class BufferQuad
 	public static final int NORMAL_MAX_QUAD_WIDTH = 2048;
 	/**
 	 * The maximum number of blocks wide a quad can be
-	 * when {@link Config.Client.Advanced.Graphics.AdvancedGraphics#earthCurveRatio earthCurveRatio}
+	 * when {@link Config.Client.Advanced.Graphics.Experimental#earthCurveRatio earthCurveRatio}
 	 * is enabled.
 	 */
 	public static final int MAX_QUAD_WIDTH_FOR_EARTH_CURVATURE = LodUtil.CHUNK_WIDTH;
@@ -99,7 +99,7 @@ public final class BufferQuad
 		
 		if (compareDirection == BufferMergeDirectionEnum.EastWest)
 		{
-			switch (this.direction.getAxis())
+			switch (this.direction.axis)
 			{
 				case X:
 					return threeDimensionalCompare(this.x, this.y, this.z, quad.x, quad.y, quad.z);
@@ -109,12 +109,12 @@ public final class BufferQuad
 					return threeDimensionalCompare(this.z, this.y, this.x, quad.z, quad.y, quad.x);
 				
 				default:
-					throw new IllegalArgumentException("Invalid Axis enum: " + this.direction.getAxis());
+					throw new IllegalArgumentException("Invalid Axis enum: [" + this.direction.axis + "].");
 			}
 		}
 		else
 		{
-			switch (this.direction.getAxis())
+			switch (this.direction.axis)
 			{
 				case X:
 					return threeDimensionalCompare(this.x, this.z, this.y, quad.x, quad.z, quad.y);
@@ -124,7 +124,7 @@ public final class BufferQuad
 					return threeDimensionalCompare(this.z, this.x, this.y, quad.z, quad.x, quad.y);
 				
 				default:
-					throw new IllegalArgumentException("Invalid Axis enum: " + this.direction.getAxis());
+					throw new IllegalArgumentException("Invalid Axis enum: [" + this.direction.axis + "].");
 			}
 		}
 	}
@@ -157,8 +157,8 @@ public final class BufferQuad
 			return false;
 		
 		// make sure these quads share the same perpendicular axis
-		if ((mergeDirection == BufferMergeDirectionEnum.EastWest && this.y != quad.y) ||
-				(mergeDirection == BufferMergeDirectionEnum.NorthSouthOrUpDown && this.x != quad.x))
+		if ((mergeDirection == BufferMergeDirectionEnum.EastWest && this.y != quad.y)
+			|| (mergeDirection == BufferMergeDirectionEnum.NorthSouthOrUpDown && this.x != quad.x))
 		{
 			return false;
 		}
@@ -169,7 +169,7 @@ public final class BufferQuad
 		short thisParallelCompareStartPos; // edge parallel to the merge direction
 		short otherPerpendicularCompareStartPos;
 		short otherParallelCompareStartPos;
-		switch (this.direction.getAxis())
+		switch (this.direction.axis)
 		{
 			default: // shouldn't normally happen, just here to make the compiler happy
 			case X:

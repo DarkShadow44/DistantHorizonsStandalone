@@ -20,10 +20,11 @@
 package com.seibel.distanthorizons.core.render.glObject.buffer;
 
 import com.seibel.distanthorizons.api.enums.config.EDhApiGpuUploadMethod;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.render.glObject.GLEnums;
 import com.seibel.distanthorizons.core.render.glObject.GLProxy;
-import org.apache.logging.log4j.Logger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 import org.lwjgl.opengl.GL32;
 import org.lwjgl.system.MemoryUtil;
 
@@ -33,7 +34,7 @@ import java.nio.ByteOrder;
 
 public class QuadElementBuffer extends GLElementBuffer
 {
-	private static final Logger LOGGER = DhLoggerBuilder.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
 	
 	public QuadElementBuffer()
@@ -43,7 +44,7 @@ public class QuadElementBuffer extends GLElementBuffer
 	
 	public int getCapacity()
 	{
-		return super.getSize() / GLEnums.getTypeSize(getType());
+		return super.getSize() / GLEnums.getTypeSize(this.getType());
 	}
 	
 	private static void buildBufferByte(int quadCount, ByteBuffer buffer)
@@ -139,7 +140,6 @@ public class QuadElementBuffer extends GLElementBuffer
 			return;
 		}
 		int vertexCount = quadCount * 4; // 4 vertices per quad
-		GLProxy gl = GLProxy.getInstance();
 		
 		if (vertexCount < 255)
 		{ // Reserve 1 for the reset index
@@ -157,7 +157,7 @@ public class QuadElementBuffer extends GLElementBuffer
 		
 		ByteBuffer buffer = MemoryUtil.memAlloc(this.indicesCount * GLEnums.getTypeSize(this.type));
 		buildBuffer(quadCount, buffer, this.type);
-		if (!gl.bufferStorageSupported)
+		if (!GLProxy.getInstance().bufferStorageSupported)
 		{
 			
 			this.bind();

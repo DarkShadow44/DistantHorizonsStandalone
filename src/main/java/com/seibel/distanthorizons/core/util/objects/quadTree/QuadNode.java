@@ -26,7 +26,7 @@ import com.seibel.distanthorizons.core.util.objects.quadTree.iterators.QuadNodeD
 import com.seibel.distanthorizons.core.util.objects.quadTree.iterators.QuadNodeDirectChildPosIterator;
 import com.seibel.distanthorizons.core.util.objects.quadTree.iterators.QuadTreeNodeIterator;
 import it.unimi.dsi.fastutil.longs.LongIterator;
-import org.apache.logging.log4j.Logger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Iterator;
@@ -34,7 +34,7 @@ import java.util.function.Consumer;
 
 public class QuadNode<T>
 {
-	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
 	
 	public final long sectionPos;

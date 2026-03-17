@@ -39,10 +39,6 @@ package com.seibel.distanthorizons.api.enums;
  */
 public enum EDhApiDetailLevel
 {
-	// Reminder:
-	// when adding items up the API minor version
-	// when removing items up the API major version
-	
 	/**
 	 * detail level: 0 <Br>
 	 * width in Blocks: 1

@@ -8,14 +8,20 @@ public class LevelInitMessage extends AbstractNetworkMessage
 {
 	public static final int MAX_LENGTH = 150;
 	
-	public static final String PART_ALLOWED_CHARS_REGEX = "a-zA-Z0-9-_";
+	public static final String ALLOWED_CHARS_REGEX = "a-zA-Z0-9-_";
+	
+	// A plain string of characters
+	// 1-150 characters in total
+	public static final String SERVER_KEY_REGEX = String.format("^(?=.{1,%s}$)[%s]+$",
+			MAX_LENGTH, ALLOWED_CHARS_REGEX);
 	
 	// prefix@namespace:path
 	// 1-150 characters in total, all parts except namespace can be omitted
-	public static final String VALIDATION_REGEX = String.format("^(?=.{1,%s}$)([%s]+@)?[%s]+(:[%s]+)?$",
-			MAX_LENGTH, PART_ALLOWED_CHARS_REGEX, PART_ALLOWED_CHARS_REGEX, PART_ALLOWED_CHARS_REGEX);
+	public static final String LEVEL_KEY_REGEX = String.format("^(?=.{1,%s}$)([%s]+@)?[%s]+(:[%s]+)?$",
+			MAX_LENGTH, ALLOWED_CHARS_REGEX, ALLOWED_CHARS_REGEX, ALLOWED_CHARS_REGEX);
 	
 	
+	public String serverKey;
 	public String levelKey;
 	public long serverTime;
 	
@@ -26,8 +32,9 @@ public class LevelInitMessage extends AbstractNetworkMessage
 	//==============//
 	
 	public LevelInitMessage() { }
-	public LevelInitMessage(String levelKey)
+	public LevelInitMessage(String serverKey, String levelKey)
 	{
+		this.serverKey = serverKey;
 		this.levelKey = levelKey;
 		this.serverTime = System.currentTimeMillis();
 	}
@@ -41,6 +48,7 @@ public class LevelInitMessage extends AbstractNetworkMessage
 	@Override
 	public void encode(ByteBuf out)
 	{
+		this.writeString(this.serverKey, out);
 		this.writeString(this.levelKey, out);
 		out.writeLong(this.serverTime);
 	}
@@ -48,6 +56,7 @@ public class LevelInitMessage extends AbstractNetworkMessage
 	@Override
 	public void decode(ByteBuf in)
 	{
+		this.serverKey = this.readString(in);
 		this.levelKey = this.readString(in);
 		this.serverTime = in.readLong();
 	}
@@ -62,6 +71,7 @@ public class LevelInitMessage extends AbstractNetworkMessage
 	public MoreObjects.ToStringHelper toStringHelper()
 	{
 		return super.toStringHelper()
+				.add("serverKey", this.serverKey)
 				.add("levelKey", this.levelKey)
 				.add("serverTime", this.serverTime);
 	}

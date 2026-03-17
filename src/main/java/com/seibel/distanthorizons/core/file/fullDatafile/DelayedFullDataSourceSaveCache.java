@@ -5,7 +5,7 @@ import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
 import com.seibel.distanthorizons.core.util.KeyedLockContainer;
 import com.seibel.distanthorizons.core.util.ThreadUtil;
-import org.apache.logging.log4j.Logger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 import org.jetbrains.annotations.NotNull;
 
 import java.lang.ref.WeakReference;
@@ -21,7 +21,7 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class DelayedFullDataSourceSaveCache implements AutoCloseable
 {
-	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
 	/** 
 	 * a cache won't automatically clean itself unless we trigger it's clean method
@@ -96,7 +96,12 @@ public class DelayedFullDataSourceSaveCache implements AutoCloseable
 				// no data currently in the memory cache for this position
 				memoryDataSource = FullDataSourceV2.createEmpty(inputPos);
 				pair = new DataSourceSavedTimePair(memoryDataSource);
-				this.dataSourceByPosition.put(inputPos, pair);
+				DataSourceSavedTimePair oldPair = this.dataSourceByPosition.put(inputPos, pair);
+				if (oldPair != null)
+				{
+					// shouldn't happen, but just in case
+					this.handleDataSourceRemoval(oldPair.dataSource);
+				}
 			}
 			else
 			{
@@ -104,7 +109,7 @@ public class DelayedFullDataSourceSaveCache implements AutoCloseable
 			}
 			
 			// write the new data into memory
-			memoryDataSource.update(inputDataSource);
+			memoryDataSource.updateFromDataSource(inputDataSource);
 			// keep track of when the last time we saved something was
 			pair.updateLastWrittenTimestamp();
 		}

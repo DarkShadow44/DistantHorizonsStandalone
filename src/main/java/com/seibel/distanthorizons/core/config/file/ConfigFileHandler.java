@@ -20,17 +20,18 @@
 package com.seibel.distanthorizons.core.config.file;
 
 import com.electronwill.nightconfig.core.file.CommentedFileConfig;
+import com.seibel.distanthorizons.core.config.ConfigHandler;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
-import com.seibel.distanthorizons.core.config.ConfigBase;
-import com.seibel.distanthorizons.core.config.types.AbstractConfigType;
+import com.seibel.distanthorizons.core.config.types.AbstractConfigBase;
 import com.seibel.distanthorizons.core.config.types.ConfigEntry;
+import com.seibel.distanthorizons.core.jar.EPlatform;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
-import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftSharedWrapper;
 import com.seibel.distanthorizons.coreapi.ModInfo;
 import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -44,13 +45,10 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class ConfigFileHandler
 {
-	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
 	
-	public final ConfigBase configBase;
 	public final Path configPath;
-	
-	private final Logger logger;
 	
 	/** This is the object for night-config */
 	private final CommentedFileConfig nightConfig;
@@ -64,10 +62,8 @@ public class ConfigFileHandler
 	// constructor //
 	//=============//
 	
-	public ConfigFileHandler(ConfigBase configBase, Path configPath)
+	public ConfigFileHandler(Path configPath)
 	{
-		this.logger = LogManager.getLogger(this.getClass().getSimpleName() + ", " + ModInfo.ID);
-		this.configBase = configBase;
 		this.configPath = configPath;
 		
 		this.nightConfig = CommentedFileConfig
@@ -104,7 +100,7 @@ public class ConfigFileHandler
 			this.loadNightConfig(nightConfig);
 			
 			
-			for (AbstractConfigType<?, ?> entry : this.configBase.entries)
+			for (AbstractConfigBase<?> entry : ConfigHandler.INSTANCE.configBaseList)
 			{
 				if (ConfigEntry.class.isAssignableFrom(entry.getClass()))
 				{
@@ -142,7 +138,7 @@ public class ConfigFileHandler
 		{
 			this.readWriteLock.lock();
 			
-			int currentCfgVersion = this.configBase.configVersion;
+			int currentCfgVersion = ModInfo.CONFIG_FILE_VERSION;
 			try
 			{
 				// Dont load the real `this.nightConfig`, instead create a tempoary one
@@ -154,29 +150,29 @@ public class ConfigFileHandler
 			}
 			catch (Exception ignored) { }
 			
-			if (currentCfgVersion == this.configBase.configVersion)
+			if (currentCfgVersion == ModInfo.CONFIG_FILE_VERSION)
 			{
 				// handle normally
 			}
-			else if (currentCfgVersion > this.configBase.configVersion)
+			else if (currentCfgVersion > ModInfo.CONFIG_FILE_VERSION)
 			{
-				this.logger.warn("Found config version [" + currentCfgVersion + "] which is newer than current mods config version of [" + this.configBase.configVersion + "]. You may have downgraded the mod and items may have been moved, you have been warned");
+				LOGGER.warn("Found config version [" + currentCfgVersion + "] which is newer than current mods config version of [" + ModInfo.CONFIG_FILE_VERSION + "]. You may have downgraded the mod and items may have been moved, you have been warned");
 			}
 			else // if (currentCfgVersion < configBase.configVersion)
 			{
-				this.logger.warn(ModInfo.NAME + " config is of an older version, currently there is no config updater... so resetting config");
+				LOGGER.warn(ModInfo.NAME + " config is of an older version, currently there is no config updater... so resetting config");
 				try
 				{
 					Files.delete(this.configPath);
 				}
 				catch (Exception e)
 				{
-					this.logger.error(e);
+					LOGGER.error("Unable to delete outdated config file at: ["+this.configPath+"], error: ["+e.getMessage()+"].", e);
 				}
 			}
 			
 			this.loadFromFile(this.nightConfig);
-			this.nightConfig.set("_version", this.configBase.configVersion);
+			this.nightConfig.set("_version", ModInfo.CONFIG_FILE_VERSION);
 		}
 		finally
 		{
@@ -202,7 +198,7 @@ public class ConfigFileHandler
 		
 		
 		// Load all the entries
-		for (AbstractConfigType<?, ?> entry : this.configBase.entries)
+		for (AbstractConfigBase<?> entry : ConfigHandler.INSTANCE.configBaseList)
 		{
 			if (ConfigEntry.class.isAssignableFrom(entry.getClass())
 				&& entry.getAppearance().showInFile)
@@ -246,10 +242,10 @@ public class ConfigFileHandler
 		else if (entry.getTrueValue() == null)
 		{
 			// TODO when can this happen?
-			throw new IllegalArgumentException("Entry [" + entry.getNameWCategory() + "] is null, this may be a problem with [" + ModInfo.NAME + "]. Please contact the authors.");
+			throw new IllegalArgumentException("BlockBiomeWrapperPair [" + entry.getNameAndCategory() + "] is null, this may be a problem with [" + ModInfo.NAME + "]. Please contact the authors.");
 		}
 		
-		workConfig.set(entry.getNameWCategory(), ConfigTypeConverters.attemptToConvertToString(entry.getType(), entry.getTrueValue()));
+		workConfig.set(entry.getNameAndCategory(), ConfigTypeConverters.attemptToConvertToString(entry.getType(), entry.getTrueValue()));
 	}
 	
 	/** Loads an entry when only given the entry */
@@ -259,9 +255,11 @@ public class ConfigFileHandler
 	public <T> void loadEntry(ConfigEntry<T> entry, CommentedFileConfig nightConfig)
 	{
 		if (!entry.getAppearance().showInFile)
+		{
 			return;
+		}
 		
-		if (!nightConfig.contains(entry.getNameWCategory()))
+		if (!nightConfig.contains(entry.getNameAndCategory()))
 		{
 			this.saveEntry(entry, nightConfig);
 			return;
@@ -272,34 +270,33 @@ public class ConfigFileHandler
 		{
 			if (entry.getType().isEnum())
 			{
-				entry.pureSet((T) (nightConfig.getEnum(entry.getNameWCategory(), (Class<? extends Enum>) entry.getType())));
+				entry.setWithoutFiringEvents((T) (nightConfig.getEnum(entry.getNameAndCategory(), (Class<? extends Enum>) entry.getType())));
 				return;
 			}
 			
 			// try converting the value if necessary
 			Class<?> expectedValueClass = entry.getType();
-			Object value = nightConfig.get(entry.getNameWCategory());
+			Object value = nightConfig.get(entry.getNameAndCategory());
 			Object convertedValue = ConfigTypeConverters.attemptToConvertFromString(expectedValueClass, value);
 			if (!convertedValue.getClass().equals(expectedValueClass))
 			{
-				this.logger.error("Unable to convert config value ["+value+"] from ["+(value != null ? value.getClass() : "NULL")+"] to ["+expectedValueClass+"] for config ["+entry.name+"], " +
+				LOGGER.error("Unable to convert config value ["+value+"] from ["+(value != null ? value.getClass() : "NULL")+"] to ["+expectedValueClass+"] for config ["+entry.name+"], " +
 						"the default config value will be used instead ["+entry.getDefaultValue()+"]. " +
 						"Make sure a converter is defined in ["+ConfigTypeConverters.class.getSimpleName()+"].");
 				convertedValue = entry.getDefaultValue();
 			}
-			entry.pureSet((T) convertedValue);
+			entry.setWithoutFiringEvents((T) convertedValue);
 			
 			if (entry.getTrueValue() == null) 
 			{
-				this.logger.warn("Entry [" + entry.getNameWCategory() + "] returned as null from the config. Using default value.");
-				entry.pureSet(entry.getDefaultValue());
+				LOGGER.warn("BlockBiomeWrapperPair [" + entry.getNameAndCategory() + "] returned as null from the config. Using default value.");
+				entry.setWithoutFiringEvents(entry.getDefaultValue());
 			}
 		}
 		catch (Exception e)
 		{
-//                e.printStackTrace();
-			this.logger.warn("Entry [" + entry.getNameWCategory() + "] had an invalid value when loading the config. Using default value.");
-			entry.pureSet(entry.getDefaultValue());
+			LOGGER.warn("BlockBiomeWrapperPair [" + entry.getNameAndCategory() + "] had an invalid value when loading the config. Using default value.");
+			entry.setWithoutFiringEvents(entry.getDefaultValue());
 		}
 	}
 	
@@ -320,7 +317,7 @@ public class ConfigFileHandler
 		// the new line makes it easier to read and separate configs
 		// the space makes sure the first word of a comment isn't directly in line with the "#" 
 		comment = "\n " + comment;
-		nightConfig.setComment(entry.getNameWCategory(), comment);
+		nightConfig.setComment(entry.getNameAndCategory(), comment);
 	}
 	
 	
@@ -352,18 +349,20 @@ public class ConfigFileHandler
 			}
 			catch (Exception e)
 			{
-				this.logger.warn("Loading file failed because of this expectation:\n" + e);
+				LOGGER.warn("Loading file failed because of this expectation:\n" + e);
 				
 				reCreateFile(this.configPath);
 				
 				nightConfig.load();
 			}
 		}
-		catch (Exception ex)
+		catch (Exception e)
 		{
-			System.out.println("Creating file failed");
-			this.logger.error(ex);
-			SingletonInjector.INSTANCE.get(IMinecraftClientWrapper.class).crashMinecraft("Loading file and resetting config file failed at path [" + this.configPath + "]. Please check the file is ok and you have the permissions", ex);
+			LOGGER.error("File creation failed at ["+this.configPath+"], error: ["+e.getMessage()+"].", e);
+			
+			// TODO is there a reason this is lazily gotten?
+			IMinecraftClientWrapper mc = SingletonInjector.INSTANCE.get(IMinecraftClientWrapper.class);
+			mc.crashMinecraft("Loading file and resetting config file failed at path [" + this.configPath + "]. Please check the file is ok and you have the permissions", e);
 		}
 	}
 	

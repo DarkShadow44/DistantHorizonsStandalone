@@ -52,8 +52,8 @@ public abstract class AbstractShaderRenderer
 		
 		this.onApplyUniforms(partialTicks);
 		
-		int width = MC_RENDER.getTargetFrameBufferViewportWidth();
-		int height = MC_RENDER.getTargetFrameBufferViewportHeight();
+		int width = MC_RENDER.getTargetFramebufferViewportWidth();
+		int height = MC_RENDER.getTargetFramebufferViewportHeight();
 		GL32.glViewport(0, 0, width, height);
 		
 		this.onRender();

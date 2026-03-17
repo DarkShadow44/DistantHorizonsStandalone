@@ -23,7 +23,7 @@ import com.electronwill.nightconfig.core.Config;
 import com.electronwill.nightconfig.core.io.ParsingMode;
 import com.electronwill.nightconfig.json.JsonFormat;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
-import org.apache.logging.log4j.Logger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -36,7 +36,7 @@ import java.util.Map;
  */
 public class ConfigTypeConverters
 {
-	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
 	// Once you've made a converter add it to here where the first value is the type you want to convert and the 2nd value is the converter
 	public static final Map<Class<?>, ConverterBase> convertObjects = new HashMap<Class<?>, ConverterBase>()

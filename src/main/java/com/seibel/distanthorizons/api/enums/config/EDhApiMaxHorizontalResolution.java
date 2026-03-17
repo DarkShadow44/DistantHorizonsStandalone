@@ -64,10 +64,7 @@ public enum EDhApiMaxHorizontalResolution
 	/** How wide each LOD DataPoint is */
 	public final int dataPointWidth;
 	
-	/**
-	 * This is the same as detailLevel in LodQuadTreeNode,
-	 * lowest is 0 highest is 9
-	 */
+	/** This is the same as detailLevel in LodQuadTreeNode */
 	public final byte detailLevel;
 	
 	/* Start/End X/Z give the block positions

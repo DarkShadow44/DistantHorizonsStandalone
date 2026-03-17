@@ -33,11 +33,6 @@ package com.seibel.distanthorizons.api.enums.rendering;
  */
 public enum EDhApiDebugRendering
 {
-	// Reminder:
-	// when adding items up the API minor version
-	// when removing items up the API major version
-	
-	
 	/** LODs are rendered normally */
 	OFF,
 	

@@ -337,7 +337,7 @@ public class RenderableBoxGroup
 		@Override 
 		public void close()
 		{
-			GLProxy.getInstance().queueRunningOnRenderThread(() ->
+			GLProxy.queueRunningOnRenderThread(() ->
 			{
 				if (this.instanceChunkPosVbo != 0)
 				{

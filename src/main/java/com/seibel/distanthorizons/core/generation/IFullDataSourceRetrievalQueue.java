@@ -19,13 +19,11 @@
 
 package com.seibel.distanthorizons.core.generation;
 
-import com.seibel.distanthorizons.core.generation.tasks.IWorldGenTaskTracker;
-import com.seibel.distanthorizons.core.generation.tasks.WorldGenResult;
+import com.seibel.distanthorizons.core.generation.tasks.DataSourceRetrievalResult;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos2D;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
 import com.seibel.distanthorizons.core.render.LodQuadTree;
 import com.seibel.distanthorizons.core.util.objects.RollingAverage;
-import org.jetbrains.annotations.Nullable;
 
 import java.io.Closeable;
 import java.util.List;
@@ -92,7 +90,7 @@ public interface IFullDataSourceRetrievalQueue extends Closeable
 	 */
 	void removeRetrievalRequestIf(DhSectionPos.ICancelablePrimitiveLongConsumer removeIf);
 	
-	CompletableFuture<WorldGenResult> submitRetrievalTask(long pos, byte requiredDataDetail, IWorldGenTaskTracker tracker);
+	CompletableFuture<DataSourceRetrievalResult> submitRetrievalTask(long pos, byte requiredDataDetail);
 	
 	
 	

@@ -44,6 +44,10 @@ public enum EDhApiGpuUploadMethod
 	/** Fast rendering but may stutter when uploading. */
 	SUB_DATA(false, false),
 	
+	///** Don't upload, only should be used for debugging */
+	//@Deprecated
+	//NONE(false, false),
+	
 	/**
 	 * May end up storing buffers in System memory. <br>
 	 * Fast rending if in GPU memory, slow if in system memory, <br>

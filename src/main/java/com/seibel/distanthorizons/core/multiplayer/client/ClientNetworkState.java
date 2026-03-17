@@ -3,7 +3,8 @@ package com.seibel.distanthorizons.core.multiplayer.client;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.config.listeners.ConfigChangeListener;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
-import com.seibel.distanthorizons.core.logging.ConfigBasedLogger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
+import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.multiplayer.config.SessionConfig;
 import com.seibel.distanthorizons.core.multiplayer.fullData.FullDataPayloadReceiver;
 import com.seibel.distanthorizons.core.network.event.ScopedNetworkEventSource;
@@ -17,7 +18,7 @@ import com.seibel.distanthorizons.core.network.messages.fullData.FullDataPartial
 import com.seibel.distanthorizons.core.network.session.NetworkSession;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
 import com.seibel.distanthorizons.coreapi.ModInfo;
-import org.apache.logging.log4j.LogManager;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.Closeable;
@@ -25,8 +26,13 @@ import java.util.List;
 
 public class ClientNetworkState implements Closeable
 {
-	protected static final ConfigBasedLogger LOGGER = new ConfigBasedLogger(LogManager.getLogger(),
-			() -> Config.Common.Logging.logNetworkEvent.get());
+	protected static final DhLogger LOGGER = new DhLoggerBuilder()
+			.fileLevelConfig(Config.Common.Logging.logNetworkEventToFile)
+			.build();
+	
+	protected static final DhLogger CONFIG_CHANGE_LOGGER = new DhLoggerBuilder()
+			.fileLevelConfig(Config.Common.Logging.logConnectionConfigChangesToFile)
+			.build();
 	
 	private static final IMinecraftClientWrapper MC_CLIENT = SingletonInjector.INSTANCE.get(IMinecraftClientWrapper.class);
 	
@@ -43,6 +49,7 @@ public class ClientNetworkState implements Closeable
 	 */
 	public NetworkSession getSession() { return this.networkSession; }
 	
+	@NotNull
 	public SessionConfig sessionConfig = new SessionConfig();
 	
 	private volatile boolean configReceived = false;
@@ -128,7 +135,9 @@ public class ClientNetworkState implements Closeable
 			{
 				this.serverSupportStatus = EServerSupportStatus.FULL;
 				
-				LOGGER.info("Connection config has been changed: [" + message.config + "].");
+				String configChanges = this.sessionConfig.getDifferencesAsString(message.config);
+				CONFIG_CHANGE_LOGGER.info("Connection config has been changed: [" + configChanges + "].");
+				
 				this.sessionConfig = message.config;
 				this.configReceived = true;
 			});

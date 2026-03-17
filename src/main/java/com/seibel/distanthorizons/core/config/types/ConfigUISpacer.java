@@ -25,12 +25,20 @@ import com.seibel.distanthorizons.core.config.types.enums.EConfigEntryAppearance
  * Adds empty space the height of a button.
  * Useful for separating different categories.
  */
-public class ConfigUISpacer extends AbstractConfigType<String, ConfigUISpacer>
+public class ConfigUISpacer extends AbstractConfigBase<String>
 {
+	//=============//
+	// constructor //
+	//=============//
+	
 	public ConfigUISpacer()
 	{ super(EConfigEntryAppearance.ONLY_IN_GUI, ""); }
 	
 	
+	
+	//=========//
+	// setters //
+	//=========//
 	
 	/** Appearance shouldn't be changed */
 	@Override
@@ -42,7 +50,11 @@ public class ConfigUISpacer extends AbstractConfigType<String, ConfigUISpacer>
 	
 	
 	
-	public static class Builder extends AbstractConfigType.Builder<String, Builder>
+	//=========//
+	// builder //
+	//=========//
+	
+	public static class Builder extends AbstractConfigBase.Builder<String, Builder>
 	{
 		/** Appearance shouldn't be changed */
 		@Override

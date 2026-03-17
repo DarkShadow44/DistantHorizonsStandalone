@@ -20,12 +20,11 @@
 package com.seibel.distanthorizons.core.render.renderer;
 
 import com.seibel.distanthorizons.api.enums.config.EDhApiGpuUploadMethod;
-import com.seibel.distanthorizons.api.enums.config.EDhApiLoggerMode;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.config.types.ConfigEntry;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
-import com.seibel.distanthorizons.core.logging.ConfigBasedLogger;
-import com.seibel.distanthorizons.core.logging.ConfigBasedSpamLogger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
+import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos2D;
 import com.seibel.distanthorizons.core.pos.DhLodPos;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
@@ -39,7 +38,6 @@ import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRen
 import com.seibel.distanthorizons.core.util.math.Mat4f;
 import com.seibel.distanthorizons.core.util.math.Vec3d;
 import com.seibel.distanthorizons.core.util.math.Vec3f;
-import org.apache.logging.log4j.LogManager;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.opengl.GL32;
@@ -59,8 +57,10 @@ public class DebugRenderer
 {
 	public static DebugRenderer INSTANCE = new DebugRenderer();
 	
-	public static final ConfigBasedLogger LOGGER = new ConfigBasedLogger(LogManager.getLogger(DebugRenderer.class), () -> EDhApiLoggerMode.LOG_ALL_TO_CHAT);
-	public static final ConfigBasedSpamLogger SPAM_LOGGER = new ConfigBasedSpamLogger(LogManager.getLogger(DebugRenderer.class), () -> EDhApiLoggerMode.LOG_ALL_TO_CHAT, 1);
+	public static final DhLogger LOGGER = new DhLoggerBuilder().build();
+	public static final DhLogger RATE_LIMITED_LOGGER = new DhLoggerBuilder()
+			.maxCountPerSecond(1)
+			.build();
 	
 	private static final IMinecraftRenderWrapper MC_RENDER = SingletonInjector.INSTANCE.get(IMinecraftRenderWrapper.class);
 	private static final IMinecraftGLWrapper GLMC = SingletonInjector.INSTANCE.get(IMinecraftGLWrapper.class);
@@ -212,7 +212,7 @@ public class DebugRenderer
 		
 		// particle rendering		
 		BoxParticle head = null;
-		while ((head = this.particles.poll()) != null && head.isDead(System.nanoTime()))
+		while ((head = this.particles.poll()) != null && head.isDead())
 		{ /* remove dead particles */ }
 		if (head != null)
 		{
@@ -310,52 +310,50 @@ public class DebugRenderer
 	public static final class BoxParticle implements Comparable<BoxParticle>
 	{
 		public Box box;
-		public long startTime;
-		public long duration;
+		public long startMsTime;
+		public long durationInMs;
 		public float yChange;
 		
-		public BoxParticle(Box box, long startTime, long duration, float yChange)
+		private BoxParticle(Box box, long startMsTime, long durationInMs, float yChange)
 		{
 			this.box = box;
-			this.startTime = startTime;
-			this.duration = duration;
+			this.startMsTime = startMsTime;
+			this.durationInMs = durationInMs;
 			this.yChange = yChange;
 		}
 		
-		public BoxParticle(Box box, long nanoSecondDuratoin, float yChange) { this(box, System.nanoTime(), nanoSecondDuratoin, yChange); }
-		
-		public BoxParticle(Box box, double secondDuration, float yChange) { this(box, System.nanoTime(), (long) (secondDuration * 1000000000), yChange); }
+		public BoxParticle(Box box, double secondDuration, float yChange) { this(box, System.currentTimeMillis(), (long) (secondDuration * 1_000), yChange); }
 		
 		
 		@Override
 		public int compareTo(@NotNull BoxParticle particle)
 		{
-			return Long.compare(this.startTime + this.duration, particle.startTime + particle.duration);
+			return Long.compare(this.startMsTime + this.durationInMs, particle.startMsTime + particle.durationInMs);
 		}
 		
 		public Box getBox()
 		{
-			long now = System.nanoTime();
-			float percent = (now - this.startTime) / (float) this.duration;
+			long nowMs = System.currentTimeMillis();
+			float percent = (nowMs - this.startMsTime) / (float) this.durationInMs;
 			percent = (float) Math.pow(percent, 4);
 			float yDiff = this.yChange * percent;
 			return new Box(new Vec3f(this.box.minPos.x, this.box.minPos.y + yDiff, this.box.minPos.z), new Vec3f(this.box.maxPos.x, this.box.maxPos.y + yDiff, this.box.maxPos.z), this.box.color);
 		}
 		
-		public boolean isDead(long time) { return (time - this.startTime) > this.duration; }
+		public boolean isDead() { return (System.currentTimeMillis() - this.startMsTime) > this.durationInMs; }
 		
 	}
 	
 	public static final class BoxWithLife implements IDebugRenderable, Closeable
 	{
 		public Box box;
-		public BoxParticle particaleOnClose;
+		public BoxParticle particleOnClose;
 		
 		
 		public BoxWithLife(Box box, long ns, float yChange, Color deathColor)
 		{
 			this.box = box;
-			this.particaleOnClose = new BoxParticle(new Box(box.minPos, box.maxPos, deathColor), -1, ns, yChange);
+			this.particleOnClose = new BoxParticle(new Box(box.minPos, box.maxPos, deathColor), -1, ns, yChange);
 			register(this, null);
 		}
 		
@@ -365,7 +363,7 @@ public class DebugRenderer
 		public BoxWithLife(Box box, double s, float yChange, Color deathColor)
 		{
 			this.box = box;
-			this.particaleOnClose = new BoxParticle(new Box(box.minPos, box.maxPos, deathColor), s, yChange);
+			this.particleOnClose = new BoxParticle(new Box(box.minPos, box.maxPos, deathColor), s, yChange);
 		}
 		
 		public BoxWithLife(Box box, double s, float yChange) { this(box, s, yChange, box.color); }
@@ -376,7 +374,7 @@ public class DebugRenderer
 		@Override
 		public void close()
 		{
-			makeParticle(new BoxParticle(this.particaleOnClose.getBox(), System.nanoTime(), this.particaleOnClose.duration, this.particaleOnClose.yChange));
+			makeParticle(new BoxParticle(this.particleOnClose.getBox(), System.nanoTime(), this.particleOnClose.durationInMs, this.particleOnClose.yChange));
 			unregister(this, null);
 		}
 		
@@ -504,7 +502,7 @@ public class DebugRenderer
 				}
 				catch (Exception e)
 				{
-					SPAM_LOGGER.error("Unexpected Debug renderer error, Error: "+e.getMessage(), e);
+					RATE_LIMITED_LOGGER.error("Unexpected Debug renderer error, Error: "+e.getMessage(), e);
 				}
 			}
 		}

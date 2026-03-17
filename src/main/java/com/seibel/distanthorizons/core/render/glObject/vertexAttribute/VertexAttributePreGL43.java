@@ -24,12 +24,21 @@ import java.util.Iterator;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+import com.seibel.distanthorizons.core.config.Config;
+import com.seibel.distanthorizons.core.logging.DhLogger;
+import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.render.glObject.GLProxy;
 import org.lwjgl.opengl.GL32;
 
 
 public final class VertexAttributePreGL43 extends AbstractVertexAttribute
 {
+	private static final DhLogger LOGGER = new DhLoggerBuilder()
+			.fileLevelConfig(Config.Common.Logging.logRendererGLEventToFile)
+			.chatLevelConfig(Config.Common.Logging.logRendererGLEventToChat)
+			.build();
+	
+	
 	// I tried to use raw arrays as much as possible since those lookups
 	// happen every frame, and the speed directly affects fps
 	int strideSize = 0;
@@ -207,7 +216,7 @@ public final class VertexAttributePreGL43 extends AbstractVertexAttribute
 			VertexPointer pointer = this.pointers[i];
 			if (pointer == null)
 			{
-				GLProxy.GL_LOGGER.warn("Vertex Attribute index " + i + " is not set! No index should be skipped normally!");
+				LOGGER.warn("Vertex Attribute index " + i + " is not set! No index should be skipped normally!");
 				continue;
 			}
 			this.pointersOffset[i] = currentOffset;
@@ -216,26 +225,26 @@ public final class VertexAttributePreGL43 extends AbstractVertexAttribute
 		
 		if (currentOffset != expectedStrideSize)
 		{
-			GLProxy.GL_LOGGER.error("Vertex Attribute calculated stride size " + currentOffset +
+			LOGGER.error("Vertex Attribute calculated stride size " + currentOffset +
 					" does not match the provided expected stride size " + expectedStrideSize + "!");
 			throw new IllegalArgumentException("Vertex Attribute Incorrect Format");
 		}
 		this.strideSize = currentOffset;
-		GLProxy.GL_LOGGER.info("Vertex Attribute (pre GL43) completed.");
+		LOGGER.info("Vertex Attribute (pre GL43) completed.");
 		
 		// Debug logging
-		GLProxy.GL_LOGGER.debug("AttributeIndex: ElementCount, glType, normalized, strideSize, offset");
+		LOGGER.debug("AttributeIndex: ElementCount, glType, normalized, strideSize, offset");
 		
 		for (int i = 0; i < this.pointers.length; i++)
 		{
 			VertexPointer pointer = this.pointers[i];
 			if (pointer == null)
 			{
-				GLProxy.GL_LOGGER.debug(i + ": Null!!!!");
+				LOGGER.debug(i + ": Null!!!!");
 			}
 			else
 			{
-				GLProxy.GL_LOGGER.debug(i + ": " + pointer.elementCount + ", " +
+				LOGGER.debug(i + ": " + pointer.elementCount + ", " +
 						pointer.glType + ", " + pointer.normalized + ", " + this.strideSize + ", " + this.pointersOffset[i]);
 			}
 		}

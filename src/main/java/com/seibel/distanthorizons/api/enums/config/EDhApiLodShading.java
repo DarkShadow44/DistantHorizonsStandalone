@@ -29,10 +29,6 @@ package com.seibel.distanthorizons.api.enums.config;
  */
 public enum EDhApiLodShading
 {
-	// Reminder:
-	// when adding items up the API minor version
-	// when removing items up the API major version
-	
 	/** 
 	 * Uses Minecraft's shading for LODs. <Br>
 	 * This means if Minecraft's shading is disabled DH's shading will be as well.

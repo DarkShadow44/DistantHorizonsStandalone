@@ -19,25 +19,17 @@
 
 package com.seibel.distanthorizons.core.util;
 
-import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam;
-import com.seibel.distanthorizons.core.api.internal.SharedApi;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
-import com.seibel.distanthorizons.core.level.IDhClientLevel;
-import com.seibel.distanthorizons.core.world.IDhClientWorld;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
 import com.seibel.distanthorizons.coreapi.util.MathUtil;
 import com.seibel.distanthorizons.core.util.math.Mat4f;
-import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
 
 /**
  * This holds miscellaneous helper code
- * to be used in the rendering process.
- *
- * @author James Seibel
- * @version 2022-8-21
+ * used in the rendering process.
  */
 public class RenderUtil
 {
@@ -85,6 +77,12 @@ public class RenderUtil
 		// this method is just here in case that changes in the future
 		return mcModelViewMat.copy();
 	}
+	
+	
+	
+	//=============//
+	// clip planes //
+	//=============//
 	
 	public static float getNearClipPlaneDistanceInBlocks(float partialTicks) 
 	{ 
@@ -174,7 +172,7 @@ public class RenderUtil
 		// therefore, the FOV is left at a fixed value of 70 (MC's default)
 		double fov = 70;
 		
-		double aspectRatio = (double) MC_RENDER.getTargetFrameBufferViewportWidth() / MC_RENDER.getTargetFrameBufferViewportHeight();
+		double aspectRatio = (double) MC_RENDER.getTargetFramebufferViewportWidth() / MC_RENDER.getTargetFramebufferViewportHeight();
 		
 		// source: https://stackoverflow.com/questions/8101119/how-do-i-methodically-choose-the-near-clip-plane-distance-for-a-perspective-proj/8101234#8101234
 		return (float) (nearClipPlane
@@ -211,46 +209,6 @@ public class RenderUtil
 		return -1.0f;
 	}
 	
-	/** @return a message if LODs shouldn't be rendered, null if the LODs can render */
-	public static String shouldLodsRender(ILevelWrapper levelWrapper, DhApiRenderParam renderEventParam)
-	{
-		if (!MC.playerExists())
-		{
-			return "No Player Exists";
-		}
-		
-		if (levelWrapper == null)
-		{
-			return "No Level Given";
-		}
-		
-		IDhClientWorld clientWorld = SharedApi.getIDhClientWorld();
-		if (clientWorld == null)
-		{
-			return "No Client World Loaded";
-		}
-		
-		// TODO changing to getOrLoadClientLevel() fixes Immersive Portals only rendering the level the user starts in
-		//  however this may break how other level handling is done so James doesn't want to change it.
-		//  Special handling may be necessary when Immersive Portals is present, although additional testing is needed.
-		IDhClientLevel level = clientWorld.getClientLevel(levelWrapper);
-		if (level == null)
-		{
-			return "No Client Level Loaded"; //Level is not ready yet.
-		}
-		
-		if (MC_RENDER.getLightmapWrapper(levelWrapper) == null)
-		{
-			return "No Lightmap loaded";
-		}
-		
-		if (renderEventParam.dhModelViewMatrix == null 
-			|| renderEventParam.mcModelViewMatrix == null)
-		{
-			return "No MVM or Proj Matrix Given";
-		}
-		
-		return null;
-	}
+	
 	
 }

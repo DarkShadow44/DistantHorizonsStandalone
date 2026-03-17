@@ -19,14 +19,15 @@
 
 package com.seibel.distanthorizons.core.util;
 
+import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 
 import java.lang.reflect.Field;
 
 public class AnnotationUtil
 {
-	private static final Logger LOGGER = LogManager.getLogger();
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
 	
 	/** A quick method to test if an enum value has specific runtime annotation. */

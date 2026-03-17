@@ -19,7 +19,7 @@
 
 package com.seibel.distanthorizons.core.util.objects;
 
-import com.seibel.distanthorizons.core.util.LodUtil;
+import com.seibel.distanthorizons.core.util.ExceptionUtil;
 
 import java.util.concurrent.CompletionException;
 
@@ -76,7 +76,7 @@ public class UncheckedInterruptedException extends RuntimeException
 	}
 	public static boolean isInterrupt(Throwable t)
 	{
-		Throwable unwrapped = LodUtil.ensureUnwrap(t);
+		Throwable unwrapped = ExceptionUtil.ensureUnwrap(t);
 		return unwrapped instanceof InterruptedException || unwrapped instanceof UncheckedInterruptedException;
 	}
 	

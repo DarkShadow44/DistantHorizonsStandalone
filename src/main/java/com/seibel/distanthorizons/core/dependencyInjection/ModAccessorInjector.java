@@ -23,7 +23,7 @@ import com.seibel.distanthorizons.coreapi.DependencyInjection.DependencyInjector
 import com.seibel.distanthorizons.coreapi.interfaces.dependencyInjection.IBindable;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor.IModAccessor;
-import org.apache.logging.log4j.Logger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 
 import java.lang.invoke.MethodHandles;
 
@@ -40,7 +40,7 @@ import java.lang.invoke.MethodHandles;
  */
 public class ModAccessorInjector extends DependencyInjector<IModAccessor>
 {
-	private static final Logger LOGGER = DhLoggerBuilder.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
 	public static final ModAccessorInjector INSTANCE = new ModAccessorInjector(IModAccessor.class);
 	

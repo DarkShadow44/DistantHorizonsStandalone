@@ -20,10 +20,8 @@
 package com.seibel.distanthorizons.core.render.renderer.shaders;
 
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
-import com.seibel.distanthorizons.core.render.glObject.GLState;
 import com.seibel.distanthorizons.core.render.glObject.shader.ShaderProgram;
-import com.seibel.distanthorizons.core.render.renderer.FadeRenderer;
-import com.seibel.distanthorizons.core.render.renderer.LodRenderer;
+import com.seibel.distanthorizons.core.render.renderer.VanillaFadeRenderer;
 import com.seibel.distanthorizons.core.render.renderer.ScreenQuad;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftGLWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
@@ -33,8 +31,8 @@ import org.lwjgl.opengl.GL32;
  * Draws the Fade texture onto Minecraft's FrameBuffer. <br><br>
  * 
  * See Also: <br>
- * {@link FadeRenderer} - Parent to this shader. <br>
- * {@link FadeShader} - draws the Fade texture. <br>
+ * {@link VanillaFadeRenderer} - Parent to this shader. <br>
+ * {@link VanillaFadeShader} - draws the Fade texture. <br>
  */
 public class FadeApplyShader extends AbstractShaderRenderer
 {
@@ -47,10 +45,11 @@ public class FadeApplyShader extends AbstractShaderRenderer
 	
 	public int fadeTexture;
 	
+	public int readFramebuffer;
+	public int drawFramebuffer;
+	
 	// uniforms
 	public int uFadeColorTextureUniform = -1;
-	public int uDhDepthTextureUniform = -1;
-	public int uMcDepthTextureUniform = -1;
 	
 	
 	
@@ -69,7 +68,6 @@ public class FadeApplyShader extends AbstractShaderRenderer
 		
 		// uniform setup
 		this.uFadeColorTextureUniform = this.shader.getUniformLocation("uFadeColorTextureUniform");
-		this.uMcDepthTextureUniform = this.shader.getUniformLocation("uMcDepthTextureUniform");
 		
 	}
 	
@@ -86,14 +84,6 @@ public class FadeApplyShader extends AbstractShaderRenderer
 		GLMC.glBindTexture(this.fadeTexture);
 		GL32.glUniform1i(this.uFadeColorTextureUniform, 0);
 		
-		GLMC.glActiveTexture(GL32.GL_TEXTURE1);
-		GLMC.glBindTexture(LodRenderer.getActiveDepthTextureId());
-		GL32.glUniform1i(this.uDhDepthTextureUniform, 1);
-		
-		GLMC.glActiveTexture(GL32.GL_TEXTURE2);
-		GLMC.glBindTexture(MC_RENDER.getDepthTextureId());
-		GL32.glUniform1i(this.uMcDepthTextureUniform, 2);
-		
 	}
 	
 	
@@ -105,12 +95,6 @@ public class FadeApplyShader extends AbstractShaderRenderer
 	@Override
 	protected void onRender()
 	{
-		if (!MC_RENDER.mcRendersToFrameBuffer())
-		{
-			throw new IllegalStateException("If Minecraft is directly rendering to a texture the apply shader isn't needed, just draw the fade directly to the MC color texture.");
-		}
-		
-		
 		GLMC.disableBlend();
 		
 		// Depth testing must be disabled otherwise this application shader won't apply anything.
@@ -120,8 +104,8 @@ public class FadeApplyShader extends AbstractShaderRenderer
 		
 		
 		// apply the rendered Fade to Minecraft's framebuffer
-		GLMC.glBindFramebuffer(GL32.GL_READ_FRAMEBUFFER, FadeShader.INSTANCE.frameBuffer);
-		GLMC.glBindFramebuffer(GL32.GL_DRAW_FRAMEBUFFER, MC_RENDER.getTargetFrameBuffer());
+		GLMC.glBindFramebuffer(GL32.GL_READ_FRAMEBUFFER, this.readFramebuffer);
+		GLMC.glBindFramebuffer(GL32.GL_DRAW_FRAMEBUFFER, this.drawFramebuffer);
 		
 		ScreenQuad.INSTANCE.render();
 		

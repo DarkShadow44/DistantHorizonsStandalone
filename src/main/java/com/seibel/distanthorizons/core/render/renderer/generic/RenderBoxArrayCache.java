@@ -3,7 +3,7 @@ package com.seibel.distanthorizons.core.render.renderer.generic;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.RemovalNotification;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
-import org.apache.logging.log4j.Logger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 
 import java.util.concurrent.ConcurrentMap;
 
@@ -12,7 +12,7 @@ import java.util.concurrent.ConcurrentMap;
  */
 public class RenderBoxArrayCache
 {
-	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
 	public static final int ARRAY_LENGTH_WIDTH = 24;
 	public static final int ARRAY_ID_WIDTH = 8;

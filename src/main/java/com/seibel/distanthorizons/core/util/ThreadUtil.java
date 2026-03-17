@@ -19,11 +19,12 @@
 
 package com.seibel.distanthorizons.core.util;
 
+import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.util.threading.DhThreadFactory;
 import com.seibel.distanthorizons.core.util.threading.ThreadPoolUtil;
 import com.seibel.distanthorizons.coreapi.ModInfo;
 import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 
 import java.util.concurrent.*;
 
@@ -35,7 +36,7 @@ import java.util.concurrent.*;
  */
 public class ThreadUtil
 {
-	private static final Logger LOGGER = LogManager.getLogger();
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
 	public static final String THREAD_NAME_PREFIX = ModInfo.THREAD_NAME_PREFIX;
 	

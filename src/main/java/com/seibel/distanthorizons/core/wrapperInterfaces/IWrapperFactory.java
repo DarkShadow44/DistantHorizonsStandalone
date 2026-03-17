@@ -25,7 +25,7 @@ import com.seibel.distanthorizons.core.wrapperInterfaces.block.IBlockStateWrappe
 import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.IChunkWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IBiomeWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
-import com.seibel.distanthorizons.core.wrapperInterfaces.worldGeneration.AbstractBatchGenerationEnvironmentWrapper;
+import com.seibel.distanthorizons.core.wrapperInterfaces.worldGeneration.IBatchGeneratorEnvironmentWrapper;
 import com.seibel.distanthorizons.coreapi.interfaces.dependencyInjection.IBindable;
 
 import java.io.IOException;
@@ -39,7 +39,7 @@ import java.util.HashSet;
  */
 public interface IWrapperFactory extends IDhApiWrapperFactory, IBindable
 {
-	AbstractBatchGenerationEnvironmentWrapper createBatchGenerator(IDhLevel targetLevel);
+	IBatchGeneratorEnvironmentWrapper createBatchGenerator(IDhLevel targetLevel);
 	
 	IBiomeWrapper deserializeBiomeWrapper(String str, ILevelWrapper levelWrapper) throws IOException;
 	IBiomeWrapper getPlainsBiomeWrapper(ILevelWrapper levelWrapper); // TODO it would be nice to remove the level wrapper if possible to put this in line with getAirBlockStateWrapper() but it isn't necessary 

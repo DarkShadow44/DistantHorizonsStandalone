@@ -23,28 +23,32 @@ import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiWorldGeneratio
 import com.seibel.distanthorizons.core.api.internal.SharedApi;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.dataObjects.fullData.sources.FullDataSourceV2;
+import com.seibel.distanthorizons.core.file.fullDatafile.V2.FullDataSourceProviderV2;
+import com.seibel.distanthorizons.core.file.fullDatafile.V2.FullDataUpdatePropagatorV2;
 import com.seibel.distanthorizons.core.file.structure.ISaveStructure;
 import com.seibel.distanthorizons.core.generation.DhLightingEngine;
 import com.seibel.distanthorizons.core.generation.IFullDataSourceRetrievalQueue;
-import com.seibel.distanthorizons.core.generation.tasks.IWorldGenTaskTracker;
-import com.seibel.distanthorizons.core.generation.tasks.WorldGenResult;
+import com.seibel.distanthorizons.core.generation.tasks.DataSourceRetrievalResult;
+import com.seibel.distanthorizons.core.generation.tasks.ERetrievalResultState;
 import com.seibel.distanthorizons.core.level.IDhLevel;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pooling.PhantomArrayListCheckout;
 import com.seibel.distanthorizons.core.pooling.PhantomArrayListPool;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos2D;
 import com.seibel.distanthorizons.core.render.renderer.IDebugRenderable;
+import com.seibel.distanthorizons.core.util.ExceptionUtil;
 import com.seibel.distanthorizons.core.util.LodUtil;
 import com.seibel.distanthorizons.core.util.threading.PriorityTaskPicker;
 import com.seibel.distanthorizons.core.util.threading.ThreadPoolUtil;
 import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
-import org.apache.logging.log4j.Logger;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
+import java.io.IOException;
+import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -54,7 +58,7 @@ import java.util.stream.IntStream;
 
 public class GeneratedFullDataSourceProvider extends FullDataSourceProviderV2 implements IDebugRenderable
 {
-	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();;
 	
 	/** 
 	 * Having this number too high causes the system to become overwhelmed by
@@ -64,7 +68,9 @@ public class GeneratedFullDataSourceProvider extends FullDataSourceProviderV2 im
 	 * TODO this should be dynamically allocated based on CPU load
 	 *  and abilities.
 	 */
-	public static final int MAX_WORLD_GEN_REQUESTS_PER_THREAD = 20; 
+	public static final int MAX_WORLD_GEN_REQUESTS_PER_THREAD = 20;
+	
+	public static final PhantomArrayListPool ARRAY_LIST_POOL = new PhantomArrayListPool("Generated Provider");
 	
 	
 	private final AtomicReference<IFullDataSourceRetrievalQueue> worldGenQueueRef = new AtomicReference<>(null);
@@ -78,8 +84,10 @@ public class GeneratedFullDataSourceProvider extends FullDataSourceProviderV2 im
 	// constructor //
 	//=============//
 	
-	public GeneratedFullDataSourceProvider(IDhLevel level, ISaveStructure saveStructure) { super(level, saveStructure); }
-	public GeneratedFullDataSourceProvider(IDhLevel level, ISaveStructure saveStructure, @Nullable File saveDirOverride) { super(level, saveStructure, saveDirOverride); }
+	public GeneratedFullDataSourceProvider(IDhLevel level, ISaveStructure saveStructure) throws SQLException, IOException 
+	{ this(level, saveStructure, null); }
+	public GeneratedFullDataSourceProvider(IDhLevel level, ISaveStructure saveStructure, @Nullable File saveDirOverride) throws SQLException, IOException
+	{ super(level, saveStructure, saveDirOverride); }
 	
 	
 	
@@ -108,32 +116,47 @@ public class GeneratedFullDataSourceProvider extends FullDataSourceProviderV2 im
 	// events //
 	//========//
 	
-	private void onWorldGenTaskComplete(WorldGenResult genTaskResult, Throwable exception)
+	private void onWorldGenTaskComplete(DataSourceRetrievalResult genTaskResult, Throwable exception)
 	{
-		if (exception != null)
+		try
 		{
-			// don't log shutdown exceptions
-			if (!(exception instanceof CancellationException || exception.getCause() instanceof CancellationException))
+			if (exception != null)
 			{
-				LOGGER.error("Uncaught Gen Task Exception at ["+genTaskResult.pos+"], error: ["+exception.getMessage()+"].", exception);
+				return;
+			}
+			
+			if (genTaskResult.state == ERetrievalResultState.FAIL)
+			{
+				LodUtil.assertTrue(genTaskResult.dataSource == null, "Errored retrieval object should not have a datasource.");
+				
+				// don't log shutdown exceptions
+				if (!ExceptionUtil.isInterruptOrReject(exception))
+				{
+					LOGGER.error("Uncaught Gen Task Exception at [" + genTaskResult.pos + "], error: [" + exception.getMessage() + "].", exception);
+				}
+			}
+			else if (genTaskResult.state == ERetrievalResultState.SUCCESS)
+			{
+				LodUtil.assertTrue(genTaskResult.dataSource != null, "Successful retrieval object should have a datasource.");
+				
+				this.dataUpdater.updateDataSource(genTaskResult.dataSource);
+				this.fireOnGenPosSuccessListeners(genTaskResult.pos);
+				genTaskResult.dataSource.close();
+			}
+			else if (genTaskResult.state == ERetrievalResultState.REQUIRES_SPLITTING)
+			{
+				// task was split
+				LodUtil.assertTrue(genTaskResult.dataSource == null, "Split retrieval object should not have a datasource.");
+			}
+			else
+			{
+				// shouldn't happen, but just in case
+				LOGGER.warn("Unexpected gen Task state at: [" + DhSectionPos.toString(genTaskResult.pos) + "], state: [" + genTaskResult.state + "], datasource: NULL, exception: NULL.");
 			}
 		}
-		else if (genTaskResult.success)
+		catch (Exception e)
 		{
-			this.fireOnGenPosSuccessListeners(genTaskResult.pos);
-			return;
-		}
-		else
-		{
-			// generation didn't complete
-			LOGGER.debug("Gen Task Failed at " + genTaskResult.pos);
-		}
-		
-		
-		// if the generation task was split up into smaller positions, add the on-complete event to them
-		for (CompletableFuture<WorldGenResult> siblingFuture : genTaskResult.childFutures)
-		{
-			siblingFuture.whenComplete((siblingGenTaskResult, siblingEx) -> this.onWorldGenTaskComplete(siblingGenTaskResult, siblingEx));
+			LOGGER.error("Unexpected issue during onWorldGenTaskComplete, error: ["+e.getMessage()+"].", e);
 		}
 	}
 	
@@ -176,7 +199,7 @@ public class GeneratedFullDataSourceProvider extends FullDataSourceProviderV2 im
 	{
 		boolean oldQueueExists = this.worldGenQueueRef.compareAndSet(null, newWorldGenQueue);
 		LodUtil.assertTrue(oldQueueExists, "previous world gen queue is still here!");
-		LOGGER.info("Set world gen queue for level [" + this.level.getLevelWrapper().getDhIdentifier() + "].");
+		LOGGER.info("Set world gen queue for level [" + this.levelId + "].");
 	}
 	
 	@Override
@@ -193,10 +216,10 @@ public class GeneratedFullDataSourceProvider extends FullDataSourceProviderV2 im
 	}
 	
 	@Override
-	public boolean canQueueRetrieval() { return this.canQueueRetrieval(false); }
-	public boolean canQueueRetrieval(boolean pruneWaitingTasksAboveLimit)
+	public boolean canQueueRetrievalNow() { return this.canQueueRetrievalNow(false); }
+	public boolean canQueueRetrievalNow(boolean pruneWaitingTasksAboveLimit)
 	{
-		if (!super.canQueueRetrieval())
+		if (!super.canQueueRetrievalNow())
 		{
 			return false;
 		}
@@ -212,7 +235,7 @@ public class GeneratedFullDataSourceProvider extends FullDataSourceProviderV2 im
 		
 		PriorityTaskPicker.Executor renderLoadExecutor = ThreadPoolUtil.getRenderLoadingExecutor();
 		if (renderLoadExecutor == null 
-			|| renderLoadExecutor.getQueueSize() >= getMaxUpdateTaskCount() / 2)
+			|| renderLoadExecutor.getQueueSize() >= FullDataUpdatePropagatorV2.getMaxPropagateTaskCount() / 2)
 		{
 			// don't queue additional world gen requests if the render loader handler is overwhelmed,
 			// otherwise LODs may not load in properly
@@ -221,7 +244,7 @@ public class GeneratedFullDataSourceProvider extends FullDataSourceProviderV2 im
 		
 		PriorityTaskPicker.Executor fileHandlerExecutor = ThreadPoolUtil.getFileHandlerExecutor();
 		if (fileHandlerExecutor == null 
-			|| fileHandlerExecutor.getQueueSize() >= getMaxUpdateTaskCount() / 2)
+			|| fileHandlerExecutor.getQueueSize() >= FullDataUpdatePropagatorV2.getMaxPropagateTaskCount() / 2)
 		{
 			// don't queue additional world gen requests if the file handler is overwhelmed,
 			// otherwise LODs may not load in properly
@@ -256,12 +279,16 @@ public class GeneratedFullDataSourceProvider extends FullDataSourceProviderV2 im
 		
 		
 		int availableTaskSlots = maxWorldGenQueueCount - worldGenQueue.getWaitingTaskCount();
-		if (availableTaskSlots <= 0)
+		if (availableTaskSlots == 0)
+		{
+			return false;
+		}
+		else if (availableTaskSlots < 0)
 		{
 			if (pruneWaitingTasksAboveLimit)
 			{
-				AtomicInteger tasksToCancel = new AtomicInteger(-availableTaskSlots + 1);
-				worldGenQueue.removeRetrievalRequestIf(x -> tasksToCancel.getAndDecrement() > 0);
+				AtomicInteger tasksToCancel = new AtomicInteger(availableTaskSlots * -1);
+				worldGenQueue.removeRetrievalRequestIf(taskPos -> tasksToCancel.getAndDecrement() > 0);
 			}
 			else
 			{
@@ -274,7 +301,7 @@ public class GeneratedFullDataSourceProvider extends FullDataSourceProviderV2 im
 	}
 	
 	@Override
-	public CompletableFuture<WorldGenResult> queuePositionForRetrieval(Long genPos)
+	public CompletableFuture<DataSourceRetrievalResult> queuePositionForRetrieval(Long genPos)
 	{
 		IFullDataSourceRetrievalQueue worldGenQueue = this.worldGenQueueRef.get();
 		if (worldGenQueue == null)
@@ -282,26 +309,10 @@ public class GeneratedFullDataSourceProvider extends FullDataSourceProviderV2 im
 			return null;
 		}
 		
-		WorldGenTaskTracker genTaskTracker = new WorldGenTaskTracker(genPos);
-		CompletableFuture<WorldGenResult> worldGenFuture = worldGenQueue.submitRetrievalTask(genPos, (byte) (DhSectionPos.getDetailLevel(genPos) - DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL), genTaskTracker);
-		worldGenFuture.whenComplete((genTaskResult, ex) ->
-		{
-			//LOGGER.info("gen task complete ["+DhSectionPos.toString(genPos)+"]");
-			//this.onWorldGenTaskComplete(genTaskResult, ex);
-		});
+		CompletableFuture<DataSourceRetrievalResult> worldGenFuture = worldGenQueue.submitRetrievalTask(genPos, (byte) (DhSectionPos.getDetailLevel(genPos) - DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL));
+		worldGenFuture.whenComplete(this::onWorldGenTaskComplete);
 		
 		return worldGenFuture;
-	}
-	
-	@Override
-	protected void updateDataSourceAtPos(long updatePos, @NotNull FullDataSourceV2 inputData, boolean lockOnUpdatePos)
-	{
-		super.updateDataSourceAtPos(updatePos, inputData, lockOnUpdatePos);
-		
-		//if (SharedApi.getEnvironment() != EWorldEnvironment.CLIENT_ONLY)
-		//	LOGGER.info("updated ["+DhSectionPos.toString(updatePos)+"]");
-		
-		this.onWorldGenTaskComplete(WorldGenResult.CreateSuccess(updatePos), null);
 	}
 	
 	@Override
@@ -318,22 +329,20 @@ public class GeneratedFullDataSourceProvider extends FullDataSourceProviderV2 im
 	public void clearRetrievalQueue() { this.worldGenQueueRef.set(null); }
 	
 	
-	public boolean isFullyGenerated(ByteArrayList columnGenerationSteps)
+	public boolean generationStepsAreFullyGenerated(ByteArrayList columnGenerationSteps)
 	{
 		return IntStream.range(0, columnGenerationSteps.size())
-				.noneMatch(i ->
-				{
-					byte value = columnGenerationSteps.getByte(i);
-					return value == EDhApiWorldGenerationStep.EMPTY.value
-							|| value == EDhApiWorldGenerationStep.DOWN_SAMPLED.value;
-				});
+			.noneMatch((int intValue) ->
+			{
+				byte value = columnGenerationSteps.getByte(intValue);
+				return value == EDhApiWorldGenerationStep.EMPTY.value
+					|| value == EDhApiWorldGenerationStep.DOWN_SAMPLED.value;
+			});
 	}
-	
-	public static final PhantomArrayListPool ARRAY_LIST_POOL = new PhantomArrayListPool("Generated Provider");
 	
 	
 	@Override
-	public LongArrayList getPositionsToRetrieve(Long pos)
+	public LongArrayList getPositionsToRetrieve(long pos)
 	{
 		IFullDataSourceRetrievalQueue worldGenQueue = this.worldGenQueueRef.get();
 		if (worldGenQueue == null)
@@ -349,7 +358,7 @@ public class GeneratedFullDataSourceProvider extends FullDataSourceProviderV2 im
 			{
 				ByteArrayList columnGenStepArray = checkout.getByteArray(0, FullDataSourceV2.WIDTH*FullDataSourceV2.WIDTH);
 				this.repo.getColumnGenerationStepForPos(pos, columnGenStepArray);
-				if (!columnGenStepArray.isEmpty())
+				if (columnGenStepArray.size() != 0)
 				{
 					boolean positionFullyGenerated = true;
 					
@@ -375,12 +384,11 @@ public class GeneratedFullDataSourceProvider extends FullDataSourceProviderV2 im
 		
 		
 		// this section is missing one or more columns, queue the missing ones for generation.
-		// TODO speed up this logic by only checking ungenerated columns
 		LongArrayList generationList = new LongArrayList();
 		
 		byte lowestGeneratorDetailLevel = (byte) Math.min(
-				worldGenQueue.lowestDataDetail()  + DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL,
-				DhSectionPos.getDetailLevel(pos));
+			worldGenQueue.lowestDataDetail() + DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL,
+			DhSectionPos.getDetailLevel(pos));
 		
 		DhSectionPos.forEachChildAtDetailLevel(pos, lowestGeneratorDetailLevel, (genPos) ->
 		{
@@ -468,48 +476,13 @@ public class GeneratedFullDataSourceProvider extends FullDataSourceProviderV2 im
 	// helper classes //
 	//================//
 	
-	// TODO may not be needed
-	private class WorldGenTaskTracker implements IWorldGenTaskTracker
-	{
-		/** just used when debugging/troubleshooting */
-		private final long pos;
-		
-		public WorldGenTaskTracker(long pos) { this.pos = pos; }
-		
-		
-		@Override
-		public Consumer<FullDataSourceV2> getDataSourceConsumer()
-		{
-			return (dataSource) ->
-			{
-				GeneratedFullDataSourceProvider.this.delayedFullDataSourceSaveCache.writeDataSourceToMemoryAndQueueSave(dataSource);
-			};
-		}
-		
-		@Override
-		public CompletableFuture<Boolean> shouldGenerateSplitChild(long pos)
-		{
-			return GeneratedFullDataSourceProvider.this.getAsync(pos).thenApply(fullDataSource ->
-			{
-				//noinspection TryFinallyCanBeTryWithResources
-				try
-				{
-					return !GeneratedFullDataSourceProvider.this.isFullyGenerated(fullDataSource.columnGenerationSteps);
-				}
-				finally
-				{
-					fullDataSource.close();
-				}
-			});
-		}
-		
-	}
 	private CompletableFuture<Void> onDataSourceSaveAsync(FullDataSourceV2 fullDataSource) 
 	{
 		// block lights should have been populated at the chunkWrapper stage
 		// waiting to populate the data source's skylight at this stage prevents re-lighting and
 		// allows us to reduce cross-chunk lighting issues by lighting the whole 4x4 LOD at once
-		DhLightingEngine.INSTANCE.bakeDataSourceSkyLight(fullDataSource, LodUtil.MAX_MC_LIGHT);
+		int skyLight = this.level.getLevelWrapper().hasSkyLight() ? LodUtil.MAX_MC_LIGHT : LodUtil.MIN_MC_LIGHT;
+		DhLightingEngine.INSTANCE.bakeDataSourceSkyLight(fullDataSource, skyLight);
 		
 		return this.updateDataSourceAsync(fullDataSource);
 	}
@@ -521,7 +494,6 @@ public class GeneratedFullDataSourceProvider extends FullDataSourceProviderV2 im
 	{
 		boolean shouldDoWorldGen();
 		
-		@Nullable
 		DhBlockPos2D getTargetPosForGeneration();
 		
 		/** Fired whenever a section has completed generating */

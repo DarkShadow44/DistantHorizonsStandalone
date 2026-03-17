@@ -75,9 +75,9 @@ public class DhBlockPos implements INetworkObject
 	//========//
 	
 	/** creates a new {@link DhBlockPos} with the given offset from the current pos. */
-	public DhBlockPos createOffset(EDhDirection direction) { return this.mutateOrCreateOffset(direction.getNormal().x, direction.getNormal().y, direction.getNormal().z, null); }
+	public DhBlockPos createOffset(EDhDirection direction) { return this.mutateOrCreateOffset(direction.normal.x, direction.normal.y, direction.normal.z, null); }
 	/** if not null, mutates "mutablePos" so it matches the current pos after being offset. Otherwise creates a new {@link DhBlockPos}. */
-	public void mutateOffset(EDhDirection direction, @NotNull DhBlockPosMutable mutablePos) { this.mutateOrCreateOffset(direction.getNormal().x, direction.getNormal().y, direction.getNormal().z, mutablePos); }
+	public void mutateOffset(EDhDirection direction, @NotNull DhBlockPosMutable mutablePos) { this.mutateOrCreateOffset(direction.normal.x, direction.normal.y, direction.normal.z, mutablePos); }
 	
 	public DhBlockPos createOffset(int x, int y, int z) { return this.mutateOrCreateOffset(x,y,z, null); }
 	public void mutateOffset(int x, int y, int z, @NotNull DhBlockPosMutable mutablePos) { this.mutateOrCreateOffset(x, y, z, mutablePos); }

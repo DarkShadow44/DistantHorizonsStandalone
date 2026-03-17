@@ -21,7 +21,8 @@ package com.seibel.distanthorizons.core.network.event;
 
 import com.google.common.cache.CacheBuilder;
 import com.seibel.distanthorizons.core.config.Config;
-import com.seibel.distanthorizons.core.logging.ConfigBasedLogger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
+import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.network.event.internal.AbstractInternalEvent;
 import com.seibel.distanthorizons.core.network.messages.AbstractNetworkMessage;
 import com.seibel.distanthorizons.core.network.messages.AbstractTrackableMessage;
@@ -30,7 +31,6 @@ import com.seibel.distanthorizons.core.network.session.SessionClosedException;
 import com.seibel.distanthorizons.core.network.messages.requests.CancelMessage;
 import com.seibel.distanthorizons.core.network.messages.requests.ExceptionMessage;
 import com.seibel.distanthorizons.coreapi.ModInfo;
-import org.apache.logging.log4j.LogManager;
 
 import java.io.InvalidClassException;
 import java.util.Collections;
@@ -40,8 +40,9 @@ import java.util.function.Consumer;
 
 public abstract class AbstractNetworkEventSource
 {
-	private static final ConfigBasedLogger LOGGER = new ConfigBasedLogger(LogManager.getLogger(),
-			() -> Config.Common.Logging.logNetworkEvent.get());
+	private static final DhLogger LOGGER = new DhLoggerBuilder()
+			.fileLevelConfig(Config.Common.Logging.logNetworkEventToFile)
+			.build();
 	
 	
 	/**

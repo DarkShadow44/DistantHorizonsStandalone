@@ -20,7 +20,7 @@
 package com.seibel.distanthorizons.core.util.objects.GLMessages;
 
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
-import org.apache.logging.log4j.Logger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -28,7 +28,7 @@ import java.util.function.Function;
 /** Expected message formats can be found in GLMessageTest. */
 public class GLMessageBuilder
 {
-	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
 	/** how many stages are present in the message parser */
 	private static final int FINAL_LEGACY_PARSER_STAGE_INDEX = 15;

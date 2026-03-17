@@ -1,21 +1,40 @@
 package com.seibel.distanthorizons.core.api.internal.chunkUpdating;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.seibel.distanthorizons.core.api.internal.ClientApi;
 import com.seibel.distanthorizons.core.api.internal.SharedApi;
 import com.seibel.distanthorizons.core.config.Config;
+import com.seibel.distanthorizons.core.enums.EMinecraftColor;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
+import com.seibel.distanthorizons.core.multiplayer.client.SyncOnLoadRequestQueue;
 import com.seibel.distanthorizons.core.pos.DhChunkPos;
 import com.seibel.distanthorizons.core.world.EWorldEnvironment;
-import org.apache.logging.log4j.Logger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
+import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.IChunkWrapper;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.Collections;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
 
 public class ChunkUpdateQueueManager
 {
-	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
 	
 	public final ChunkPosQueue updateQueue;
 	public final ChunkPosQueue preUpdateQueue;
+	public final Set<DhChunkPos> ignoredChunkPosSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
 	
+	public final ConcurrentMap<DhChunkPos, IChunkWrapper> queuedChunkWrapperByChunkPos = CacheBuilder.newBuilder()
+		.expireAfterWrite(20, TimeUnit.SECONDS)
+		.<DhChunkPos, IChunkWrapper>build()
+		.asMap();
+	
+	/** dynamically changes based on the number of threads currently available */
 	public int maxSize = 500;
 	
 	private static long lastOverloadedLogMessageMsTime = 0;
@@ -38,12 +57,18 @@ public class ChunkUpdateQueueManager
 	// list/set methods //
 	//==================//
 	
-	public boolean contains(DhChunkPos pos) { return this.updateQueue.contains(pos) || this.preUpdateQueue.contains(pos); }
+	public boolean contains(DhChunkPos pos) 
+	{ 
+		return this.updateQueue.contains(pos)
+			|| this.ignoredChunkPosSet.contains(pos)	
+			|| this.preUpdateQueue.contains(pos); 
+	}
 	
 	public void clear()
 	{
 		this.updateQueue.clear();
 		this.preUpdateQueue.clear();
+		this.ignoredChunkPosSet.clear();
 	}
 	public int getQueuedCount() { return this.updateQueue.getQueuedCount() + this.preUpdateQueue.getQueuedCount(); }
 	public boolean isEmpty()
@@ -57,22 +82,27 @@ public class ChunkUpdateQueueManager
 	 * If there are no more slots, replaces the item furthest from the center in the update queue.
 	 */
 	public void addItemToPreUpdateQueue(DhChunkPos pos, ChunkUpdateData updateData)
+	{ this.addItemToQueue(pos, updateData, this.preUpdateQueue); }
+	
+	public void addItemToUpdateQueue(DhChunkPos pos, ChunkUpdateData updateData)
+	{ this.addItemToQueue(pos, updateData, this.updateQueue); }
+	
+	private void addItemToQueue(DhChunkPos pos, ChunkUpdateData updateData, ChunkPosQueue queue)
 	{
 		int remainingSlots = this.maxSize - this.getQueuedCount();
 		
 		// If no slots are left, get one by removing the item furthest from the center
 		if (remainingSlots <= 0)
 		{
-			if (!this.updateQueue.isEmpty())
+			ChunkUpdateData removedData = queue.popFurthest();
+			if (removedData != null)
 			{
-				this.updateQueue.popFurthest();
-			}
-			else
-			{
-				this.preUpdateQueue.popFurthest();
+				this.queuedChunkWrapperByChunkPos.remove(removedData.chunkWrapper.getChunkPos());
 			}
 		}
-		this.preUpdateQueue.addItem(pos, updateData);
+		
+		queue.addItem(pos,updateData);
+		this.queuedChunkWrapperByChunkPos.putIfAbsent(pos, updateData.chunkWrapper);
 		
 		remainingSlots = this.maxSize - this.getQueuedCount();
 		if (remainingSlots <= 0)
@@ -81,24 +111,6 @@ public class ChunkUpdateQueueManager
 		}
 	}
 	
-	public void addItemToUpdateQueue(DhChunkPos pos, ChunkUpdateData updateData)
-	{
-		int remainingSlots = this.maxSize - this.getQueuedCount();
-		
-		// If no slots are left, get one by removing the item furthest from the center
-		if (remainingSlots <= 0)
-		{
-			this.updateQueue.popFurthest();
-		}
-		
-		this.updateQueue.addItem(pos,updateData);
-		
-		remainingSlots = this.maxSize - this.getQueuedCount();
-		if (remainingSlots <= 0)
-		{
-			this.sendOverloadMessage();
-		}
-	}
 	
 	private void sendOverloadMessage()
 	{
@@ -108,7 +120,7 @@ public class ChunkUpdateQueueManager
 		{
 			lastOverloadedLogMessageMsTime = System.currentTimeMillis();
 			
-			String message = "\u00A76" + "Distant Horizons overloaded, too many chunks queued for LOD processing. " + "\u00A7r" +
+			String message = EMinecraftColor.ORANGE + "Distant Horizons overloaded, too many chunks queued for LOD processing. " + EMinecraftColor.CLEAR_FORMATTING +
 					"\nThis may result in holes in your LODs. " +
 					"\nFix: move through the world slower, decrease your vanilla render distance, slow down your world pre-generator (IE Chunky), or increase the Distant Horizons' CPU thread counts. " +
 					"\nMax queue count [" + SharedApi.CHUNK_UPDATE_QUEUE_MANAGER.maxSize + "] ([" + SharedApi.MAX_UPDATING_CHUNK_COUNT_PER_THREAD_AND_PLAYER + "] per thread+players).";
@@ -128,6 +140,35 @@ public class ChunkUpdateQueueManager
 			}
 		}
 	}
+	
+	/** 
+	 * Tries to return a cloned chunk wrapper from memory.
+	 * Returns null if no chunk is available.
+	 * <br><br>
+	 * This is done instead of accessing the MC level since
+	 * accessing the level often requires running on the render or server
+	 * thread, which causes stuttering.
+	 */
+	@Nullable
+	public IChunkWrapper tryGetChunk(DhChunkPos pos)
+	{
+		IChunkWrapper existingWrapper = this.queuedChunkWrapperByChunkPos.get(pos);
+		if (existingWrapper == null)
+		{
+			return null;
+		}
+	
+		return existingWrapper.copy();
+	}
+	
+	
+	
+	//=========//
+	// ignores //
+	//=========//
+	
+	public void addPosToIgnore(DhChunkPos chunkPos) { this.ignoredChunkPosSet.add(chunkPos); }
+	public void removePosToIgnore(DhChunkPos chunkPos) { this.ignoredChunkPosSet.remove(chunkPos); }
 	
 	
 	

@@ -27,6 +27,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.ByteBuffer;
 
+import com.seibel.distanthorizons.core.config.Config;
+import com.seibel.distanthorizons.core.logging.DhLogger;
+import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.render.glObject.GLProxy;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.opengl.GL32;
@@ -41,6 +44,12 @@ import org.lwjgl.system.NativeType;
  */
 public class Shader
 {
+	private static final DhLogger LOGGER = new DhLoggerBuilder()
+			.fileLevelConfig(Config.Common.Logging.logRendererGLEventToFile)
+			.chatLevelConfig(Config.Common.Logging.logRendererGLEventToChat)
+			.build();
+	
+	
 	/** OpenGL shader ID */
 	public final int id;
 	
@@ -60,7 +69,7 @@ public class Shader
 	 */
 	public Shader(int type, String path, boolean absoluteFilePath)
 	{
-		GLProxy.GL_LOGGER.info("Loading shader at [" + path + "]");
+		LOGGER.info("Loading shader at [" + path + "]");
 		// Create an empty shader object
 		this.id = GL32.glCreateShader(type);
 		if (this.id == 0)
@@ -80,13 +89,13 @@ public class Shader
 			this.free(); // important!
 			throw new RuntimeException(message);
 		}
-		GLProxy.GL_LOGGER.info("Shader at " + path + " loaded successfully.");
+		LOGGER.info("Shader at " + path + " loaded successfully.");
 	}
 	
 	public Shader(int type, String sourceString)
 	{
-		GLProxy.GL_LOGGER.info("Loading shader with type: ["+type+"]");
-		GLProxy.GL_LOGGER.debug("Source: \n["+sourceString+"]");
+		LOGGER.info("Loading shader with type: ["+type+"]");
+		LOGGER.debug("Source: \n["+sourceString+"]");
 		if (sourceString == null || sourceString.isEmpty())
 		{
 			throw new IllegalArgumentException("No shader source given.");
@@ -111,7 +120,7 @@ public class Shader
 			this.free(); // important!
 			throw new RuntimeException(message);
 		}
-		GLProxy.GL_LOGGER.info("Shader loaded sucessfully.");
+		LOGGER.info("Shader loaded sucessfully.");
 	}
 	
 	

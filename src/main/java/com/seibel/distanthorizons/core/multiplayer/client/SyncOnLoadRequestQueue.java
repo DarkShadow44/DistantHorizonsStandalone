@@ -2,6 +2,7 @@ package com.seibel.distanthorizons.core.multiplayer.client;
 
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.generation.RemoteWorldRetrievalQueue;
+import com.seibel.distanthorizons.core.generation.tasks.DataSourceRetrievalResult;
 import com.seibel.distanthorizons.core.level.DhClientLevel;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos2D;
@@ -35,12 +36,12 @@ public class SyncOnLoadRequestQueue extends AbstractFullDataNetworkRequestQueue
 	@Override
 	protected int getRequestRateLimit() { return this.networkState.sessionConfig.getSyncOnLoginRateLimit(); }
 	@Override
-	protected boolean isSectionAllowedToGenerate(long sectionPos, DhBlockPos2D targetPos)
+	protected boolean sectionInAllowedGenerationRadius(long sectionPos, DhBlockPos2D targetPos)
 	{
 		return DhSectionPos.getChebyshevSignedBlockDistance(sectionPos, targetPos) <= this.networkState.sessionConfig.getMaxSyncOnLoadDistance() * 16;
 	}
 	@Override
-	protected boolean onBeforeRequest(long sectionPos, CompletableFuture<ERequestResult> future) { return true; }
+	protected boolean onBeforeRequest(long sectionPos, CompletableFuture<DataSourceRetrievalResult> future) { return true; }
 	
 	@Override
 	protected String getQueueName() { return "Sync On Login Queue"; }

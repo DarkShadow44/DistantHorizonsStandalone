@@ -28,7 +28,7 @@ import com.seibel.distanthorizons.api.objects.render.DhApiRenderableBox;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.util.math.Vec3d;
 import com.seibel.distanthorizons.core.util.math.Vec3f;
-import org.apache.logging.log4j.Logger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 
 import java.util.List;
 import java.util.*;
@@ -41,7 +41,7 @@ import java.util.*;
  */
 public class GenericRenderObjectFactory implements IDhApiCustomRenderObjectFactory
 {
-	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
 	public static final GenericRenderObjectFactory INSTANCE = new GenericRenderObjectFactory();
 	

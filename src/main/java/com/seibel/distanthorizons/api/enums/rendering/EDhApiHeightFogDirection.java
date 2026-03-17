@@ -33,11 +33,6 @@ package com.seibel.distanthorizons.api.enums.rendering;
  */
 public enum EDhApiHeightFogDirection
 {
-	// Reminder:
-	// when adding items up the API minor version
-	// when removing items up the API major version
-	
-	
 	ABOVE_CAMERA                (true,  true,  false),
 	BELOW_CAMERA                (true,  false, true),
 	ABOVE_AND_BELOW_CAMERA      (true,  true,  true),

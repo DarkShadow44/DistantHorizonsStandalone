@@ -82,7 +82,7 @@ public class FogApplyShader extends AbstractShaderRenderer
 		GL32.glUniform1i(this.colorTextureUniform, 0);
 		
 		GLMC.glActiveTexture(GL32.GL_TEXTURE1);
-		GLMC.glBindTexture(LodRenderer.getActiveDepthTextureId());
+		GLMC.glBindTexture(LodRenderer.INSTANCE.getActiveDepthTextureId());
 		GL32.glUniform1i(this.depthTextureUniform, 1);
 		
 	}
@@ -108,7 +108,7 @@ public class FogApplyShader extends AbstractShaderRenderer
 		
 		// apply the rendered Fog to DH's framebuffer
 		GLMC.glBindFramebuffer(GL32.GL_READ_FRAMEBUFFER, FogShader.INSTANCE.frameBuffer);
-		GLMC.glBindFramebuffer(GL32.GL_DRAW_FRAMEBUFFER, LodRenderer.getActiveFramebufferId());
+		GLMC.glBindFramebuffer(GL32.GL_DRAW_FRAMEBUFFER, LodRenderer.INSTANCE.getActiveFramebufferId());
 		
 		ScreenQuad.INSTANCE.render();
 		

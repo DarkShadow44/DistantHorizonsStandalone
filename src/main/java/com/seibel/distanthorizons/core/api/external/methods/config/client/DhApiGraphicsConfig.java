@@ -23,10 +23,10 @@ import com.seibel.distanthorizons.api.enums.config.*;
 import com.seibel.distanthorizons.api.enums.rendering.EDhApiTransparency;
 import com.seibel.distanthorizons.api.interfaces.config.IDhApiConfigValue;
 import com.seibel.distanthorizons.api.interfaces.config.client.*;
-import com.seibel.distanthorizons.api.objects.config.DhApiConfigValue;
+import com.seibel.distanthorizons.core.config.api.DhApiConfigValue;
 import com.seibel.distanthorizons.api.enums.rendering.EDhApiRendererMode;
 import com.seibel.distanthorizons.core.config.Config;
-import com.seibel.distanthorizons.coreapi.util.converters.RenderModeEnabledConverter;
+import com.seibel.distanthorizons.core.config.api.converters.RenderModeEnabledConverter;
 
 public class DhApiGraphicsConfig implements IDhApiGraphicsConfig
 {
@@ -97,10 +97,9 @@ public class DhApiGraphicsConfig implements IDhApiGraphicsConfig
 	public IDhApiConfigValue<Boolean> tintWithAvoidedBlocks()
 	{ return new DhApiConfigValue<Boolean, Boolean>(Config.Client.Advanced.Graphics.Quality.tintWithAvoidedBlocks); }
 	
-	// TODO re-implement
-//	@Override
-//	public IDhApiConfigValue<Integer> getBiomeBlending()
-//	{ return new DhApiConfigValue<Integer, Integer>(Quality.lodBiomeBlending); }
+	@Override
+	public IDhApiConfigValue<Integer> getBiomeBlending()
+	{ return new DhApiConfigValue<Integer, Integer>(Config.Client.Advanced.Graphics.Quality.lodBiomeBlending); }
 	
 	
 	

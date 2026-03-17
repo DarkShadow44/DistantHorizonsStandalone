@@ -28,6 +28,10 @@ public class ServerPlayerState implements Closeable
 	private final SessionConfig.AnyChangeListener configAnyChangeListener = new SessionConfig.AnyChangeListener(this::sendConfigMessage);
 	
 	
+	private final String serverKeyWithoutId = Config.Server.serverKey.get();
+	private final String serverKey = (this.serverKeyWithoutId.isEmpty() ? "" : Config.Server.serverId.get() + "_" + this.serverKeyWithoutId.trim())
+			.replaceAll("[^" + LevelInitMessage.ALLOWED_CHARS_REGEX + " ]", "")
+			.replaceAll(" ", "_");
 	private String lastLevelKey = "";
 	
 	
@@ -90,7 +94,7 @@ public class ServerPlayerState implements Closeable
 			if (!levelKey.equals(this.lastLevelKey))
 			{
 				this.lastLevelKey = levelKey;
-				this.networkSession.sendMessage(new LevelInitMessage(levelKey));
+				this.networkSession.sendMessage(new LevelInitMessage(this.serverKey, levelKey));
 			}
 		}
 	}
@@ -98,8 +102,8 @@ public class ServerPlayerState implements Closeable
 	private void sendConfigMessage()
 	{
 		double coordinateScale = this.getServerPlayer().getLevel().getDimensionType().getCoordinateScale();
-		this.sessionConfig.constrainValue(Config.Server.generationBoundsX, (int) (Config.Server.generationBoundsX.get() / coordinateScale));
-		this.sessionConfig.constrainValue(Config.Server.generationBoundsZ, (int) (Config.Server.generationBoundsZ.get() / coordinateScale));
+		this.sessionConfig.constrainValue(Config.Common.WorldGenerator.generationCenterChunkX, (int) (Config.Common.WorldGenerator.generationCenterChunkX.get() / coordinateScale));
+		this.sessionConfig.constrainValue(Config.Common.WorldGenerator.generationCenterChunkZ, (int) (Config.Common.WorldGenerator.generationCenterChunkZ.get() / coordinateScale));
 		
 		this.networkSession.sendMessage(new SessionConfigMessage(this.sessionConfig));
 	}

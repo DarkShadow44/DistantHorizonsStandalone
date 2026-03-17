@@ -19,11 +19,13 @@
 
 package com.seibel.distanthorizons.core.logging.f3;
 
+import com.seibel.distanthorizons.core.api.internal.ClientApi;
 import com.seibel.distanthorizons.core.api.internal.SharedApi;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.jar.ModJarInfo;
 import com.seibel.distanthorizons.core.level.IDhLevel;
+import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pooling.PhantomArrayListPool;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
 import com.seibel.distanthorizons.core.render.RenderBufferHandler;
@@ -35,7 +37,7 @@ import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftCli
 import com.seibel.distanthorizons.coreapi.ModInfo;
 import com.seibel.distanthorizons.coreapi.util.StringUtil;
 import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 
 import java.text.NumberFormat;
 import java.util.*;
@@ -43,7 +45,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 
 public class F3Screen
 {
-	private static final Logger LOGGER = LogManager.getLogger();
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	private static final IMinecraftClientWrapper MC_CLIENT = SingletonInjector.INSTANCE.get(IMinecraftClientWrapper.class);
 	
 	public static final NumberFormat NUMBER_FORMAT = NumberFormat.getIntegerInstance();
@@ -108,6 +110,13 @@ public class F3Screen
 		{
 			messageList.add("Build: " + StringUtil.shortenString(ModJarInfo.Git_Commit, 8) + " (" + ModJarInfo.Git_Branch + ")");
 		}
+		
+		// render validation error
+		if (ClientApi.INSTANCE.lastRenderParamValidationMessage != null)
+		{
+			messageList.add("Render Validation Err: " + ClientApi.INSTANCE.lastRenderParamValidationMessage);
+		}
+		
 		
 		// player pos
 		if (Config.Client.Advanced.Debugging.F3Screen.showPlayerPos.get())

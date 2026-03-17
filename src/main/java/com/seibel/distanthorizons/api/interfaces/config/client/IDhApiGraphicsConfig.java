@@ -104,7 +104,7 @@ public interface IDhApiGraphicsConfig extends IDhApiConfigGroup
 	 * 2 = blending of 5x5			<br>
 	 * ...							<br>
 	 */
-//	IDhApiConfigValue<Integer> getBiomeBlending();
+	IDhApiConfigValue<Integer> getBiomeBlending();
 	
 	
 	

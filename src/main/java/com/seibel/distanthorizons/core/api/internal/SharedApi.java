@@ -25,6 +25,7 @@ import com.seibel.distanthorizons.core.Initializer;
 import com.seibel.distanthorizons.core.api.internal.chunkUpdating.ChunkUpdateData;
 import com.seibel.distanthorizons.core.api.internal.chunkUpdating.ChunkUpdateQueueManager;
 import com.seibel.distanthorizons.core.config.Config;
+import com.seibel.distanthorizons.core.config.eventHandlers.IgnoredDimensionCsvHandler;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.generation.DhLightingEngine;
 import com.seibel.distanthorizons.core.level.DhClientLevel;
@@ -47,7 +48,7 @@ import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftSha
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
 import com.seibel.distanthorizons.coreapi.DependencyInjection.ApiEventInjector;
-import org.apache.logging.log4j.Logger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -58,7 +59,7 @@ public class SharedApi
 {
 	public static final SharedApi INSTANCE = new SharedApi();
 	
-	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	/** will be null on the server-side */
 	@Nullable
 	private static final IMinecraftRenderWrapper MC_RENDER = SingletonInjector.INSTANCE.get(IMinecraftRenderWrapper.class);
@@ -141,24 +142,16 @@ public class SharedApi
 		}
 	}
 	
-	public static void worldGenTick(Runnable worldGenRunnable)
-	{
-		lastWorldGenTickDelta--;
-		if (lastWorldGenTickDelta <= 0)
-		{
-			worldGenRunnable.run();
-			lastWorldGenTickDelta = 20;
-		}
-	}
-	
 	@Nullable
 	public static AbstractDhWorld getAbstractDhWorld() { return currentWorld; }
-	/** returns null if the {@link SharedApi#currentWorld} isn't a {@link DhClientServerWorld} */
-	public static DhClientServerWorld getDhClientServerWorld() { return (currentWorld instanceof DhClientServerWorld) ? (DhClientServerWorld) currentWorld : null; }
+	
 	/** returns null if the {@link SharedApi#currentWorld} isn't a {@link DhClientWorld} or {@link DhClientServerWorld} */
-	public static IDhClientWorld getIDhClientWorld() { return (currentWorld instanceof IDhClientWorld) ? (IDhClientWorld) currentWorld : null; }
+	@Nullable
+	public static IDhClientWorld tryGetDhClientWorld() { return (currentWorld instanceof IDhClientWorld) ? (IDhClientWorld) currentWorld : null; }
+	
 	/** returns null if the {@link SharedApi#currentWorld} isn't a {@link DhServerWorld} or {@link DhClientServerWorld} */
-	public static IDhServerWorld getIDhServerWorld() { return (currentWorld instanceof IDhServerWorld) ? (IDhServerWorld) currentWorld : null; }
+	@Nullable
+	public static IDhServerWorld tryGetDhServerWorld() { return (currentWorld instanceof IDhServerWorld) ? (IDhServerWorld) currentWorld : null; }
 	
 	
 	
@@ -192,12 +185,11 @@ public class SharedApi
 	public void chunkBlockChangedEvent(IChunkWrapper chunk, ILevelWrapper level) { this.applyChunkUpdate(chunk, level, true, false); }
 	public void chunkLoadEvent(IChunkWrapper chunk, ILevelWrapper level) { this.applyChunkUpdate(chunk, level, true, true); }
 	
-	//public void applyChunkUpdate(IChunkWrapper chunkWrapper, ILevelWrapper level, boolean canGetNeighboringChunks) { this.applyChunkUpdate(chunkWrapper, level, canGetNeighboringChunks, false); }
 	public void applyChunkUpdate(IChunkWrapper chunkWrapper, ILevelWrapper level, boolean canGetNeighboringChunks, boolean newlyLoaded)
 	{
-		//========================//
-		// world and level checks //
-		//========================//
+		//===================//
+		// validation checks //
+		//===================//
 		
 		if (chunkWrapper == null)
 		{
@@ -225,7 +217,6 @@ public class SharedApi
 			return;
 		}
 		
-		
 		// only continue if the level is loaded
 		IDhLevel dhLevel = dhWorld.getLevel(level);
 		if (dhLevel == null)
@@ -240,6 +231,7 @@ public class SharedApi
 			return;
 		}
 		
+		// ignore chunk updates if the network should handle them
 		if (dhLevel instanceof DhClientLevel)
 		{
 			if (!((DhClientLevel) dhLevel).shouldProcessChunkUpdate(chunkWrapper.getChunkPos()))
@@ -248,7 +240,14 @@ public class SharedApi
 			}
 		}
 		
-		// shoudln't normally happen, but just in case
+		// ignore chunk updates for non-rendered levels
+		String dimName = dhLevel.getLevelWrapper().getDimensionName();
+		if (IgnoredDimensionCsvHandler.INSTANCE.dimensionNameShouldBeIgnored(dimName))
+		{
+			return;
+		}
+		
+		// shouldn't normally happen, but just in case
 		if (CHUNK_UPDATE_QUEUE_MANAGER.contains(chunkWrapper.getChunkPos()))
 		{
 			// TODO this will prevent some LODs from updating across dimensions if multiple levels are loaded
@@ -256,94 +255,20 @@ public class SharedApi
 		}
 		
 		
-		
-		//===============================//
-		// update the necessary chunk(s) //
-		//===============================//
-		
-		if (!canGetNeighboringChunks)
-		{
-			// only update the center chunk
-			queueChunkUpdate(chunkWrapper, null, dhLevel, false);
-			return;
-		}
-		
-		
-		ArrayList<IChunkWrapper> neighboringChunkList = getNeighborChunkListForChunk(chunkWrapper, dhLevel);
-		
-		if (newlyLoaded)
-		{
-			// this means this chunkWrapper is a newly loaded chunk 
-			// which may be missing some neighboring chunk data
-			// because it is bordering the render distance
-			// thus, only the chunks neighboring this chunkWrapper will get updated
-			// because those are more likely to have their full neighboring chunk data
-			//TODO this does not prevent those neighboring chunks from updating
-			// this newly loaded chunk that were just skipped
-			// leading to occasional lighting issues
-			for (IChunkWrapper neighboringChunk : neighboringChunkList)
-			{
-				if (neighboringChunk == chunkWrapper)
-				{
-					continue;
-				}
-				
-				this.applyChunkUpdate(neighboringChunk, level, true, false);
-			}
-		}
-		else
-		{
-			// if not all neighboring chunk data is available, do not try to update
-			if (neighboringChunkList.size() < 9)
-			{
-				return;
-			}
-			
-			// update the center with any existing neighbour chunks. 
-			// this is done so lighting changes are propagated correctly
-			queueChunkUpdate(chunkWrapper, neighboringChunkList, dhLevel, true);
-		}
-	}
-	private static ArrayList<IChunkWrapper> getNeighborChunkListForChunk(IChunkWrapper chunkWrapper, IDhLevel dhLevel)
-	{
-		// get the neighboring chunk list
-		ArrayList<IChunkWrapper> neighborChunkList = new ArrayList<>(9);
-		for (int xOffset = -1; xOffset <= 1; xOffset++)
-		{
-			for (int zOffset = -1; zOffset <= 1; zOffset++)
-			{
-				if (xOffset == 0 && zOffset == 0)
-				{
-					// center chunk
-					neighborChunkList.add(chunkWrapper);
-				}
-				else
-				{
-					// neighboring chunk 
-					DhChunkPos neighborPos = new DhChunkPos(chunkWrapper.getChunkPos().getX() + xOffset, chunkWrapper.getChunkPos().getZ() + zOffset);
-					IChunkWrapper neighborChunk = dhLevel.getLevelWrapper().tryGetChunk(neighborPos);
-					if (neighborChunk != null)
-					{
-						neighborChunkList.add(neighborChunk);
-					}
-				}
-			}
-		}
-		return neighborChunkList;
+		queueChunkUpdate(chunkWrapper, dhLevel);
 	}
 	
-	private static void queueChunkUpdate(IChunkWrapper chunkWrapper, @Nullable ArrayList<IChunkWrapper> neighborChunkList, IDhLevel dhLevel, boolean canGetNeighboringChunks)
+	private static void queueChunkUpdate(IChunkWrapper chunkWrapper, IDhLevel dhLevel)
 	{
-				
 		// return if the chunk is already queued
 		if (CHUNK_UPDATE_QUEUE_MANAGER.contains(chunkWrapper.getChunkPos()))
 		{
 			return;
 		}
-			
+		
 		
 		// add chunk update data to preUpdate queue
-		ChunkUpdateData updateData = new ChunkUpdateData(chunkWrapper, neighborChunkList, dhLevel, canGetNeighboringChunks);
+		ChunkUpdateData updateData = new ChunkUpdateData(chunkWrapper, dhLevel);
 		CHUNK_UPDATE_QUEUE_MANAGER.addItemToPreUpdateQueue(chunkWrapper.getChunkPos(), updateData);
 		
 		
@@ -351,7 +276,8 @@ public class SharedApi
 		// (this prevents doing extra work queuing tasks that may not be necessary)
 		// and makes sure the chunks closest to the player are updated first
 		PriorityTaskPicker.Executor executor = ThreadPoolUtil.getChunkToLodBuilderExecutor();
-		if (executor != null && executor.getQueueSize() < executor.getPoolSize())
+		if (executor != null
+			&& executor.getQueueSize() < executor.getPoolSize())
 		{
 			try
 			{
@@ -391,10 +317,7 @@ public class SharedApi
 		// update the necessary chunk(s) //
 		//===============================//
 		
-		// process preUpdate queue
 		processQueuedChunkPreUpdate();
-		
-		// process update queue
 		processQueuedChunkUpdate();
 		
 		// queue the next position if there are still positions to process
@@ -423,8 +346,7 @@ public class SharedApi
 		
 		IDhLevel dhLevel = preUpdateData.dhLevel;
 		IChunkWrapper chunkWrapper = preUpdateData.chunkWrapper;
-		boolean canGetNeighboringChunks = preUpdateData.canGetNeighboringChunks;
-		ArrayList<IChunkWrapper> neighborChunkList = preUpdateData.neighborChunkList;
+		chunkWrapper.createDhHeightMaps();
 		
 		try
 		{
@@ -441,34 +363,6 @@ public class SharedApi
 					// do not update the chunk if the hash is the same
 					return;
 				}
-				
-				// if this chunk will update and can get neighbors
-				// then queue neighboring chunks to update as well
-				// neighboring chunk will get added directly to the update queue
-				// so they won't queue further chunk updates
-				if (neighborChunkList != null 
-					&& !neighborChunkList.isEmpty())
-				{
-					for (IChunkWrapper adjacentChunk : neighborChunkList)
-					{
-						// pulling a new chunkWrapper is necessary to prevent concurrent modification on the existing chunkWrappers
-						IChunkWrapper newCenterChunk = dhLevel.getLevelWrapper().tryGetChunk(adjacentChunk.getChunkPos());
-						if (newCenterChunk != null)
-						{
-							ChunkUpdateData newUpdateData;
-							if (canGetNeighboringChunks)
-							{
-								newUpdateData = new ChunkUpdateData(newCenterChunk, getNeighborChunkListForChunk(newCenterChunk, dhLevel), dhLevel, true);
-							}
-							else
-							{
-								newUpdateData = new ChunkUpdateData(newCenterChunk, null, dhLevel, false);
-							}
-							
-							CHUNK_UPDATE_QUEUE_MANAGER.addItemToUpdateQueue(newCenterChunk.getChunkPos(), newUpdateData);
-						}
-					}
-				}
 			}
 			
 			CHUNK_UPDATE_QUEUE_MANAGER.addItemToUpdateQueue(chunkWrapper.getChunkPos(), preUpdateData);
@@ -481,8 +375,6 @@ public class SharedApi
 	
 	private static void processQueuedChunkUpdate()
 	{
-		//LOGGER.trace(chunkWrapper.getChunkPos() + " " + executor.getActiveCount() + " / " + executor.getQueue().size() + " - " + executor.getCompletedTaskCount());
-		
 		ChunkUpdateData updateData = CHUNK_UPDATE_QUEUE_MANAGER.updateQueue.popClosest();
 		if (updateData == null)
 		{
@@ -491,20 +383,17 @@ public class SharedApi
 		
 		IChunkWrapper chunkWrapper = updateData.chunkWrapper;
 		IDhLevel dhLevel = updateData.dhLevel;
-		// having a list of the nearby chunks is needed for lighting and beacon generation
-		@Nullable ArrayList<IChunkWrapper> nearbyChunkList = updateData.neighborChunkList; 
+		ILevelWrapper levelWrapper = dhLevel.getLevelWrapper();
 		
-		// a non-null list is needed for the lighting engine
-		if (nearbyChunkList == null)
-		{
-			nearbyChunkList = new ArrayList<IChunkWrapper>();
-			nearbyChunkList.add(chunkWrapper);
-		}
+		// having a list of the nearby chunks is needed for lighting and beacon generation
+		ArrayList<IChunkWrapper> nearbyChunkList  = tryGetNeighborChunkListForChunk(chunkWrapper);
+		
+		
 		
 		try
 		{
 			// sky lighting is populated later at the data source level
-			DhLightingEngine.INSTANCE.bakeChunkBlockLighting(chunkWrapper, nearbyChunkList, dhLevel.hasSkyLight() ? LodUtil.MAX_MC_LIGHT : LodUtil.MIN_MC_LIGHT);
+			DhLightingEngine.INSTANCE.bakeChunkBlockLighting(chunkWrapper, nearbyChunkList, levelWrapper.hasSkyLight() ? LodUtil.MAX_MC_LIGHT : LodUtil.MIN_MC_LIGHT);
 			
 			dhLevel.updateBeaconBeamsForChunk(chunkWrapper, nearbyChunkList);
 			
@@ -515,6 +404,35 @@ public class SharedApi
 		{
 			LOGGER.error("Unexpected error when updating chunk at pos: [" + chunkWrapper.getChunkPos() + "]", e);
 		}
+		
+		CHUNK_UPDATE_QUEUE_MANAGER.queuedChunkWrapperByChunkPos.remove(updateData.chunkWrapper.getChunkPos());
+	}
+	private static ArrayList<IChunkWrapper> tryGetNeighborChunkListForChunk(IChunkWrapper chunkWrapper)
+	{
+		// get the neighboring chunk list
+		ArrayList<IChunkWrapper> neighborChunkList = new ArrayList<>(9);
+		for (int xOffset = -1; xOffset <= 1; xOffset++)
+		{
+			for (int zOffset = -1; zOffset <= 1; zOffset++)
+			{
+				if (xOffset == 0 && zOffset == 0)
+				{
+					// center chunk
+					neighborChunkList.add(chunkWrapper);
+				}
+				else
+				{
+					// neighboring chunk 
+					DhChunkPos neighborPos = new DhChunkPos(chunkWrapper.getChunkPos().getX() + xOffset, chunkWrapper.getChunkPos().getZ() + zOffset);
+					IChunkWrapper neighborChunk = CHUNK_UPDATE_QUEUE_MANAGER.tryGetChunk(neighborPos);
+					if (neighborChunk != null)
+					{
+						neighborChunkList.add(neighborChunk);
+					}
+				}
+			}
+		}
+		return neighborChunkList;
 	}
 	
 	

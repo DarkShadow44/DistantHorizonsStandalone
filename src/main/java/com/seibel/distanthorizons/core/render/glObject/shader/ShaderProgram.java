@@ -95,7 +95,7 @@ public class ShaderProgram
 		
 		for (int i = 0; i < attributes.length; i++)
 		{
-			GL32.glBindAttribLocation(id, i, attributes[i]);
+			GL32.glBindAttribLocation(this.id, i, attributes[i]);
 		}
 		GL32.glLinkProgram(this.id);
 		

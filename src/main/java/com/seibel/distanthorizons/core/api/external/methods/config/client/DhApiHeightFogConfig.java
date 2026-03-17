@@ -24,7 +24,7 @@ import com.seibel.distanthorizons.api.enums.rendering.EDhApiHeightFogMixMode;
 import com.seibel.distanthorizons.api.enums.rendering.EDhApiHeightFogDirection;
 import com.seibel.distanthorizons.api.interfaces.config.IDhApiConfigValue;
 import com.seibel.distanthorizons.api.interfaces.config.client.IDhApiHeightFogConfig;
-import com.seibel.distanthorizons.api.objects.config.DhApiConfigValue;
+import com.seibel.distanthorizons.core.config.api.DhApiConfigValue;
 import com.seibel.distanthorizons.core.config.Config;
 
 public class DhApiHeightFogConfig implements IDhApiHeightFogConfig

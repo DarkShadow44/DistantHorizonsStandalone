@@ -140,40 +140,4 @@ public class ColumnQuadView implements IColumnDataView
 		}
 	}
 	
-	public void copyTo(ColumnQuadView target)
-	{
-		if (target.xSize != xSize || target.zSize != zSize)
-			throw new IllegalArgumentException("Target view must have same size as this view");
-		
-		for (int x = 0; x < xSize; x++)
-		{
-			target.getRow(x).changeVerticalSizeFrom(getRow(x));
-		}
-	}
-	
-	public void mergeMultiColumnFrom(ColumnQuadView source)
-	{
-		if (source.xSize == xSize && source.zSize == zSize)
-		{
-			source.copyTo(this);
-			return;
-		}
-		if (source.xSize < xSize || source.zSize < zSize)
-			throw new IllegalArgumentException("Source view must have same or larger size as this view");
-		
-		int srcXPerTrgX = source.xSize / xSize;
-		int srcZPerTrgZ = source.zSize / zSize;
-		if (source.xSize % xSize != 0 || source.zSize % zSize != 0)
-			throw new IllegalArgumentException("Source view's size must be a multiple of this view's size");
-		
-		for (int x = 0; x < xSize; x++)
-		{
-			for (int z = 0; z < zSize; z++)
-			{
-				ColumnQuadView srcBlock = source.subView(x * srcXPerTrgX, z * srcZPerTrgZ, srcXPerTrgX, srcZPerTrgZ);
-				get(x, z).mergeMultiDataFrom(srcBlock);
-			}
-		}
-	}
-	
 }

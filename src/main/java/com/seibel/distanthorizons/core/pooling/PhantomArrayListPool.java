@@ -2,6 +2,8 @@ package com.seibel.distanthorizons.core.pooling;
 
 import com.seibel.distanthorizons.core.api.internal.ClientApi;
 import com.seibel.distanthorizons.core.config.Config;
+import com.seibel.distanthorizons.core.enums.EMinecraftColor;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.logging.f3.F3Screen;
 import com.seibel.distanthorizons.core.util.ThreadUtil;
@@ -11,7 +13,7 @@ import com.seibel.distanthorizons.coreapi.util.StringUtil;
 import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.shorts.ShortArrayList;
-import org.apache.logging.log4j.Logger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -54,7 +56,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class PhantomArrayListPool
 {
-	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
 	/** 
 	 * the recycler thread needs to be triggered relatively frequently to prevent
@@ -158,6 +160,7 @@ public class PhantomArrayListPool
 			{
 				// pool is empty, create new checkout
 				checkout = new PhantomArrayListCheckout(this);
+				checkout.onCheckout();
 			}
 			else
 			{
@@ -165,6 +168,7 @@ public class PhantomArrayListPool
 				if (checkout != null)
 				{
 					// use pooled checkout
+					checkout.onCheckout();
 				}
 				else
 				{
@@ -175,13 +179,13 @@ public class PhantomArrayListPool
 					{
 						lowMemoryWarningLogged = true;
 						
-						// orange text
-						String message = "\u00A76" + "Distant Horizons: Insufficient memory detected." + "\u00A7r \n" +
+						String message = EMinecraftColor.ORANGE + "Distant Horizons: Insufficient memory detected." + EMinecraftColor.CLEAR_FORMATTING + "\n" +
 								"This may cause stuttering or crashing. \n" +
 								"Potential causes: \n" +
 								"1. your allocated memory isn't high enough \n" +
 								"2. your DH CPU preset is too high \n" +
-								"3. your DH quality preset is too high";
+								"3. your DH quality preset is too high \n" +
+								"4. you have other memory hungry mod(s)";
 						
 						LOGGER.warn(message);
 						if (Config.Common.Logging.Warning.showPoolInsufficientMemoryWarning.get())

@@ -21,12 +21,12 @@ package com.seibel.distanthorizons.core.util;
 
 import com.seibel.distanthorizons.api.enums.rendering.EDhApiBlockMaterial;
 import com.seibel.distanthorizons.core.level.AbstractDhLevel;
-import com.seibel.distanthorizons.core.logging.SpamReducedLogger;
 import com.seibel.distanthorizons.core.dataObjects.render.columnViews.ColumnArrayView;
 import com.seibel.distanthorizons.core.dataObjects.render.columnViews.IColumnDataView;
+import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
+import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
 import com.seibel.distanthorizons.coreapi.ModInfo;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 
 
 /**
@@ -69,7 +69,7 @@ public class RenderDataPointUtil
 	
 	public static final boolean RUN_VALIDATION = ModInfo.IS_DEV_BUILD;
 	
-	private static final Logger LOGGER = LogManager.getLogger();
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
 	
 	public final static int EMPTY_DATA = 0;
@@ -203,9 +203,9 @@ public class RenderDataPointUtil
 		return dataPoint & ~(HEIGHT_SHIFTED_MASK | DEPTH_SHIFTED_MASK) | height | depth;
 	}
 	
-	/** AKA the ending/top/highest Y value above {@link AbstractDhLevel#getMinY()} */
+	/** AKA the ending/top/highest Y value above {@link ILevelWrapper#getMinHeight()} ()} */
 	public static short getYMax(long dataPoint) { return (short) ((dataPoint >>> HEIGHT_SHIFT) & HEIGHT_MASK); }
-	/** AKA the starting/bottom/lowest Y value above {@link AbstractDhLevel#getMinY()} */
+	/** AKA the starting/bottom/lowest Y value above {@link ILevelWrapper#getMinHeight()} */
 	public static short getYMin(long dataPoint) { return (short) ((dataPoint >>> DEPTH_SHIFT) & DEPTH_MASK); }
 	public static long setYMin(long dataPoint, int depth) { return (long) ((dataPoint & ~(DEPTH_MASK << DEPTH_SHIFT)) | (depth & DEPTH_MASK) << DEPTH_SHIFT); }
 	
@@ -220,7 +220,7 @@ public class RenderDataPointUtil
 	public static byte getBlockMaterialId(long dataPoint) { return (byte) ((dataPoint >>> IRIS_BLOCK_MATERIAL_ID_SHIFT) & IRIS_BLOCK_MATERIAL_ID_MASK); }
 	
 	
-	public static boolean isVoid(long dataPoint) { return (((dataPoint >>> DEPTH_SHIFT) & HEIGHT_DEPTH_MASK) == 0); }
+	public static boolean hasZeroHeight(long dataPoint) { return (((dataPoint >>> DEPTH_SHIFT) & HEIGHT_DEPTH_MASK) == 0); }
 	
 	public static boolean doesDataPointExist(long dataPoint) { return dataPoint != EMPTY_DATA; }
 	
@@ -241,7 +241,7 @@ public class RenderDataPointUtil
 		{
 			return "null";
 		}
-		else if (isVoid(dataPoint))
+		else if (hasZeroHeight(dataPoint))
 		{
 			return "void";
 		}

@@ -17,6 +17,7 @@ uniform float uMinLight;
 uniform float uBias;
 uniform mat4 uInvProj;
 uniform mat4 uProj;
+uniform float uFadeDistanceInBlocks;
 
 const float EPSILON = 1.e-6;
 const float GOLDEN_ANGLE = 2.39996323;
@@ -99,16 +100,30 @@ void main()
     {
         vec3 viewPos = calcViewPosition(vec3(TexCoord, fragmentDepth));
         
-        #ifdef GL_ARB_derivative_control
-        // Get higher precision derivatives when available
-        vec3 viewNormal = cross(dFdxFine(viewPos.xyz), dFdyFine(viewPos.xyz));
-        #else
-        vec3 viewNormal = cross(dFdx(viewPos.xyz), dFdy(viewPos.xyz));
-        #endif
+        // fading is done to prevent banding/noise
+        // at super far distance
+        float distanceFromCamera = length(viewPos);
+        float fadeDistance = uFadeDistanceInBlocks;
+        if (distanceFromCamera < fadeDistance)
+        {
+            #ifdef GL_ARB_derivative_control
+            // Get higher precision derivatives when available
+            vec3 viewNormal = cross(dFdxFine(viewPos.xyz), dFdyFine(viewPos.xyz));
+            #else
+            vec3 viewNormal = cross(dFdx(viewPos.xyz), dFdy(viewPos.xyz));
+            #endif
 
-        viewNormal = normalize(viewNormal);
-
-        occlusion = GetSpiralOcclusion(TexCoord, viewPos, viewNormal);
+            viewNormal = normalize(viewNormal);
+            occlusion = GetSpiralOcclusion(TexCoord, viewPos, viewNormal);
+            
+            // linearly fade with distance
+            occlusion *= (fadeDistance - distanceFromCamera) / fadeDistance;
+        }
+        else
+        {
+            // we're out of range, no need to do any SSAO calculations
+            occlusion = 0.0;
+        }
     }
     
     fragColor = vec4(vec3(1.0 - occlusion), 1.0);

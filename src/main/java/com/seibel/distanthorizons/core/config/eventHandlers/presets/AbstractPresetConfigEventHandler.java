@@ -19,30 +19,30 @@
 
 package com.seibel.distanthorizons.core.config.eventHandlers.presets;
 
-import com.seibel.distanthorizons.core.config.ConfigBase;
-import com.seibel.distanthorizons.core.config.ConfigEntryWithPresetOptions;
+import com.seibel.distanthorizons.core.config.ConfigHandler;
+import com.seibel.distanthorizons.core.config.ConfigPresetOptions;
 import com.seibel.distanthorizons.core.config.listeners.IConfigListener;
+import com.seibel.distanthorizons.core.config.types.AbstractConfigBase;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
+import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.util.TimerUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.config.IConfigGui;
-import com.seibel.distanthorizons.coreapi.interfaces.config.IConfigEntry;
 import com.seibel.distanthorizons.coreapi.util.StringUtil;
 import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
 public abstract class AbstractPresetConfigEventHandler<TPresetEnum extends Enum<?>> implements IConfigListener
 {
-	private static final Logger LOGGER = LogManager.getLogger();
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	private static final long MS_DELAY_BEFORE_APPLYING_PRESET = 3_000;
 	
 	@Nullable
-	private static IConfigGui configGui = SingletonInjector.INSTANCE.get(IConfigGui.class);
-	private static boolean guiListenersAdded = false;
+	private static final IConfigGui CONFIG_GUI = SingletonInjector.INSTANCE.get(IConfigGui.class);
 	
-	protected final ArrayList<ConfigEntryWithPresetOptions<TPresetEnum, ?>> configList = new ArrayList<>();
+	protected final ArrayList<ConfigPresetOptions<TPresetEnum, ?>> configList = new ArrayList<>();
 	/** this timer is used so each preset isn't applied while a user is clicking through the config options */
 	protected Timer applyPresetTimer = null;
 	/** the enum to apply after the timer expires or the UI screen changes. */
@@ -59,9 +59,9 @@ public abstract class AbstractPresetConfigEventHandler<TPresetEnum extends Enum<
 	public AbstractPresetConfigEventHandler()
 	{
 		// don't update the UI when running on a server
-		if (configGui != null) 
+		if (CONFIG_GUI != null) 
 		{
-			configGui.addOnScreenChangeListener(this::onConfigUiClosed);
+			CONFIG_GUI.addOnScreenChangeListener(this::onConfigUiClosed);
 		}
 	}
 	
@@ -90,7 +90,7 @@ public abstract class AbstractPresetConfigEventHandler<TPresetEnum extends Enum<
 	public void onConfigValueSet()
 	{
 		// don't try modifying the config before it's been loaded from file
-		if (!ConfigBase.INSTANCE.isLoaded)
+		if (!ConfigHandler.INSTANCE.isLoaded)
 		{
 			return;
 		}
@@ -140,11 +140,11 @@ public abstract class AbstractPresetConfigEventHandler<TPresetEnum extends Enum<
 		
 		
 		
-		LOGGER.info("changing preset to: " + newPresetEnum);
+		LOGGER.debug("changing preset to: [" + newPresetEnum + "].");
 		this.changingPreset = true;
 		
 		// update the controlled config values
-		for (ConfigEntryWithPresetOptions<TPresetEnum, ?> configEntry : this.configList)
+		for (ConfigPresetOptions<TPresetEnum, ?> configEntry : this.configList)
 		{
 			configEntry.updateConfigEntry(newPresetEnum);
 		}
@@ -152,7 +152,7 @@ public abstract class AbstractPresetConfigEventHandler<TPresetEnum extends Enum<
 		this.setUiOnlyConfigValues();
 		
 		this.changingPreset = false;
-		LOGGER.info("preset active: " + newPresetEnum);
+		LOGGER.debug("preset active: [" + newPresetEnum + "].");
 	}
 	
 	/**
@@ -200,7 +200,7 @@ public abstract class AbstractPresetConfigEventHandler<TPresetEnum extends Enum<
 		
 		
 		// remove any quick options that aren't possible with the currently selected options
-		for (ConfigEntryWithPresetOptions<TPresetEnum, ?> configEntry : this.configList)
+		for (ConfigPresetOptions<TPresetEnum, ?> configEntry : this.configList)
 		{
 			HashSet<TPresetEnum> optionPresetSet = configEntry.getPossibleQualitiesFromCurrentOptionValue();
 			possiblePresetSet.retainAll(optionPresetSet);
@@ -230,7 +230,7 @@ public abstract class AbstractPresetConfigEventHandler<TPresetEnum extends Enum<
 	// abstract methods //
 	//==================//
 	
-	protected abstract IConfigEntry<TPresetEnum> getPresetConfigEntry();
+	protected abstract AbstractConfigBase<TPresetEnum> getPresetConfigEntry();
 	
 	protected abstract List<TPresetEnum> getPresetEnumList();
 	protected abstract TPresetEnum getCustomPresetEnum();

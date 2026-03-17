@@ -33,31 +33,27 @@ import com.seibel.distanthorizons.core.config.types.enums.*;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
+import com.seibel.distanthorizons.core.util.NativeDialogUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.IWrapperFactory;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftSharedWrapper;
 import com.seibel.distanthorizons.coreapi.ModInfo;
-import org.apache.logging.log4j.Logger;
-import org.lwjgl.util.tinyfd.TinyFileDialogs;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 
-import java.awt.*;
 import java.io.File;
 import java.util.*;
 import java.util.List;
 
 /**
- * This handles any configuration the user has access to. <br><br>
- *
- * Note: <br>
- * Only add simpler listeners here (IE listeners that only depend on 1 config entry).
- * For listeners that depend on 2 or more config entries, add them before the config menu is opened.
- * Otherwise, you will have issues where only some of the config entries will exist when your listener is created.
+ * This handles any configuration the user has access to.
  *
  * @author coolGi
+ * 
+ * @see ConfigHandler
  */
 @SuppressWarnings("ConcatenationWithEmptyString")
 public class Config
 {
-	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
 	public static ConfigCategory client = new ConfigCategory.Builder().set(Client.class).build();
 	
@@ -106,10 +102,7 @@ public class Config
 		
 		public static ConfigUiLinkedEntry quickEnableWorldGenerator = new ConfigUiLinkedEntry(Common.WorldGenerator.enableDistantGeneration);
 		
-		public static ConfigEntry<Boolean> quickShowWorldGenProgress = new ConfigEntry.Builder<Boolean>()
-				.set(true)
-				.setAppearance(EConfigEntryAppearance.ONLY_IN_GUI)
-				.build();
+		public static ConfigUiLinkedEntry quickShowWorldGenProgress = new ConfigUiLinkedEntry(Common.WorldGenerator.showGenerationProgress);
 		
 		public static ConfigUiLinkedEntry quickLodCloudRendering = new ConfigUiLinkedEntry(Advanced.Graphics.GenericRendering.enableCloudRendering);
 		
@@ -129,7 +122,6 @@ public class Config
 		{
 			// common config links need to have their destination
 			// since they aren't part of "client" config class
-			// TODO determine their destination programically instead of hard coding the value
 			
 			public static ConfigUIComment advancedHeader = new ConfigUIComment.Builder().setParentConfigClass(Advanced.class).build();
 			
@@ -175,6 +167,20 @@ public class Config
 				public static ConfigCategory culling = new ConfigCategory.Builder().set(Culling.class).build();
 				public static ConfigUISpacer cullingSpacer = new ConfigUISpacer.Builder().build();
 				
+				public static ConfigEntry<Boolean> overrideVanillaGraphicsSettings = new ConfigEntry.Builder<Boolean>()
+					.set(true)
+					.comment("" +
+						"If true some vanilla graphics settings will be automatically changed \n" +
+						"during DH setup to provide a better experience. \n" +
+						" \n" +
+						"IE disabling vanilla clouds (which render on top of DH LODs), \n" +
+						"   and chunk fading (DH already fades MC chunks) \n" +
+						"")
+					.build();
+				public static ConfigUISpacer overrideVanillaSpacer = new ConfigUISpacer.Builder().build();
+				
+				
+				
 				public static ConfigCategory experimental = new ConfigCategory.Builder().set(Experimental.class).build();
 				
 				
@@ -188,7 +194,6 @@ public class Config
 							.comment("" +
 									"The radius of the mod's render distance. (measured in chunks)\n" +
 									"")
-							.setPerformance(EConfigEntryPerformance.HIGH)
 							.build();
 					
 					public static ConfigEntry<EDhApiHorizontalQuality> horizontalQuality = new ConfigEntry.Builder<EDhApiHorizontalQuality>()
@@ -197,7 +202,7 @@ public class Config
 									+ "This indicates how quickly LODs decrease in quality the further away they are. \n"
 									+ "Higher settings will render higher quality fake chunks farther away, \n"
 									+ "but will increase memory and GPU usage.")
-							.setPerformance(EConfigEntryPerformance.MEDIUM)
+							.addListener(ReloadLodsConfigEventHandler.DELAYED_INSTANCE)
 							.build();
 					
 					public static ConfigEntry<EDhApiMaxHorizontalResolution> maxHorizontalResolution = new ConfigEntry.Builder<EDhApiMaxHorizontalResolution>()
@@ -214,7 +219,6 @@ public class Config
 									+ "\n"
 									+ "Lowest Quality: " + EDhApiMaxHorizontalResolution.CHUNK + "\n"
 									+ "Highest Quality: " + EDhApiMaxHorizontalResolution.BLOCK)
-							.setPerformance(EConfigEntryPerformance.MEDIUM)
 							.addListener(ReloadLodsConfigEventHandler.DELAYED_INSTANCE)
 							.build();
 					
@@ -228,7 +232,6 @@ public class Config
 									+ "\n"
 									+ "Lowest Quality: " + EDhApiVerticalQuality.HEIGHT_MAP + "\n"
 									+ "Highest Quality: " + EDhApiVerticalQuality.EXTREME)
-							.setPerformance(EConfigEntryPerformance.VERY_HIGH)
 							.addListener(ReloadLodsConfigEventHandler.DELAYED_INSTANCE)
 							.build();
 					
@@ -241,7 +244,6 @@ public class Config
 									+ EDhApiTransparency.FAKE + ": LODs will be opaque, but shaded to match the blocks underneath. \n"
 									+ EDhApiTransparency.DISABLED + ": LODs will be opaque. \n"
 									+ "")
-							.setPerformance(EConfigEntryPerformance.MEDIUM)
 							.addListener(ReloadLodsConfigEventHandler.DELAYED_INSTANCE)
 							.build();
 					
@@ -253,7 +255,6 @@ public class Config
 									+ EDhApiBlocksToAvoid.NONE + ": Represent all blocks in the LODs \n"
 									+ EDhApiBlocksToAvoid.NON_COLLIDING + ": Only represent solid blocks in the LODs (tall grass, torches, etc. won't count for a LOD's height) \n"
 									+ "")
-							.setPerformance(EConfigEntryPerformance.NONE)
 							.addListener(ReloadLodsConfigEventHandler.DELAYED_INSTANCE)
 							.build();
 					
@@ -265,14 +266,13 @@ public class Config
 									+ "True: a red flower will tint the grass below it red. \n"
 									+ "False: skipped blocks will not change color of surface below them. "
 									+ "")
-							.setPerformance(EConfigEntryPerformance.NONE)
 							.addListener(ReloadLodsConfigEventHandler.DELAYED_INSTANCE)
 							.build();
 					
 					public static ConfigEntry<Double> lodBias = new ConfigEntry.Builder<Double>()
 							.setMinDefaultMax(0d, 0d, null)
 							.comment(""
-									+ "What the value should vanilla Minecraft's texture LodBias be? \n"
+									+ "What value should vanilla Minecraft's texture LodBias be? \n"
 									+ "If set to 0 the mod wont overwrite vanilla's default (which so happens to also be 0)")
 							.build();
 					
@@ -286,7 +286,6 @@ public class Config
 									+ "              Can be used to force LOD shading when using some shaders. \n"
 									+ EDhApiLodShading.DISABLED + ": All LOD sides will be rendered with the same brightness. \n"
 									+ "")
-							.setPerformance(EConfigEntryPerformance.NONE)
 							.addListener(ReloadLodsConfigEventHandler.DELAYED_INSTANCE)
 							.build();
 					
@@ -299,7 +298,6 @@ public class Config
 									+ EDhApiGrassSideRendering.FADE_TO_DIRT + ": sides fade from grass to dirt. \n"
 									+ EDhApiGrassSideRendering.AS_DIRT + ": sides render entirely as dirt. \n"
 									+ "")
-							.setPerformance(EConfigEntryPerformance.NONE)
 							.addListener(ReloadLodsConfigEventHandler.DELAYED_INSTANCE)
 							.build();
 					
@@ -310,7 +308,6 @@ public class Config
 									+ "If false LODs will cut off abruptly at a set distance from the camera. \n"
 									+ "This setting is affected by the vanilla overdraw prevention config. \n"
 									+ "")
-							.setPerformance(EConfigEntryPerformance.LOW)
 							.build();
 					
 					public static ConfigEntry<EDhApiMcRenderingFadeMode> vanillaFadeMode = new ConfigEntry.Builder<EDhApiMcRenderingFadeMode>()
@@ -322,7 +319,14 @@ public class Config
 									+ EDhApiMcRenderingFadeMode.SINGLE_PASS + ": Fades after MC's transparent pass, opaque blocks underwater won't be faded. \n"
 									+ EDhApiMcRenderingFadeMode.DOUBLE_PASS + ": Slowest, fades after both MC's opaque and transparent passes, provides the smoothest transition. \n"
 									+ "")
-							.setPerformance(EConfigEntryPerformance.LOW)
+							.build();
+					
+					public static ConfigEntry<Boolean> dhFadeFarClipPlane = new ConfigEntry.Builder<Boolean>()
+							.set(true)
+							.comment(""
+									+ "Should DH fade out before reaching the far clip plane? \n"
+									+ "This is helpful to prevent DH clouds from cutting off in the distance. \n"
+									+ "")
 							.build();
 					
 					public static ConfigEntry<Double> brightnessMultiplier = new ConfigEntry.Builder<Double>() // TODO: Make this a float (the ClassicConfigGUI doesnt support floats)
@@ -367,7 +371,6 @@ public class Config
 					public static ConfigEntry<Boolean> enableSsao = new ConfigEntry.Builder<Boolean>()
 							.set(true)
 							.comment("Enable Screen Space Ambient Occlusion")
-							.setPerformance(EConfigEntryPerformance.MEDIUM)
 							.build();
 					
 					public static ConfigEntry<Integer> sampleCount = new ConfigEntry.Builder<Integer>()
@@ -376,7 +379,6 @@ public class Config
 									"Determines how many points in space are sampled for the occlusion test. \n" +
 									"Higher numbers will improve quality and reduce banding, but will increase GPU load." +
 									"")
-							.setPerformance(EConfigEntryPerformance.MEDIUM)
 							.build();
 					
 					public static ConfigEntry<Double> radius = new ConfigEntry.Builder<Double>()
@@ -384,7 +386,6 @@ public class Config
 							.comment("" +
 									"Determines the radius Screen Space Ambient Occlusion is applied, measured in blocks." +
 									"")
-							.setPerformance(EConfigEntryPerformance.NONE)
 							.build();
 					
 					public static ConfigEntry<Double> strength = new ConfigEntry.Builder<Double>()
@@ -392,7 +393,6 @@ public class Config
 							.comment("" +
 									"Determines how dark the Screen Space Ambient Occlusion effect will be." +
 									"")
-							.setPerformance(EConfigEntryPerformance.NONE)
 							.build();
 					
 					public static ConfigEntry<Double> bias = new ConfigEntry.Builder<Double>()
@@ -400,7 +400,6 @@ public class Config
 							.comment("" +
 									"Increasing the value can reduce banding at the cost of reducing the strength of the effect." +
 									"")
-							.setPerformance(EConfigEntryPerformance.NONE)
 							.build();
 					
 					public static ConfigEntry<Double> minLight = new ConfigEntry.Builder<Double>()
@@ -410,7 +409,6 @@ public class Config
 									"0 = totally black at the corners \n" +
 									"1 = no shadow" +
 									"")
-							.setPerformance(EConfigEntryPerformance.NONE)
 							.build();
 					
 					public static ConfigEntry<Integer> blurRadius = new ConfigEntry.Builder<Integer>()
@@ -419,7 +417,14 @@ public class Config
 									"The radius, measured in pixels, that blurring is calculated for the SSAO. \n" +
 									"Higher numbers will reduce banding at the cost of GPU performance." +
 									"")
-							.setPerformance(EConfigEntryPerformance.HIGH)
+							.build();
+					
+					public static ConfigEntry<Integer> fadeDistanceInBlocks = new ConfigEntry.Builder<Integer>()
+							.setMinDefaultMax(0, 1_600, 30_000_000)
+							.comment("" +
+									"The distance in blocks from the camera where the SSAO will fade out to. \n"+
+									"This is done to prevent banding and noise at extreme distances. \n"+
+									"")
 							.build();
 					
 				}
@@ -482,7 +487,6 @@ public class Config
 							.comment(""
 									+ "Determines if fog is drawn on DH LODs. \n"
 									+ "")
-							.setPerformance(EConfigEntryPerformance.MEDIUM)
 							.build();
 					
 					public static ConfigEntry<EDhApiFogColorMode> colorMode = new ConfigEntry.Builder<EDhApiFogColorMode>()
@@ -492,7 +496,6 @@ public class Config
 									+ "\n"
 									+ EDhApiFogColorMode.USE_WORLD_FOG_COLOR + ": Use the world's fog color. \n"
 									+ EDhApiFogColorMode.USE_SKY_COLOR + ": Use the sky's color.")
-							.setPerformance(EConfigEntryPerformance.NONE)
 							.build();
 					
 					public static ConfigEntry<Boolean> enableVanillaFog = new ConfigEntry.Builder<Boolean>()
@@ -501,11 +504,6 @@ public class Config
 									+ "Should Minecraft's fog render? \n"
 									+ "Note: Other mods may conflict with this setting. \n"
 									+ "")
-							.build();
-					@Deprecated
-					public static ConfigEntry<Boolean> disableVanillaFog = new ConfigEntry.Builder<Boolean>()
-							.set(!enableVanillaFog.get())
-							.setAppearance(EConfigEntryAppearance.ONLY_IN_API)
 							.build();
 					
 					
@@ -567,14 +565,6 @@ public class Config
 					public static ConfigCategory heightFog = new ConfigCategory.Builder().set(HeightFog.class).build();
 					
 					
-					
-					static
-					{
-						disableVanillaFog.addListener(
-								new ConfigChangeListener<Boolean>(disableVanillaFog,
-								(disableVanillaFog) -> enableVanillaFog.setApiValue(disableVanillaFog))
-						);
-					}
 					
 					public static class HeightFog
 					{
@@ -727,12 +717,10 @@ public class Config
 									+ "\n"
 									+ "Increasing the vanilla render distance increases the effectiveness of this setting."
 									+ "")
-							.setPerformance(EConfigEntryPerformance.NONE)
 							.build();
 					
 					public static ConfigEntry<Boolean> enableCaveCulling = new ConfigEntry.Builder<Boolean>()
 							.set(true)
-							.setPerformance(EConfigEntryPerformance.HIGH)
 							.comment(""
 									+ "If enabled caves won't be rendered. \n"
 									+ "\n"
@@ -792,6 +780,11 @@ public class Config
 									+ "A comma separated list of block resource locations that won't be rendered by DH. \n"
 									+ "Air is always included in this list. \n"
 									+ "Requires a restart to change. \n"
+									+ "\n"
+									+ "Note:\n"
+									+ "If you see gaps, or holes you may have to change\n"
+									+ "worldCompression to ["+EDhApiWorldCompressionMode.MERGE_SAME_BLOCKS+"] and re-generate the LODs.\n"
+									+ "Black spots may happen occur to block lighting being zero for covered blocks.\n"
 									+ "")
 							.build();
 					
@@ -840,7 +833,7 @@ public class Config
 					public static ConfigUIComment experimentalHeader = new ConfigUIComment.Builder().setParentConfigClass(Experimental.class).build();
 					
 					public static ConfigEntry<Integer> earthCurveRatio = new ConfigEntry.Builder<Integer>()
-							.setMinDefaultMax(0, 0, 5000)
+							.setMinDefaultMax(-5000, 0, 5000)
 							.comment(""
 									+ "This is the earth size ratio when applying the curvature shader effect. \n"
 									+ "Note: Enabling this feature may cause rendering bugs. \n"
@@ -850,11 +843,26 @@ public class Config
 									+ "100 = 1 to 100 (63,710 blocks) \n"
 									+ "10000 = 1 to 10000 (637.1 blocks) \n"
 									+ "\n"
-									+ "Note: Due to current limitations, the min value is 50 \n"
+									+ "Note: Due to current limitations, the min value is ["+WorldCurvatureConfigEventHandler.MIN_VALID_CURVE_VALUE+"] \n"
 									+ "and the max value is 5000. Any values outside this range \n"
 									+ "will be set to 0 (disabled).")
 							.addListener(WorldCurvatureConfigEventHandler.INSTANCE)
 							.build();
+					
+					public static ConfigEntry<String> ignoredDimensionCsv = new ConfigEntry.Builder<String>()
+						.set("")
+						.comment(""
+							+ "A comma separated list of dimension resource locations where DH won't render. \n"
+							+ "\n"
+							+ "Example: \"minecraft:the_nether,minecraft:the_end\"\n"
+							+ "\n"
+							+ "Note:\n"
+							+ "Some DH settings will be disabled and/or changed to improve \n"
+							+ "visuals when DH rendering is disabled. \n"
+							+ "")
+						.addListener(IgnoredDimensionCsvHandler.INSTANCE)
+						.build();
+					
 				}
 				
 			}
@@ -1086,11 +1094,10 @@ public class Config
 									+ "")
 							.build();
 					
-					public static ConfigEntry<Boolean> validateBufferIdsBeforeRendering = new ConfigEntry.Builder<Boolean>()
-							.set(false)
+					public static ConfigEntry<EDhApiGpuUploadMethod> glUploadMode = new ConfigEntry.Builder<EDhApiGpuUploadMethod>()
+							.set(EDhApiGpuUploadMethod.AUTO)
 							.comment(""
-									+ "Massively reduces FPS. \n"
-									+ "Should only be used if mysterious EXCEPTION_ACCESS_VIOLATION crashes are happening in DH's rendering code for troubleshooting. \n"
+									+ "\n"
 									+ "")
 							.build();
 					
@@ -1237,23 +1244,17 @@ public class Config
 							.setAppearance(EConfigEntryAppearance.ONLY_IN_FILE) // no GUI renderer set up currently
 							.build();
 					
-					public static ConfigUIButton uiButtonTest = new ConfigUIButton(() -> 
+					public static ConfigUIButton uiButtonTest = new ConfigUIButton(() ->
 					{
 						// running on a separate thread is necessary to prevent locking
-						new Thread(() -> 
-						{
-							if (!GraphicsEnvironment.isHeadless())
-							{
-								LOGGER.info("Attempting to show tinyfd message box...");
-								boolean buttonPress = TinyFileDialogs.tinyfd_messageBox("Button pressed!", "UITester dialog", "ok", "info", false);
-								LOGGER.info("dialog returned with ["+(buttonPress ? "TRUE" : "FALSE")+"]");
-							}
-							else
-							{
-								LOGGER.info("button pressed!");
-							}
-						}).start();
+						new Thread(() -> onButtonPressed()).start();
 					});
+					public static void onButtonPressed()
+					{
+						LOGGER.info("Attempting to show tinyfd message box...");
+						boolean buttonPress = NativeDialogUtil.showDialog("Button pressed!", "UITester dialog", "ok", "info");
+						LOGGER.info("dialog returned with ["+(buttonPress ? "TRUE" : "FALSE")+"]");
+					}
 					
 					public static ConfigCategory categoryTest = new ConfigCategory.Builder().set(CategoryTest.class).build();
 					
@@ -1369,6 +1370,37 @@ public class Config
 							+ "")
 					.build();
 			
+			public static ConfigEntry<Integer> generationCenterChunkX = new ConfigEntry.Builder<Integer>()
+				.setChatCommandName("generation.bounds.centerChunk.x")
+				.setAppearance(EConfigEntryAppearance.ONLY_IN_FILE)
+				.setMinDefaultMax(Integer.MIN_VALUE, 0, Integer.MAX_VALUE)
+				.comment("" +
+					"The center X chunk position that the world gen max radius is centered around. \n" +
+					"")
+				.build();
+			public static ConfigEntry<Integer> generationCenterChunkZ = new ConfigEntry.Builder<Integer>()
+				.setChatCommandName("generation.bounds.centerChunk.z")
+				.setAppearance(EConfigEntryAppearance.ONLY_IN_FILE)
+				.setMinDefaultMax(Integer.MIN_VALUE, 0, Integer.MAX_VALUE)
+				.comment("" +
+					"The center Z chunk position that the world gen max radius is centered around. \n" +
+					"")
+				.build();
+			public static ConfigEntry<Integer> generationMaxChunkRadius = new ConfigEntry.Builder<Integer>()
+				.setChatCommandName("generation.bounds.radiusInChunks")
+				.setAppearance(EConfigEntryAppearance.ONLY_IN_FILE)
+				.setMinDefaultMax(0, 0, Integer.MAX_VALUE)
+				.comment("" +
+					"The max radius in chunks around the central point where world generation is allowed. \n" +
+					"If this value is set to 0, generation bounds are disabled and the render distance will be used. \n" +
+					"\n" +
+					"This should only be set if you have a pre-generated world that has a very limited size. \n" +
+					"Setting this on a normal MC world will prevent the world generator from filling \n" +
+					"out your render distance. \n" +
+					"")
+				.build();
+			
+			
 		}
 		
 		public static class LodBuilding
@@ -1379,7 +1411,7 @@ public class Config
 					.set(false)
 					// enabling this can be quite detrimental to performance,
 					// so hiding it in the config file should reduce people accidentally enabling it
-					.setAppearance(isRunningInDevEnvironment() ? EConfigEntryAppearance.ALL : EConfigEntryAppearance.ONLY_IN_FILE)
+					.setAppearance(EConfigEntryAppearance.ONLY_IN_FILE)
 					.comment(""
 							+ "Enabling this will drastically increase chunk processing time\n"
 							+ "and you may need to increase your CPU load to handle it.\n"
@@ -1394,37 +1426,9 @@ public class Config
 					.build();
 			
 			public static ConfigEntry<EDhApiDataCompressionMode> dataCompression = new ConfigEntry.Builder<EDhApiDataCompressionMode>()
-					.set(EDhApiDataCompressionMode.Z_STD)
-					.comment(""
-							+ "What algorithm should be used to compress new LOD data? \n"
-							+ "This setting will only affect new or updated LOD data, \n"
-							+ "any data already generated when this setting is changed will be\n"
-							+ "unaffected until it needs to be re-written to the database.\n"
-							+ "\n"
-							+ EDhApiDataCompressionMode.UNCOMPRESSED + " \n"
-							+ "Should only be used for testing, is worse in every way vs ["+EDhApiDataCompressionMode.LZ4+"].\n"
-							+ "Expected Compression Ratio: 1.0\n"
-							+ "Estimated average DTO read speed: 6.09 milliseconds\n"
-							+ "Estimated average DTO write speed: 6.01 milliseconds\n"
-							+ "\n"
-							+ EDhApiDataCompressionMode.LZ4 + " \n"
-							+ "A good option if you're CPU limited and have plenty of hard drive space.\n"
-							+ "Expected Compression Ratio: 0.4513\n"
-							+ "Estimated average DTO read speed: 3.25 ms\n"
-							+ "Estimated average DTO write speed: 5.99 ms\n"
-							+ "\n"
-							+ EDhApiDataCompressionMode.Z_STD + " \n"
-							+ "A good option if you're CPU limited and have plenty of hard drive space.\n"
-							+ "Expected Compression Ratio: 0.2606\n"
-							+ "Estimated average DTO read speed: 9.31 ms\n"
-							+ "Estimated average DTO write speed: 15.13 ms\n"
-							+ "\n"
-							+ EDhApiDataCompressionMode.LZMA2 + " \n"
-							+ "Slow but very good compression.\n"
-							+ "Expected Compression Ratio: 0.2\n"
-							+ "Estimated average DTO read speed: 13.29 ms\n"
-							+ "Estimated average DTO write speed: 70.95 ms\n"
-							+ "")
+					.set(EDhApiDataCompressionMode.Z_STD_BLOCK)
+					// only visible via the API since there is no reason to use any compressor except ZStandard as of 2025-11-24
+					.setAppearance(EConfigEntryAppearance.ONLY_IN_API)
 					.build();
 			
 			public static ConfigEntry<EDhApiWorldCompressionMode> worldCompression = new ConfigEntry.Builder<EDhApiWorldCompressionMode>()
@@ -1444,49 +1448,6 @@ public class Config
 							+ "Only visible block/biome changes are recorded in the database. \n"
 							+ "Hidden blocks (IE ores) are ignored.  \n"
 							+ "Expected Compression Ratio: 0.7\n"
-							+ "")
-					.build();
-			
-			public static ConfigEntry<Boolean> recalculateChunkHeightmaps = new ConfigEntry.Builder<Boolean>()
-					.set(false)
-					.comment(""
-							+ "True: Recalculate chunk height maps before chunks can be used by DH.\n"
-							+ "      This can fix problems with worlds created by World Painter or \n"
-							+ "      other external tools where the heightmap format may be incorrect. \n"
-							+ "False: Assume any height maps handled by Minecraft are correct. \n"
-							+ "\n"
-							+ "Fastest: False\n"
-							+ "Most Compatible: True\n"
-							+ "")
-					.build();
-			
-			public static ConfigEntry<Boolean> pullLightingForPregeneratedChunks = new ConfigEntry.Builder<Boolean>()
-					.set(false)
-					.comment(""
-							+ "If true LOD generation for pre-existing chunks will attempt to pull the lighting data \n"
-							+ "saved in Minecraft's Region files. \n"
-							+ "If false DH will pull in chunks without lighting and re-light them. \n"
-							+ " \n"
-							+ "Setting this to true will result in faster LOD generation \n"
-							+ "for already generated worlds, but is broken by most lighting mods. \n"
-							+ " \n"
-							+ "Set this to false if LODs are black. \n"
-							+ "")
-					.build();
-			
-			public static ConfigEntry<Boolean> assumePreExistingChunksAreFinished = new ConfigEntry.Builder<Boolean>()
-					.set(false)
-					.comment(""
-							+ "When DH pulls in pre-existing chunks it will attempt to \n"
-							+ "run any missing world generation steps; for example: \n"
-							+ "if a chunk has the status SURFACE, DH will skip BIOMES \n"
-							+ "and SURFACE, but will run FEATURES. \n"
-							+ " \n"
-							+ "However if for some reason the chunks are malformed \n"
-							+ "or there's some other issue that causes the status \n"
-							+ "to be incorrect that can either cause world gen \n"
-							+ "lock-ups and/or crashes. \n"
-							+ "If either of those happen try setting this to True. \n"
 							+ "")
 					.build();
 			
@@ -1531,6 +1492,7 @@ public class Config
 							+ "How many threads should be used by Distant Horizons? \n"
 							+ "")
 					.build();
+			
 			public static final ConfigEntry<Double> threadRunTimeRatio = new ConfigEntry.Builder<Double>()
 					.setChatCommandName("threading.threadRunTimeRatio")
 					.setMinDefaultMax(0.01, ThreadPresetConfigEventHandler.getDefaultRunTimeRatio(), 1.0)
@@ -1544,6 +1506,19 @@ public class Config
 							"")
 					.build();
 			
+			public static final ConfigEntry<Integer> threadPriority = new ConfigEntry.Builder<Integer>()
+				.setAppearance(EConfigEntryAppearance.ONLY_IN_FILE) // only in file since this requires a MC reboot to change
+				.setMinDefaultMax(Thread.MIN_PRIORITY, // 1
+					Thread.NORM_PRIORITY, // 5 (1 higher than C2ME's default priority of 4 which can help reduce issues with Chunky)
+					Thread.MAX_PRIORITY) // 10
+				.comment(""
+					+ "What Java thread priority should DH's primary thread pools run with? \n"
+					+ "\n"
+					+ "You probably don't need to change this unless you are also \n"
+					+ "running C2ME and are seeing thread starvation in either C2ME or DH. \n"
+					+ "")
+				.build();
+			
 			
 			
 		}
@@ -1552,52 +1527,77 @@ public class Config
 		{
 			public static ConfigUIComment loggingHeader = new ConfigUIComment.Builder().setParentConfigClass(Logging.class).build();
 			
-			// TODO add change all option
-			// TODO default to error chat and info file
-			public static ConfigEntry<EDhApiLoggerMode> logWorldGenEvent = new ConfigEntry.Builder<EDhApiLoggerMode>()
+			
+			public static ConfigEntry<EDhApiLoggerLevel> globalFileMaxLevel = new ConfigEntry.Builder<EDhApiLoggerLevel>()
+					.setChatCommandName("logging.globalFileMaxLevel")
+					.set(EDhApiLoggerLevel.INFO)
+					.comment(""
+							+ ""
+							+ "")
+					.build();
+			
+			public static ConfigEntry<EDhApiLoggerLevel> globalChatMaxLevel = new ConfigEntry.Builder<EDhApiLoggerLevel>()
+					.setChatCommandName("logging.globalChatMaxLevel")
+					.set(EDhApiLoggerLevel.ERROR)
+					.comment(""
+							+ ""
+							+ "")
+					.build();
+			
+			public static ConfigUISpacer globalLoggingSpacer = new ConfigUISpacer.Builder().build();
+			
+			
+			public static ConfigEntry<EDhApiLoggerLevel> logWorldGenEventToFile = new ConfigEntry.Builder<EDhApiLoggerLevel>()
 					.setChatCommandName("logging.logWorldGenEvent")
-					.set(EDhApiLoggerMode.LOG_ERROR_TO_CHAT_AND_INFO_TO_FILE)
+					.set(EDhApiLoggerLevel.INFO)
 					.comment(""
 							+ "If enabled, the mod will log information about the world generation process. \n"
 							+ "This can be useful for debugging.")
 					.build();
 			
-			public static ConfigEntry<EDhApiLoggerMode> logWorldGenPerformance = new ConfigEntry.Builder<EDhApiLoggerMode>()
-					.setChatCommandName("logging.logWorldGenPerformance")
-					.set(EDhApiLoggerMode.LOG_ERROR_TO_CHAT_AND_INFO_TO_FILE)
-					.comment(""
-							+ "If enabled, the mod will log performance about the world generation process. \n"
-							+ "This can be useful for debugging.")
-					.build();
-			
-			public static ConfigEntry<EDhApiLoggerMode> logWorldGenLoadEvent = new ConfigEntry.Builder<EDhApiLoggerMode>()
+			public static ConfigEntry<EDhApiLoggerLevel> logWorldGenChunkLoadEventToFile = new ConfigEntry.Builder<EDhApiLoggerLevel>()
 					.setChatCommandName("logging.logWorldGenLoadEvent")
-					.set(EDhApiLoggerMode.LOG_ERROR_TO_CHAT_AND_INFO_TO_FILE)
+					.set(EDhApiLoggerLevel.INFO)
 					.comment(""
 							+ "If enabled, the mod will log information about the world generation process. \n"
 							+ "This can be useful for debugging.")
 					.build();
 			
-			public static ConfigEntry<EDhApiLoggerMode> logRendererBufferEvent = new ConfigEntry.Builder<EDhApiLoggerMode>()
-					.set(EDhApiLoggerMode.LOG_ERROR_TO_CHAT_AND_INFO_TO_FILE)
+			public static ConfigEntry<EDhApiLoggerLevel> logRendererEventToFile = new ConfigEntry.Builder<EDhApiLoggerLevel>()
+					.set(EDhApiLoggerLevel.INFO)
 					.comment(""
-							+ "If enabled, the mod will log information about the renderer buffer process. \n"
+							+ "If enabled, the mod will log information about the renderer setup, cleanup, and any issues it may encounter. \n"
 							+ "This can be useful for debugging.")
 					.build();
 			
-			public static ConfigEntry<EDhApiLoggerMode> logRendererGLEvent = new ConfigEntry.Builder<EDhApiLoggerMode>()
-					.set(EDhApiLoggerMode.LOG_ERROR_TO_CHAT_AND_INFO_TO_FILE)
+			public static ConfigEntry<EDhApiLoggerLevel> logRendererGLEventToFile = new ConfigEntry.Builder<EDhApiLoggerLevel>()
+					.set(EDhApiLoggerLevel.INFO)
 					.comment(""
 							+ "If enabled, the mod will log information about the renderer OpenGL process. \n"
 							+ "This can be useful for debugging.")
 					.build();
 			
-			public static ConfigEntry<EDhApiLoggerMode> logNetworkEvent = new ConfigEntry.Builder<EDhApiLoggerMode>()
+			public static ConfigEntry<EDhApiLoggerLevel> logRendererGLEventToChat = new ConfigEntry.Builder<EDhApiLoggerLevel>()
+					.set(EDhApiLoggerLevel.ERROR)
+					.comment(""
+							+ "If enabled, the mod will log information about the renderer OpenGL process. \n"
+							+ "This can be useful for debugging.")
+					.build();
+			
+			public static ConfigEntry<EDhApiLoggerLevel> logNetworkEventToFile = new ConfigEntry.Builder<EDhApiLoggerLevel>()
 					.setChatCommandName("logging.logNetworkEvent")
-					.set(EDhApiLoggerMode.LOG_ERROR_TO_CHAT_AND_WARNING_TO_FILE)
+					.set(EDhApiLoggerLevel.INFO)
 					.comment(""
 							+ "If enabled, the mod will log information about network operations. \n"
 							+ "This can be useful for debugging.")
+					.build();
+			
+			public static ConfigEntry<EDhApiLoggerLevel> logConnectionConfigChangesToFile = new ConfigEntry.Builder<EDhApiLoggerLevel>()
+					.setChatCommandName("logging.logConnectionConfigChanges")
+					.set(EDhApiLoggerLevel.WARN)
+					.comment(""
+							+ "If enabled, config changes sent by the server will be logged. \n"
+							+ "")
 					.build();
 			
 			public static ConfigCategory warning = new ConfigCategory.Builder().set(Warning.class).build();
@@ -1648,6 +1648,14 @@ public class Config
 								+ "")
 						.build();
 				
+				public static ConfigEntry<Boolean> showSlowWorldGenSettingWarnings = new ConfigEntry.Builder<Boolean>()
+						.set(true)
+						.comment(""
+								+ "If enabled, a chat message will be displayed when DH has too many chunks \n"
+								+ "queued for updating. \n"
+								+ "")
+						.build();
+				
 				public static ConfigEntry<Boolean> showModCompatibilityWarningsOnStartup = new ConfigEntry.Builder<Boolean>()
 						.set(true)
 						.comment(""
@@ -1655,6 +1663,15 @@ public class Config
 								+ "mod is installed alongside DH. \n"
 								+ "")
 						.build();
+				
+				public static ConfigEntry<Boolean> logGarbageCollectorWarning = new ConfigEntry.Builder<Boolean>()
+					.set(true)
+					.comment(""
+						+ "If enabled, a message will be logged if the garbage \n"
+						+ "collector Java is currently using is known \n"
+						+ "to cause stutters and/or issues. \n"
+						+ "")
+					.build();
 				
 			}
 		}
@@ -1671,6 +1688,28 @@ public class Config
 				.comment(""
 						+ "Makes the server send level keys for each world.\n"
 						+ "Disable this if you use alternative ways to send level keys.\n"
+						+ "")
+				.build();
+		
+		public static ConfigEntry<Integer> serverId = new ConfigEntry.Builder<Integer>()
+				.set(new Random().nextInt())
+				.setAppearance(EConfigEntryAppearance.ONLY_IN_FILE)
+				.comment(""
+						+ "DO NOT CHANGE UNLESS YOU KNOW WHAT YOU'RE DOING.\n"
+						+ "Autogenerated ID used to prevent multiple independent servers from accidentally\n"
+						+ "writing over each other's LODs when the same serverKey is set on both.\n"
+						+ "")
+				.build();
+		
+		public static ConfigEntry<String> serverKey = new ConfigEntry.Builder<String>()
+				.setChatCommandName("levelKeys.serverKey")
+				.setAppearance(EConfigEntryAppearance.ONLY_IN_FILE)
+				.set("")
+				.comment(""
+						+ "Custom server key used which can be used to always reuse the same LOD data folder,\n"
+						+ "for cases when the server doesn't have a static IP for some reason.\n"
+						+ "If this value is empty, the client itself decides which folder name to use.\n"
+						+ "Requires rejoining the server to apply after changing.\n"
 						+ "")
 				.build();
 		
@@ -1701,33 +1740,6 @@ public class Config
 				.comment("" +
 						"Defines the distance allowed to generate around the player." +
 						"")
-				.setPerformance(EConfigEntryPerformance.HIGH)
-				.build();
-		
-		public static ConfigEntry<Integer> generationBoundsX = new ConfigEntry.Builder<Integer>()
-				.setChatCommandName("generation.bounds.x")
-				.setAppearance(EConfigEntryAppearance.ONLY_IN_FILE)
-				.setMinDefaultMax(Integer.MIN_VALUE, 0, Integer.MAX_VALUE)
-				.comment("" +
-						"Defines the X-coordinate of the central point for generation boundaries, in blocks. \n" +
-						"")
-				.build();
-		public static ConfigEntry<Integer> generationBoundsZ = new ConfigEntry.Builder<Integer>()
-				.setChatCommandName("generation.bounds.z")
-				.setAppearance(EConfigEntryAppearance.ONLY_IN_FILE)
-				.setMinDefaultMax(Integer.MIN_VALUE, 0, Integer.MAX_VALUE)
-				.comment("" +
-						"Defines the Z-coordinate of the central point for generation boundaries, in blocks. \n" +
-						"")
-				.build();
-		public static ConfigEntry<Integer> generationBoundsRadius = new ConfigEntry.Builder<Integer>()
-				.setChatCommandName("generation.bounds.radius")
-				.setAppearance(EConfigEntryAppearance.ONLY_IN_FILE)
-				.setMinDefaultMax(0, 0, Integer.MAX_VALUE)
-				.comment("" +
-						"Defines the radius around the central point within which generation is allowed, in blocks. \n" +
-						"If this value is set to 0, generation bounds are disabled." +
-						"")
 				.build();
 		
 		
@@ -1746,7 +1758,6 @@ public class Config
 				.comment("" +
 						"Defines the distance the player will receive updates around." +
 						"")
-				.setPerformance(EConfigEntryPerformance.HIGH)
 				.build();
 		
 		
@@ -1775,7 +1786,6 @@ public class Config
 						"Defines the distance allowed to be synchronized around the player. \n" +
 						"Should be the same or larger than maxGenerationRequestDistance in most cases." +
 						"")
-				.setPerformance(EConfigEntryPerformance.HIGH)
 				.build();
 		
 		
@@ -1849,11 +1859,11 @@ public class Config
 			
 			try
 			{
-				// TODO automatically get all instances of AbstractPresetConfigEventHandler and fire "setUiOnlyConfigValues"
 				ThreadPresetConfigEventHandler.INSTANCE.setUiOnlyConfigValues();
 				RenderQualityPresetConfigEventHandler.INSTANCE.setUiOnlyConfigValues();
 				QuickRenderToggleConfigEventHandler.INSTANCE.setUiOnlyConfigValues();
-				QuickShowWorldGenProgressConfigEventHandler.INSTANCE.setUiOnlyConfigValues();
+				
+				IgnoredDimensionCsvHandler.INSTANCE.onConfigValueSet();
 			}
 			catch (Exception e)
 			{

@@ -23,7 +23,7 @@ import com.electronwill.nightconfig.core.Config;
 import com.electronwill.nightconfig.json.JsonFormat;
 import com.seibel.distanthorizons.core.jar.updater.SelfUpdater;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
-import org.apache.logging.log4j.Logger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 
 import java.net.URL;
 import java.util.*;
@@ -35,7 +35,7 @@ import java.util.*;
  */
 public class ModrinthGetter
 {
-	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
 	
 	public static final String ModrinthAPI = "https://api.modrinth.com/v2/project/";

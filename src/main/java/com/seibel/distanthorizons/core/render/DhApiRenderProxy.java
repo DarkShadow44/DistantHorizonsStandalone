@@ -86,13 +86,13 @@ public class DhApiRenderProxy implements IDhApiRenderProxy
 	@Override
 	public DhApiResult<Integer> getDhDepthTextureId()
 	{
-		int activeTexture = LodRenderer.getActiveDepthTextureId();
+		int activeTexture = LodRenderer.INSTANCE.getActiveDepthTextureId();
 		return (activeTexture == -1) ? DhApiResult.createFail("DH's depth texture hasn't been created and/or bound yet.", -1) : DhApiResult.createSuccess(activeTexture);
 	}
 	@Override
 	public DhApiResult<Integer> getDhColorTextureId()
 	{
-		int activeTexture = LodRenderer.getActiveColorTextureId();
+		int activeTexture = LodRenderer.INSTANCE.getActiveColorTextureId();
 		return (activeTexture == -1) ? DhApiResult.createFail("DH's color texture hasn't been created and/or bound yet.", -1) : DhApiResult.createSuccess(activeTexture);
 	}
 	

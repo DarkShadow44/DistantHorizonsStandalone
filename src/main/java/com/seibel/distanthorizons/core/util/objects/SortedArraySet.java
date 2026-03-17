@@ -21,188 +21,70 @@ package com.seibel.distanthorizons.core.util.objects;
 
 import java.util.*;
 
-public class SortedArraySet<E> implements SortedSet<E>
+public class SortedArraySet<E>
 {
-	private final ArrayList<E> list;
+	private final ArrayList<E> list = new ArrayList<>();
+	private final HashSet<E> set = new HashSet<>();
+	
 	private final Comparator<? super E> comparator;
 	
-	public SortedArraySet()
-	{
-		list = new ArrayList<>();
-		comparator = null;
-	}
+	
+	
+	//==============//
+	// constructors //
+	//==============//
 	
 	public SortedArraySet(Comparator<? super E> comparator)
 	{
-		list = new ArrayList<>();
 		this.comparator = comparator;
-	}
-	
-	public SortedArraySet(Collection<? extends E> collection)
-	{
-		list = new ArrayList<>(collection);
-		comparator = null;
-		list.sort(null);
 	}
 	
 	public SortedArraySet(Collection<? extends E> collection, Comparator<? super E> comparator)
 	{
-		list = new ArrayList<>(collection);
 		this.comparator = comparator;
-		list.sort(comparator);
-	}
-	
-	@Override
-	public Comparator<? super E> comparator()
-	{
-		return comparator;
-	}
-	
-	@Override
-	public E first()
-	{
-		return list.get(0);
-	}
-	
-	@Override
-	public E last()
-	{
-		return list.get(list.size() - 1);
-	}
-	
-	@Override
-	public int size()
-	{
-		return list.size();
-	}
-	
-	@Override
-	public boolean isEmpty()
-	{
-		return list.isEmpty();
-	}
-	
-	@Override
-	public boolean contains(Object o)
-	{
-		return list.contains(o);
-	}
-	
-	@Override
-	public Iterator<E> iterator()
-	{
-		return list.iterator();
-	}
-	
-	public ListIterator<E> listIterator()
-	{
-		return list.listIterator();
-	}
-	
-	public ListIterator<E> listIterator(int index)
-	{
-		return list.listIterator(index);
+		this.list.addAll(collection);
+		this.list.sort(comparator);
 	}
 	
 	
-	@Override
-	public Object[] toArray()
-	{
-		return list.toArray();
-	}
 	
-	@Override
-	public <T> T[] toArray(T[] a)
-	{
-		return list.toArray(a);
-	}
+	//==============//
+	// list methods //
+	//==============//
 	
-	@Override
-	public boolean add(E e)
+	public void add(E element)
 	{
-		int index = Collections.binarySearch(list, e, comparator);
-		if (index < 0)
+		if (this.set.add(element))
 		{
-			index = ~index;
+			this.list.add(element);
 		}
-		list.add(index, e);
-		return true;
 	}
 	
-	@Override
-	public boolean remove(Object o)
-	{
-		return list.remove(o);
-	}
+	public E get(int index) { return this.list.get(index); }
 	
-	@Override
-	public boolean containsAll(Collection<?> c)
-	{
-		return list.containsAll(c);
-	}
+	public int size() { return this.list.size(); }
 	
-	@Override
-	public boolean addAll(Collection<? extends E> c)
-	{
-		boolean changed = false;
-		for (E e : c)
-		{
-			changed |= add(e);
-		}
-		return changed;
-	}
-	
-	@Override
-	public boolean retainAll(Collection<?> c)
-	{
-		return list.retainAll(c);
-	}
-	
-	@Override
-	public boolean removeAll(Collection<?> c)
-	{
-		return list.removeAll(c);
-	}
-	
-	@Override
 	public void clear()
 	{
-		list.clear();
+		this.list.clear();
+		this.set.clear();
 	}
+	
+	
+	
+	//================//
+	// base overrides //
+	//================//
 	
 	@Override
 	public String toString()
 	{
 		return "SortedArraySet{" +
-				"list=" + list +
-				", comparator=" + comparator +
+				"list=" + this.list +
+				", comparator=" + this.comparator +
 				'}';
 	}
 	
-	@Override
-	public SortedSet<E> subSet(E fromElement, E toElement)
-	{
-		int fromIndex = Collections.binarySearch(list, fromElement, comparator);
-		if (fromIndex < 0) fromIndex = ~fromIndex;
-		int toIndex = Collections.binarySearch(list, toElement, comparator);
-		if (toIndex < 0) toIndex = ~toIndex;
-		return new SortedArraySet<>(list.subList(fromIndex, toIndex), comparator);
-	}
 	
-	@Override
-	public SortedSet<E> headSet(E toElement)
-	{
-		int toIndex = Collections.binarySearch(list, toElement, comparator);
-		if (toIndex < 0) toIndex = ~toIndex;
-		return new SortedArraySet<>(list.subList(0, toIndex), comparator);
-	}
-	
-	@Override
-	public SortedSet<E> tailSet(E fromElement)
-	{
-		int fromIndex = Collections.binarySearch(list, fromElement, comparator);
-		if (fromIndex < 0) fromIndex = ~fromIndex;
-		return new SortedArraySet<>(list.subList(fromIndex, list.size()), comparator);
-	}
 	
 }

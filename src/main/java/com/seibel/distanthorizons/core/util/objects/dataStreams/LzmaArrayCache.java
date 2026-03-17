@@ -2,7 +2,7 @@ package com.seibel.distanthorizons.core.util.objects.dataStreams;
 
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import it.unimi.dsi.fastutil.ints.Int2ReferenceArrayMap;
-import org.apache.logging.log4j.Logger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 import org.tukaani.xz.ArrayCache;
 
 import java.util.ArrayList;
@@ -18,7 +18,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class LzmaArrayCache extends ArrayCache
 {
-	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
 	/**
 	 * In James' testing the byte and int caches only ever had to store 2 and 4 arrays respectively.

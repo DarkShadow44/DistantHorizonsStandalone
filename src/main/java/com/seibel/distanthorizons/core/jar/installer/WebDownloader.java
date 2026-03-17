@@ -22,7 +22,7 @@ package com.seibel.distanthorizons.core.jar.installer;
 import com.electronwill.nightconfig.core.Config;
 import com.electronwill.nightconfig.json.JsonFormat;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
-import org.apache.logging.log4j.Logger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 
 import javax.net.ssl.HttpsURLConnection;
 import java.io.*;
@@ -40,7 +40,7 @@ import java.util.ArrayList;
  */
 public class WebDownloader
 {
-	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
 	
 	public static boolean netIsAvailable()

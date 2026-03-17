@@ -22,7 +22,9 @@ package com.seibel.distanthorizons.api.enums.config;
 /**
  * UNCOMPRESSED <br>
  * LZ4 <br>
- * XZ <br><br>
+ * Z_STD <br>
+ * Z_STD_STREAM <br>
+ * LZMA2 <br><br>
  * 
  * Note: speed and compression ratios are examples
  * and should only be used for estimated comparisons.
@@ -32,10 +34,6 @@ package com.seibel.distanthorizons.api.enums.config;
  */
 public enum EDhApiDataCompressionMode
 {
-	// Reminder:
-	// when adding items up the API minor version
-	// when removing items up the API major version
-	
 	/** 
 	 * Should only be used internally and for unit testing. <br><br> 
 	 * 
@@ -56,18 +54,32 @@ public enum EDhApiDataCompressionMode
 	LZ4(1),
 	
 	/**
-	 * Decent speed and good compression. <br><br> 
+	 * Great speed and good compression. <br><br> 
 	 *
+	 * Read Speed: 2.1 MS / DTO <br>
+	 * Write Speed: 4.9 MS / DTO <br>
+	 * Compression ratio: 0.2606 <br>
+	 */
+	Z_STD_BLOCK(4),
+	
+	/**
+	 * Similar to {@link EDhApiDataCompressionMode#Z_STD_BLOCK}
+	 * except slower. <br><br>
+	 * 
+	 * This option is only provided for legacy support when processing old databases. <br><br>
+	 * 
 	 * Read Speed: 9.31 MS / DTO <br>
 	 * Write Speed: 15.13 MS / DTO <br>
 	 * Compression ratio: 0.2606 <br>
 	 */
-	Z_STD(2),
-	
+	@Deprecated
+	@DisallowSelectingViaConfigGui
+	Z_STD_STREAM(2),
 	
 	/** 
-	 * Extremely slow, but very good compression. <br><br> 
-	 *
+	 * Extremely slow, but very good compression. <br>
+	 * Often causes whole computer stuttering due to memory bandwidth saturation. <br><br>
+	 * 
 	 * Read Speed: 13.29 MS / DTO <br>
 	 * Write Speed: 70.95 MS / DTO <br>
 	 * Compression ratio: 0.2068 <br>

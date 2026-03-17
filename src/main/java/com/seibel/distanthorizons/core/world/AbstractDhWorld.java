@@ -21,7 +21,7 @@ package com.seibel.distanthorizons.core.world;
 
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.logging.f3.F3Screen;
-import org.apache.logging.log4j.Logger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 
 import java.io.Closeable;
 import java.util.List;
@@ -32,7 +32,7 @@ import java.util.List;
  */
 public abstract class AbstractDhWorld implements IDhWorld, Closeable
 {
-	protected static final Logger LOGGER = DhLoggerBuilder.getLogger();
+	protected static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
 	public final EWorldEnvironment environment;
 	

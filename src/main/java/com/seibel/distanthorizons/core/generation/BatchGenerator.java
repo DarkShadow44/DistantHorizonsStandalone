@@ -24,13 +24,14 @@ import com.seibel.distanthorizons.api.interfaces.override.worldGenerator.IDhApiW
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.level.IDhLevel;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
+import com.seibel.distanthorizons.core.util.ExceptionUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.IChunkWrapper;
+import com.seibel.distanthorizons.core.wrapperInterfaces.worldGeneration.IBatchGeneratorEnvironmentWrapper;
 import com.seibel.distanthorizons.coreapi.interfaces.dependencyInjection.IOverrideInjector;
 import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiDistantGeneratorMode;
 import com.seibel.distanthorizons.core.util.LodUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.IWrapperFactory;
-import com.seibel.distanthorizons.core.wrapperInterfaces.worldGeneration.AbstractBatchGenerationEnvironmentWrapper;
-import org.apache.logging.log4j.Logger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -42,10 +43,10 @@ import java.util.function.Consumer;
  */
 public class BatchGenerator implements IDhApiWorldGenerator
 {
-	private static final IWrapperFactory FACTORY = SingletonInjector.INSTANCE.get(IWrapperFactory.class);
-	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
+	private static final IWrapperFactory WRAPPER_FACTORY = SingletonInjector.INSTANCE.get(IWrapperFactory.class);
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
-	public AbstractBatchGenerationEnvironmentWrapper generationEnvironment;
+	public IBatchGeneratorEnvironmentWrapper generationEnvironment;
 	public IDhLevel targetDhLevel;
 	
 	
@@ -57,7 +58,7 @@ public class BatchGenerator implements IDhApiWorldGenerator
 	public BatchGenerator(IDhLevel targetDhLevel)
 	{
 		this.targetDhLevel = targetDhLevel;
-		this.generationEnvironment = FACTORY.createBatchGenerator(targetDhLevel);
+		this.generationEnvironment = WRAPPER_FACTORY.createBatchGenerator(targetDhLevel);
 		LOGGER.info("Batch Chunk Generator initialized");
 	}
 	
@@ -83,26 +84,26 @@ public class BatchGenerator implements IDhApiWorldGenerator
 	
 	
 	
-	
 	//===================//
 	// generator methods //
 	//===================//
 	
 	@Override
 	public CompletableFuture<Void> generateChunks(
-			int chunkPosMinX, int chunkPosMinZ, int generationRequestChunkWidthCount, byte targetDataDetail, EDhApiDistantGeneratorMode generatorMode,
-			ExecutorService worldGeneratorThreadPool, Consumer<Object[]> resultConsumer)
+			int chunkPosMinX,
+			int chunkPosMinZ,
+			int chunkWidthCount,
+			byte targetDataDetail,
+			EDhApiDistantGeneratorMode generatorMode,
+			ExecutorService worldGeneratorThreadPool,
+			Consumer<Object[]> resultConsumer)
 	{
-		EDhApiWorldGenerationStep targetStep = null;
+		EDhApiWorldGenerationStep targetStep;
 		switch (generatorMode)
 		{
-			case PRE_EXISTING_ONLY: // Only load in existing chunks. Note: this requires the biome generation step in order for biomes to be properly initialized.
-			//case BIOME_ONLY: // No blocks. Require fake height in LodBuilder
-				targetStep = EDhApiWorldGenerationStep.BIOMES; 
+			case PRE_EXISTING_ONLY: // Only load in existing chunks.
+				targetStep = EDhApiWorldGenerationStep.EMPTY; // special logic
 				break;
-			//case BIOME_ONLY_SIMULATE_HEIGHT:
-			//	targetStep = EDhApiWorldGenerationStep.NOISE; // Stone only. Requires a fake surface
-			//	break;
 			case SURFACE:
 				targetStep = EDhApiWorldGenerationStep.SURFACE;
 				break;
@@ -112,20 +113,27 @@ public class BatchGenerator implements IDhApiWorldGenerator
 			case INTERNAL_SERVER:
 				targetStep = EDhApiWorldGenerationStep.LIGHT;
 				break;
+				
+			default:
+				throw new IllegalArgumentException("no target step defined for generator mode: ["+generatorMode+"].");
 		}
 		
 		// the consumer needs to be wrapped like this because the API can't use DH core objects (and IChunkWrapper can't be easily put into the API project)
 		Consumer<IChunkWrapper> consumerWrapper = (chunkWrapper) -> resultConsumer.accept(new Object[]{chunkWrapper});
 		try
 		{
-			return this.generationEnvironment.generateChunks(
-					chunkPosMinX, chunkPosMinZ, generationRequestChunkWidthCount, 
+			return this.generationEnvironment.queueGenEvent(
+					chunkPosMinX, chunkPosMinZ, chunkWidthCount, 
 					generatorMode, targetStep, 
 					worldGeneratorThreadPool, consumerWrapper);
 		}
 		catch (Exception e)
 		{
-			if (!LodUtil.isInterruptOrReject(e)) LOGGER.error("Error starting future for chunk generation", e);
+			if (!ExceptionUtil.isInterruptOrReject(e))
+			{
+				LOGGER.error("Error starting future for chunk generation, error: ["+e.getMessage()+"].", e);
+			}
+			
 			CompletableFuture<Void> future = new CompletableFuture<>();
 			future.completeExceptionally(e);
 			return future;
@@ -144,9 +152,10 @@ public class BatchGenerator implements IDhApiWorldGenerator
 	@Override
 	public void close()
 	{
-		LOGGER.info(BatchGenerator.class.getSimpleName() + " shutting down...");
-		this.generationEnvironment.stop();
+		LOGGER.info("["+BatchGenerator.class.getSimpleName()+"] shutting down...");
+		this.generationEnvironment.close();
 	}
+	
 	
 	
 }

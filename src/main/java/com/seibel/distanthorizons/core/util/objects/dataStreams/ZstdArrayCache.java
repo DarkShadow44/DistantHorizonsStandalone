@@ -3,7 +3,7 @@ package com.seibel.distanthorizons.core.util.objects.dataStreams;
 //import com.github.luben.zstd.BufferPool;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import it.unimi.dsi.fastutil.ints.Int2ReferenceArrayMap;
-import org.apache.logging.log4j.Logger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -16,7 +16,7 @@ import java.util.function.IntUnaryOperator;
  */
 public class ZstdArrayCache //implements BufferPool
 {
-	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
 	/**
 	 * In James' testing the byte and int caches only ever had to store 2 and 4 arrays respectively.

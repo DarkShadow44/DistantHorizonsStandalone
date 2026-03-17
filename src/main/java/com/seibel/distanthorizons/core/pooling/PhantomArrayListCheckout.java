@@ -10,6 +10,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.lang.ref.SoftReference;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 /**
  * This keeps track of all the poolable
@@ -33,7 +34,7 @@ public class PhantomArrayListCheckout implements AutoCloseable
 	
 	/** Will be null if the parent pool doesn't want leak stack tracing */
 	@Nullable
-	public final String allocationStackTrace;
+	public String allocationStackTrace = null;
 	
 	private final ArrayList<ByteArrayList> byteArrayLists = new ArrayList<>();
 	private final ArrayList<ShortArrayList> shortArrayLists = new ArrayList<>();
@@ -47,19 +48,18 @@ public class PhantomArrayListCheckout implements AutoCloseable
 	
 	public PhantomArrayListCheckout(@NotNull PhantomArrayListPool owningPool)
 	{
-		if (owningPool.logGarbageCollectedStacks)
-		{
-			// TODO remove the top 4 or so lines since those will always be the same (relating to the phantom allocations)
-			//  and aren't helpful when debugging
-			this.allocationStackTrace = StringUtil.join("\n", Thread.currentThread().getStackTrace());
-		}
-		else
-		{
-			this.allocationStackTrace = null;
-		}
-		
 		this.owningPool = owningPool;
 		this.ownerSoftReference = new SoftReference<>(this);
+	}
+	
+	public void onCheckout()
+	{
+		if (this.owningPool.logGarbageCollectedStacks)
+		{
+			StackTraceElement[] stackTraceElements = Thread.currentThread().getStackTrace();
+			StackTraceElement[] trimmedElements = Arrays.copyOfRange(stackTraceElements, 4, stackTraceElements.length);
+			this.allocationStackTrace = StringUtil.join("\n", trimmedElements).intern();
+		}
 	}
 	
 	

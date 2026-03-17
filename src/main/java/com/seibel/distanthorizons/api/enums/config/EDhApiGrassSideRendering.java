@@ -29,10 +29,6 @@ package com.seibel.distanthorizons.api.enums.config;
  */
 public enum EDhApiGrassSideRendering
 {
-	// Reminder:
-	// when adding items up the API minor version
-	// when removing items up the API major version
-	
 	AS_GRASS,
 	FADE_TO_DIRT,
 	AS_DIRT;

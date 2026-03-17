@@ -31,7 +31,7 @@ import java.util.List;
  * Contains a list of {@link DhApiTerrainDataPoint} representing the blocks in a Minecraft chunk.
  *
  * @author Builderb0y, James Seibel
- * @version 2024-7-21
+ * @version 2025-12-11
  * @since API 2.0.0
  * 
  * @see IDhApiWrapperFactory
@@ -54,27 +54,12 @@ public class DhApiChunk
 	// constructors //
 	//==============//
 	
-	/** 
-	 * Deprecated due to the topYBlockPos and bottomYBlockPos variables being put in the wrong order. 
-	 * They should have been in bottom -> top order. 
-	 * 
-	 * @see DhApiChunk#create(int, int, int, int) 
-	 */
-	@Deprecated
-	public DhApiChunk(int chunkPosX, int chunkPosZ, int topYBlockPos, int bottomYBlockPos) 
-	{ this(chunkPosX, chunkPosZ, bottomYBlockPos, topYBlockPos, false); }
-	
-	/**
-	 * @since API 3.0.0 
-	 */
+	/** @since API 3.0.0 */
 	public static DhApiChunk create(int chunkPosX, int chunkPosZ, int bottomYBlockPos, int topYBlockPos)
-	{ return new DhApiChunk(chunkPosX, chunkPosZ, bottomYBlockPos, topYBlockPos, false); }
+	{ return new DhApiChunk(chunkPosX, chunkPosZ, bottomYBlockPos, topYBlockPos); }
 	
-	/** 
-	 * Only visible to internal DH methods 
-	 * @param ignoredParameter is only present to differentiate the two constructors and isn't actually used
-	 */
-	private DhApiChunk(int chunkPosX, int chunkPosZ, int bottomYBlockPos, int topYBlockPos, boolean ignoredParameter)
+	/** Only visible to internal DH methods */
+	private DhApiChunk(int chunkPosX, int chunkPosZ, int bottomYBlockPos, int topYBlockPos)
 	{
 		this.chunkPosX = chunkPosX;
 		this.chunkPosZ = chunkPosZ;

@@ -34,10 +34,6 @@ import com.seibel.distanthorizons.api.enums.config.DisallowSelectingViaConfigGui
  */
 public enum EDhApiThreadPreset
 {
-	// Reminder:
-	// when adding items up the API minor version
-	// when removing items up the API major version
-	
 	@DisallowSelectingViaConfigGui
 	CUSTOM,
 	

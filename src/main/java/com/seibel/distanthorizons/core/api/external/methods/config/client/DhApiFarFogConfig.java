@@ -22,7 +22,7 @@ package com.seibel.distanthorizons.core.api.external.methods.config.client;
 import com.seibel.distanthorizons.api.enums.rendering.EDhApiFogFalloff;
 import com.seibel.distanthorizons.api.interfaces.config.IDhApiConfigValue;
 import com.seibel.distanthorizons.api.interfaces.config.client.IDhApiFarFogConfig;
-import com.seibel.distanthorizons.api.objects.config.DhApiConfigValue;
+import com.seibel.distanthorizons.core.config.api.DhApiConfigValue;
 import com.seibel.distanthorizons.core.config.Config;
 
 public class DhApiFarFogConfig implements IDhApiFarFogConfig

@@ -5,15 +5,19 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.RemovalCause;
 import com.seibel.distanthorizons.core.api.internal.SharedApi;
 import com.seibel.distanthorizons.core.config.Config;
+import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.file.fullDatafile.GeneratedFullDataSourceProvider;
+import com.seibel.distanthorizons.core.generation.tasks.DataSourceRetrievalResult;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
+import com.seibel.distanthorizons.core.generation.tasks.ERetrievalResultState;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos2D;
 import com.seibel.distanthorizons.core.util.FormatUtil;
 import com.seibel.distanthorizons.core.util.LodUtil;
 import com.seibel.distanthorizons.core.util.objects.RollingAverage;
+import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftSharedWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IServerLevelWrapper;
-import org.apache.logging.log4j.Logger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 import org.jetbrains.annotations.Nullable;
 
 import java.text.MessageFormat;
@@ -26,7 +30,9 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class PregenManager
 {
-	protected static final Logger LOGGER = DhLoggerBuilder.getLogger();
+	protected static final DhLogger LOGGER = new DhLoggerBuilder().build();
+	
+	private static final IMinecraftSharedWrapper MC_SERVER = SingletonInjector.INSTANCE.get(IMinecraftSharedWrapper.class);
 	
 	private final AtomicReference<PregenState> pregenFuture = new AtomicReference<>();
 	
@@ -38,7 +44,7 @@ public class PregenManager
 	)
 	{
 		PregenState pregenState = new PregenState(
-				(GeneratedFullDataSourceProvider) SharedApi.getIDhServerWorld().getLevel(levelWrapper).getFullDataProvider(),
+				(GeneratedFullDataSourceProvider) SharedApi.tryGetDhServerWorld().getLevel(levelWrapper).getFullDataProvider(),
 				DhSectionPos.convertToDetailLevel(
 						DhSectionPos.encode(LodUtil.BLOCK_DETAIL_LEVEL, origin.x, origin.z),
 						DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL
@@ -51,6 +57,7 @@ public class PregenManager
 			pregenState.completeExceptionally(new IllegalStateException("Pregen is already running."));
 			return pregenState;
 		}
+		
 		pregenState.whenComplete((result, throwable) -> {
 			this.pregenFuture.set(null);
 		});
@@ -104,7 +111,7 @@ public class PregenManager
 					}
 					
 					long timeSincePreviousTaskFinish = System.currentTimeMillis() - this.lastTaskFinishTime.getAndSet(System.currentTimeMillis());
-					this.averageTaskCompletionIntervalMs.addValue(timeSincePreviousTaskFinish);
+					this.averageTaskCompletionIntervalMs.add(timeSincePreviousTaskFinish);
 					
 					PregenState.this.fillPendingQueue();
 				})
@@ -140,21 +147,25 @@ public class PregenManager
 				}
 				
 				this.pendingGenerations.put(nextSectionPos, System.currentTimeMillis());
-				this.fullDataSourceProvider.getAsync(nextSectionPos).thenAccept(fullDataSource -> {
-					if (this.fullDataSourceProvider.isFullyGenerated(fullDataSource.columnGenerationSteps))
+				this.fullDataSourceProvider.getAsync(nextSectionPos)
+					.thenAccept(fullDataSource -> 
+				{
+					if (this.fullDataSourceProvider.generationStepsAreFullyGenerated(fullDataSource.columnGenerationSteps))
 					{
 						this.pendingGenerations.invalidate(fullDataSource.getPos());
 					}
 					else
 					{
-						this.fullDataSourceProvider.queuePositionForRetrieval(fullDataSource.getPos()).thenAccept(result -> {
-							if (!result.success)
+						this.fullDataSourceProvider.queuePositionForRetrieval(fullDataSource.getPos())
+							.thenAccept((DataSourceRetrievalResult result) ->
 							{
-								LOGGER.warn("Failed to generate section " + DhSectionPos.toString(result.pos));
-							}
-							
-							this.pendingGenerations.invalidate(result.pos);
-						});
+								if (result.state == ERetrievalResultState.FAIL)
+								{
+									LOGGER.warn("Failed to generate section " + DhSectionPos.toString(result.pos));
+								}
+								
+								this.pendingGenerations.invalidate(result.pos);
+							});
 					}
 					
 					fullDataSource.close();

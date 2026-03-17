@@ -34,11 +34,6 @@ package com.seibel.distanthorizons.api.enums.worldGeneration;
  */
 public enum EDhApiDistantGeneratorMode
 {
-	// Reminder:
-	// when adding items up the API minor version
-	// when removing items up the API major version
-	
-	
 	/** Don't generate any new terrain, just generate LODs for already generated chunks. */
 	PRE_EXISTING_ONLY((byte) 1),
 	

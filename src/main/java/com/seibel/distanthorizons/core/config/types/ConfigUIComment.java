@@ -23,7 +23,7 @@ import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.config.types.enums.EConfigCommentTextPosition;
 import com.seibel.distanthorizons.core.config.types.enums.EConfigEntryAppearance;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
-import org.apache.logging.log4j.Logger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -32,9 +32,9 @@ import org.jetbrains.annotations.Nullable;
  *
  * @author coolGi
  */
-public class ConfigUIComment extends AbstractConfigType<String, ConfigUIComment>
+public class ConfigUIComment extends AbstractConfigBase<String>
 {
-	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
 	
 	public String parentConfigPath = null;
@@ -43,8 +43,11 @@ public class ConfigUIComment extends AbstractConfigType<String, ConfigUIComment>
 	
 	
 	
-	public ConfigUIComment() { this(null, null); }
-	public ConfigUIComment(String parentConfigPath, EConfigCommentTextPosition textPosition)
+	//=============//
+	// constructor //
+	//=============//
+	
+	public ConfigUIComment(String parentConfigPath, @Nullable EConfigCommentTextPosition textPosition)
 	{
 		super(EConfigEntryAppearance.ONLY_IN_GUI, "");
 		this.parentConfigPath = parentConfigPath;
@@ -52,6 +55,10 @@ public class ConfigUIComment extends AbstractConfigType<String, ConfigUIComment>
 	}
 	
 	
+	
+	//=========//
+	// setters //
+	//=========//
 	
 	/** Appearance shouldn't be changed */
 	@Override
@@ -63,9 +70,14 @@ public class ConfigUIComment extends AbstractConfigType<String, ConfigUIComment>
 	
 	
 	
-	public static class Builder extends AbstractConfigType.Builder<String, Builder>
+	//=========//
+	// builder //
+	//=========//
+	
+	public static class Builder extends AbstractConfigBase.Builder<String, Builder>
 	{
 		public String tempParentConfigPath = null;
+		@Nullable
 		public EConfigCommentTextPosition tempTextPosition = null;
 		
 		
@@ -155,9 +167,13 @@ public class ConfigUIComment extends AbstractConfigType<String, ConfigUIComment>
 		
 		
 		
+		// build //
+		
 		public ConfigUIComment build()
 		{ return new ConfigUIComment(this.tempParentConfigPath, this.tempTextPosition); }
 		
 	}
+	
+	
 	
 }

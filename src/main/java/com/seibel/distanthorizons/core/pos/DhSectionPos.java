@@ -42,6 +42,8 @@ import java.util.function.LongConsumer;
  * <strong>Too big</strong>, and the LOD dropoff will be very noticeable.<br>
  * With those thoughts in mind we decided on a smallest section size of 64 data points square (IE 4x4 chunks).
  *
+ * TODO absolute vs section detail levels
+ * 
  * @author Leetom
  */
 public class DhSectionPos
@@ -279,17 +281,24 @@ public class DhSectionPos
 				+ Math.abs(getCenterBlockPosZ(pos) - blockPos.z);
 	}
 	
+	
+	/** see: {@link DhSectionPos#getChebyshevSignedBlockDistance(long, int, int)} */
+	public static int getChebyshevSignedBlockDistance(long pos, DhBlockPos  blockPos)
+	{ return getChebyshevSignedBlockDistance(pos, blockPos.getX(), blockPos.getZ()); }
+	/** see: {@link DhSectionPos#getChebyshevSignedBlockDistance(long, int, int)} */
+	public static int getChebyshevSignedBlockDistance(long pos, DhBlockPos2D blockPos)
+	{ return getChebyshevSignedBlockDistance(pos, blockPos.x, blockPos.z); }
 	/**
 	 * Returns the signed distance from a given block to a given section. <br>
 	 * Essentially acts like a distance from the block to the nearest edge of the section,
 	 * except inside the section it's negative. <br>
 	 * Useful for detail level insensitive distance comparisons.
 	 */
-	public static int getChebyshevSignedBlockDistance(long pos, DhBlockPos2D blockPos)
+	public static int getChebyshevSignedBlockDistance(long pos, int blockPosX, int blockPosZ)
 	{
 		return Math.max(
-				Math.abs(getCenterBlockPosX(pos) - blockPos.x),
-				Math.abs(getCenterBlockPosZ(pos) - blockPos.z)
+			Math.abs(getCenterBlockPosX(pos) - blockPosX),
+			Math.abs(getCenterBlockPosZ(pos) - blockPosZ)
 		) - getBlockWidth(pos) / 2;
 	}
 	
@@ -344,8 +353,8 @@ public class DhSectionPos
 		}
 		
 		return DhSectionPos.encode(getDetailLevel(pos),
-				getX(pos) + dir.getNormal().x,
-				getZ(pos) + dir.getNormal().z);
+				getX(pos) + dir.normal.x,
+				getZ(pos) + dir.normal.z);
 	}
 	
 	@Deprecated

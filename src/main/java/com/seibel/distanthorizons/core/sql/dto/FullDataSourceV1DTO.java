@@ -69,8 +69,7 @@ public class FullDataSourceV1DTO implements IBaseDTO<Long>
 	/** @return a stream for the data contained in this DTO. */
 	public DhDataInputStream getInputStream() throws IOException
 	{
-		InputStream inputStream = new ByteArrayInputStream(this.dataArray);
-		DhDataInputStream compressedStream = new DhDataInputStream(inputStream, EDhApiDataCompressionMode.LZ4); // LZ4 was used by DH before 2.1.0 and as such must be used until the render data format is changed to record the compressor
+		DhDataInputStream compressedStream = DhDataInputStream.create(this.dataArray, EDhApiDataCompressionMode.LZ4); // LZ4 was used by DH before 2.1.0 and as such must be used until the render data format is changed to record the compressor
 		return compressedStream;
 	}
 	

@@ -19,20 +19,16 @@
 
 package com.seibel.distanthorizons.core.level;
 
-import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam;
-import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos;
-import com.seibel.distanthorizons.core.wrapperInterfaces.block.IBlockStateWrapper;
-import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IProfilerWrapper;
-import com.seibel.distanthorizons.core.wrapperInterfaces.world.IBiomeWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
 import org.jetbrains.annotations.Nullable;
 
+/**
+ * Used when running in singleplayer
+ * or when connected to a server.
+ */
 public interface IDhClientLevel extends IDhLevel
 {
 	void clientTick();
-	
-	void render(DhApiRenderParam renderEventParam, IProfilerWrapper profiler);
-	void renderDeferred(DhApiRenderParam renderEventParam, IProfilerWrapper profiler);
 	
 	@Nullable
 	IClientLevelWrapper getClientLevelWrapper();

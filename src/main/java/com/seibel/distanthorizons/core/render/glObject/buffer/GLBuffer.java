@@ -22,29 +22,29 @@ package com.seibel.distanthorizons.core.render.glObject.buffer;
 import com.seibel.distanthorizons.api.enums.config.EDhApiGpuUploadMethod;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.render.glObject.GLProxy;
 import com.seibel.distanthorizons.core.util.LodUtil;
 import com.seibel.distanthorizons.core.util.ThreadUtil;
-import com.seibel.distanthorizons.core.util.math.UnitBytes;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftGLWrapper;
-import org.apache.logging.log4j.Logger;
 import org.lwjgl.opengl.GL32;
 import org.lwjgl.opengl.GL44;
 
-import java.lang.invoke.MethodHandles;
 import java.lang.ref.PhantomReference;
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class GLBuffer implements AutoCloseable
 {
-	private static final Logger LOGGER = DhLoggerBuilder.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
+	private static final DhLogger LOGGER = new DhLoggerBuilder()
+			.fileLevelConfig(Config.Common.Logging.logRendererGLEventToFile)
+			.chatLevelConfig(Config.Common.Logging.logRendererGLEventToChat)
+			.build();
 	
 	private static final IMinecraftGLWrapper GLMC = SingletonInjector.INSTANCE.get(IMinecraftGLWrapper.class);
 	
@@ -100,7 +100,7 @@ public class GLBuffer implements AutoCloseable
 	
 	protected void create(boolean asBufferStorage)
 	{
-		if (!GLProxy.getInstance().runningOnRenderThread())
+		if (!GLProxy.runningOnRenderThread())
 		{
 			LodUtil.assertNotReach("Thread ["+Thread.currentThread()+"] tried to create a GLBuffer outside the MC render thread.");
 		}
@@ -151,7 +151,7 @@ public class GLBuffer implements AutoCloseable
 			BUFFER_ID_TO_PHANTOM.remove(id);
 		}
 		
-		GLProxy.getInstance().queueRunningOnRenderThread(() -> 
+		GLProxy.queueRunningOnRenderThread(() -> 
 		{
 			// destroy the buffer if it exists,
 			// the buffer may not exist if the destroy method is called twice
@@ -186,7 +186,6 @@ public class GLBuffer implements AutoCloseable
 		{ 
 			LodUtil.assertNotReach("maxExpansionSize is [" + maxExpansionSize + "] but buffer size is [" + bbSize + "]!"); 
 		}
-		GLProxy.GL_LOGGER.debug("Uploading buffer with ["+new UnitBytes(bbSize)+"].");
 		
 		// Don't upload an empty buffer
 		if (bbSize == 0)
@@ -199,6 +198,8 @@ public class GLBuffer implements AutoCloseable
 		
 		switch (uploadMethod)
 		{
+			//case NONE:
+			//	return;
 			case AUTO:
 				LodUtil.assertNotReach("GpuUploadMethod AUTO must be resolved before call to uploadBuffer()!");
 			case BUFFER_STORAGE:
@@ -378,6 +379,7 @@ public class GLBuffer implements AutoCloseable
 					{
 						int id = PHANTOM_TO_BUFFER_ID.get(phantomRef);
 						destroyBufferIdAsync(id);
+						//LOGGER.warn("Buffer Phantom collected, ID: ["+id+"]");
 					}
 					
 					phantomRef = PHANTOM_REFERENCE_QUEUE.poll();
@@ -385,7 +387,7 @@ public class GLBuffer implements AutoCloseable
 			}
 			catch (Exception e)
 			{
-				LOGGER.error("Unexpected error in cleanup thread: " + e.getMessage(), e);
+				LOGGER.error("Unexpected error in buffer cleanup thread: [" + e.getMessage() + "].", e);
 			}
 		}
 	}

@@ -28,10 +28,6 @@ package com.seibel.distanthorizons.api.enums.config;
  */
 public enum EDhApiWorldCompressionMode
 {
-	// Reminder:
-	// when adding items up the API minor version
-	// when removing items up the API major version
-	
 	/** 
 	 * Every block/biome change is recorded in the database. <br>
 	 * This is what DH 2.0 and 2.0.1 all used by default and will store a lot of data. 

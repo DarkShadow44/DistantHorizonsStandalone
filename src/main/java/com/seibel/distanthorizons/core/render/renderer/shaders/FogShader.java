@@ -164,10 +164,11 @@ public class FogShader extends AbstractShaderRenderer
 		
 		
 		// Fog uniforms
-		this.shader.setUniform(this.uFogColor, MC_RENDER.isFogStateSpecial() ? this.getSpecialFogColor(partialTicks) : this.getFogColor(partialTicks));
+		this.shader.setUniform(this.uFogColor, this.getFogColor(partialTicks));
 		this.shader.setUniform(this.uFogScale, 1.f / lodDrawDistance);
 		this.shader.setUniform(this.uFogVerticalScale, 1.f / MC.getWrappedClientLevel().getMaxHeight());
-		this.shader.setUniform(this.uFullFogMode, MC_RENDER.isFogStateSpecial() ? 1 : 0);
+		// only used for debugging
+		this.shader.setUniform(this.uFullFogMode, 0); // 1 = render everything with fog color // 7 = use debug rendering
 		
 		
 		// fog config
@@ -176,6 +177,14 @@ public class FogShader extends AbstractShaderRenderer
 		float farFogMin = Config.Client.Advanced.Graphics.Fog.farFogMin.get().floatValue();
 		float farFogMax = Config.Client.Advanced.Graphics.Fog.farFogMax.get().floatValue();
 		float farFogDensity = Config.Client.Advanced.Graphics.Fog.farFogDensity.get().floatValue();
+		
+		// override fog if underwater
+		if (MC_RENDER.isFogStateSpecial())
+		{
+			// hide everything behind fog
+			farFogStart = 0.0f;
+			farFogEnd = 0.0f;
+		}
 		
 		this.shader.setUniform(this.uFarFogStart, farFogStart);
 		this.shader.setUniform(this.uFarFogLength, farFogEnd - farFogStart);
@@ -229,7 +238,6 @@ public class FogShader extends AbstractShaderRenderer
 		
 		return fogColor;
 	}
-	private Color getSpecialFogColor(float partialTicks) { return MC_RENDER.getSpecialFogColor(partialTicks); }
 	
 	public void setProjectionMatrix(Mat4f projectionMatrix)
 	{
@@ -252,7 +260,7 @@ public class FogShader extends AbstractShaderRenderer
 		GLMC.disableBlend();
 		
 		GLMC.glActiveTexture(GL32.GL_TEXTURE0);
-		GLMC.glBindTexture(LodRenderer.getActiveDepthTextureId());
+		GLMC.glBindTexture(LodRenderer.INSTANCE.getActiveDepthTextureId());
 		GL32.glUniform1i(this.uDepthMap, 0);
 		
 		// this is necessary for MC 1.16 (IE Legacy OpenGL)

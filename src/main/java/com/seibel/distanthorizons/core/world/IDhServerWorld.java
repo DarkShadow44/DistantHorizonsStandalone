@@ -24,6 +24,7 @@ import com.seibel.distanthorizons.core.multiplayer.server.ServerPlayerStateManag
 import com.seibel.distanthorizons.core.wrapperInterfaces.misc.IServerPlayerWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IServerLevelWrapper;
+import org.jetbrains.annotations.Nullable;
 
 /** Used both for dedicated server and singleplayer worlds */
 public interface IDhServerWorld extends IDhWorld
@@ -32,8 +33,8 @@ public interface IDhServerWorld extends IDhWorld
 	void addPlayer(IServerPlayerWrapper serverPlayer);
 	void removePlayer(IServerPlayerWrapper serverPlayer);
 	void changePlayerLevel(IServerPlayerWrapper player, IServerLevelWrapper originLevel, IServerLevelWrapper destinationLevel);
-	void serverTick();
 	
+	@Nullable
 	default IDhServerLevel getOrLoadServerLevel(ILevelWrapper levelWrapper) { return (IDhServerLevel) this.getOrLoadLevel(levelWrapper); }
 	
 }

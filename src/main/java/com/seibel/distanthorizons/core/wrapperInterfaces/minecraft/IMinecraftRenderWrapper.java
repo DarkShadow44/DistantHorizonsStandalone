@@ -21,11 +21,13 @@ package com.seibel.distanthorizons.core.wrapperInterfaces.minecraft;
 
 import java.awt.Color;
 
+import com.seibel.distanthorizons.core.enums.EDhDirection;
 import com.seibel.distanthorizons.core.wrapperInterfaces.misc.ILightMapWrapper;
 import com.seibel.distanthorizons.coreapi.interfaces.dependencyInjection.IBindable;
 import com.seibel.distanthorizons.core.util.math.Vec3d;
 import com.seibel.distanthorizons.core.util.math.Vec3f;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -45,8 +47,6 @@ public interface IMinecraftRenderWrapper extends IBindable
 	
 	Color getFogColor(float partialTicks);
 	
-	default Color getSpecialFogColor(float partialTicks) { return getFogColor(partialTicks); }
-	
 	/** Unless you really need to know if the player is blind, use {@link IMinecraftRenderWrapper#isFogStateSpecial()} instead */
 	boolean isFogStateSpecial();
 	
@@ -57,19 +57,16 @@ public interface IMinecraftRenderWrapper extends IBindable
 	/** Measured in chunks */
 	int getRenderDistance();
 	
-	int getScreenWidth();
-	int getScreenHeight();
-	
 	boolean mcRendersToFrameBuffer();
 	boolean runningLegacyOpenGL();
 	
 	/** @return -1 if no valid framebuffer is available yet */
-	int getTargetFrameBuffer(); // Note: Iris is now hooking onto this for DH + Iris compat, try not to change (unless we wanna deal with some annoyances)
+	int getTargetFramebuffer(); // Note: Iris is now hooking onto this for DH + Iris compat, try not to change (unless we wanna deal with some annoyances)
 								//          Iris commit: https://github.com/IrisShaders/Iris/commit/a76a240527e93780bbcba57c09bef377419d47a7#diff-7b9ded0c79bbcdb130010373387756a28ee8d3640d522c0a5b7acd0abbfc20aeR16
 	int getDepthTextureId();
 	int getColorTextureId();
-	int getTargetFrameBufferViewportWidth();
-	int getTargetFrameBufferViewportHeight();
+	int getTargetFramebufferViewportWidth();
+	int getTargetFramebufferViewportHeight();
 	
 	/** 
 	 * generally shouldn't be needed, the frame buffer should generally stay the same 
@@ -79,7 +76,10 @@ public interface IMinecraftRenderWrapper extends IBindable
 	
 	/** Can return null if the given level hasn't had a light map assigned to it */
 	@Nullable
-	ILightMapWrapper getLightmapWrapper(ILevelWrapper level);
+	ILightMapWrapper getLightmapWrapper(@NotNull ILevelWrapper level);
+	
+	float getShade(EDhDirection lodDirection);
+	
 	
 	
 }

@@ -23,16 +23,12 @@ import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pooling.AbstractPhantomArrayList;
 import com.seibel.distanthorizons.core.pooling.PhantomArrayListPool;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
-import com.seibel.distanthorizons.coreapi.ModInfo;
 import com.seibel.distanthorizons.core.dataObjects.render.columnViews.ColumnArrayView;
 import com.seibel.distanthorizons.core.dataObjects.render.columnViews.ColumnQuadView;
-import com.seibel.distanthorizons.coreapi.util.BitShiftUtil;
 import com.seibel.distanthorizons.core.util.ColorUtil;
 import com.seibel.distanthorizons.core.util.RenderDataPointUtil;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
-import org.apache.logging.log4j.Logger;
-
-import java.util.concurrent.atomic.AtomicLong;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 
 /**
  * Stores the render data used to generate OpenGL buffers.
@@ -41,12 +37,10 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class ColumnRenderSource extends AbstractPhantomArrayList
 {
-	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
-	public static final boolean DO_SAFETY_CHECKS = ModInfo.IS_DEV_BUILD;
-	public static final byte SECTION_SIZE_OFFSET = DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL;
-	/** width of this data in columns */
-	public static final int SECTION_SIZE = BitShiftUtil.powerOfTwo(SECTION_SIZE_OFFSET); // 64
+	/** measured in data columns */
+	public static final int WIDTH = 64;
 	
 	public static final PhantomArrayListPool ARRAY_LIST_POOL = new PhantomArrayListPool("Render Source");
 	
@@ -62,8 +56,6 @@ public class ColumnRenderSource extends AbstractPhantomArrayList
 	public final DebugSourceFlag[] debugSourceFlags;
 	
 	private boolean isEmpty = true;
-	
-	public AtomicLong localVersion = new AtomicLong(0); // used to track changes to the data source, so that buffers can be updated when necessary
 	
 	
 	
@@ -88,9 +80,9 @@ public class ColumnRenderSource extends AbstractPhantomArrayList
 		
 		this.verticalDataCount = maxVerticalSize;
 		
-		this.renderDataContainer = this.pooledArraysCheckout.getLongArray(0, SECTION_SIZE * SECTION_SIZE * this.verticalDataCount);
+		this.renderDataContainer = this.pooledArraysCheckout.getLongArray(0, WIDTH * WIDTH * this.verticalDataCount);
 		
-		this.debugSourceFlags = new DebugSourceFlag[SECTION_SIZE * SECTION_SIZE];
+		this.debugSourceFlags = new DebugSourceFlag[WIDTH * WIDTH];
 	}
 	
 	
@@ -99,19 +91,19 @@ public class ColumnRenderSource extends AbstractPhantomArrayList
 	// datapoint manipulation //
 	//========================//
 	
-	public long getDataPoint(int posX, int posZ, int verticalIndex) { return this.renderDataContainer.getLong(posX * SECTION_SIZE * this.verticalDataCount + posZ * this.verticalDataCount + verticalIndex); }
+	public long getDataPoint(int posX, int posZ, int verticalIndex) { return this.renderDataContainer.getLong(posX * WIDTH * this.verticalDataCount + posZ * this.verticalDataCount + verticalIndex); }
 	
 	public ColumnArrayView getVerticalDataPointView(int posX, int posZ)
 	{
-		int offset = posX * SECTION_SIZE * this.verticalDataCount + posZ * this.verticalDataCount;
+		int offset = posX * WIDTH * this.verticalDataCount + posZ * this.verticalDataCount;
 		
 		// don't allow returning views that are outside this render source's bounds
 		if (offset >= this.renderDataContainer.size())
 		{
 			return null;
 		}
-		else if (posX < 0 || posX >= SECTION_SIZE
-				|| posZ < 0 || posZ >= SECTION_SIZE)
+		else if (posX < 0 || posX >= WIDTH
+				|| posZ < 0 || posZ >= WIDTH)
 		{
 			return null;
 		}
@@ -120,8 +112,8 @@ public class ColumnRenderSource extends AbstractPhantomArrayList
 				offset, this.verticalDataCount);
 	}
 	
-	public ColumnQuadView getFullQuadView() { return this.getQuadViewOverRange(0, 0, SECTION_SIZE, SECTION_SIZE); }
-	public ColumnQuadView getQuadViewOverRange(int quadX, int quadZ, int quadXSize, int quadZSize) { return new ColumnQuadView(this.renderDataContainer, SECTION_SIZE, this.verticalDataCount, quadX, quadZ, quadXSize, quadZSize); }
+	public ColumnQuadView getFullQuadView() { return this.getQuadViewOverRange(0, 0, WIDTH, WIDTH); }
+	public ColumnQuadView getQuadViewOverRange(int quadX, int quadZ, int quadXSize, int quadZSize) { return new ColumnQuadView(this.renderDataContainer, WIDTH, this.verticalDataCount, quadX, quadZ, quadXSize, quadZSize); }
 	
 	
 	
@@ -131,9 +123,8 @@ public class ColumnRenderSource extends AbstractPhantomArrayList
 	
 	public Long getPos() { return this.pos; }
 	public Long getKey() { return this.pos; }
-	public String getKeyDisplayString() { return DhSectionPos.toString(this.pos); }
 	
-	public byte getDataDetailLevel() { return (byte) (DhSectionPos.getDetailLevel(this.pos) - SECTION_SIZE_OFFSET); }
+	public byte getDataDetailLevel() { return (byte) (DhSectionPos.getDetailLevel(this.pos) - DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL); }
 	
 	public boolean isEmpty() { return this.isEmpty; }
 	public void markNotEmpty() { this.isEmpty = false; }
@@ -147,15 +138,15 @@ public class ColumnRenderSource extends AbstractPhantomArrayList
 		}
 		
 		
-		for (int x = 0; x < SECTION_SIZE; x++)
+		for (int x = 0; x < WIDTH; x++)
 		{
-			for (int z = 0; z < SECTION_SIZE; z++)
+			for (int z = 0; z < WIDTH; z++)
 			{
 				ColumnArrayView columnArrayView = this.getVerticalDataPointView(x,z);
 				for (int i = 0; i < columnArrayView.size; i++)
 				{
 					long dataPoint = columnArrayView.get(i);
-					if (!RenderDataPointUtil.isVoid(dataPoint))
+					if (!RenderDataPointUtil.hasZeroHeight(dataPoint))
 					{
 						return true;
 					}
@@ -179,12 +170,12 @@ public class ColumnRenderSource extends AbstractPhantomArrayList
 		{
 			for (int z = zStart; z < zStart + zWidth; z++)
 			{
-				this.debugSourceFlags[x * SECTION_SIZE + z] = flag;
+				this.debugSourceFlags[x * WIDTH + z] = flag;
 			}
 		}
 	}
 	
-	public DebugSourceFlag debugGetFlag(int ox, int oz) { return this.debugSourceFlags[ox * SECTION_SIZE + oz]; }
+	public DebugSourceFlag debugGetFlag(int ox, int oz) { return this.debugSourceFlags[ox * WIDTH + oz]; }
 	
 	
 	

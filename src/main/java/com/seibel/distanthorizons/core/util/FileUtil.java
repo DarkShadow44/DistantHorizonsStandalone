@@ -20,7 +20,7 @@
 package com.seibel.distanthorizons.core.util;
 
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
-import org.apache.logging.log4j.Logger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 
 import java.io.File;
 import java.io.IOException;
@@ -30,7 +30,7 @@ import java.nio.file.Paths;
 
 public class FileUtil
 {
-	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
 	/**
 	 * Renames the given file to FILE_NAME.ORIGINAL_PREFIX.corrupted.

@@ -23,7 +23,9 @@ import com.seibel.distanthorizons.coreapi.util.MathUtil;
 
 import java.util.Objects;
 
+
 /** immutable */
+@Deprecated // TODO why does this exist vs blockpos2d?
 public class Pos2D
 {
 	public static final Pos2D ZERO = new Pos2D(0, 0);

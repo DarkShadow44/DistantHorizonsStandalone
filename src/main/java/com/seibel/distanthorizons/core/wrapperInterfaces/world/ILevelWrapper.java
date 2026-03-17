@@ -21,20 +21,41 @@ package com.seibel.distanthorizons.core.wrapperInterfaces.world;
 
 import com.google.common.io.BaseEncoding;
 import com.google.common.primitives.Longs;
+import com.seibel.distanthorizons.api.DhApi;
 import com.seibel.distanthorizons.api.interfaces.world.IDhApiLevelWrapper;
 import com.seibel.distanthorizons.core.level.IDhLevel;
-import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos;
 import com.seibel.distanthorizons.core.pos.DhChunkPos;
-import com.seibel.distanthorizons.core.wrapperInterfaces.block.IBlockStateWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.IChunkWrapper;
 import com.seibel.distanthorizons.coreapi.interfaces.dependencyInjection.IBindable;
+import org.jetbrains.annotations.Nullable;
 
-/** Can be either a Server world or a Client world. */
+/**
+ * A Level wrapper handles all MC related logic related to a given MC level.
+ * A Level in this context is defined as a Minecraft dimension the player can play in
+ * (IE the overworld, nether, end, etc.). <br><br>
+ *
+ * This is different from a {@link IDhLevel}
+ * in the following ways: <br>
+ * - A level wrapper holds a specific MC level object and will exist before a corresponding {@link IDhLevel} is created <br>
+ * - A level wrapper handles all MC logic (IE getting min/max world height) <br>
+ * - A level wrapper is accessible via the {@link DhApi} <br>
+ * - A level wrapper can access some DH logic when the API needs it 
+ *   (in general DH logic should be handled via a {@link IDhLevel} but due to how the API is currently configured
+ *   it's easier to handle that logic here). <br>
+ * 
+ * @see IDhLevel
+ * @see IClientLevelWrapper
+ * @see IServerLevelWrapper
+ */
 public interface ILevelWrapper extends IDhApiLevelWrapper, IBindable
 {
 	@Override
 	IDimensionTypeWrapper getDimensionType();
 	
+	/**
+	 * Includes both the namespace and name. <br> 
+	 * example: "minecraft:overworld" 
+	 */
 	@Override
 	String getDimensionName();
 	
@@ -49,9 +70,7 @@ public interface ILevelWrapper extends IDhApiLevelWrapper, IBindable
 		return encoded.substring(0, 13).toLowerCase(); // Remaining 3 chars are padding
 	}
 	
-	/**
-	 * A string intended to uniquely identify this level.
-	 */
+	/** A string that uniquely identifies this level. */
 	@Override
 	String getDhIdentifier();
 	
@@ -64,23 +83,19 @@ public interface ILevelWrapper extends IDhApiLevelWrapper, IBindable
 	@Override
 	int getMaxHeight();
 	@Override
-	default int getMinHeight() { return 0; }
-	
-	default IChunkWrapper tryGetChunk(DhChunkPos pos) { return null; }
-	
-	boolean hasChunkLoaded(int chunkX, int chunkZ);
-	
-	@Deprecated
-	IBlockStateWrapper getBlockState(DhBlockPos pos);
-	
-	@Deprecated
-	IBiomeWrapper getBiome(DhBlockPos pos);
+	int getMinHeight();
 	
 	/** Fired when the level is being unloaded. Doesn't unload the level. */
 	void onUnload();
 	
-	// TODO James doesn't like this circular reference, can we merge the level wrapper and DhLevels?
-	@Deprecated
-	void setParentLevel(IDhLevel parentLevel);
+	/** 
+	 * Used so we can access DH related methods/objects
+	 * from the {@link DhApi}.
+	 */
+	void setDhLevel(IDhLevel parentLevel);
+	@Nullable
+	IDhLevel getDhLevel();
+	
+	
 	
 }

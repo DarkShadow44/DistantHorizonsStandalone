@@ -6,8 +6,10 @@ import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.config.types.ConfigEntry;
 import com.seibel.distanthorizons.core.dataObjects.fullData.sources.FullDataSourceV2;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
+import com.seibel.distanthorizons.core.generation.tasks.DataSourceRetrievalResult;
 import com.seibel.distanthorizons.core.level.DhClientLevel;
-import com.seibel.distanthorizons.core.logging.ConfigBasedSpamLogger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
+import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.network.exceptions.RateLimitedException;
 import com.seibel.distanthorizons.core.network.exceptions.RequestOutOfRangeException;
 import com.seibel.distanthorizons.core.network.exceptions.RequestRejectedException;
@@ -22,10 +24,8 @@ import com.seibel.distanthorizons.core.render.renderer.IDebugRenderable;
 import com.seibel.distanthorizons.core.sql.dto.FullDataSourceV2DTO;
 import com.seibel.distanthorizons.core.util.LodUtil;
 import com.seibel.distanthorizons.core.util.ratelimiting.SupplierBasedRateLimiter;
-import com.seibel.distanthorizons.core.util.threading.ThreadPoolUtil;
 import com.seibel.distanthorizons.core.world.DhApiWorldProxy;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
-import org.apache.logging.log4j.LogManager;
 
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
@@ -33,14 +33,14 @@ import java.awt.*;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
 
 public abstract class AbstractFullDataNetworkRequestQueue implements IDebugRenderable, AutoCloseable
 {
-	private static final ConfigBasedSpamLogger LOGGER = new ConfigBasedSpamLogger(LogManager.getLogger(),
-			() -> Config.Common.Logging.logNetworkEvent.get(), 3);
+	private static final DhLogger LOGGER = new DhLoggerBuilder()
+			.fileLevelConfig(Config.Common.Logging.logNetworkEventToFile)
+			.maxCountPerSecond(3)
+			.build();
 	
 	private static final IMinecraftClientWrapper MC_CLIENT = SingletonInjector.INSTANCE.get(IMinecraftClientWrapper.class);
 	
@@ -56,7 +56,7 @@ public abstract class AbstractFullDataNetworkRequestQueue implements IDebugRende
 	
 	private volatile CompletableFuture<Void> closingFuture = null;
 	
-	protected final ConcurrentMap<Long, RequestQueueEntry> waitingTasksBySectionPos = new ConcurrentHashMap<>();
+	protected final ConcurrentMap<Long, NetRequestTask> waitingTasksBySectionPos = new ConcurrentHashMap<>();
 	/**
 	 * This semaphore prevents a given thread from accidentally locking on the same group
 	 * multiple times, as the semaphore is tied to the given thread. <br>
@@ -71,16 +71,6 @@ public abstract class AbstractFullDataNetworkRequestQueue implements IDebugRende
 	private final ConfigEntry<Boolean> showDebugWireframeConfig;
 	
 	private final SupplierBasedRateLimiter<Void> rateLimiter = new SupplierBasedRateLimiter<>(this::getRequestRateLimit);
-	
-	private final Set<Long> succeededPositions = Collections.newSetFromMap(CacheBuilder.newBuilder()
-			.expireAfterWrite(20, TimeUnit.MINUTES)
-			.<Long, Boolean>build()
-			.asMap());
-	
-	private final Set<Long> requiresSplittingPositions = Collections.newSetFromMap(CacheBuilder.newBuilder()
-			.expireAfterWrite(20, TimeUnit.MINUTES)
-			.<Long, Boolean>build()
-			.asMap());
 	
 	
 	
@@ -106,8 +96,8 @@ public abstract class AbstractFullDataNetworkRequestQueue implements IDebugRende
 	//==================//
 	
 	protected abstract int getRequestRateLimit();
-	protected abstract boolean isSectionAllowedToGenerate(long sectionPos, DhBlockPos2D targetPos);
-	protected abstract boolean onBeforeRequest(long sectionPos, CompletableFuture<ERequestResult> future);
+	protected abstract boolean sectionInAllowedGenerationRadius(long sectionPos, DhBlockPos2D targetPos);
+	protected abstract boolean onBeforeRequest(long sectionPos, CompletableFuture<DataSourceRetrievalResult> future);
 	
 	protected abstract String getQueueName();
 	
@@ -117,74 +107,60 @@ public abstract class AbstractFullDataNetworkRequestQueue implements IDebugRende
 	// request submitting //
 	//====================//
 	
-	public CompletableFuture<ERequestResult> submitRequest(long sectionPos, Consumer<FullDataSourceV2> dataSourceConsumer)
-	{ return this.submitRequest(sectionPos, null, dataSourceConsumer); }
-	public CompletableFuture<ERequestResult> submitRequest(long sectionPos, @Nullable Long clientTimestamp, Consumer<FullDataSourceV2> dataSourceConsumer)
+	public CompletableFuture<DataSourceRetrievalResult> submitRequest(long sectionPos, @Nullable Long clientTimestamp)
 	{
-		if (this.succeededPositions.contains(sectionPos))
+		NetRequestTask requestEntry = this.waitingTasksBySectionPos.compute(sectionPos, (Long pos, NetRequestTask existingNetTask) ->
 		{
-			return CompletableFuture.completedFuture(ERequestResult.FAILED);
-		}
-		
-		if (this.requiresSplittingPositions.contains(sectionPos))
-		{
-			return CompletableFuture.completedFuture(ERequestResult.REQUIRES_SPLITTING);
-		}
-		
-		AtomicBoolean added = new AtomicBoolean(false);
-		RequestQueueEntry entry = this.waitingTasksBySectionPos.compute(sectionPos, (pos, existingQueueEntry) ->
-		{
-			if (existingQueueEntry != null)
+			// ignore already queued tasks
+			if (existingNetTask != null)
 			{
-				return existingQueueEntry;
+				return existingNetTask;
 			}
 			
-			RequestQueueEntry newEntry = new RequestQueueEntry(dataSourceConsumer, clientTimestamp);
-			newEntry.future.whenComplete((requestResult, throwable) ->
+			
+			NetRequestTask newRequestEntry = new NetRequestTask(pos, clientTimestamp);
+			newRequestEntry.future.whenComplete((DataSourceRetrievalResult requestResult, Throwable throwable) ->
 			{
-				this.waitingTasksBySectionPos.remove(sectionPos);
+				this.waitingTasksBySectionPos.remove(pos);
 				
-				switch (requestResult)
+				if (throwable != null)
 				{
-					case SUCCEEDED:
-						this.finishedRequests.incrementAndGet();
-						this.succeededPositions.add(pos);
-						return;
-					case REQUIRES_SPLITTING:
-						this.requiresSplittingPositions.add(sectionPos);
-						return;
-					case FAILED:
+					if (!(throwable instanceof CancellationException))
+					{
 						this.failedRequests.incrementAndGet();
-						return;
-					default:
-						if (throwable != null && !(throwable instanceof CancellationException))
-						{
-							this.failedRequests.incrementAndGet();
-						}
+					}
+					return;
+				}
+				
+				switch (requestResult.state)
+				{
+					case SUCCESS:
+						this.finishedRequests.incrementAndGet();
+						break;
+					case REQUIRES_SPLITTING:
+						break;
+					case FAIL:
+						this.failedRequests.incrementAndGet();
 						break;
 				}
 			});
 			
-			added.set(true);
-			return newEntry;
+			return newRequestEntry;
 		});
 		
-		if (!added.get())
-		{
-			return CompletableFuture.completedFuture(ERequestResult.FAILED);
-		}
-		
-		return entry.future;
+		return requestEntry.future;
 	}
 	
 	public synchronized boolean tick(DhBlockPos2D targetPos)
 	{
-		if (DhApiWorldProxy.INSTANCE.worldLoaded() && DhApiWorldProxy.INSTANCE.getReadOnly())
+		if (DhApiWorldProxy.INSTANCE.worldLoaded() 
+			&& DhApiWorldProxy.INSTANCE.getReadOnly())
 		{
 			return false;
 		}
 		
-		if (this.closingFuture != null || !this.networkState.isReady())
+		if (this.closingFuture != null 
+			|| !this.networkState.isReady())
 		{
 			return false;
 		}
@@ -207,145 +183,125 @@ public abstract class AbstractFullDataNetworkRequestQueue implements IDebugRende
 	}
 	private void sendNextRequest(DhBlockPos2D targetPos)
 	{
-		Map.Entry<Long, RequestQueueEntry> mapEntry = this.waitingTasksBySectionPos.entrySet().stream()
-				.filter(task -> task.getValue().networkDataSourceFuture == null)
-				.min(Comparator.comparingInt(x -> DhSectionPos.getChebyshevSignedBlockDistance(x.getKey(), targetPos)))
-				.orElse(null);
+		Map.Entry<Long, NetRequestTask> nearestMapEntry = this.waitingTasksBySectionPos
+			.entrySet().stream()
+			.filter(task -> task.getValue().networkDataSourceFuture == null)
+			.min(Comparator.comparingInt(mapEntry -> DhSectionPos.getChebyshevSignedBlockDistance(mapEntry.getKey(), targetPos)))
+			.orElse(null);
 		
-		if (mapEntry == null)
+		if (nearestMapEntry == null)
 		{
 			this.pendingTasksSemaphore.release();
 			return;
 		}
 		
-		long sectionPos = mapEntry.getKey();
-		RequestQueueEntry entry = mapEntry.getValue();
+		long requestPos = nearestMapEntry.getKey();
+		NetRequestTask requestTask = nearestMapEntry.getValue();
 		
-		if (!this.isSectionAllowedToGenerate(sectionPos, targetPos))
+		if (!this.sectionInAllowedGenerationRadius(requestPos, targetPos))
 		{
-			entry.future.cancel(false);
+			requestTask.future.cancel(false);
 			this.pendingTasksSemaphore.release();
 			return;
 		}
 		
-		if (!this.onBeforeRequest(sectionPos, entry.future))
+		if (!this.onBeforeRequest(requestPos, requestTask.future))
 		{
 			this.pendingTasksSemaphore.release();
 			return;
 		}
 		
-		Long offsetEntryTimestamp = entry.updateTimestamp != null
-				? entry.updateTimestamp + this.networkState.getServerTimeOffset()
+		Long offsetEntryTimestamp = requestTask.updateTimestamp != null
+				? requestTask.updateTimestamp + this.networkState.getServerTimeOffset()
 				: null;
 		
-		CompletableFuture<FullDataSourceResponseMessage> dataSourceFuture = this.networkState.getSession().sendRequest(
-				new FullDataSourceRequestMessage(this.level.getLevelWrapper(), sectionPos, offsetEntryTimestamp),
+		CompletableFuture<FullDataSourceResponseMessage> dataSourceNetworkFuture = this.networkState.getSession().sendRequest(
+				new FullDataSourceRequestMessage(this.level.getLevelWrapper(), requestPos, offsetEntryTimestamp),
 				FullDataSourceResponseMessage.class
 		);
-		entry.networkDataSourceFuture = dataSourceFuture;
-		dataSourceFuture.handle((response, throwable) ->
+		requestTask.networkDataSourceFuture = dataSourceNetworkFuture;
+		dataSourceNetworkFuture.handle((FullDataSourceResponseMessage response, Throwable throwable) ->
 		{
-			this.pendingTasksSemaphore.release();
-			
-			try
-			{
-				if (throwable != null)
-				{
-					throw throwable;
-				}
-				
-				if (response.payload != null)
-				{
-					FullDataSourceV2DTO dataSourceDto = this.networkState.fullDataPayloadReceiver.decodeDataSource(response.payload);
-					
-					// set application flags based on the received detail level,
-					// this is needed so the data sources propagate correctly
-					dataSourceDto.applyToChildren = DhSectionPos.getDetailLevel(dataSourceDto.pos) > DhSectionPos.SECTION_BLOCK_DETAIL_LEVEL;
-					dataSourceDto.applyToParent = DhSectionPos.getDetailLevel(dataSourceDto.pos) < DhSectionPos.SECTION_BLOCK_DETAIL_LEVEL + 12;
-					
-					AbstractExecutorService executor = ThreadPoolUtil.getNetworkCompressionExecutor();
-					if (executor == null)
-					{
-						LOGGER.warn("Unable to handle FullDataPayload - getNetworkCompressionExecutor() is null");
-						dataSourceDto.close();
-						return null;
-					}
-					
-					CompletableFuture.runAsync(() ->
-					{
-						try
-						{
-							this.level.updateBeaconBeamsForSectionPos(dataSourceDto.pos, response.payload.beaconBeams);
-							
-							FullDataSourceV2 fullDataSource = dataSourceDto.createDataSource(this.level.getLevelWrapper());
-							entry.dataSourceConsumer.accept(fullDataSource);
-						}
-						catch (Exception e)
-						{
-							throw new RuntimeException(e);
-						}
-						finally
-						{
-							dataSourceDto.close();
-						}
-					}, executor);
-				}
-				else
-				{
-					LodUtil.assertTrue(this.changedOnly, "Received empty data source response for not changes-only request");
-				}
-			}
-			catch (SectionRequiresSplittingException ignored)
-			{
-				return entry.future.complete(ERequestResult.REQUIRES_SPLITTING);
-			}
-			catch (SessionClosedException | CancellationException ignored)
-			{
-				return entry.future.cancel(false);
-			}
-			catch (RequestRejectedException e)
-			{
-				LOGGER.info("Request rejected by the server: " + e.getMessage());
-				return entry.future.complete(ERequestResult.FAILED);
-			}
-			catch (RateLimitedException e)
-			{
-				LOGGER.info("Rate limited by server, re-queueing task [" + DhSectionPos.toString(sectionPos) + "]: " + e.getMessage());
-				
-				// Skip all requests for 1 second
-				this.rateLimiter.acquireAll();
-				
-				entry.networkDataSourceFuture = null;
-				return null;
-			}
-			catch (RequestOutOfRangeException e)
-			{
-				LOGGER.debug("Out of range, re-queueing task [" + DhSectionPos.toString(sectionPos) + "]: " + e.getMessage());
-				
-				entry.networkDataSourceFuture = null;
-				return null;
-			}
-			catch (Throwable e)
-			{
-				entry.retryAttempts--;
-				LOGGER.error("Error while fetching full data source, attempts left: {} / {}", entry.retryAttempts, MAX_RETRY_ATTEMPTS, e);
-				
-				// Retry logic
-				if (entry.retryAttempts > 0)
-				{
-					entry.networkDataSourceFuture = null;
-					return null;
-				}
-				else
-				{
-					return entry.future.complete(ERequestResult.FAILED);
-				}
-			}
-			
-			return entry.future.complete(ERequestResult.SUCCEEDED);
+			this.handleNetResponse(requestTask, response, throwable);
+			return null;
 		});
 	}
-	
+	private void handleNetResponse(NetRequestTask requestTask, FullDataSourceResponseMessage response, Throwable throwable)
+	{
+		this.pendingTasksSemaphore.release();
+		
+		try
+		{
+			if (throwable != null)
+			{
+				throw throwable;
+			}
+			
+			if (response.payload == null)
+			{
+				LodUtil.assertTrue(this.changedOnly, "Received empty data source response for not changes-only request");
+				return;
+			}
+			
+			
+			try(FullDataSourceV2DTO dataSourceDto = this.networkState.fullDataPayloadReceiver.decodeDataSource(response.payload))
+			{
+				// set application flags based on the received detail level,
+				// this is needed so the data sources propagate correctly
+				dataSourceDto.applyToChildren = DhSectionPos.getDetailLevel(dataSourceDto.pos) > DhSectionPos.SECTION_BLOCK_DETAIL_LEVEL;
+				dataSourceDto.applyToParent = DhSectionPos.getDetailLevel(dataSourceDto.pos) < DhSectionPos.SECTION_BLOCK_DETAIL_LEVEL + 12;
+				
+				
+				this.level.updateBeaconBeamsForSectionPos(dataSourceDto.pos, response.payload.beaconBeams);
+				
+				FullDataSourceV2 fullDataSource = dataSourceDto.createDataSource(this.level.getLevelWrapper(), null);
+				requestTask.future.complete(DataSourceRetrievalResult.CreateSuccess(dataSourceDto.pos, fullDataSource));
+			}
+		}
+		catch (SectionRequiresSplittingException ignored)
+		{
+			requestTask.future.complete(DataSourceRetrievalResult.CreateSplit());
+		}
+		catch (SessionClosedException | CancellationException ignored)
+		{
+			requestTask.future.cancel(false);
+		}
+		catch (RequestRejectedException e)
+		{
+			LOGGER.info("Request rejected by the server, message: [" + e.getMessage() + "].");
+			requestTask.future.complete(DataSourceRetrievalResult.CreateFail());
+		}
+		catch (RateLimitedException e)
+		{
+			LOGGER.info("Rate limited by server, re-queueing task [" + DhSectionPos.toString(requestTask.pos) + "], message: [" + e.getMessage() + "].");
+			
+			// Skip all requests for 1 second
+			this.rateLimiter.acquireAll();
+			
+			requestTask.networkDataSourceFuture = null;
+		}
+		catch (RequestOutOfRangeException e)
+		{
+			LOGGER.debug("Out of range, re-queueing task [" + DhSectionPos.toString(requestTask.pos) + "], message: [" + e.getMessage() + "].");
+			
+			requestTask.networkDataSourceFuture = null;
+		}
+		catch (Throwable e)
+		{
+			requestTask.retryAttempts--;
+			LOGGER.error("Unexpected error: ["+e.getMessage()+"] while fetching full data source, attempts left: ["+requestTask.retryAttempts+"] / ["+MAX_RETRY_ATTEMPTS+"]", e);
+			
+			// Retry logic
+			if (requestTask.retryAttempts > 0)
+			{
+				requestTask.networkDataSourceFuture = null;
+			}
+			else
+			{
+				requestTask.future.complete(DataSourceRetrievalResult.CreateFail());
+			}
+		}
+	}
 	
 	
 	
@@ -355,22 +311,30 @@ public abstract class AbstractFullDataNetworkRequestQueue implements IDebugRende
 	
 	public void removeRetrievalRequestIf(DhSectionPos.ICancelablePrimitiveLongConsumer removeIf)
 	{
-		for (Map.Entry<Long, RequestQueueEntry> mapEntry : (Iterable<? extends Map.Entry<Long, RequestQueueEntry>>) this.waitingTasksBySectionPos.entrySet().stream()
-				.sorted(Comparator.comparingInt((Map.Entry<Long, RequestQueueEntry> entry) -> DhSectionPos.getChebyshevSignedBlockDistance(entry.getKey(), Objects.requireNonNull(this.level.getTargetPosForGeneration()))).reversed())
-				::iterator)
+		// remove tasks furthest
+		Iterator<Map.Entry<Long, NetRequestTask>> farestTaskIterator = this.waitingTasksBySectionPos
+			.entrySet().stream()
+			.sorted(Comparator.comparingInt((Map.Entry<Long, NetRequestTask> entry) ->
+			{
+				Long pos = entry.getKey();
+				DhBlockPos2D targetPos = this.level.getTargetPosForGeneration();
+				return DhSectionPos.getChebyshevSignedBlockDistance(pos, targetPos);
+			}).reversed())
+			.iterator();
+		
+		while (farestTaskIterator.hasNext())
 		{
+			Map.Entry<Long, NetRequestTask> mapEntry = farestTaskIterator.next();
 			long pos = mapEntry.getKey();
-			RequestQueueEntry entry = mapEntry.getValue();
+			NetRequestTask entry = mapEntry.getValue();
 			
 			if (removeIf.accept(pos))
 			{
-				LOGGER.debug("Removing request  " + mapEntry.getKey() + "...");
-				
-				entry.future.cancel(false);
 				if (entry.networkDataSourceFuture != null)
 				{
 					entry.networkDataSourceFuture.cancel(false);
 				}
+				entry.future.cancel(false);
 			}
 		}
 	}
@@ -398,7 +362,7 @@ public abstract class AbstractFullDataNetworkRequestQueue implements IDebugRende
 			
 			do
 			{
-				for (RequestQueueEntry entry : this.waitingTasksBySectionPos.values())
+				for (NetRequestTask entry : this.waitingTasksBySectionPos.values())
 				{
 					entry.future.cancel(alsoInterruptRunning);
 					if (entry.networkDataSourceFuture != null && entry.networkDataSourceFuture.cancel(alsoInterruptRunning))
@@ -436,13 +400,31 @@ public abstract class AbstractFullDataNetworkRequestQueue implements IDebugRende
 			return;
 		}
 		
-		for (Map.Entry<Long, RequestQueueEntry> mapEntry : this.waitingTasksBySectionPos.entrySet())
+		DhBlockPos2D targetPos = this.level.getTargetPosForGeneration();
+		for (Map.Entry<Long, NetRequestTask> mapEntry : this.waitingTasksBySectionPos.entrySet())
 		{
-			renderer.renderBox(new DebugRenderer.Box(mapEntry.getKey(), -32f, 64f, 0.05f,
-					mapEntry.getValue().networkDataSourceFuture != null ? Color.red
-							: this.isSectionAllowedToGenerate(mapEntry.getKey(), Objects.requireNonNull(this.level.getTargetPosForGeneration())) ? Color.gray
-							: Color.darkGray
-			));
+			long pos = mapEntry.getKey();
+			NetRequestTask task = mapEntry.getValue();
+			
+			Color color;
+			if (task.networkDataSourceFuture != null)
+			{
+				color = Color.RED;
+			}
+			else
+			{
+				boolean taskInAllowedGenRadius = this.sectionInAllowedGenerationRadius(pos, targetPos);
+				if (taskInAllowedGenRadius)
+				{
+					color = Color.GRAY;
+				}
+				else
+				{
+					color = Color.DARK_GRAY;
+				}
+			}
+			
+			renderer.renderBox(new DebugRenderer.Box(pos, -32f, 64f, 0.05f, color));
 		}
 	}
 	
@@ -452,11 +434,12 @@ public abstract class AbstractFullDataNetworkRequestQueue implements IDebugRende
 	// helper classes //
 	//================//
 	
-	protected static class RequestQueueEntry
+	protected static class NetRequestTask
 	{
+		public final long pos;
+		
 		/** encapsulates the entire request, including client side queuing and the actual server request */
-		public final CompletableFuture<ERequestResult> future = new CompletableFuture<>();
-		public final Consumer<FullDataSourceV2> dataSourceConsumer;
+		public final CompletableFuture<DataSourceRetrievalResult> future = new CompletableFuture<>();
 		/** will be null if we want to retrieve the LOD regardless of when it was last updated */
 		@Nullable
 		public final Long updateTimestamp;
@@ -475,21 +458,12 @@ public abstract class AbstractFullDataNetworkRequestQueue implements IDebugRende
 		// constructor //
 		//=============//
 		
-		public RequestQueueEntry(
-				Consumer<FullDataSourceV2> dataSourceConsumer,
-				@Nullable Long updateTimestamp)
+		public NetRequestTask(long pos, @Nullable Long updateTimestamp)
 		{
-			this.dataSourceConsumer = dataSourceConsumer;
+			this.pos = pos;
 			this.updateTimestamp = updateTimestamp;
 		}
 		
-	}
-	
-	public enum ERequestResult
-	{
-		SUCCEEDED,
-		REQUIRES_SPLITTING,
-		FAILED,
 	}
 	
 	

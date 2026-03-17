@@ -50,7 +50,7 @@ public class DhBlockPosMutable extends DhBlockPos
 	//========//
 	
 	/** @see DhBlockPos#createOffset(EDhDirection)  */
-	public DhBlockPosMutable createOffset(EDhDirection direction) { return new DhBlockPosMutable(super.mutateOrCreateOffset(direction.getNormal().x, direction.getNormal().y, direction.getNormal().z, null)); }
+	public DhBlockPosMutable createOffset(EDhDirection direction) { return new DhBlockPosMutable(super.mutateOrCreateOffset(direction.normal.x, direction.normal.y, direction.normal.z, null)); }
 	/** @see DhBlockPos#createOffset(int, int, int)  */
 	public DhBlockPosMutable createOffset(int x, int y, int z) { return new DhBlockPosMutable(this.mutateOrCreateOffset(x,y,z, null)); }
 	

@@ -23,6 +23,7 @@ import com.seibel.distanthorizons.api.interfaces.override.rendering.IDhApiShader
 import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam;
 import com.seibel.distanthorizons.api.objects.math.DhApiVec3f;
 import com.seibel.distanthorizons.core.config.Config;
+import com.seibel.distanthorizons.core.dataObjects.render.bufferBuilding.LodQuadBuilder;
 import com.seibel.distanthorizons.core.render.glObject.GLProxy;
 import com.seibel.distanthorizons.core.render.glObject.shader.Shader;
 import com.seibel.distanthorizons.core.render.glObject.shader.ShaderProgram;
@@ -37,6 +38,7 @@ import com.seibel.distanthorizons.core.util.math.Vec3f;
 
 /**
  * Handles rendering the normal LOD terrain.
+ * @see LodQuadBuilder 
  */
 public class DhTerrainShaderProgram extends ShaderProgram implements IDhApiShaderProgram
 {
@@ -46,16 +48,14 @@ public class DhTerrainShaderProgram extends ShaderProgram implements IDhApiShade
 	public int uCombinedMatrix = -1;
 	public int uModelOffset = -1;
 	public int uWorldYOffset = -1;
-	public int uDitherDhRendering = -1;
 	
 	public int uMircoOffset = -1;
-	
 	public int uEarthRadius = -1;
-	
 	public int uLightMap = -1;
 	
-	// Fog/Clip Uniforms
+	// fragment shader uniforms
 	public int uClipDistance = -1;
+	public int uDitherDhRendering = -1;
 	
 	// Noise Uniforms
 	public int uNoiseEnabled = -1;
@@ -64,7 +64,7 @@ public class DhTerrainShaderProgram extends ShaderProgram implements IDhApiShade
 	public int uNoiseDropoff = -1;
 	
 	// Debug Uniform
-	public int uWhiteWorld = -1;
+	public int uIsWhiteWorld = -1;
 	
 	
 	
@@ -76,19 +76,16 @@ public class DhTerrainShaderProgram extends ShaderProgram implements IDhApiShade
 	public DhTerrainShaderProgram()
 	{
 		super(
-				() -> Shader.loadFile(Config.Client.Advanced.Graphics.Experimental.earthCurveRatio.get() != 0 
-								? "shaders/curve.vert"
-								: "shaders/standard.vert",
-						false, new StringBuilder()).toString(),
-				() -> Shader.loadFile("shaders/flat_shaded.frag", false, new StringBuilder()).toString(),
-				"fragColor", new String[]{"vPosition", "color"});
+			() -> Shader.loadFile("shaders/standard.vert", false, new StringBuilder()).toString(),
+			() -> Shader.loadFile("shaders/flat_shaded.frag", false, new StringBuilder()).toString(),
+			"fragColor", new String[]{"vPosition", "color"});
 		
 		this.uCombinedMatrix = this.getUniformLocation("uCombinedMatrix");
 		this.uModelOffset = this.getUniformLocation("uModelOffset");
-		this.uWorldYOffset = this.tryGetUniformLocation("uWorldYOffset");
-		this.uDitherDhRendering = this.tryGetUniformLocation("uDitherDhRendering");
+		this.uWorldYOffset = this.getUniformLocation("uWorldYOffset");
+		this.uDitherDhRendering = this.getUniformLocation("uDitherDhRendering");
 		this.uMircoOffset = this.getUniformLocation("uMircoOffset");
-		this.uEarthRadius = this.tryGetUniformLocation("uEarthRadius");
+		this.uEarthRadius = this.getUniformLocation("uEarthRadius");
 		
 		this.uLightMap = this.getUniformLocation("uLightMap");
 		
@@ -102,7 +99,7 @@ public class DhTerrainShaderProgram extends ShaderProgram implements IDhApiShade
 		this.uNoiseDropoff = this.getUniformLocation("uNoiseDropoff");
 		
 		// Debug Uniform
-		this.uWhiteWorld = this.getUniformLocation("uWhiteWorld");
+		this.uIsWhiteWorld = this.getUniformLocation("uIsWhiteWorld");
 		
 		
 		// TODO: Add better use of the LODFormat thing
@@ -117,10 +114,13 @@ public class DhTerrainShaderProgram extends ShaderProgram implements IDhApiShade
 		}
 		this.vao.bind();
 		
-		// TODO comment what each attribute represents
-		this.vao.setVertexAttribute(0, 0, VertexPointer.addUnsignedShortsPointer(4, false, true)); // 2+2+2+2 // TODO probably color, blockpos
-		this.vao.setVertexAttribute(0, 1, VertexPointer.addUnsignedBytesPointer(4, true, false)); // +4 // TODO ?
-		this.vao.setVertexAttribute(0, 2, VertexPointer.addUnsignedBytesPointer(4, true, true)); // +4 // TODO probably normal index and Iris block ID
+		// short: x, y, z, meta
+		//      meta: byte skylight, byte blocklight, byte microOffset
+		this.vao.setVertexAttribute(0, 0, VertexPointer.addUnsignedShortsPointer(4, false, true));
+		// byte: r, g, b, a
+		this.vao.setVertexAttribute(0, 1, VertexPointer.addUnsignedBytesPointer(4, true, false));
+		// byte: iris material ID, normal index, 2 spacers
+		this.vao.setVertexAttribute(0, 2, VertexPointer.addUnsignedBytesPointer(4, true, true));
 		
 		try
 		{
@@ -178,12 +178,21 @@ public class DhTerrainShaderProgram extends ShaderProgram implements IDhApiShade
 		// setUniform(skyLightUniform, skyLight);
 		this.setUniform(this.uLightMap, 0); // TODO this should probably be passed in
 		
-		if (this.uWorldYOffset != -1) this.setUniform(this.uWorldYOffset, (float) renderParameters.worldYOffset);
+		this.setUniform(this.uWorldYOffset, (float) renderParameters.worldYOffset);
 		
-		if (this.uDitherDhRendering != -1) this.setUniform(this.uDitherDhRendering, Config.Client.Advanced.Graphics.Quality.ditherDhFade.get());
+		this.setUniform(this.uDitherDhRendering, Config.Client.Advanced.Graphics.Quality.ditherDhFade.get());
 		
-		if (this.uEarthRadius != -1) this.setUniform(this.uEarthRadius,
-				/*6371KM*/ 6371000.0f / Config.Client.Advanced.Graphics.Experimental.earthCurveRatio.get());
+		float curveRatio = Config.Client.Advanced.Graphics.Experimental.earthCurveRatio.get();
+		if (curveRatio < -1.0f || curveRatio > 1.0f)
+		{
+			curveRatio = /*6371KM*/ 6371000.0f / curveRatio;
+		}
+		else
+		{
+			// disable curvature if the config value is between -1 and 1
+			curveRatio = 0.0f;
+		}
+		this.setUniform(this.uEarthRadius, curveRatio);
 		
 		// Noise Uniforms
 		this.setUniform(this.uNoiseEnabled, Config.Client.Advanced.Graphics.NoiseTexture.enableNoiseTexture.get());
@@ -192,7 +201,7 @@ public class DhTerrainShaderProgram extends ShaderProgram implements IDhApiShade
 		this.setUniform(this.uNoiseDropoff, Config.Client.Advanced.Graphics.NoiseTexture.noiseDropoff.get());
 		
 		// Debug
-		this.setUniform(this.uWhiteWorld, Config.Client.Advanced.Debugging.enableWhiteWorld.get());
+		this.setUniform(this.uIsWhiteWorld, Config.Client.Advanced.Debugging.enableWhiteWorld.get());
 		
 		// Clip Uniform
 		float dhNearClipDistance = RenderUtil.getNearClipPlaneInBlocksForFading(renderParameters.partialTicks);

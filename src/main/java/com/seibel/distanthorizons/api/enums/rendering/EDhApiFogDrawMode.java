@@ -33,10 +33,6 @@ package com.seibel.distanthorizons.api.enums.rendering;
 @Deprecated
 public enum EDhApiFogDrawMode
 {
-	// Reminder:
-	// when adding items up the API minor version
-	// when removing items up the API major version
-	
 	/**
 	 * Use whatever Fog setting Optifine is using.
 	 * If Optifine isn't installed this defaults to {@link EDhApiFogDrawMode#FOG_ENABLED}.

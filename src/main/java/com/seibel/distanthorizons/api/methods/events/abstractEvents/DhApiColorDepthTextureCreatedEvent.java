@@ -33,7 +33,7 @@ import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhAp
  * @since API 2.0.0
  * @deprecated Replaced by {@link DhApiBeforeColorDepthTextureCreatedEvent} since this event's name isn't obvious when it fires.
  */
-@Deprecated
+@Deprecated // internal notes: this method must be kept around due to Iris using it and we don't want to break old Iris support
 public abstract class DhApiColorDepthTextureCreatedEvent implements IDhApiEvent<DhApiColorDepthTextureCreatedEvent.EventParam>
 {
 	/** Fired before Distant Horizons creates. */

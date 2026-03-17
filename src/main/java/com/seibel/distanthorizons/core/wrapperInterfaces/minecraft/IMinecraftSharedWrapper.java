@@ -23,7 +23,6 @@ import com.seibel.distanthorizons.coreapi.interfaces.dependencyInjection.IBindab
 
 import java.io.File;
 
-//TODO: Maybe have IMCClientWrapper & IMCDedicatedWrapper extend this interface???
 public interface IMinecraftSharedWrapper extends IBindable
 {
 	boolean isDedicatedServer();
@@ -31,5 +30,7 @@ public interface IMinecraftSharedWrapper extends IBindable
 	File getInstallationDirectory();
 	
 	int getPlayerCount();
+	
+	
 	
 }

@@ -1,0 +1,76 @@
+/*
+ *    This file is part of the Distant Horizons mod
+ *    licensed under the GNU LGPL v3 License.
+ *
+ *    Copyright (C) 2020 James Seibel
+ *
+ *    This program is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU Lesser General Public License as published by
+ *    the Free Software Foundation, version 3.
+ *
+ *    This program is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Lesser General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Lesser General Public License
+ *    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+package com.seibel.distanthorizons.core.config;
+
+import com.seibel.distanthorizons.core.config.types.ConfigEntry;
+
+import java.util.HashMap;
+import java.util.HashSet;
+
+public class ConfigPresetOptions<TQuickEnum, TConfig>
+{
+	public final ConfigEntry<TConfig> configEntry;
+	
+	private final HashMap<TQuickEnum, TConfig> configOptionByQualityOption;
+	
+	
+	
+	//=============//
+	// constructor //
+	//=============//
+	
+	public ConfigPresetOptions(ConfigEntry<TConfig> configEntry, HashMap<TQuickEnum, TConfig> configOptionByQualityOption)
+	{
+		this.configEntry = configEntry;
+		this.configOptionByQualityOption = configOptionByQualityOption;
+	}
+	
+	
+	
+	//=========//
+	// methods //
+	//=========//
+	
+	public void updateConfigEntry(TQuickEnum quickQuality)
+	{
+		TConfig newValue = this.configOptionByQualityOption.get(quickQuality);
+		this.configEntry.set(newValue);
+	}
+	
+	public HashSet<TQuickEnum> getPossibleQualitiesFromCurrentOptionValue()
+	{
+		// get true value so we can ignore API overrides,
+		// users find this confusing if their preset is set to "CUSTOM" 
+		TConfig inputOptionValue = this.configEntry.getTrueValue();
+		HashSet<TQuickEnum> possibleQualities = new HashSet<>();
+		
+		for (TQuickEnum key : this.configOptionByQualityOption.keySet())
+		{
+			TConfig optionValue = this.configOptionByQualityOption.get(key);
+			if (optionValue.equals(inputOptionValue))
+			{
+				possibleQualities.add(key);
+			}
+		}
+		
+		return possibleQualities;
+	}
+	
+}

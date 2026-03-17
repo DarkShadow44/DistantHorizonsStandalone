@@ -3,7 +3,7 @@ package com.seibel.distanthorizons.core.util.threading;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
 import com.seibel.distanthorizons.core.util.ThreadUtil;
-import org.apache.logging.log4j.Logger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 
 import java.util.Iterator;
 import java.util.NoSuchElementException;
@@ -22,7 +22,7 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class PositionalLockProvider
 {
-	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 
 	private static final ThreadPoolExecutor LOCK_CLEANUP_THREAD = ThreadUtil.makeSingleDaemonThreadPool("Positional Lock Cleanup");
 	private static final int CLEANUP_THREAD_MAX_FREQUENCY_IN_MS = 1000;

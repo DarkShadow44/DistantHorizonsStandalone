@@ -19,6 +19,9 @@
 
 package com.seibel.distanthorizons.core.render.glObject.vertexAttribute;
 
+import com.seibel.distanthorizons.core.config.Config;
+import com.seibel.distanthorizons.core.logging.DhLogger;
+import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.render.glObject.GLProxy;
 import org.lwjgl.opengl.GL43;
 
@@ -33,6 +36,12 @@ import org.lwjgl.opengl.GL43;
  */
 public final class VertexAttributePostGL43 extends AbstractVertexAttribute
 {
+	private static final DhLogger LOGGER = new DhLoggerBuilder()
+			.fileLevelConfig(Config.Common.Logging.logRendererGLEventToFile)
+			.chatLevelConfig(Config.Common.Logging.logRendererGLEventToChat)
+			.build();
+	
+	
 	int numberOfBindingPoints = 0;
 	int strideSize = 0;
 	
@@ -135,12 +144,12 @@ public final class VertexAttributePostGL43 extends AbstractVertexAttribute
 	{
 		if (this.strideSize != expectedStrideSize)
 		{
-			GLProxy.GL_LOGGER.error("Vertex Attribute calculated stride size " + this.strideSize +
+			LOGGER.error("Vertex Attribute calculated stride size " + this.strideSize +
 					" does not match the provided expected stride size " + expectedStrideSize + "!");
 			throw new IllegalArgumentException("Vertex Attribute Incorrect Format");
 		}
 		
-		GLProxy.GL_LOGGER.info("Vertex Attribute (GL43+) completed. It contains " + this.numberOfBindingPoints
+		LOGGER.info("Vertex Attribute (GL43+) completed. It contains " + this.numberOfBindingPoints
 				+ " binding points and a stride size of " + this.strideSize);
 	}
 	

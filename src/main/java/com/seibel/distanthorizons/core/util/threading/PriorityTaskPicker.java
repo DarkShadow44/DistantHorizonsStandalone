@@ -4,7 +4,7 @@ import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.config.listeners.IConfigListener;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.util.objects.RollingAverage;
-import org.apache.logging.log4j.Logger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
@@ -21,7 +21,7 @@ import java.util.stream.Stream;
  */
 public class PriorityTaskPicker
 {
-	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
 	
 	/** the list of currently registered executors */
@@ -97,10 +97,6 @@ public class PriorityTaskPicker
 						{
 							// Clear this executor's tasks since we no longer expect anything to execute.
 							executor.taskQueue.clear();
-						}
-						else
-						{
-							throw e;
 						}
 					}
 				}
@@ -194,7 +190,7 @@ public class PriorityTaskPicker
 		{
 			return new RateLimitedThreadPoolExecutor(
 					Config.Common.MultiThreading.numberOfThreads.get(),
-					new DhThreadFactory(this.name, Thread.MIN_PRIORITY, false),
+					new DhThreadFactory(this.name, Config.Common.MultiThreading.threadPriority.get(), false),
 					new ArrayBlockingQueue<>(Runtime.getRuntime().availableProcessors())
 			);
 		}
@@ -228,6 +224,13 @@ public class PriorityTaskPicker
 		@Override
 		public void execute(@NotNull Runnable command)
 		{
+			// needed so we don't try queuing tasks that will never be completed
+			if (this.threadPoolExecutor.isShutdown())
+			{
+				throw new RejectedExecutionException("Thread pool ["+this.name+"] shutdown.");
+			}
+			
+			
 			this.taskQueue.add(new TrackedRunnable(this.parentTaskPicker, this, command));
 			
 			// Attempt to start the task immediately
@@ -252,6 +255,8 @@ public class PriorityTaskPicker
 		public int getCompletedTaskCount() { return this.completedTasksRef.get(); }
 		/** Will return NaN if nothing has been submitted yet */
 		public double getAverageRunTimeInMs() { return this.runTimeInMsRollingAverage.getAverage(); }
+		
+		public void clearQueue() { this.taskQueue.clear(); }
 		
 		
 		
@@ -315,7 +320,7 @@ public class PriorityTaskPicker
 			finally
 			{
 				long timeElapsed = System.nanoTime() - startTime;
-				this.executor.runTimeInMsRollingAverage.addValue(TimeUnit.NANOSECONDS.toMillis(timeElapsed));
+				this.executor.runTimeInMsRollingAverage.add(TimeUnit.NANOSECONDS.toMillis(timeElapsed));
 				
 				// Update variables related to task status
 				this.parentTaskPicker.occupiedThreadsRef.getAndDecrement();

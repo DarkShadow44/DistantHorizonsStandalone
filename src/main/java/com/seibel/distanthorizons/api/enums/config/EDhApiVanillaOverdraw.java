@@ -34,11 +34,6 @@ package com.seibel.distanthorizons.api.enums.config;
 @Deprecated // not currently in use, if the config this enum represents is re-implemented, the deprecated flag can be removed
 public enum EDhApiVanillaOverdraw
 {
-	// Reminder:
-	// when adding items up the API minor version
-	// when removing items up the API major version
-	
-	
 	/**
 	 * Don't draw LODs where a minecraft chunk could be.
 	 * Use Overdraw Offset to tweak the border thickness.

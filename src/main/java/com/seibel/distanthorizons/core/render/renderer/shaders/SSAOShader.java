@@ -25,8 +25,10 @@ import com.seibel.distanthorizons.core.render.glObject.shader.ShaderProgram;
 import com.seibel.distanthorizons.core.render.renderer.LodRenderer;
 import com.seibel.distanthorizons.core.render.renderer.SSAORenderer;
 import com.seibel.distanthorizons.core.render.renderer.ScreenQuad;
+import com.seibel.distanthorizons.core.util.NumberUtil;
 import com.seibel.distanthorizons.core.util.math.Mat4f;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftGLWrapper;
+import com.seibel.distanthorizons.coreapi.util.MathUtil;
 import org.lwjgl.opengl.GL32;
 
 /**
@@ -58,6 +60,7 @@ public class SSAOShader extends AbstractShaderRenderer
 	public int uMinLight;
 	public int uBias;
 	public int uDepthMap;
+	public int uFadeDistanceInBlocks;
 	
 	
 	
@@ -81,6 +84,7 @@ public class SSAOShader extends AbstractShaderRenderer
 		this.uMinLight = this.shader.getUniformLocation("uMinLight");
 		this.uBias = this.shader.getUniformLocation("uBias");
 		this.uDepthMap = this.shader.getUniformLocation("uDepthMap");
+		this.uFadeDistanceInBlocks = this.shader.getUniformLocation("uFadeDistanceInBlocks");
 	}
 	
 	
@@ -120,6 +124,10 @@ public class SSAOShader extends AbstractShaderRenderer
 		this.shader.setUniform(this.uBias, bias.floatValue());
 		
 		GL32.glUniform1i(this.uDepthMap, 0);
+		
+		float fadeDistanceInBlocks = Config.Client.Advanced.Graphics.Ssao.fadeDistanceInBlocks.get().floatValue();
+		fadeDistanceInBlocks = MathUtil.clamp(0.0f, fadeDistanceInBlocks, Float.MAX_VALUE); // clamp to prevent accidentally setting a negative number
+		this.shader.setUniform(this.uFadeDistanceInBlocks, fadeDistanceInBlocks);
 	}
 	
 	
@@ -137,7 +145,7 @@ public class SSAOShader extends AbstractShaderRenderer
 		GLMC.disableBlend();
 		
 		GLMC.glActiveTexture(GL32.GL_TEXTURE0);
-		GLMC.glBindTexture(LodRenderer.getActiveDepthTextureId());
+		GLMC.glBindTexture(LodRenderer.INSTANCE.getActiveDepthTextureId());
 		
 		ScreenQuad.INSTANCE.render();
 	}

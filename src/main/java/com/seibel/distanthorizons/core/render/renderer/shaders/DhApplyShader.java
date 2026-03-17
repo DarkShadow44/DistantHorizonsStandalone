@@ -20,16 +20,14 @@
 package com.seibel.distanthorizons.core.render.renderer.shaders;
 
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
+import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.render.glObject.GLState;
 import com.seibel.distanthorizons.core.render.glObject.shader.ShaderProgram;
 import com.seibel.distanthorizons.core.render.renderer.LodRenderer;
 import com.seibel.distanthorizons.core.render.renderer.ScreenQuad;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftGLWrapper;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 import org.lwjgl.opengl.GL32;
-
-import java.nio.ByteBuffer;
 
 /**
  * Copies {@link LodRenderer}'s currently active color and depth texture to Minecraft's framebuffer. 
@@ -38,7 +36,7 @@ public class DhApplyShader extends AbstractShaderRenderer
 {
 	public static DhApplyShader INSTANCE = new DhApplyShader();
 	
-	private static final Logger LOGGER = LogManager.getLogger();
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	private static final IMinecraftGLWrapper GLMC = SingletonInjector.INSTANCE.get(IMinecraftGLWrapper.class);
 	
 	
@@ -88,7 +86,7 @@ public class DhApplyShader extends AbstractShaderRenderer
 	// TODO merge duplicate code between these to render methods
 	private void renderToFrameBuffer()
 	{
-		int targetFrameBuffer = MC_RENDER.getTargetFrameBuffer();
+		int targetFrameBuffer = MC_RENDER.getTargetFramebuffer();
 		if (targetFrameBuffer == -1)
 		{
 			return;
@@ -110,11 +108,11 @@ public class DhApplyShader extends AbstractShaderRenderer
 		//GLMC.glBlendFunc(GL32.GL_ONE, GL32.GL_ONE_MINUS_SRC_ALPHA);
 		
 		GLMC.glActiveTexture(GL32.GL_TEXTURE0);
-		GLMC.glBindTexture(LodRenderer.getActiveColorTextureId());
+		GLMC.glBindTexture(LodRenderer.INSTANCE.getActiveColorTextureId());
 		GL32.glUniform1i(this.gDhColorTextureUniform, 0);
 		
 		GLMC.glActiveTexture(GL32.GL_TEXTURE1);
-		GLMC.glBindTexture(LodRenderer.getActiveDepthTextureId());
+		GLMC.glBindTexture(LodRenderer.INSTANCE.getActiveDepthTextureId());
 		GL32.glUniform1i(this.gDepthMapUniform, 1);
 		
 		// Copy to MC's framebuffer
@@ -136,13 +134,13 @@ public class DhApplyShader extends AbstractShaderRenderer
 			return;
 		}
 		
-		int dhFrameBufferId = LodRenderer.getActiveFramebufferId();
+		int dhFrameBufferId = LodRenderer.INSTANCE.getActiveFramebufferId();
 		if (dhFrameBufferId == -1)
 		{
 			return;
 		}
 		
-		int mcFrameBufferId = MC_RENDER.getTargetFrameBuffer();
+		int mcFrameBufferId = MC_RENDER.getTargetFramebuffer();
 		if (mcFrameBufferId == -1)
 		{
 			return;
@@ -165,11 +163,11 @@ public class DhApplyShader extends AbstractShaderRenderer
 		//GLMC.glBlendFunc(GL32.GL_ONE, GL32.GL_ONE_MINUS_SRC_ALPHA);
 		
 		GLMC.glActiveTexture(GL32.GL_TEXTURE0);
-		GLMC.glBindTexture(LodRenderer.getActiveColorTextureId());
+		GLMC.glBindTexture(LodRenderer.INSTANCE.getActiveColorTextureId());
 		GL32.glUniform1i(this.gDhColorTextureUniform, 0);
 		
 		GLMC.glActiveTexture(GL32.GL_TEXTURE1);
-		GLMC.glBindTexture(LodRenderer.getActiveDepthTextureId());
+		GLMC.glBindTexture(LodRenderer.INSTANCE.getActiveDepthTextureId());
 		GL32.glUniform1i(this.gDepthMapUniform, 1);
 		
 		

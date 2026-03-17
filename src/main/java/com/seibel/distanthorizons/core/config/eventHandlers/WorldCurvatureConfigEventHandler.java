@@ -35,7 +35,7 @@ public class WorldCurvatureConfigEventHandler implements IConfigListener
 {
 	public static WorldCurvatureConfigEventHandler INSTANCE = new WorldCurvatureConfigEventHandler();
 	
-	private static final int MIN_VALID_CURVE_VALUE = 50; 
+	public static final int MIN_VALID_CURVE_VALUE = 50; 
 	
 	
 	/** private since we only ever need one handler at a time */
@@ -51,6 +51,11 @@ public class WorldCurvatureConfigEventHandler implements IConfigListener
 		{
 			// shouldn't update the UI, otherwise we may end up fighting the user
 			Config.Client.Advanced.Graphics.Experimental.earthCurveRatio.set(MIN_VALID_CURVE_VALUE);
+		}
+		else if (curveRatio < 0 && curveRatio > -MIN_VALID_CURVE_VALUE)
+		{
+			// same as above, but in the negative direction
+			Config.Client.Advanced.Graphics.Experimental.earthCurveRatio.set(-MIN_VALID_CURVE_VALUE);
 		}
 		
 	}

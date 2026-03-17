@@ -33,9 +33,9 @@ public class SessionConfig implements INetworkObject
 		
 		registerConfigEntry(Config.Common.WorldGenerator.enableDistantGeneration, Boolean::logicalAnd);
 		registerConfigEntry(Config.Server.maxGenerationRequestDistance, Math::min);
-		registerConfigEntry(Config.Server.generationBoundsX, (x, y) -> y);
-		registerConfigEntry(Config.Server.generationBoundsZ, (x, y) -> y);
-		registerConfigEntry(Config.Server.generationBoundsRadius, (x, y) -> y);
+		registerConfigEntry(Config.Common.WorldGenerator.generationCenterChunkX, (x, y) -> y);
+		registerConfigEntry(Config.Common.WorldGenerator.generationCenterChunkZ, (x, y) -> y);
+		registerConfigEntry(Config.Common.WorldGenerator.generationMaxChunkRadius, (x, y) -> y);
 		registerConfigEntry(Config.Server.generationRequestRateLimit, Math::min);
 		
 		registerConfigEntry(Config.Server.enableRealTimeUpdates, Boolean::logicalAnd);
@@ -68,9 +68,9 @@ public class SessionConfig implements INetworkObject
 	
 	public boolean isDistantGenerationEnabled() { return this.getValue(Config.Common.WorldGenerator.enableDistantGeneration); }
 	public int getMaxGenerationRequestDistance() { return this.getValue(Config.Server.maxGenerationRequestDistance); }
-	public Integer getGenerationBoundsX() { return this.getValue(Config.Server.generationBoundsX); }
-	public Integer getGenerationBoundsZ() { return this.getValue(Config.Server.generationBoundsZ); }
-	public Integer getGenerationBoundsRadius() { return this.getValue(Config.Server.generationBoundsRadius); }
+	public Integer getGenerationCenterChunkX() { return this.getValue(Config.Common.WorldGenerator.generationCenterChunkX); }
+	public Integer getGenerationCenterChunkZ() { return this.getValue(Config.Common.WorldGenerator.generationCenterChunkZ); }
+	public Integer getGenerationMaxChunkRadius() { return this.getValue(Config.Common.WorldGenerator.generationMaxChunkRadius); }
 	public int getGenerationRequestRateLimit() { return this.getValue(Config.Server.generationRequestRateLimit); }
 	
 	public boolean isRealTimeUpdatesEnabled() { return this.getValue(Config.Server.enableRealTimeUpdates); }
@@ -158,6 +158,34 @@ public class SessionConfig implements INetworkObject
 			Object newValue = Codec.getCodec(currentValue.getClass()).decode.apply(currentValue, inBuffer);
 			this.values.put(key, newValue);
 		}
+	}
+	
+	
+	
+	//=========//
+ 	// logging //
+ 	//=========//
+	
+	/** 
+	 * example: "common.playerBandwidthLimit:[497], " <br>
+	 * Useful to see what was changed when receiving a new config from the server.
+	 */
+	public String getDifferencesAsString(SessionConfig that)
+	{
+		StringBuilder stringBuilder = new StringBuilder();
+		
+		for (String key : this.values.keySet())
+		{
+			String thisFieldString = this.values.get(key) + "";
+			String thatFieldString = that.values.get(key) + "";
+			
+			if (!thisFieldString.equals(thatFieldString))
+			{
+				stringBuilder.append(key+":["+thisFieldString+"], ");
+			}
+		}
+		
+		return stringBuilder.toString();
 	}
 	
 	

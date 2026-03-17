@@ -50,11 +50,12 @@ import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapp
 import com.seibel.distanthorizons.coreapi.DependencyInjection.ApiEventInjector;
 import com.seibel.distanthorizons.coreapi.ModInfo;
 import com.seibel.distanthorizons.coreapi.util.MathUtil;
-import org.apache.logging.log4j.Logger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 import org.jetbrains.annotations.Nullable;
 
 import java.awt.*;
 import java.io.File;
+import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -66,7 +67,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public abstract class AbstractDhLevel implements IDhLevel
 {
-	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
 	/** if this is null then the other handler is probably null too, but just in case */
 	@Nullable
@@ -85,8 +86,6 @@ public abstract class AbstractDhLevel implements IDhLevel
 	/** Will be null if clouds shouldn't be rendered for this level. */
 	@Nullable
 	protected CloudRenderHandler cloudRenderHandler;
-	
-	private IDhApiRenderableBoxGroup unexploredFogRenderableBoxGroup;
 	
 	
 	
@@ -108,9 +107,9 @@ public abstract class AbstractDhLevel implements IDhLevel
 		{
 			newChunkHashRepo = new ChunkHashRepo(AbstractDhRepo.DEFAULT_DATABASE_TYPE, databaseFile);
 		}
-		catch (SQLException e)
+		catch (SQLException | IOException e)
 		{
-			LOGGER.error("Unable to create [ChunkHashRepo], error: ["+e.getMessage()+"].", e);
+			LOGGER.fatal("Unable to create ["+ChunkHashRepo.class.getSimpleName()+"], error: ["+e.getMessage()+"].", e);
 		}
 		this.chunkHashRepo = newChunkHashRepo;
 		
@@ -121,9 +120,9 @@ public abstract class AbstractDhLevel implements IDhLevel
 		{
 			newBeaconBeamRepo = new BeaconBeamRepo(AbstractDhRepo.DEFAULT_DATABASE_TYPE, databaseFile);
 		}
-		catch (SQLException e)
+		catch (SQLException | IOException e)
 		{
-			LOGGER.error("Unable to create [BeaconBeamRepo], error: ["+e.getMessage()+"].", e);
+			LOGGER.error("Unable to create ["+BeaconBeamRepo.class.getSimpleName()+"], error: ["+e.getMessage()+"].", e);
 		}
 		this.beaconBeamRepo = newBeaconBeamRepo;
 	}
@@ -187,28 +186,35 @@ public abstract class AbstractDhLevel implements IDhLevel
 		// block lights should have been populated at the chunkWrapper stage
 		// waiting to populate the data source's skylight at this stage prevents re-lighting and
 		// allows us to reduce cross-chunk lighting issues by lighting the whole 4x4 LOD at once 
-		DhLightingEngine.INSTANCE.bakeDataSourceSkyLight(fullDataSource, this.hasSkyLight() ? LodUtil.MAX_MC_LIGHT : LodUtil.MIN_MC_LIGHT);
+		DhLightingEngine.INSTANCE.bakeDataSourceSkyLight(fullDataSource, this.getLevelWrapper().hasSkyLight() ? LodUtil.MAX_MC_LIGHT : LodUtil.MIN_MC_LIGHT);
 		
 		
 		return this.updateDataSourcesAsync(fullDataSource)
 			.thenRun(() -> 
 			{
-				HashSet<DhChunkPos> updatedChunkPosSet = this.updatedChunkPosSetBySectionPos.remove(fullDataSource.getPos());
-				if (updatedChunkPosSet != null)
+				try
 				{
-					for (DhChunkPos chunkPos : updatedChunkPosSet)
+					HashSet<DhChunkPos> updatedChunkPosSet = this.updatedChunkPosSetBySectionPos.remove(fullDataSource.getPos());
+					if (updatedChunkPosSet != null)
 					{
-						// save after the data source has been updated to prevent saving the hash without the associated datasource
-						Integer chunkHash = this.updatedChunkHashesByChunkPos.remove(chunkPos);
-						if (this.chunkHashRepo != null && chunkHash != null)
+						for (DhChunkPos chunkPos : updatedChunkPosSet)
 						{
-							this.chunkHashRepo.save(new ChunkHashDTO(chunkPos, chunkHash));
-						}
-						
-						ApiEventInjector.INSTANCE.fireAllEvents(
+							// save after the data source has been updated to prevent saving the hash without the associated datasource
+							Integer chunkHash = this.updatedChunkHashesByChunkPos.remove(chunkPos);
+							if (this.chunkHashRepo != null && chunkHash != null)
+							{
+								this.chunkHashRepo.save(new ChunkHashDTO(chunkPos, chunkHash));
+							}
+							
+							ApiEventInjector.INSTANCE.fireAllEvents(
 								DhApiChunkModifiedEvent.class,
 								new DhApiChunkModifiedEvent.EventParam(this.getLevelWrapper(), chunkPos.getX(), chunkPos.getZ()));
+						}
 					}
+				}
+				catch (Exception e)
+				{
+					LOGGER.error("Unexpected issue after onDataSourceSaveAsync, error: ["+e.getMessage()+"].", e);
 				}
 			});
 	}
@@ -393,15 +399,10 @@ public abstract class AbstractDhLevel implements IDhLevel
 		}
 		
 		
-		GenericObjectRenderer genericRenderer = this.getGenericRenderer();
-		if (genericRenderer != null 
-			&& this.unexploredFogRenderableBoxGroup != null)
-		{
-			genericRenderer.remove(this.unexploredFogRenderableBoxGroup.getId());
-		}
-		
 		
 		this.delayedFullDataSourceSaveCache.close();
 	}
+	
+	
 	
 }

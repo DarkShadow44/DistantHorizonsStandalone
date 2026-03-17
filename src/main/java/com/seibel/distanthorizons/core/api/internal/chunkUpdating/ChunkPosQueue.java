@@ -2,6 +2,7 @@ package com.seibel.distanthorizons.core.api.internal.chunkUpdating;
 
 import com.seibel.distanthorizons.core.api.internal.SharedApi;
 import com.seibel.distanthorizons.core.pos.DhChunkPos;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Comparator;
 import java.util.concurrent.ConcurrentHashMap;
@@ -105,6 +106,7 @@ public class ChunkPosQueue
 		this.furthestQueue.remove(closest);
 		return this.updateDataByChunkPos.remove(closest);
 	}
+	@Nullable
 	public ChunkUpdateData popFurthest()
 	{
 		if (this.furthestQueue.isEmpty())

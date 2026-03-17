@@ -8,3 +8,4 @@
 0060-sqlite-createChunkHashTable.sql
 0070-sqlite-createBeaconBeamTable.sql
 0080-sqlite-addApplyToChildrenColumn.sql
+0090-sqlite-addAdjacentFullDataColumns.sql

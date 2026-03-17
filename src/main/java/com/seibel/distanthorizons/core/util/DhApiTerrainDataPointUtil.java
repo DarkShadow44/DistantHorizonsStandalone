@@ -13,8 +13,6 @@ import com.seibel.distanthorizons.core.wrapperInterfaces.world.IBiomeWrapper;
 public class DhApiTerrainDataPointUtil
 {
 	
-	public static DhApiTerrainDataPoint createApiDatapoint(IDhApiLevelWrapper levelWrapper, FullDataPointIdMap mapping, byte detailLevel, long dataPoint)
-	{ return createApiDatapoint(levelWrapper.getMinHeight(), mapping, detailLevel, dataPoint); }
 	public static DhApiTerrainDataPoint createApiDatapoint(int minLevelHeight, FullDataPointIdMap mapping, byte detailLevel, long dataPoint)
 	{
 		IBlockStateWrapper blockState = mapping.getBlockStateWrapper(FullDataPointUtil.getId(dataPoint));

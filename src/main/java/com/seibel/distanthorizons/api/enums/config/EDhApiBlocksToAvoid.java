@@ -28,10 +28,6 @@ package com.seibel.distanthorizons.api.enums.config;
  */
 public enum EDhApiBlocksToAvoid
 {
-	// Reminder:
-	// when adding items up the API minor version
-	// when removing items up the API major version
-	
 	NONE(false),
 	NON_COLLIDING(true);
 	

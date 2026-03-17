@@ -46,7 +46,7 @@ public class DhColorTexture
 		this.id = GL43C.glGenTextures();
 		
 		boolean isPixelFormatInteger = builder.internalFormat.getPixelFormat().isInteger();
-		this.setupTexture(this.id, builder.width, builder.height, !isPixelFormatInteger);
+		this.setupTexture(this.id, builder.width, builder.height, !isPixelFormatInteger); // this binds the texture
 		
 		// Clean up after ourselves
 		// This is strictly defensive to ensure that other buggy code doesn't tamper with our textures
@@ -67,6 +67,10 @@ public class DhColorTexture
 		GL43C.glTexParameteri(GL11C.GL_TEXTURE_2D, GL11C.GL_TEXTURE_MAG_FILTER, allowsLinear ? GL11C.GL_LINEAR : GL11C.GL_NEAREST);
 		GL43C.glTexParameteri(GL11C.GL_TEXTURE_2D, GL11C.GL_TEXTURE_WRAP_S, GL13C.GL_CLAMP_TO_EDGE);
 		GL43C.glTexParameteri(GL11C.GL_TEXTURE_2D, GL11C.GL_TEXTURE_WRAP_T, GL13C.GL_CLAMP_TO_EDGE);
+		
+		// disable mip-mapping since DH is just going to draw straight to the screen
+		GL43C.glTexParameteri(GL43C.GL_TEXTURE_2D, GL43C.GL_TEXTURE_BASE_LEVEL, 0);
+		GL43C.glTexParameteri(GL43C.GL_TEXTURE_2D, GL43C.GL_TEXTURE_MAX_LEVEL, 0);
 	}
 	
 	private void resizeTexture(int texture, int width, int height)

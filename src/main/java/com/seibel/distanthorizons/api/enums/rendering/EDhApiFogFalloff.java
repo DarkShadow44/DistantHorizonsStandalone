@@ -30,11 +30,6 @@ package com.seibel.distanthorizons.api.enums.rendering;
  */
 public enum EDhApiFogFalloff
 {
-	// Reminder:
-	// when adding items up the API minor version
-	// when removing items up the API major version
-	
-	
 	LINEAR(0),
 	EXPONENTIAL(1),
 	EXPONENTIAL_SQUARED(2);

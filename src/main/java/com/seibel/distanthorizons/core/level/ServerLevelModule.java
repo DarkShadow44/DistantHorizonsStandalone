@@ -26,17 +26,20 @@ import com.seibel.distanthorizons.core.generation.BatchGenerator;
 import com.seibel.distanthorizons.core.generation.WorldGenerationQueue;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.coreapi.DependencyInjection.WorldGeneratorInjector;
-import org.apache.logging.log4j.Logger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
+
+import java.io.IOException;
+import java.sql.SQLException;
 
 public class ServerLevelModule implements AutoCloseable
 {
-	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
 	private final IDhServerLevel parentServerLevel;
 	public final ISaveStructure saveStructure;
 	public final GeneratedFullDataSourceProvider fullDataFileHandler;
 	
-	public final WorldGenModule worldGenModule;
+	public final LodRequestModule lodRequestModule;
 	
 	
 	
@@ -44,12 +47,12 @@ public class ServerLevelModule implements AutoCloseable
 	// constructor //
 	//=============//
 	
-	public ServerLevelModule(IDhServerLevel parentServerLevel, ISaveStructure saveStructure)
+	public ServerLevelModule(IDhServerLevel parentServerLevel, ISaveStructure saveStructure) throws SQLException, IOException
 	{
 		this.parentServerLevel = parentServerLevel;
 		this.saveStructure = saveStructure;
 		this.fullDataFileHandler = new GeneratedFullDataSourceProvider(parentServerLevel, saveStructure);
-		this.worldGenModule = new WorldGenModule(this.parentServerLevel, this.fullDataFileHandler, () -> new ServerLevelModule.WorldGenState(this.parentServerLevel));
+		this.lodRequestModule = new LodRequestModule(this.parentServerLevel, this.parentServerLevel, this.fullDataFileHandler, () -> new LodRequestState(this.parentServerLevel));
 	}
 	
 	
@@ -62,7 +65,7 @@ public class ServerLevelModule implements AutoCloseable
 	public void close()
 	{
 		// shutdown the world-gen
-		this.worldGenModule.close();
+		this.lodRequestModule.close();
 		this.fullDataFileHandler.close();
 	}
 	
@@ -72,9 +75,9 @@ public class ServerLevelModule implements AutoCloseable
 	// helper classes //
 	//================//
 	
-	public static class WorldGenState extends WorldGenModule.AbstractWorldGenState
+	public static class LodRequestState extends LodRequestModule.AbstractLodRequestState
 	{
-		WorldGenState(IDhServerLevel level)
+		LodRequestState(IDhServerLevel level)
 		{
 			IDhApiWorldGenerator worldGenerator = WorldGeneratorInjector.INSTANCE.get(level.getLevelWrapper());
 			if (worldGenerator == null)
@@ -85,7 +88,7 @@ public class ServerLevelModule implements AutoCloseable
 				// since core world generator's should have the lowest override priority
 				WorldGeneratorInjector.INSTANCE.bind(level.getLevelWrapper(), worldGenerator);
 			}
-			this.worldGenerationQueue = new WorldGenerationQueue(worldGenerator, level);
+			this.retrievalQueue = new WorldGenerationQueue(worldGenerator, level);
 		}
 		
 	}

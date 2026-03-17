@@ -20,28 +20,24 @@
 package com.seibel.distanthorizons.core.level;
 
 import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam;
-import com.seibel.distanthorizons.core.dataObjects.fullData.sources.FullDataSourceV2;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.file.structure.ISaveStructure;
-import com.seibel.distanthorizons.core.logging.f3.F3Screen;
 import com.seibel.distanthorizons.core.multiplayer.server.ServerPlayerStateManager;
 import com.seibel.distanthorizons.core.render.RenderBufferHandler;
 import com.seibel.distanthorizons.core.render.renderer.DebugRenderer;
-import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos;
 import com.seibel.distanthorizons.core.render.renderer.generic.GenericObjectRenderer;
-import com.seibel.distanthorizons.core.wrapperInterfaces.block.IBlockStateWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IProfilerWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
-import com.seibel.distanthorizons.core.wrapperInterfaces.world.IBiomeWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IServerLevelWrapper;
 import org.jetbrains.annotations.Nullable;
 
 import java.awt.*;
+import java.io.IOException;
+import java.sql.SQLException;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
-/** The level used on a singleplayer world */
+/** The level used for a singleplayer world */
 public class DhClientServerLevel extends AbstractDhServerLevel implements IDhClientLevel
 {
 	private static final IMinecraftClientWrapper MC_CLIENT = SingletonInjector.INSTANCE.get(IMinecraftClientWrapper.class);
@@ -54,11 +50,15 @@ public class DhClientServerLevel extends AbstractDhServerLevel implements IDhCli
 	// constructor //
 	//=============//
 	
-	public DhClientServerLevel(ISaveStructure saveStructure, IServerLevelWrapper serverLevelWrapper, ServerPlayerStateManager serverPlayerStateManager)
+	public DhClientServerLevel(
+		ISaveStructure saveStructure, 
+		IServerLevelWrapper serverLevelWrapper, 
+		ServerPlayerStateManager serverPlayerStateManager
+		) throws SQLException, IOException
 	{
 		super(saveStructure, serverLevelWrapper, serverPlayerStateManager, false);
 		
-		this.serverLevelWrapper.setParentLevel(this);
+		this.serverLevelWrapper.setDhLevel(this);
 		this.clientside = new ClientLevelModule(this);
 		this.runRepoReliantSetup();
 	}
@@ -72,19 +72,13 @@ public class DhClientServerLevel extends AbstractDhServerLevel implements IDhCli
 	@Override
 	public void clientTick() { this.clientside.clientTick(); }
 	
-	@Override
-	public void render(DhApiRenderParam renderEventParam, IProfilerWrapper profiler)
-	{ this.clientside.render(renderEventParam, profiler); }
 	
-	@Override
-	public void renderDeferred(DhApiRenderParam renderEventParam, IProfilerWrapper profiler)
-	{ this.clientside.renderDeferred(renderEventParam, profiler); }
 	
 	//========//
 	// render //
 	//========//
 	
-	public void startRenderer(IClientLevelWrapper clientLevel) { this.clientside.startRenderer(clientLevel); }
+	public void startRenderer() { this.clientside.startRenderer(); }
 	
 	public void stopRenderer() { this.clientside.stopRenderer(); }
 	
@@ -138,14 +132,6 @@ public class DhClientServerLevel extends AbstractDhServerLevel implements IDhCli
 	public void onWorldGenTaskComplete(long pos)
 	{
 		super.onWorldGenTaskComplete(pos);
-		
-		DebugRenderer.makeParticle(
-				new DebugRenderer.BoxParticle(
-						new DebugRenderer.Box(pos, 128f, 156f, 0.09f, Color.red.darker()),
-						0.2, 32f
-				)
-		);
-		
 		this.clientside.reloadPos(pos);
 	}
 	

@@ -59,8 +59,10 @@ public final class VertexPointer
 	/** Always aligned to 4 bytes */
 	public static VertexPointer addUnsignedBytePointer(boolean normalized, boolean useInteger) { return new VertexPointer(1, GL32.GL_UNSIGNED_BYTE, normalized, 4, useInteger); }
 	/** aligned to 4 bytes */
-	public static VertexPointer addUnsignedBytesPointer(int elementCount, boolean normalized, boolean useInteger) { return new VertexPointer(elementCount, GL32.GL_UNSIGNED_BYTE, normalized, _align(elementCount), useInteger); }
-	public static VertexPointer addUnsignedShortsPointer(int elementCount, boolean normalized, boolean useInteger) { return new VertexPointer(elementCount, GL32.GL_UNSIGNED_SHORT, normalized, _align(elementCount * 2), useInteger); }
+	public static VertexPointer addUnsignedBytesPointer(int elementCount, boolean normalized, boolean useInteger) 
+	{ return new VertexPointer(elementCount, GL32.GL_UNSIGNED_BYTE, normalized, _align(elementCount), useInteger); }
+	public static VertexPointer addUnsignedShortsPointer(int elementCount, boolean normalized, boolean useInteger) 
+	{ return new VertexPointer(elementCount, GL32.GL_UNSIGNED_SHORT, normalized, _align(elementCount * 2), useInteger); }
 	public static VertexPointer addShortsPointer(int elementCount, boolean normalized, boolean useInteger) { return new VertexPointer(elementCount, GL32.GL_SHORT, normalized, _align(elementCount * 2), useInteger); }
 	public static VertexPointer addIntPointer(boolean normalized, boolean useInteger) { return new VertexPointer(1, GL32.GL_INT, normalized, 4, useInteger); }
 	public static VertexPointer addIVec2Pointer(boolean normalized, boolean useInteger) { return new VertexPointer(2, GL32.GL_INT, normalized, 8, useInteger); }

@@ -29,7 +29,7 @@ import java.util.ArrayList;
  * Holds a single datapoint of terrain data.
  *
  * @author James Seibel
- * @version 2024-7-20
+ * @version 2025-11-15
  * @since API 1.0.0
  */
 public class DhApiTerrainDataPoint
@@ -47,6 +47,10 @@ public class DhApiTerrainDataPoint
 	
 	public final int blockLightLevel;
 	public final int skyLightLevel;
+	/**
+	 * An unsigned block position of the bottom vertex for this LOD relative to the level's minimum height. 
+	 * Should be greater than or equal to 0.
+	 */
 	public final int bottomYBlockPos;
 	public final int topYBlockPos;
 	
@@ -59,28 +63,7 @@ public class DhApiTerrainDataPoint
 	// constructors //
 	//==============//
 	
-	/**
-	 * Deprecated due to the topYBlockPos and bottomYBlockPos variables being put in the wrong order. 
-	 * They should have been in bottom -> top order. 
-	 *
-	 * @see DhApiTerrainDataPoint#create(byte, int, int, int, int, IDhApiBlockStateWrapper, IDhApiBiomeWrapper) 
-	 */
-	@Deprecated
-	public DhApiTerrainDataPoint(
-			byte detailLevel, 
-			int blockLightLevel, int skyLightLevel, 
-			int topYBlockPos, int bottomYBlockPos, 
-			IDhApiBlockStateWrapper blockStateWrapper, IDhApiBiomeWrapper biomeWrapper)
-	{
-		this(detailLevel, blockLightLevel, skyLightLevel,
-			bottomYBlockPos, topYBlockPos,
-			blockStateWrapper, biomeWrapper, 
-			false);
-	}
-	
-	/**
-	 * @since API 3.0.0 
-	 */
+	/** @since API 3.0.0 */
 	public static DhApiTerrainDataPoint create(
 			byte detailLevel,
 			int blockLightLevel, int skyLightLevel,
@@ -91,20 +74,15 @@ public class DhApiTerrainDataPoint
 		return new DhApiTerrainDataPoint(
 			detailLevel, blockLightLevel, skyLightLevel,
 			bottomYBlockPos, topYBlockPos,
-			blockStateWrapper, biomeWrapper,
-			false); 
+			blockStateWrapper, biomeWrapper); 
 	}
 	
-	/**
-	 * Only visible to internal DH methods 
-	 * @param ignoredParameter is only present to differentiate the two constructors and isn't actually used
-	 */
+	/** Only visible to internal DH methods */
 	private DhApiTerrainDataPoint(
 			byte detailLevel,
 			int blockLightLevel, int skyLightLevel,
 			int bottomYBlockPos, int topYBlockPos,
-			IDhApiBlockStateWrapper blockStateWrapper, IDhApiBiomeWrapper biomeWrapper,
-			boolean ignoredParameter
+			IDhApiBlockStateWrapper blockStateWrapper, IDhApiBiomeWrapper biomeWrapper
 		)
 	{
 		this.detailLevel = detailLevel;
@@ -117,5 +95,25 @@ public class DhApiTerrainDataPoint
 		this.blockStateWrapper = blockStateWrapper;
 		this.biomeWrapper = biomeWrapper;
 	}
+	
+	
+	
+	//================//
+	// base overrides //
+	//================//
+	
+	@Override 
+	public String toString()
+	{
+		return "[Block:" + this.blockStateWrapper.getSerialString() + 
+				",Biome:" + this.biomeWrapper.getName() + 
+				",TopY:" + this.topYBlockPos + 
+				",BottomY:" + this.bottomYBlockPos + 
+				",BlockLight:" + this.blockLightLevel +
+				",SkyLight:" + this.skyLightLevel + 
+				"]";
+	}
+	
+	
 	
 }

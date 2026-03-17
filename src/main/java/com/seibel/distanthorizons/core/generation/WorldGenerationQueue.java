@@ -26,11 +26,8 @@ import com.seibel.distanthorizons.api.objects.data.DhApiChunk;
 import com.seibel.distanthorizons.api.objects.data.IDhApiFullDataSource;
 import com.seibel.distanthorizons.core.dataObjects.fullData.sources.FullDataSourceV2;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
-import com.seibel.distanthorizons.core.generation.tasks.IWorldGenTaskTracker;
-import com.seibel.distanthorizons.core.generation.tasks.InProgressWorldGenTaskGroup;
-import com.seibel.distanthorizons.core.generation.tasks.WorldGenResult;
-import com.seibel.distanthorizons.core.generation.tasks.WorldGenTask;
-import com.seibel.distanthorizons.core.generation.tasks.WorldGenTaskGroup;
+import com.seibel.distanthorizons.core.generation.tasks.DataSourceRetrievalResult;
+import com.seibel.distanthorizons.core.generation.tasks.DataSourceRetrievalTask;
 import com.seibel.distanthorizons.core.level.IDhServerLevel;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos2D;
@@ -40,6 +37,7 @@ import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.dataObjects.transformers.LodDataBuilder;
 import com.seibel.distanthorizons.core.render.renderer.DebugRenderer;
 import com.seibel.distanthorizons.core.render.renderer.IDebugRenderable;
+import com.seibel.distanthorizons.core.util.ExceptionUtil;
 import com.seibel.distanthorizons.core.util.LodUtil.AssertFailureException;
 import com.seibel.distanthorizons.core.util.ThreadUtil;
 import com.seibel.distanthorizons.core.util.objects.DataCorruptedException;
@@ -51,37 +49,25 @@ import com.seibel.distanthorizons.core.util.threading.ThreadPoolUtil;
 import com.seibel.distanthorizons.core.world.DhApiWorldProxy;
 import com.seibel.distanthorizons.core.wrapperInterfaces.IWrapperFactory;
 import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.IChunkWrapper;
-import com.seibel.distanthorizons.coreapi.util.BitShiftUtil;
-import org.apache.logging.log4j.Logger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 
 import java.awt.*;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.*;
-import java.util.function.Consumer;
 
 public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDebugRenderable
 {
-	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	private static final IWrapperFactory WRAPPER_FACTORY = SingletonInjector.INSTANCE.get(IWrapperFactory.class);
-	
-	/**
-	 * Defines how many tasks can be queued per thread. <br><br>
-	 *
-	 * TODO the multiplier here should change dynamically based on how fast the generator is vs the queuing thread,
-	 *  if this is too high it may cause issues when moving,
-	 *  but if it is too low the generator threads won't have enough tasks to work on
-	 */
-	private static final int MAX_QUEUED_TASKS_PER_THREAD = 3;
 	
 	
 	private final IDhApiWorldGenerator generator;
 	private final IDhServerLevel level;
 	
 	/** contains the positions that need to be generated */
-	private final ConcurrentHashMap<Long, WorldGenTask> waitingTasks = new ConcurrentHashMap<>();
-	
-	private final ConcurrentHashMap<Long, InProgressWorldGenTaskGroup> inProgressGenTasksByLodPos = new ConcurrentHashMap<>();
+	private final ConcurrentHashMap<Long, DataSourceRetrievalTask> waitingTasks = new ConcurrentHashMap<>();
+	private final ConcurrentHashMap<Long, DataSourceRetrievalTask> inProgressGenTasksByLodPos = new ConcurrentHashMap<>();
 	
 	/** largest numerical detail level allowed */
 	public final byte lowestDataDetail;
@@ -110,9 +96,10 @@ public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDeb
 	
 	
 	
-	//==============//
-	// constructors //
-	//==============//
+	//=============//
+	// constructor //
+	//=============//
+	///region constructor
 	
 	public WorldGenerationQueue(IDhApiWorldGenerator generator, IDhServerLevel level)
 	{
@@ -126,20 +113,29 @@ public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDeb
 		LOGGER.info("Created world gen queue");
 	}
 	
+	///endregion constructor
 	
 	
-	//=================//
-	// world generator //
-	// task handling   //
-	//=================//
+	
+	//===============//
+	// task handling //
+	//===============//
+	///region task handling
 	
 	@Override
-	public CompletableFuture<WorldGenResult> submitRetrievalTask(long pos, byte requiredDataDetail, IWorldGenTaskTracker tracker)
+	public CompletableFuture<DataSourceRetrievalResult> submitRetrievalTask(long pos, byte requiredDataDetail)
 	{
 		// the generator is shutting down, don't add new tasks
 		if (this.generatorClosingFuture != null)
 		{
-			return CompletableFuture.completedFuture(WorldGenResult.CreateFail());
+			return CompletableFuture.completedFuture(DataSourceRetrievalResult.CreateFail());
+		}
+		
+		// use the existing task if present
+		DataSourceRetrievalTask existingGenTask = this.waitingTasks.get(pos);
+		if (existingGenTask != null)
+		{
+			return existingGenTask.future;
 		}
 		
 		
@@ -153,13 +149,12 @@ public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDeb
 			requiredDataDetail = this.lowestDataDetail;
 		}
 		
-		// Assert that the data at least can fill in 1 single ChunkSizedFullDataAccessor
+		// the request should be at least chunk-sized
 		LodUtil.assertTrue(DhSectionPos.getDetailLevel(pos) > requiredDataDetail + LodUtil.CHUNK_DETAIL_LEVEL);
 		
-		
-		CompletableFuture<WorldGenResult> future = new CompletableFuture<>();
-		this.waitingTasks.put(pos, new WorldGenTask(pos, requiredDataDetail, tracker, future));
-		return future;
+		DataSourceRetrievalTask genTask = new DataSourceRetrievalTask(pos, requiredDataDetail);
+		this.waitingTasks.put(pos, genTask);
+		return genTask.future;
 	}
 	
 	@Override
@@ -169,11 +164,17 @@ public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDeb
 		{
 			if (removeIf.accept(genPos))
 			{
-				this.waitingTasks.remove(genPos);
+				DataSourceRetrievalTask removedTask = this.waitingTasks.remove(genPos);
+				if (removedTask != null)
+				{
+					// cancel tasks so any waiting future steps can be triggered
+					removedTask.future.cancel(true);
+				}
 			}
 		});
 	}
 	
+	///endregion task handling
 	
 	
 	
@@ -218,7 +219,7 @@ public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDeb
 				while (!this.isGeneratorBusy()
 						&& taskStarted)
 				{
-					taskStarted = this.startNextWorldGenTask(this.generationTargetPos);
+					taskStarted = this.tryStartNextWorldGenTask(this.generationTargetPos);
 				}
 			}
 			catch (Exception e)
@@ -240,15 +241,15 @@ public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDeb
 			return true;
 		}
 		
+		// queue more tasks if any of the threads are available
 		int worldGenThreadCount = Math.max(Config.Common.MultiThreading.numberOfThreads.get(), 1);
-		int maxWorldGenTaskCount = worldGenThreadCount * MAX_QUEUED_TASKS_PER_THREAD;
-		return executor.getQueueSize() > maxWorldGenTaskCount;
+		return this.inProgressGenTasksByLodPos.size() > worldGenThreadCount;
 	}
 	/**
 	 * @param targetPos the position to center the generation around
 	 * @return false if no tasks were found to generate
 	 */
-	private boolean startNextWorldGenTask(DhBlockPos2D targetPos)
+	private boolean tryStartNextWorldGenTask(DhBlockPos2D targetPos)
 	{
 		if (this.waitingTasks.isEmpty())
 		{
@@ -256,260 +257,155 @@ public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDeb
 		}
 		
 		
+		// find the closest task
+		TaskDistancePair closestTaskPair = this.waitingTasks.reduceEntries(1024,
+			// get the target distance for each task
+			(Map.Entry<Long, DataSourceRetrievalTask> entry) ->
+			{ 
+				DataSourceRetrievalTask task = entry.getValue();
+				int distance = DhSectionPos.getCenterBlockPos(task.pos).chebyshevDist(targetPos);
+				return new TaskDistancePair(entry.getValue(), distance);
+			},
+			// find the closest task
+			(TaskDistancePair aTaskPair, TaskDistancePair bTaskPair) ->
+			{
+				return (aTaskPair.dist < bTaskPair.dist) ? aTaskPair : bTaskPair;
+			});
 		
-		Mapper closestTaskMap = this.waitingTasks.reduceEntries(1024,
-				entry -> new Mapper(entry.getValue(), DhSectionPos.getSectionBBoxPos(entry.getValue().pos).getCenterBlockPos().toPos2D().chebyshevDist(targetPos.toPos2D())),
-				(aMapper, bMapper) -> aMapper.dist < bMapper.dist ? aMapper : bMapper);
-		
-		if (closestTaskMap == null)
+		if (closestTaskPair == null)
 		{
-			// FIXME concurrency issue
+			// the waitingTasks was modified while this check was running
 			return false;
 		}
-		
-		WorldGenTask closestTask = closestTaskMap.task;
+		DataSourceRetrievalTask closestTask = closestTaskPair.task;
 		
 		// remove the task we found, we are going to start it and don't want to run it multiple times
 		this.waitingTasks.remove(closestTask.pos, closestTask);
 		
 		// do we need to modify this task to generate it?
-		if (this.canGeneratePos(closestTask.pos))
+		if (this.canGenerateDetailLevel(DhSectionPos.getDetailLevel(closestTask.pos)))
 		{
 			// detail level is correct for generation, start generation
 			
-			WorldGenTaskGroup closestTaskGroup = new WorldGenTaskGroup(closestTask.pos, (byte)(closestTask.pos - DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL));
-			closestTaskGroup.worldGenTasks.add(closestTask);
-			
-			if (!this.inProgressGenTasksByLodPos.containsKey(closestTask.pos))
+			DataSourceRetrievalTask existingTask = this.inProgressGenTasksByLodPos.get(closestTask.pos);
+			if (existingTask == null)
 			{
 				// no task exists for this position, start one
-				InProgressWorldGenTaskGroup newTaskGroup = new InProgressWorldGenTaskGroup(closestTaskGroup);
-				boolean taskStarted = this.tryStartingWorldGenTaskGroup(newTaskGroup);
-				if (!taskStarted)
-				{
-					//LOGGER.trace("Unable to start task: "+closestTask.pos+", skipping. Task position may have already been generated.");
-				}
+				this.startWorldGenTaskGroup(closestTask);
 			}
 			else
 			{
-				// TODO replace the previous inProgress task if one exists
-				// Note: Due to concurrency reasons, even if the currently running task is compatible with 
-				// 		   the newly selected task, we cannot use it,
-				//         as some chunks may have already been written into.
+				// shouldn't normally happen, but if
+				// we somehow queued the same task twice:
+				// merge the two futures so they both complete
 				
-				//LOGGER.trace("A task already exists for this position, todo: "+closestTask.pos);
+				existingTask.future.thenApply((DataSourceRetrievalResult result)->
+				{
+					closestTask.future.complete(result);
+					return closestTask.future; // return value ignored
+				});
+				existingTask.future.exceptionally((Throwable throwable)->
+				{
+					closestTask.future.completeExceptionally(throwable);
+					return null; // return value ignored
+				});
 			}
-			
-			// a task has been started
-			return true;
 		}
 		else
 		{
 			// detail level is too high (if the detail level was too low, the generator would've ignored the request),
 			// split up the task
 			
-			
-			// split up the task and add each one to the tree
-			LinkedList<CompletableFuture<WorldGenResult>> childFutures = new LinkedList<>();
-			long sectionPos = closestTask.pos;
-			WorldGenTask finalClosestTask = closestTask;
-			DhSectionPos.forEachChild(sectionPos, (childDhSectionPos) ->
-			{
-				CompletableFuture<WorldGenResult> newFuture = new CompletableFuture<>();
-				childFutures.add(newFuture);
-				
-				WorldGenTask newGenTask = new WorldGenTask(childDhSectionPos, DhSectionPos.getDetailLevel(childDhSectionPos), finalClosestTask.taskTracker, newFuture);
-				this.waitingTasks.put(newGenTask.pos, newGenTask);
-			});
-			
-			// send the child futures to the future recipient, to notify them of the new tasks
-			closestTask.future.complete(WorldGenResult.CreateSplit(childFutures));
-			
-			// return true so we attempt to generate again
-			return true;
+			closestTask.future.complete(DataSourceRetrievalResult.CreateSplit());
 		}
-	}
-	/** @return true if the task was started, false otherwise */
-	private boolean tryStartingWorldGenTaskGroup(InProgressWorldGenTaskGroup newTaskGroup)
-	{
-		byte taskDetailLevel = newTaskGroup.group.dataDetail;
-		long taskPos = newTaskGroup.group.pos;
-		LodUtil.assertTrue(taskDetailLevel >= this.highestDataDetail && taskDetailLevel <= this.lowestDataDetail);
 		
-		int generationRequestChunkWidthCount = BitShiftUtil.powerOfTwo(DhSectionPos.getDetailLevel(taskPos) - taskDetailLevel - 4); // minus 4 is equal to dividing by 16 to convert to chunk scale
+		
+		// a task has been started or queued,
+		// queue another task
+		return true;
+	}
+	private boolean canGenerateDetailLevel(byte taskDetailLevel)
+	{
+		byte requestedDetailLevel = (byte) (taskDetailLevel - DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL);
+		return (this.highestDataDetail <= requestedDetailLevel && requestedDetailLevel <= this.lowestDataDetail);
+	}
+	private void startWorldGenTaskGroup(DataSourceRetrievalTask worldGenTask)
+	{
+		long taskPos = worldGenTask.pos;
+		LodUtil.assertTrue(
+			worldGenTask.requestDetailLevel >= this.highestDataDetail 
+			&& worldGenTask.requestDetailLevel <= this.lowestDataDetail,
+			"World gen task started that isn't within the range that the generator can create.");
 		
 		long generationStartMsTime = System.currentTimeMillis();
-		CompletableFuture<Void> generationFuture = this.startGenerationEvent(taskPos, taskDetailLevel, generationRequestChunkWidthCount, newTaskGroup.group::consumeDataSource);
+		CompletableFuture<FullDataSourceV2> generationFuture = this.startGenerationEvent(worldGenTask);
+		
+		// calculate generation speed
 		generationFuture.thenRun(() -> 
 		{
 			long totalGenTimeInMs = System.currentTimeMillis() - generationStartMsTime;
-			int chunkCount = generationRequestChunkWidthCount * generationRequestChunkWidthCount;
+			int chunkCount = worldGenTask.widthInChunks * worldGenTask.widthInChunks;
 			double timePerChunk = (double)totalGenTimeInMs / (double)chunkCount;
-			this.rollingAverageChunkGenTimeInMs.addValue(timePerChunk);
+			this.rollingAverageChunkGenTimeInMs.add(timePerChunk);
 		});
 		
-		newTaskGroup.genFuture = generationFuture;
-		LodUtil.assertTrue(newTaskGroup.genFuture != null);
-		
-		newTaskGroup.genFuture.whenComplete((voidObj, exception) ->
+		generationFuture.handle((FullDataSourceV2 fullDataSource, Throwable exception) ->
 		{
 			try
 			{
 				if (exception != null)
 				{
 					// don't log the shutdown exceptions
-					if (!LodUtil.isInterruptOrReject(exception))
+					if (!ExceptionUtil.isInterruptOrReject(exception))
 					{
 						LOGGER.error("Error generating data for pos: " + DhSectionPos.toString(taskPos), exception);
 					}
 					
-					newTaskGroup.group.worldGenTasks.forEach(worldGenTask -> worldGenTask.future.complete(WorldGenResult.CreateFail()));
+					LodUtil.assertTrue(fullDataSource == null);
+					worldGenTask.future.complete(DataSourceRetrievalResult.CreateFail());
 				}
 				else
 				{
-					newTaskGroup.group.worldGenTasks.forEach(worldGenTask -> worldGenTask.future.complete(WorldGenResult.CreateSuccess(taskPos)));
+					boolean taskRemoved = this.inProgressGenTasksByLodPos.remove(taskPos, worldGenTask);
+					LodUtil.assertTrue(taskRemoved, "Unable to find in progress generator task with position ["+DhSectionPos.toString(taskPos)+"]");
+					
+					worldGenTask.future.complete(DataSourceRetrievalResult.CreateSuccess(taskPos, fullDataSource));
 				}
-				boolean worked = this.inProgressGenTasksByLodPos.remove(taskPos, newTaskGroup);
-				LodUtil.assertTrue(worked, "Unable to find in progress generator task with position ["+DhSectionPos.toString(taskPos)+"]");
 			}
 			catch (Exception e)
 			{
 				LOGGER.error("Unexpected error completing world gen task at pos: ["+DhSectionPos.toString(taskPos)+"].", e);
+				worldGenTask.future.completeExceptionally(e);
 			}
 			finally
 			{
 				this.tryQueueNewWorldGenRequestsAsync();
 			}
+			
+			return null;
 		});
-		
-		this.inProgressGenTasksByLodPos.put(taskPos, newTaskGroup);
-		return true;
 	}
-	private CompletableFuture<Void> startGenerationEvent(
-		long requestPos, 
-		byte targetDataDetail,
-		int generationRequestChunkWidthCount,
-		Consumer<FullDataSourceV2> dataSourceConsumer
-		)
+	private CompletableFuture<FullDataSourceV2> startGenerationEvent(DataSourceRetrievalTask task)
 	{
-		DhChunkPos chunkPosMin = new DhChunkPos(DhSectionPos.getSectionBBoxPos(requestPos).getCornerBlockPos());
+		this.inProgressGenTasksByLodPos.put(task.pos, task);
+		
+		DhChunkPos chunkPosMin = new DhChunkPos(new DhBlockPos2D(DhSectionPos.getMinCornerBlockX(task.pos), DhSectionPos.getMinCornerBlockZ(task.pos)));
 		
 		EDhApiDistantGeneratorMode generatorMode = Config.Common.WorldGenerator.distantGeneratorMode.get();
 		EDhApiWorldGeneratorReturnType returnType = this.generator.getReturnType();
 		switch (returnType) 
 		{
 			case VANILLA_CHUNKS: 
-			{
-				return this.generator.generateChunks(
-					chunkPosMin.getX(), chunkPosMin.getZ(),
-					generationRequestChunkWidthCount,
-					targetDataDetail,
-					generatorMode,
-					ThreadPoolUtil.getWorldGenExecutor(),
-					(Object[] generatedObjectArray) -> 
-					{
-						try
-						{
-							IChunkWrapper chunkWrapper = WRAPPER_FACTORY.createChunkWrapper(generatedObjectArray);
-							
-							// TODO light data should be pulled (if possible) from the ChunkAccess object itself via ChunkFileReader.readLight
-							// but this should work for now
-							ArrayList<IChunkWrapper> nearbyChunkList = new ArrayList<IChunkWrapper>();
-							nearbyChunkList.add(chunkWrapper);
-							DhLightingEngine.INSTANCE.bakeChunkBlockLighting(chunkWrapper, nearbyChunkList, this.level.hasSkyLight() ? LodUtil.MAX_MC_LIGHT : LodUtil.MIN_MC_LIGHT);
-							
-							try (FullDataSourceV2 dataSource = LodDataBuilder.createFromChunk(this.level.getLevelWrapper(), chunkWrapper))
-							{
-								LodUtil.assertTrue(dataSource != null);
-								dataSourceConsumer.accept(dataSource);
-							}
-						}
-						catch (ClassCastException e)
-						{
-							LOGGER.error("World generator return type incorrect. Error: [" + e.getMessage() + "]. World generator disabled.", e);
-							Config.Common.WorldGenerator.enableDistantGeneration.set(false);
-						}
-						catch (Exception e)
-						{
-							LOGGER.error("Unexpected world generator error. Error: [" + e.getMessage() + "]. World generator disabled.", e);
-							Config.Common.WorldGenerator.enableDistantGeneration.set(false);
-						}
-					}
-				);
+			{	
+				return this.startVanillaChunkGenerationEvent(task, chunkPosMin, generatorMode);
 			}
 			case API_CHUNKS: 
 			{
-				return this.generator.generateApiChunks(
-					chunkPosMin.getX(), chunkPosMin.getZ(),
-					generationRequestChunkWidthCount,
-					targetDataDetail,
-					generatorMode,
-					ThreadPoolUtil.getWorldGenExecutor(),
-					(DhApiChunk dataPoints) ->
-					{
-						try(FullDataSourceV2 dataSource = LodDataBuilder.createFromApiChunkData(dataPoints, this.generator.runApiValidation()))
-						{
-							dataSourceConsumer.accept(dataSource);
-						}
-						catch (DataCorruptedException | IllegalArgumentException e)
-						{
-							LOGGER.error("World generator returned a corrupt chunk. Error: [" + e.getMessage() + "]. World generator disabled.", e);
-							Config.Common.WorldGenerator.enableDistantGeneration.set(false);
-						}
-						catch (ClassCastException e)
-						{
-							LOGGER.error("World generator return type incorrect. Error: [" + e.getMessage() + "]. World generator disabled.", e);
-							Config.Common.WorldGenerator.enableDistantGeneration.set(false);
-						}
-					}
-				);
+				return this.startApiChunkGenerationEvent(task, chunkPosMin, generatorMode);
 			}
 			case API_DATA_SOURCES:
 			{
-				// done to reduce GC overhead
-				FullDataSourceV2 pooledDataSource = FullDataSourceV2.createEmpty(requestPos);
-				// set here so the API user doesn't have to pass in this value anywhere themselves
-				pooledDataSource.setRunApiChunkValidation(this.generator.runApiValidation());
-				
-				// only apply to children if we aren't at the bottom of the tree
-				
-				pooledDataSource.applyToChildren = DhSectionPos.getDetailLevel(pooledDataSource.getPos()) > DhSectionPos.SECTION_BLOCK_DETAIL_LEVEL;
-				pooledDataSource.applyToParent = DhSectionPos.getDetailLevel(pooledDataSource.getPos()) < DhSectionPos.SECTION_BLOCK_DETAIL_LEVEL + 12;
-				
-				
-				return this.generator.generateLod(
-						chunkPosMin.getX(), chunkPosMin.getZ(),
-						DhSectionPos.getX(requestPos), DhSectionPos.getZ(requestPos),
-						(byte) (DhSectionPos.getDetailLevel(requestPos) - DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL),
-						pooledDataSource,
-						generatorMode,
-						ThreadPoolUtil.getWorldGenExecutor(),
-						(IDhApiFullDataSource apiDataSource) ->
-						{
-							try
-							{
-								FullDataSourceV2 fullDataSource = (FullDataSourceV2) apiDataSource;
-								try
-								{
-									dataSourceConsumer.accept(fullDataSource);
-								}
-								finally
-								{
-									fullDataSource.close();
-								}
-							}
-							catch (IllegalArgumentException e)
-							{
-								LOGGER.error("World generator returned a corrupt data source. Error: [" + e.getMessage() + "]. World generator disabled.", e);
-								Config.Common.WorldGenerator.enableDistantGeneration.set(false);
-							}
-							catch (ClassCastException e)
-							{
-								LOGGER.error("World generator return type incorrect. Error: [" + e.getMessage() + "]. World generator disabled.", e);
-								Config.Common.WorldGenerator.enableDistantGeneration.set(false);
-							}
-						}
-				);
+				return this.startApiDataSourceGenerationEvent(task, chunkPosMin, generatorMode);
 			}
 			default: 
 			{
@@ -518,30 +414,181 @@ public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDeb
 			}
 		}
 	}
+	private CompletableFuture<FullDataSourceV2> startVanillaChunkGenerationEvent(
+		DataSourceRetrievalTask task, DhChunkPos chunkPosMin, EDhApiDistantGeneratorMode generatorMode)
+	{
+		final CompletableFuture<FullDataSourceV2> returnFuture = new CompletableFuture<>();
+		
+		ArrayList<IChunkWrapper> generatedChunks = new ArrayList<>(task.widthInChunks * task.widthInChunks);
+		
+		CompletableFuture<Void> chunkGenFuture = this.generator.generateChunks(
+			chunkPosMin.getX(), chunkPosMin.getZ(),
+			task.widthInChunks,
+			task.requestDetailLevel,
+			generatorMode,
+			ThreadPoolUtil.getWorldGenExecutor(),
+			(Object[] generatedObjectArray) ->
+			{
+				try
+				{
+					IChunkWrapper chunkWrapper = WRAPPER_FACTORY.createChunkWrapper(generatedObjectArray);
+					generatedChunks.add(chunkWrapper);
+				}
+				catch (ClassCastException e)
+				{
+					LOGGER.error("World generator return type incorrect. Error: [" + e.getMessage() + "]. World generator disabled.", e);
+					Config.Common.WorldGenerator.enableDistantGeneration.set(false);
+				}
+				catch (Exception e)
+				{
+					LOGGER.error("Unexpected world generator error. Error: [" + e.getMessage() + "]. World generator disabled.", e);
+					Config.Common.WorldGenerator.enableDistantGeneration.set(false);
+				}
+			}
+		);
+		
+		chunkGenFuture.exceptionally((throwable) ->
+		{
+			returnFuture.completeExceptionally(throwable);
+			return null;
+		});
+		chunkGenFuture.thenRun(() ->
+		{
+			FullDataSourceV2 requestedDataSource = FullDataSourceV2.createEmpty(task.pos);
+			
+			// process chunks //
+			for (int i = 0; i < generatedChunks.size(); i++)
+			{
+				IChunkWrapper chunkWrapper = generatedChunks.get(i);
+				
+				// only light the chunk here if necessary,
+				// lighting before this point is preferred but for legacy API use this
+				// check should be done
+				if (!chunkWrapper.isDhBlockLightingCorrect())
+				{
+					ArrayList<IChunkWrapper> nearbyChunkList = new ArrayList<>();
+					nearbyChunkList.add(chunkWrapper);
+					byte maxSkyLight = this.level.getLevelWrapper().hasSkyLight() ? LodUtil.MAX_MC_LIGHT : LodUtil.MIN_MC_LIGHT;
+					DhLightingEngine.INSTANCE.bakeChunkBlockLighting(chunkWrapper, nearbyChunkList, maxSkyLight);
+				}
+				
+				try (FullDataSourceV2 generatedDataSource = LodDataBuilder.createFromChunk(this.level.getLevelWrapper(), chunkWrapper))
+				{
+					LodUtil.assertTrue(generatedDataSource != null);
+					requestedDataSource.updateFromDataSource(generatedDataSource);
+				}
+			}
+			
+			DhLightingEngine.INSTANCE.bakeDataSourceSkyLight(requestedDataSource, LodUtil.MAX_MC_LIGHT);
+			returnFuture.complete(requestedDataSource);
+		});
+		
+		return returnFuture;
+	}
+	private CompletableFuture<FullDataSourceV2> startApiChunkGenerationEvent(
+		DataSourceRetrievalTask task,  DhChunkPos chunkPosMin, EDhApiDistantGeneratorMode generatorMode)
+	{
+		final CompletableFuture<FullDataSourceV2> returnFuture = new CompletableFuture<>();
+		
+		ArrayList<DhApiChunk> generatedChunks = new ArrayList<>(task.widthInChunks * task.widthInChunks);
+		
+		CompletableFuture<Void> chunkGenFuture = this.generator.generateApiChunks(
+			chunkPosMin.getX(), chunkPosMin.getZ(),
+			task.widthInChunks,
+			task.requestDetailLevel,
+			generatorMode,
+			ThreadPoolUtil.getWorldGenExecutor(),
+			(DhApiChunk apiChunk) -> { generatedChunks.add(apiChunk); }
+		);
+		
+		
+		chunkGenFuture.exceptionally((throwable) ->
+		{
+			returnFuture.completeExceptionally(throwable);
+			return null;
+		});
+		chunkGenFuture.thenRun(() ->
+		{
+			FullDataSourceV2 requestedDataSource = FullDataSourceV2.createEmpty(task.pos);
+			
+			for (int i = 0; i < generatedChunks.size(); i++)
+			{
+				DhApiChunk apiChunk = generatedChunks.get(i);
+				
+				try(FullDataSourceV2 generatedDataSource = LodDataBuilder.createFromApiChunkData(apiChunk, this.generator.runApiValidation()))
+				{
+					requestedDataSource.updateFromDataSource(generatedDataSource);
+				}
+				catch (DataCorruptedException | IllegalArgumentException e)
+				{
+					LOGGER.error("World generator returned a corrupt API chunk. Error: [" + e.getMessage() + "]. World generator disabled.", e);
+					Config.Common.WorldGenerator.enableDistantGeneration.set(false);
+				}
+			}
+			
+			returnFuture.complete(requestedDataSource);
+		});
+		
+		return returnFuture;
+	}
+	private CompletableFuture<FullDataSourceV2> startApiDataSourceGenerationEvent(
+		DataSourceRetrievalTask task, DhChunkPos chunkPosMin, EDhApiDistantGeneratorMode generatorMode)
+	{
+		final CompletableFuture<FullDataSourceV2> returnFuture = new CompletableFuture<>();
+		
+		
+		// done to reduce GC overhead
+		FullDataSourceV2 pooledDataSource = FullDataSourceV2.createEmpty(task.pos);
+		// set here so the API user doesn't have to pass in this value anywhere themselves
+		pooledDataSource.setRunApiSetterValidation(this.generator.runApiValidation());
+		
+		// only apply to children if we aren't at the bottom of the tree
+		pooledDataSource.applyToChildren = DhSectionPos.getDetailLevel(pooledDataSource.getPos()) > DhSectionPos.SECTION_BLOCK_DETAIL_LEVEL;
+		pooledDataSource.applyToParent = DhSectionPos.getDetailLevel(pooledDataSource.getPos()) < DhSectionPos.SECTION_BLOCK_DETAIL_LEVEL + 12; // TODO what does this 12 reference?
+		
+		CompletableFuture<Void> lodGenFuture = this.generator.generateLod(
+			chunkPosMin.getX(), chunkPosMin.getZ(),
+			DhSectionPos.getX(task.pos), DhSectionPos.getZ(task.pos),
+			(byte) (DhSectionPos.getDetailLevel(task.pos) - DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL),
+			pooledDataSource,
+			generatorMode,
+			ThreadPoolUtil.getWorldGenExecutor(),
+			(IDhApiFullDataSource apiDataSource) -> { }
+		);
+		
+		
+		lodGenFuture.exceptionally((throwable) ->
+		{
+			returnFuture.completeExceptionally(throwable);
+			pooledDataSource.close();
+			return null;
+		});
+		lodGenFuture.thenRun(() ->
+		{
+			returnFuture.complete(pooledDataSource);
+		});
+		
+		return returnFuture;
+	}
 	
 	
 	
 	//===================//
 	// getters / setters //
 	//===================//
+	///region getters/setters
 	
 	@Override public int getWaitingTaskCount() { return this.waitingTasks.size(); }
 	@Override public int getInProgressTaskCount() { return this.inProgressGenTasksByLodPos.size(); }
 	
-	@Override
-	public byte lowestDataDetail() { return this.lowestDataDetail; }
-	@Override
-	public byte highestDataDetail() { return this.highestDataDetail; }
+	@Override public byte lowestDataDetail() { return this.lowestDataDetail; }
+	@Override public byte highestDataDetail() { return this.highestDataDetail; }
 	
-	@Override
-	public int getEstimatedRemainingTaskCount() { return this.estimatedRemainingTaskCount; }
-	@Override
-	public void setEstimatedRemainingTaskCount(int newEstimate) { this.estimatedRemainingTaskCount = newEstimate; }
+	@Override public int getEstimatedRemainingTaskCount() { return this.estimatedRemainingTaskCount; }
+	@Override public void setEstimatedRemainingTaskCount(int newEstimate) { this.estimatedRemainingTaskCount = newEstimate; }
 	
-	@Override
-	public int getRetrievalEstimatedRemainingChunkCount() { return this.estimatedRemainingChunkCount; }
-	@Override
-	public void setRetrievalEstimatedRemainingChunkCount(int newEstimate) { this.estimatedRemainingChunkCount = newEstimate; }
+	@Override public int getRetrievalEstimatedRemainingChunkCount() { return this.estimatedRemainingChunkCount; }
+	@Override public void setRetrievalEstimatedRemainingChunkCount(int newEstimate) { this.estimatedRemainingChunkCount = newEstimate; }
 	
 	@Override 
 	public void addDebugMenuStringsToList(List<String> messageList) { }
@@ -559,13 +606,55 @@ public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDeb
 		return chunkCount;
 	}
 	
+	///endregion getters/setters
+	
+	
+	
+	//=======//
+	// debug //
+	//=======//
+	///region debug
+	
+	@Override
+	public void debugRender(DebugRenderer renderer)
+	{
+		int levelMinY = this.level.getLevelWrapper().getMinHeight();
+		int levelMaxY = this.level.getLevelWrapper().getMaxHeight();
+		
+		// show the wireframe a bit lower than world max height,
+		// since most worlds don't render all the way up to the max height
+		int levelHeightRange = (levelMaxY - levelMinY);
+		int maxY = levelMaxY - (levelHeightRange / 2);
+		
+		
+		// blue - queued
+		this.waitingTasks.keySet().forEach((Long pos) -> 
+		{ 
+			renderer.renderBox(
+				new DebugRenderer.Box(pos, levelMinY, maxY, 0.05f, Color.blue)
+			); 
+		});
+		
+		// red - in progress
+		this.inProgressGenTasksByLodPos.forEach((Long pos, DataSourceRetrievalTask task) -> 
+		{ 
+			renderer.renderBox(
+				new DebugRenderer.Box(pos, levelMinY, maxY, 0.05f, Color.red)
+			); 
+		});
+	}
+	
+	///endregion debug
+	
 	
 	
 	//==========//
 	// shutdown //
 	//==========//
+	///region shutdown
 	
-	@Override public CompletableFuture<Void> startClosingAsync(boolean cancelCurrentGeneration, boolean alsoInterruptRunning)
+	@Override
+	public CompletableFuture<Void> startClosingAsync(boolean cancelCurrentGeneration, boolean alsoInterruptRunning)
 	{
 		LOGGER.info("Closing world gen queue");
 		this.queueingThread.shutdownNow();
@@ -573,32 +662,32 @@ public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDeb
 		
 		// stop and remove any in progress tasks
 		ArrayList<CompletableFuture<Void>> inProgressTasksCancelingFutures = new ArrayList<>(this.inProgressGenTasksByLodPos.size());
-		this.inProgressGenTasksByLodPos.values().forEach(runningTaskGroup ->
+		this.inProgressGenTasksByLodPos.values().forEach((DataSourceRetrievalTask genTask) ->
 		{
-			CompletableFuture<Void> genFuture = runningTaskGroup.genFuture; // Do this to prevent it getting swapped out
-			if (genFuture == null)
-			{
-				// genFuture's shouldn't be null, but sometimes they are...
-				LOGGER.info("Null gen future: "+runningTaskGroup.group.pos);
-				return;
-			}
-			
+			CompletableFuture<DataSourceRetrievalResult> genFuture = genTask.future;
 			
 			if (cancelCurrentGeneration)
 			{
 				genFuture.cancel(alsoInterruptRunning);
 			}
 			
-			inProgressTasksCancelingFutures.add(genFuture.handle((voidObj, exception) ->
+			inProgressTasksCancelingFutures.add(genFuture.handle((DataSourceRetrievalResult result, Throwable throwable) ->
 			{
-				if (exception instanceof CompletionException)
+				if (throwable instanceof CompletionException)
 				{
-					exception = exception.getCause();
+					throwable = throwable.getCause();
 				}
 				
-				if (!UncheckedInterruptedException.isInterrupt(exception) && !(exception instanceof CancellationException))
+				if (!UncheckedInterruptedException.isInterrupt(throwable)
+					&& !(throwable instanceof CancellationException))
 				{
-					LOGGER.error("Error when terminating data generation for section " + runningTaskGroup.group.pos, exception);
+					LOGGER.error("Error when terminating data generation for pos: ["+DhSectionPos.toString(genTask.pos)+"], error: ["+throwable.getMessage()+"].", throwable);
+				}
+				
+				if (result != null 
+					&& result.dataSource != null)
+				{
+					result.dataSource.close();
 				}
 				
 				return null;
@@ -621,20 +710,18 @@ public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDeb
 		LodUtil.assertTrue(this.generatorClosingFuture != null);
 		
 		
-		LOGGER.info("Awaiting world generator thread pool termination...");
-		try
+		LOGGER.info("Shutting down world generator thread pool...");
+		
+		PriorityTaskPicker.Executor executor = ThreadPoolUtil.getWorldGenExecutor();
+		if (executor != null)
 		{
-			int waitTimeInSeconds = 3;
-			AbstractExecutorService executor = ThreadPoolUtil.getWorldGenExecutor();
-			if (executor != null && !executor.awaitTermination(waitTimeInSeconds, TimeUnit.SECONDS))
-			{
-				LOGGER.warn("World generator thread pool shutdown didn't complete after [" + waitTimeInSeconds + "] seconds. Some world generator requests may still be running.");
-			}
+			int queueSize = executor.getQueueSize();
+			executor.clearQueue();
+			LOGGER.info("World generator thread pool shutdown with [" + queueSize + "] incomplete tasks.");
 		}
-		catch (InterruptedException e)
-		{
-			LOGGER.warn("World generator thread pool shutdown interrupted! Ignoring child threads...", e);
-		}
+		
+		this.inProgressGenTasksByLodPos.values().forEach((inProgressWorldGenTaskGroup) -> inProgressWorldGenTaskGroup.future.cancel(true));
+		this.waitingTasks.values().forEach((worldGenTask) -> worldGenTask.future.cancel(true));
 		
 		
 		this.generator.close();
@@ -654,64 +741,31 @@ public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDeb
 		LOGGER.info("Finished closing " + WorldGenerationQueue.class.getSimpleName());
 	}
 	
-	
-	
-	//=======//
-	// debug //
-	//=======//
-	
-	@Override
-	public void debugRender(DebugRenderer renderer)
-	{
-		// show the wireframe a bit lower than world max height,
-		// since most worlds don't render all the way up to the max height
-		int levelHeightRange = (this.level.getMaxY() - this.level.getMinY());
-		int maxY = this.level.getMaxY() - (levelHeightRange / 2);
-		
-		
-		// blue - queued
-		this.waitingTasks.keySet().forEach((pos) -> 
-		{ 
-			renderer.renderBox(
-					new DebugRenderer.Box(pos, this.level.getMinY(), maxY, 0.05f, Color.blue)); 
-		});
-		
-		// red - in progress
-		this.inProgressGenTasksByLodPos.forEach((pos, t) -> 
-		{ 
-			renderer.renderBox(
-					new DebugRenderer.Box(pos, this.level.getMinY(), maxY, 0.05f, Color.red)); 
-		});
-	}
-	
-	
-	
-	//================//
-	// helper methods //
-	//================//
-	
-	private boolean canGeneratePos(long taskPos)
-	{
-		byte requestedDetailLevel = (byte) (DhSectionPos.getDetailLevel(taskPos) - DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL);
-		return (this.highestDataDetail <= requestedDetailLevel && requestedDetailLevel <= this.lowestDataDetail);
-	}
+	///endregion shutdown
 	
 	
 	
 	//================//
 	// helper classes //
 	//================//
+	///region helper classes
 	
-	private static class Mapper
+	/** Used during task starting to determine the closest task */
+	private static class TaskDistancePair
 	{
-		public final WorldGenTask task;
+		public final DataSourceRetrievalTask task;
 		public final int dist;
-		public Mapper(WorldGenTask task, int dist)
+		
+		public TaskDistancePair(DataSourceRetrievalTask task, int dist)
 		{
 			this.task = task;
 			this.dist = dist;
 		}
 		
 	}
+	
+	///endregion helper classes
+	
+	
 	
 }
