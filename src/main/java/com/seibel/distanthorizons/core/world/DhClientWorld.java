@@ -39,7 +39,7 @@ public class DhClientWorld extends AbstractDhWorld implements IDhClientWorld
 	public final ClientOnlySaveStructure saveStructure;
 	public final ClientNetworkState networkState = new ClientNetworkState();
 	
-	public final ExecutorService dhTickerThread = ThreadUtil.makeSingleThreadPool("Client World Ticker Thread");
+	public final ExecutorService dhTickerThread = ThreadUtil.makeSingleThreadPool("Client World Ticker");
 	public final EventLoop eventLoop = new EventLoop(this.dhTickerThread, this::_clientTick);
 	
 	

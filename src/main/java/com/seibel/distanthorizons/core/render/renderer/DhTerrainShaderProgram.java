@@ -132,15 +132,6 @@ public class DhTerrainShaderProgram extends ShaderProgram implements IDhApiShade
 			throw e;
 		}
 		
-		if (this.uEarthRadius != -1) this.setUniform(this.uEarthRadius,
-				/*6371KM*/ 6371000.0f / Config.Client.Advanced.Graphics.Experimental.earthCurveRatio.get());
-		
-		
-		// Noise Uniforms
-		this.setUniform(this.uNoiseEnabled, Config.Client.Advanced.Graphics.NoiseTexture.enableNoiseTexture.get());
-		this.setUniform(this.uNoiseSteps, Config.Client.Advanced.Graphics.NoiseTexture.noiseSteps.get());
-		this.setUniform(this.uNoiseIntensity, Config.Client.Advanced.Graphics.NoiseTexture.noiseIntensity.get().floatValue());
-		this.setUniform(this.uNoiseDropoff, Config.Client.Advanced.Graphics.NoiseTexture.noiseDropoff.get());
 	}
 	
 	
@@ -190,6 +181,15 @@ public class DhTerrainShaderProgram extends ShaderProgram implements IDhApiShade
 		if (this.uWorldYOffset != -1) this.setUniform(this.uWorldYOffset, (float) renderParameters.worldYOffset);
 		
 		if (this.uDitherDhRendering != -1) this.setUniform(this.uDitherDhRendering, Config.Client.Advanced.Graphics.Quality.ditherDhFade.get());
+		
+		if (this.uEarthRadius != -1) this.setUniform(this.uEarthRadius,
+				/*6371KM*/ 6371000.0f / Config.Client.Advanced.Graphics.Experimental.earthCurveRatio.get());
+		
+		// Noise Uniforms
+		this.setUniform(this.uNoiseEnabled, Config.Client.Advanced.Graphics.NoiseTexture.enableNoiseTexture.get());
+		this.setUniform(this.uNoiseSteps, Config.Client.Advanced.Graphics.NoiseTexture.noiseSteps.get());
+		this.setUniform(this.uNoiseIntensity, Config.Client.Advanced.Graphics.NoiseTexture.noiseIntensity.get().floatValue());
+		this.setUniform(this.uNoiseDropoff, Config.Client.Advanced.Graphics.NoiseTexture.noiseDropoff.get());
 		
 		// Debug
 		this.setUniform(this.uWhiteWorld, Config.Client.Advanced.Debugging.enableWhiteWorld.get());

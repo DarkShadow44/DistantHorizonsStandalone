@@ -131,6 +131,8 @@ public class Config
 			// since they aren't part of "client" config class
 			// TODO determine their destination programically instead of hard coding the value
 			
+			public static ConfigUIComment advancedHeader = new ConfigUIComment.Builder().setParentConfigClass(Advanced.class).build();
+			
 			public static ConfigCategory graphics = new ConfigCategory.Builder().set(Graphics.class).build();
 			public static ConfigCategory worldGenerator = new ConfigCategory.Builder().set(Common.WorldGenerator.class).setDestination("common.worldGenerator").build();
 			public static ConfigCategory multiplayer = new ConfigCategory.Builder().set(Multiplayer.class).build();
@@ -146,23 +148,32 @@ public class Config
 			
 			public static class Graphics
 			{
+				public static ConfigUIComment advancedGraphicsHeader = new ConfigUIComment.Builder().setParentConfigClass(Graphics.class).build();
+				
 				public static ConfigCategory quality = new ConfigCategory.Builder().set(Quality.class).build();
+				public static ConfigUISpacer qualitySpacer = new ConfigUISpacer.Builder().build();
 				
 				public static ConfigUiLinkedEntry quickEnableSsao = new ConfigUiLinkedEntry(Ssao.enableSsao);
 				public static ConfigCategory ssao = new ConfigCategory.Builder().set(Ssao.class).build();
+				public static ConfigUISpacer ssaoSpacer = new ConfigUISpacer.Builder().build();
+				
 				
 				public static ConfigUiLinkedEntry quickEnableGenericRendering = new ConfigUiLinkedEntry(GenericRendering.enableGenericRendering);
 				public static ConfigCategory genericRendering = new ConfigCategory.Builder().set(GenericRendering.class).build();
+				public static ConfigUISpacer genericRenderingSpacer = new ConfigUISpacer.Builder().build();
 				
 				public static ConfigUiLinkedEntry quickEnableDhFog = new ConfigUiLinkedEntry(Fog.enableDhFog);
 				public static ConfigUiLinkedEntry quickEnableMcFog = new ConfigUiLinkedEntry(Fog.enableVanillaFog);
 				public static ConfigCategory fog = new ConfigCategory.Builder().set(Fog.class).build();
+				public static ConfigUISpacer fogSpacer = new ConfigUISpacer.Builder().build();
 				
 				public static ConfigUiLinkedEntry quickEnableNoiseTexture = new ConfigUiLinkedEntry(NoiseTexture.enableNoiseTexture);
 				public static ConfigCategory noiseTexture = new ConfigCategory.Builder().set(NoiseTexture.class).build();
+				public static ConfigUISpacer noiseTextureSpacer = new ConfigUISpacer.Builder().build();
 				
 				public static ConfigUiLinkedEntry quickEnableCaveCulling = new ConfigUiLinkedEntry(Culling.enableCaveCulling);
 				public static ConfigCategory culling = new ConfigCategory.Builder().set(Culling.class).build();
+				public static ConfigUISpacer cullingSpacer = new ConfigUISpacer.Builder().build();
 				
 				public static ConfigCategory experimental = new ConfigCategory.Builder().set(Experimental.class).build();
 				
@@ -170,6 +181,8 @@ public class Config
 				
 				public static class Quality
 				{
+					public static ConfigUIComment qualityHeader = new ConfigUIComment.Builder().setParentConfigClass(Quality.class).build();
+					
 					public static ConfigEntry<Integer> lodChunkRenderDistanceRadius = new ConfigEntry.Builder<Integer>()
 							.setMinDefaultMax(32, 256, 4096)
 							.comment("" +
@@ -334,23 +347,23 @@ public class Config
 							.addListener(ReloadLodsConfigEventHandler.DELAYED_INSTANCE)
 							.build();
 					
-					// TODO fixme
-					//public static ConfigEntry<Integer> lodBiomeBlending = new ConfigEntry.Builder<Integer>()
-					//		.setMinDefaultMax(0,1,7)
-					//		.comment(""
-					//				+ "This is the same as vanilla Biome Blending settings for Lod area. \n"
-					//				+ "    Note that anything other than '0' will greatly effect Lod building time \n"
-					//				+ "     and increase triangle count. The cost on chunk generation speed is also \n"
-					//				+ "     quite large if set too high.\n"
-					//				+ "\n"
-					//				+ "    '0' equals to Vanilla Biome Blending of '1x1' or 'OFF', \n"
-					//				+ "    '1' equals to Vanilla Biome Blending of '3x3', \n"
-					//				+ "    '2' equals to Vanilla Biome Blending of '5x5'...")
-					//		.build();	
+					public static ConfigEntry<Integer> lodBiomeBlending = new ConfigEntry.Builder<Integer>()
+							.setMinDefaultMax(0,3,3) // going higher than 3 causes banding issues for blending across LOD borders and an exponential increase in load times
+							.comment(""
+									+ "This is the same as vanilla Biome Blending settings for Lod area. \n"
+									+ "    Note that anything other than '0' will greatly effect Lod building time. \n"
+									+ "\n"
+									+ "    '0' equals to Vanilla Biome Blending of '1x1' or 'OFF', \n"
+									+ "    '1' equals to Vanilla Biome Blending of '3x3', \n"
+									+ "    '2' equals to Vanilla Biome Blending of '5x5'...")
+							.addListener(ReloadLodsConfigEventHandler.DELAYED_INSTANCE)
+							.build();	
 				}
 				
 				public static class Ssao
 				{
+					public static ConfigUIComment ssaoHeader = new ConfigUIComment.Builder().setParentConfigClass(Ssao.class).build();
+					
 					public static ConfigEntry<Boolean> enableSsao = new ConfigEntry.Builder<Boolean>()
 							.set(true)
 							.comment("Enable Screen Space Ambient Occlusion")
@@ -413,6 +426,8 @@ public class Config
 				
 				public static class GenericRendering
 				{
+					public static ConfigUIComment genericRendererHeader = new ConfigUIComment.Builder().setParentConfigClass(GenericRendering.class).build();
+					
 					public static ConfigEntry<Boolean> enableGenericRendering = new ConfigEntry.Builder<Boolean>()
 							.set(true)
 							.comment(""
@@ -459,6 +474,8 @@ public class Config
 					private static final Double FOG_RANGE_MAX = Math.sqrt(2.0);
 					
 					
+					
+					public static ConfigUIComment fogHeader = new ConfigUIComment.Builder().setParentConfigClass(Fog.class).build();
 					
 					public static ConfigEntry<Boolean> enableDhFog = new ConfigEntry.Builder<Boolean>()
 							.set(true)
@@ -561,6 +578,8 @@ public class Config
 					
 					public static class HeightFog
 					{
+						public static ConfigUIComment heightFogHeader = new ConfigUIComment.Builder().setParentConfigClass(HeightFog.class).build();
+						
 						public static ConfigEntry<EDhApiHeightFogMixMode> heightFogMixMode = new ConfigEntry.Builder<EDhApiHeightFogMixMode>()
 								.set(EDhApiHeightFogMixMode.SPHERICAL)
 								.comment(""
@@ -656,6 +675,8 @@ public class Config
 				
 				public static class NoiseTexture
 				{
+					public static ConfigUIComment noiseTextureHeader = new ConfigUIComment.Builder().setParentConfigClass(NoiseTexture.class).build();
+					
 					public static ConfigEntry<Boolean> enableNoiseTexture = new ConfigEntry.Builder<Boolean>()
 							.set(true)
 							.comment(""
@@ -690,6 +711,8 @@ public class Config
 				
 				public static class Culling
 				{
+					public static ConfigUIComment cullingHeader = new ConfigUIComment.Builder().setParentConfigClass(Culling.class).build();
+					
 					public static ConfigEntry<Double> overdrawPrevention = new ConfigEntry.Builder<Double>()
 							.setMinDefaultMax(0.0, 0.0, 1.0) // TODO change -1 to auto
 							.comment(""
@@ -814,6 +837,8 @@ public class Config
 				
 				public static class Experimental
 				{
+					public static ConfigUIComment experimentalHeader = new ConfigUIComment.Builder().setParentConfigClass(Experimental.class).build();
+					
 					public static ConfigEntry<Integer> earthCurveRatio = new ConfigEntry.Builder<Integer>()
 							.setMinDefaultMax(0, 0, 5000)
 							.comment(""
@@ -836,6 +861,8 @@ public class Config
 			
 			public static class AutoUpdater
 			{
+				public static ConfigUIComment autoUpdaterHeader = new ConfigUIComment.Builder().setParentConfigClass(AutoUpdater.class).build();
+				
 				public static ConfigEntry<Boolean> enableAutoUpdater = new ConfigEntry.Builder<Boolean>()
 						.set(!isRunningInDevEnvironment())
 						.comment(""
@@ -863,6 +890,8 @@ public class Config
 			
 			public static class Multiplayer
 			{
+				public static ConfigUIComment multiplayerHeader = new ConfigUIComment.Builder().setParentConfigClass(Multiplayer.class).build();
+				
 				public static ConfigEntry<EDhApiServerFolderNameMode> serverFolderNameMode = new ConfigEntry.Builder<EDhApiServerFolderNameMode>()
 						.set(EDhApiServerFolderNameMode.NAME_ONLY)
 						.comment(""
@@ -879,6 +908,8 @@ public class Config
 			
 			public static class Debugging
 			{
+				public static ConfigUIComment debuggingHeader = new ConfigUIComment.Builder().setParentConfigClass(Debugging.class).build();
+				
 				public static ConfigEntry<EDhApiRendererMode> rendererMode = new ConfigEntry.Builder<EDhApiRendererMode>()
 						.set(EDhApiRendererMode.DEFAULT)
 						.comment(""
@@ -967,6 +998,8 @@ public class Config
 				
 				public static class DebugWireframe
 				{
+					public static ConfigUIComment debugWireframeHeader = new ConfigUIComment.Builder().setParentConfigClass(DebugWireframe.class).build();
+					
 					public static ConfigEntry<Boolean> enableRendering = new ConfigEntry.Builder<Boolean>()
 							.set(false)
 							.comment(""
@@ -1016,6 +1049,8 @@ public class Config
 				
 				public static class OpenGl
 				{
+					public static ConfigUIComment openGlHeader = new ConfigUIComment.Builder().setParentConfigClass(OpenGl.class).build();
+					
 					public static ConfigEntry<Boolean> overrideVanillaGLLogger = new ConfigEntry.Builder<Boolean>()
 							.set(true)
 							.comment(""
@@ -1063,6 +1098,8 @@ public class Config
 				
 				public static class ColumnBuilderDebugging
 				{
+					public static ConfigUIComment columnBuilderDebuggingHeader = new ConfigUIComment.Builder().setParentConfigClass(ColumnBuilderDebugging.class).build();
+					
 					public static ConfigEntry<Boolean> columnBuilderDebugEnable = new ConfigEntry.Builder<Boolean>()
 							.set(false)
 							.setAppearance(EConfigEntryAppearance.ONLY_IN_GUI)
@@ -1104,6 +1141,8 @@ public class Config
 				
 				public static class F3Screen
 				{
+					public static ConfigUIComment f3ScreenHeader = new ConfigUIComment.Builder().setParentConfigClass(F3Screen.class).build();
+					
 					public static ConfigEntry<Boolean> showPlayerPos = new ConfigEntry.Builder<Boolean>()
 							.set(true)
 							.comment("Shows the player's LOD position.")
@@ -1147,8 +1186,10 @@ public class Config
 				// This will throw a warning when opened in the default ui to tell you about it not showing
 				public static class ExampleConfigScreen
 				{
+					public static ConfigUIComment exampleConfigHeader = new ConfigUIComment.Builder().setParentConfigClass(ExampleConfigScreen.class).build();
+					
 					// Defined in the lang, just a note about this screen
-					public static ConfigUIComment debugConfigScreenNote = new ConfigUIComment();
+					public static ConfigUIComment debugConfigScreenNote = new ConfigUIComment.Builder().setTextPosition(EConfigCommentTextPosition.CENTER_OF_SCREEN).build();
 					
 					public static ConfigEntry<Boolean> boolTest = new ConfigEntry.Builder<Boolean>()
 							.set(false)
@@ -1156,6 +1197,7 @@ public class Config
 					
 					public static ConfigEntry<Byte> byteTest = new ConfigEntry.Builder<Byte>()
 							.set((byte) 8)
+							.setAppearance(EConfigEntryAppearance.ONLY_IN_FILE) // no GUI renderer set up currently
 							.build();
 					
 					public static ConfigEntry<Integer> intTest = new ConfigEntry.Builder<Integer>()
@@ -1168,14 +1210,17 @@ public class Config
 					
 					public static ConfigEntry<Short> shortTest = new ConfigEntry.Builder<Short>()
 							.set((short) 69)
+							.setAppearance(EConfigEntryAppearance.ONLY_IN_FILE) // no GUI renderer set up currently
 							.build();
 					
 					public static ConfigEntry<Long> longTest = new ConfigEntry.Builder<Long>()
 							.set(42069L)
+							.setAppearance(EConfigEntryAppearance.ONLY_IN_FILE) // no GUI renderer set up currently
 							.build();
 					
 					public static ConfigEntry<Float> floatTest = new ConfigEntry.Builder<Float>()
 							.set(0.42069f)
+							.setAppearance(EConfigEntryAppearance.ONLY_IN_FILE) // no GUI renderer set up currently
 							.build();
 					
 					public static ConfigEntry<String> stringTest = new ConfigEntry.Builder<String>()
@@ -1184,10 +1229,12 @@ public class Config
 					
 					public static ConfigEntry<List<String>> listTest = new ConfigEntry.Builder<List<String>>()
 							.set(new ArrayList<String>(Arrays.asList("option 1", "option 2", "option 3")))
+							.setAppearance(EConfigEntryAppearance.ONLY_IN_FILE) // no GUI renderer set up currently
 							.build();
 					
 					public static ConfigEntry<Map<String, String>> mapTest = new ConfigEntry.Builder<Map<String, String>>()
 							.set(new HashMap<String, String>())
+							.setAppearance(EConfigEntryAppearance.ONLY_IN_FILE) // no GUI renderer set up currently
 							.build();
 					
 					public static ConfigUIButton uiButtonTest = new ConfigUIButton(() -> 
@@ -1231,6 +1278,8 @@ public class Config
 	{
 		public static class WorldGenerator
 		{
+			public static ConfigUIComment worldGeneratorHeader = new ConfigUIComment.Builder().setParentConfigClass(WorldGenerator.class).build();
+			
 			public static ConfigEntry<Boolean> enableDistantGeneration = new ConfigEntry.Builder<Boolean>()
 					.setChatCommandName("generation.enable")
 					.set(true)
@@ -1284,7 +1333,7 @@ public class Config
 					.build();
 			
 			public static ConfigEntry<EDhApiDistantGeneratorProgressDisplayLocation> showGenerationProgress = new ConfigEntry.Builder<EDhApiDistantGeneratorProgressDisplayLocation>()
-					.set(EDhApiDistantGeneratorProgressDisplayLocation.OVERLAY)
+					.set(EDhApiDistantGeneratorProgressDisplayLocation.DISABLED)
 					.comment(""
 							+ "How should distant generator progress be displayed? \n"
 							+ "\n"
@@ -1324,6 +1373,8 @@ public class Config
 		
 		public static class LodBuilding
 		{
+			public static ConfigUIComment lodBuildingHeader = new ConfigUIComment.Builder().setParentConfigClass(LodBuilding.class).build();
+			
 			public static ConfigEntry<Boolean> disableUnchangedChunkCheck = new ConfigEntry.Builder<Boolean>()
 					.set(false)
 					// enabling this can be quite detrimental to performance,
@@ -1445,6 +1496,8 @@ public class Config
 			
 			public static class Experimental
 			{
+				public static ConfigUIComment experimentalHeader = new ConfigUIComment.Builder().setParentConfigClass(Experimental.class).build();
+				
 				public static ConfigEntry<Boolean> upsampleLowerDetailLodsToFillHoles = new ConfigEntry.Builder<Boolean>()
 						.set(false)
 						.comment(""
@@ -1467,6 +1520,8 @@ public class Config
 		
 		public static class MultiThreading
 		{
+			public static ConfigUIComment multiThreadingHeader = new ConfigUIComment.Builder().setParentConfigClass(MultiThreading.class).build();
+			
 			public static final ConfigEntry<Integer> numberOfThreads = new ConfigEntry.Builder<Integer>()
 					.setChatCommandName("threading.numberOfThreads")
 					.setMinDefaultMax(1,
@@ -1495,6 +1550,8 @@ public class Config
 		
 		public static class Logging
 		{
+			public static ConfigUIComment loggingHeader = new ConfigUIComment.Builder().setParentConfigClass(Logging.class).build();
+			
 			// TODO add change all option
 			// TODO default to error chat and info file
 			public static ConfigEntry<EDhApiLoggerMode> logWorldGenEvent = new ConfigEntry.Builder<EDhApiLoggerMode>()
@@ -1549,6 +1606,7 @@ public class Config
 			
 			public static class Warning
 			{
+				public static ConfigUIComment warningHeader = new ConfigUIComment.Builder().setParentConfigClass(Warning.class).build();
 				
 				public static ConfigEntry<Boolean> showLowMemoryWarningOnStartup = new ConfigEntry.Builder<Boolean>()
 						.set(true)
@@ -1722,11 +1780,19 @@ public class Config
 		
 		
 		// Common
-		public static ConfigEntry<Integer> maxDataTransferSpeed = new ConfigEntry.Builder<Integer>()
-				.setChatCommandName("common.maxDataTransferSpeed")
+		public static ConfigEntry<Integer> playerBandwidthLimit = new ConfigEntry.Builder<Integer>()
+				.setChatCommandName("common.playerBandwidthLimit")
 				.setMinDefaultMax(0, 500, 1000000 /* 1 GB/s */)
 				.comment(""
-						+ "Maximum speed for uploading LODs to the clients, in KB/s.\n"
+						+ "Maximum per-player speed for uploading LODs to the clients, in KB/s.\n"
+						+ "Value of 0 disables the limit."
+						+ "")
+				.build();
+		public static ConfigEntry<Integer> globalBandwidthLimit = new ConfigEntry.Builder<Integer>()
+				.setChatCommandName("common.globalBandwidthLimit")
+				.setMinDefaultMax(0, 0, 10000000 /* 10 GB/s */)
+				.comment(""
+						+ "Maximum global speed for uploading LODs to the clients, in KB/s.\n"
 						+ "Value of 0 disables the limit."
 						+ "")
 				.build();

@@ -121,8 +121,5 @@ public class ChunkPosQueue
 		this.closestQueue.remove(furthest);
 		return this.updateDataByChunkPos.remove(furthest);
 	}
-	
-	
-	
 }
 		

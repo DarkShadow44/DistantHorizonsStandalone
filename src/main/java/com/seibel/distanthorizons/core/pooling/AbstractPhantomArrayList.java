@@ -16,13 +16,13 @@ import java.lang.ref.PhantomReference;
  * @see PhantomArrayListCheckout
  * @see PhantomArrayListPool
  */
-public abstract class PhantomArrayListParent implements AutoCloseable
+public abstract class AbstractPhantomArrayList implements AutoCloseable
 {
 	private static final Logger LOGGER = LogManager.getLogger();
 	
 	
 	private final PhantomArrayListPool phantomArrayListPool;
-	private final PhantomReference<PhantomArrayListParent> phantomReference;
+	private final PhantomReference<AbstractPhantomArrayList> phantomReference;
 
 	/** 
 	 * It's recommended to set this as null after the child's constructor 
@@ -37,7 +37,7 @@ public abstract class PhantomArrayListParent implements AutoCloseable
 	//=============//
 	
 	/** The Array counts can be 0 or greater. */
-	public PhantomArrayListParent(PhantomArrayListPool phantomArrayListPool, int byteArrayCount, int shortArrayCount, int longArrayCount) 
+	public AbstractPhantomArrayList(PhantomArrayListPool phantomArrayListPool, int byteArrayCount, int shortArrayCount, int longArrayCount) 
 	{
 		if (byteArrayCount < 0 || shortArrayCount < 0 || longArrayCount < 0)
 		{

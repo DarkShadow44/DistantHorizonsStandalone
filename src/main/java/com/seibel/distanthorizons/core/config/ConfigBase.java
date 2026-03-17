@@ -19,46 +19,38 @@
 
 package com.seibel.distanthorizons.core.config;
 
-import com.seibel.distanthorizons.core.config.file.ConfigFileHandling;
+import com.seibel.distanthorizons.core.config.file.ConfigFileHandler;
+import com.seibel.distanthorizons.core.config.types.*;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
-import com.seibel.distanthorizons.core.config.types.AbstractConfigType;
-import com.seibel.distanthorizons.core.config.types.ConfigCategory;
-import com.seibel.distanthorizons.core.config.types.ConfigEntry;
-import com.seibel.distanthorizons.core.config.types.ConfigUiLinkedEntry;
+import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.wrapperInterfaces.config.ILangWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftSharedWrapper;
+import com.seibel.distanthorizons.coreapi.ModInfo;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
 import java.nio.file.Path;
 import java.util.*;
 
 /**
- * Indexes and sets everything up for the file handling and gui
+ * Indexes and sets everything up for the file handling and gui.
+ * This should be init after singletons have been bound
  *
  * @author coolGi
  * @author Ran
  * @version 2023-8-26
  */
-// Init the config after singletons have been blinded
 public class ConfigBase
 {
 	/** Our own config instance, don't modify unless you are the DH mod */
 	public static ConfigBase INSTANCE;
-	public ConfigFileHandling configFileINSTANCE;
 	
-	private final Logger logger;
-	public final String modID;
-	public final String modName;
-	public final int configVersion;
-	
-	public boolean isLoaded = false;
-	
-	
+	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
 	
 	/**
-	 *      What the config works with
+	 * What the config works with
 	 * <br> 
 	 * <br> {@link Enum}
 	 * <br> {@link Boolean}
@@ -77,61 +69,74 @@ public class ConfigBase
 	 * <br> Map<String, T>
 	 * <br> HashMap<String, T>
 	 */
-	public static final List<Class<?>> acceptableInputs = new ArrayList<Class<?>>()
+	public static final List<Class<?>> ACCEPTABLE_INPUTS = new ArrayList<Class<?>>()
 	{{
-		add(Boolean.class);
-		add(Byte.class);
-		add(Integer.class);
-		add(Double.class);
-		add(Short.class);
-		add(Long.class);
-		add(Float.class);
-		add(String.class);
+		this.add(Boolean.class);
+		this.add(Byte.class);
+		this.add(Integer.class);
+		this.add(Double.class);
+		this.add(Short.class);
+		this.add(Long.class);
+		this.add(Float.class);
+		this.add(String.class);
 		
 		// TODO[CONFIG]: Check the type of these is valid
-		add(List.class);
-		add(ArrayList.class);
-		add(Map.class);
-		add(HashMap.class);
+		this.add(List.class);
+		this.add(ArrayList.class);
+		this.add(Map.class);
+		this.add(HashMap.class);
 	}};
+	
+	
+	
+	public ConfigFileHandler configFileHandler;
+	
+	public final int configVersion;
+	
+	public boolean isLoaded = false;
 	
 	/** Disables the minimum and maximum of any variable */
 	public boolean disableMinMax = false; // Very fun to use, but should always be disabled by default
 	public final List<AbstractConfigType<?, ?>> entries = new ArrayList<>();
 	
 	
-	public ConfigBase(String modID, String modName, Class<?> configClass)
+	
+	//=============//
+	// constructor //
+	//=============//
+	
+	public static void RunFirstTimeSetup()
 	{
-		this(modID, modName, configClass, getConfigPath(modName), -1);
-	}
-	public ConfigBase(String modID, String modName, Class<?> configClass, Path configPath)
-	{
-		this(modID, modName, configClass, configPath, -1);
-	}
-	public ConfigBase(String modID, String modName, Class<?> configClass, int configVersion)
-	{
-		this(modID, modName, configClass, getConfigPath(modName), configVersion);
+		if (INSTANCE != null)
+		{
+			LOGGER.debug("ConfigBase setup already run, ignoring.");
+			return;
+		}
+		
+		INSTANCE = new ConfigBase(Config.class, ModInfo.CONFIG_FILE_VERSION);
 	}
 	
-	public ConfigBase(String modID, String modName, Class<?> configClass, Path configPath, int configVersion)
+	private ConfigBase(Class<?> configClass, int configVersion)
 	{
-		this.logger = LogManager.getLogger(this.getClass().getSimpleName() + ", " + modID);
+		LOGGER.info("Initialising config for [" + ModInfo.NAME + "]");
 		
-		this.logger.info("Initialising config for " + modName);
-		this.modID = modID;
-		this.modName = modName;
 		this.configVersion = configVersion;
 		
 		this.initNestedClass(configClass, ""); // Init root category
 		
-		// File handling (load from file)
-		this.configFileINSTANCE = new ConfigFileHandling(this, configPath);
-		this.configFileINSTANCE.loadFromFile();
+		Path configPath = getConfigPath(ModInfo.NAME);
+		this.configFileHandler = new ConfigFileHandler(this, configPath);
+		this.configFileHandler.loadFromFile();
 		
 		this.isLoaded = true;
-		this.logger.info("Config for " + modName + " initialised");
+		LOGGER.info("Config for [" + ModInfo.NAME + "] initialised");
 	}
-	
+	/** Gets the default config path given a mod name */
+	private static Path getConfigPath(String modName)
+	{
+		return SingletonInjector.INSTANCE.get(IMinecraftSharedWrapper.class)
+				.getInstallationDirectory().toPath().resolve("config").resolve(modName + ".toml");
+	}
 	private void initNestedClass(Class<?> configClass, String category)
 	{
 		// Put all the entries in entries
@@ -146,7 +151,7 @@ public class ConfigBase
 				}
 				catch (IllegalAccessException exception)
 				{
-					this.logger.warn(exception);
+					LOGGER.warn(exception);
 				}
 				
 				AbstractConfigType<?, ?> entry = this.entries.get(this.entries.size() - 1);
@@ -155,11 +160,12 @@ public class ConfigBase
 				entry.configBase = this;
 				
 				if (ConfigEntry.class.isAssignableFrom(field.getType()))
-				{ // If item is type ConfigEntry
+				{ 
+					// If item is type ConfigEntry
 					if (!isAcceptableType(entry.getType()))
 					{
-						this.logger.error("Invalid variable type at [" + (category.isEmpty() ? "" : category + ".") + field.getName() + "].");
-						this.logger.error("Type [" + entry.getType() + "] is not one of these types [" + acceptableInputs.toString() + "]");
+						LOGGER.error("Invalid variable type at [" + (category.isEmpty() ? "" : category + ".") + field.getName() + "].");
+						LOGGER.error("Type [" + entry.getType() + "] is not one of these types [" + ACCEPTABLE_INPUTS.toString() + "]");
 						this.entries.remove(this.entries.size() - 1); // Delete the entry if it is invalid so the game can still run
 					}
 				}
@@ -177,32 +183,31 @@ public class ConfigBase
 			}
 		}
 	}
-	
 	private static boolean isAcceptableType(Class<?> Clazz)
 	{
 		if (Clazz.isEnum())
+		{
 			return true;
-		return acceptableInputs.contains(Clazz);
+		}
+		
+		return ACCEPTABLE_INPUTS.contains(Clazz);
 	}
 	
 	
-	/** Gets the default config path given a mod name */
-	public static Path getConfigPath(String modName)
-	{
-		return SingletonInjector.INSTANCE.get(IMinecraftSharedWrapper.class)
-				.getInstallationDirectory().toPath().resolve("config").resolve(modName + ".toml");
-	}
 	
+	//===============//
+	// lang handling //
+	//===============//
 	
 	/**
-	 * Used for checking that all the lang files for the config exist
+	 * Used for checking that all the lang files for the config exist.
+	 * This is just to re-format the lang or check if there is something in the lang that is missing
 	 *
-	 * @param onlyShowNew If disabled then it would basically remake the config lang
+	 * @param onlyShowMissing If false then this will remake the entire config lang
 	 * @param checkEnums Checks if all the lang for the enum's exist
 	 */
-	// This is just to re-format the lang or check if there is something in the lang that is missing
 	@SuppressWarnings("unchecked")
-	public String generateLang(boolean onlyShowNew, boolean checkEnums)
+	public String generateLang(boolean onlyShowMissing, boolean checkEnums)
 	{
 		ILangWrapper langWrapper = SingletonInjector.INSTANCE.get(ILangWrapper.class);
 		List<Class<? extends Enum<?>>> enumList = new ArrayList<>();
@@ -213,50 +218,86 @@ public class ConfigBase
 		String separator = "\":\n    \"";
 		String ending = "\",\n";
 		
+		// config entries
 		for (AbstractConfigType<?, ?> entry : this.entries)
 		{
-			String entryPrefix = "lod.config." + entry.getNameWCategory();
+			String entryPrefix = "distanthorizons.config." + entry.getNameWCategory();
 			
-			if (checkEnums && entry.getType().isEnum() && !enumList.contains(entry.getType()))
-			{ // Put it in an enum list to work with at the end
+			if (checkEnums 
+				&& entry.getType().isEnum() 
+				&& !enumList.contains(entry.getType()))
+			{ 
+				// Put it in an enum list to work with at the end
 				enumList.add((Class<? extends Enum<?>>) entry.getType());
 			}
-			if (!onlyShowNew || langWrapper.langExists(entryPrefix))
+			
+			
+			// config file items don't need lang entries
+			if (!entry.getAppearance().showInGui)
 			{
-				if (!ConfigUiLinkedEntry.class.isAssignableFrom(entry.getClass()))
-				{ // If it is a linked item, dont generate the base lang
-					generatedLang += starter
-							+ entryPrefix
-							+ separator
-							+ langWrapper.getLang(entryPrefix)
-							+ ending
-					;
-				}
-				// Adds tooltips
-				if (langWrapper.langExists(entryPrefix + ".@tooltip"))
-				{
-					generatedLang += starter
-							+ entryPrefix + ".@tooltip"
-							+ separator
-							+ langWrapper.getLang(entryPrefix + ".@tooltip")
-							.replaceAll("\n", "\\\\n")
-							.replaceAll("\"", "\\\\\"")
-							+ ending
-					;
-				}
+				continue;
+			}
+			
+			// some entries don't need localization
+			if (ConfigUiLinkedEntry.class.isAssignableFrom(entry.getClass())
+				|| ConfigUISpacer.class.isAssignableFrom(entry.getClass()))
+			{
+				continue;
+			}
+			
+			if (ConfigUIComment.class.isAssignableFrom(entry.getClass())
+				&& ((ConfigUIComment)entry).parentConfigPath != null)
+			{
+				// TODO this could potentially add the same item multiple times
+				entryPrefix = "distanthorizons.config." + ((ConfigUIComment)entry).parentConfigPath;
+			}
+			
+			
+			if (langWrapper.langExists(entryPrefix)
+				&& onlyShowMissing)
+			{
+				continue;
+			}
+			
+			
+			generatedLang += starter
+					+ entryPrefix
+					+ separator
+					+ langWrapper.getLang(entryPrefix)
+					+ ending
+			;
+			
+			// only add tooltips for entries that are also missing
+			// their primary lang
+			// this is done since not all menu items need a tooltip
+			if (!langWrapper.langExists(entryPrefix + ".@tooltip") 
+				|| !onlyShowMissing)
+			{
+				generatedLang += starter
+						+ entryPrefix + ".@tooltip"
+						+ separator
+						+ langWrapper.getLang(entryPrefix + ".@tooltip")
+						.replaceAll("\n", "\\\\n")
+						.replaceAll("\"", "\\\\\"")
+						+ ending
+				;
 			}
 		}
+		
+		
+		// enums
 		if (!enumList.isEmpty())
 		{
 			generatedLang += "\n"; // Separate the main lang with the enum's
 			
 			for (Class<? extends Enum> anEnum : enumList)
 			{
-				for (Object enumStr : new ArrayList<>(EnumSet.allOf(anEnum)))
+				for (Object enumStr : new ArrayList<Object>(EnumSet.allOf(anEnum)))
 				{
-					String enumPrefix = "lod.config.enum." + anEnum.getSimpleName() + "." + enumStr.toString();
+					String enumPrefix = "distanthorizons.config.enum." + anEnum.getSimpleName() + "." + enumStr.toString();
 					
-					if (!onlyShowNew || langWrapper.langExists(enumPrefix))
+					if (!langWrapper.langExists(enumPrefix) 
+						|| !onlyShowMissing)
 					{
 						generatedLang += starter
 								+ enumPrefix
@@ -271,5 +312,7 @@ public class ConfigBase
 		
 		return generatedLang;
 	}
+	
+	
 	
 }

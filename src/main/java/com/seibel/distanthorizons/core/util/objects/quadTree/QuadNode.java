@@ -27,6 +27,7 @@ import com.seibel.distanthorizons.core.util.objects.quadTree.iterators.QuadNodeD
 import com.seibel.distanthorizons.core.util.objects.quadTree.iterators.QuadTreeNodeIterator;
 import it.unimi.dsi.fastutil.longs.LongIterator;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Iterator;
 import java.util.function.Consumer;
@@ -37,7 +38,11 @@ public class QuadNode<T>
 	
 	
 	public final long sectionPos;
-	public final byte minimumDetailLevel;
+	/** 
+	 * this is the highest detail level this tree can provide.
+	 * IE the detail levels that the root nodes in the tree are.
+	 */
+	public final byte parentTreeLeafDetailLevel;
 	public T value;
 	
 	
@@ -68,10 +73,10 @@ public class QuadNode<T>
 	
 	
 	
-	public QuadNode(long sectionPos, byte minimumDetailLevel)
+	public QuadNode(long sectionPos, byte parentTreeLeafDetailLevel)
 	{
 		this.sectionPos = sectionPos;
-		this.minimumDetailLevel = minimumDetailLevel;
+		this.parentTreeLeafDetailLevel = parentTreeLeafDetailLevel;
 	}
 	
 	
@@ -191,12 +196,12 @@ public class QuadNode<T>
 		
 		if (DhSectionPos.getDetailLevel(inputSectionPos) == DhSectionPos.getDetailLevel(this.sectionPos) && inputSectionPos != this.sectionPos)
 		{
-			throw new IllegalArgumentException("Node and input detail level are equal, however positions are not; this tree doesn't contain the requested position. Node pos: " + this.sectionPos + ", input pos: " + inputSectionPos);
+			throw new IllegalArgumentException("Node and input detail level are equal, however positions are not; this tree doesn't contain the requested position. Node pos: " + this.sectionPos + ", input pos: " + DhSectionPos.toString(inputSectionPos));
 		}
 		
-		if (DhSectionPos.getDetailLevel(inputSectionPos) < this.minimumDetailLevel)
+		if (DhSectionPos.getDetailLevel(inputSectionPos) < this.parentTreeLeafDetailLevel)
 		{
-			throw new IllegalArgumentException("Input position is requesting a detail level lower than what this node can provide. Node minimum detail level: " + this.minimumDetailLevel + ", input pos: " + inputSectionPos);
+			throw new IllegalArgumentException("Input position is requesting a detail level lower than what this node can provide. Tree leaf detail level: " + this.parentTreeLeafDetailLevel + ", input pos: " + DhSectionPos.toString(inputSectionPos));
 		}
 		
 		
@@ -231,7 +236,7 @@ public class QuadNode<T>
 				if (replaceValue && this.nwChild == null)
 				{
 					// if no node exists for this position, but we want to insert a new value at this position, create a new node
-					this.nwChild = new QuadNode<>(nwPos, this.minimumDetailLevel);
+					this.nwChild = new QuadNode<>(nwPos, this.parentTreeLeafDetailLevel);
 				}
 				childNode = this.nwChild;
 				
@@ -244,7 +249,7 @@ public class QuadNode<T>
 				if (replaceValue && this.swChild == null)
 				{
 					// if no node exists for this position, but we want to insert a new value at this position, create a new node
-					this.swChild = new QuadNode<>(swPos, this.minimumDetailLevel);
+					this.swChild = new QuadNode<>(swPos, this.parentTreeLeafDetailLevel);
 				}
 				childNode = this.swChild;
 				
@@ -257,7 +262,7 @@ public class QuadNode<T>
 				if (replaceValue && this.neChild == null)
 				{
 					// if no node exists for this position, but we want to insert a new value at this position, create a new node
-					this.neChild = new QuadNode<>(nePos, this.minimumDetailLevel);
+					this.neChild = new QuadNode<>(nePos, this.parentTreeLeafDetailLevel);
 				}
 				childNode = this.neChild;
 				
@@ -270,7 +275,7 @@ public class QuadNode<T>
 				if (replaceValue && this.seChild == null)
 				{
 					// if no node exists for this position, but we want to insert a new value at this position, create a new node
-					this.seChild = new QuadNode<>(sePos, this.minimumDetailLevel);
+					this.seChild = new QuadNode<>(sePos, this.parentTreeLeafDetailLevel);
 				}
 				childNode = this.seChild;
 				
@@ -290,8 +295,9 @@ public class QuadNode<T>
 	// iterators //
 	//===========//
 	
-	public Iterator<QuadNode<T>> getNodeIterator() { return new QuadTreeNodeIterator<>(this, false); }
-	public Iterator<QuadNode<T>> getLeafNodeIterator() { return new QuadTreeNodeIterator<>(this, true); }
+	public Iterator<QuadNode<T>> getNodeIterator() { return new QuadTreeNodeIterator<>(this, false, null); }
+	public Iterator<QuadNode<T>> getNodeIterator(@Nullable QuadTree.INodeIteratorStoppingFunc<T> stopIteratingFunc) { return new QuadTreeNodeIterator<>(this, false, stopIteratingFunc); }
+	public Iterator<QuadNode<T>> getLeafNodeIterator() { return new QuadTreeNodeIterator<>(this, true, null); }
 	
 	/** positions can point to null children */
 	public LongIterator getChildPosIterator() { return new QuadNodeDirectChildPosIterator<>(this); }

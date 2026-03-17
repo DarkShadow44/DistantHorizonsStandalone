@@ -106,7 +106,7 @@ public class LodRenderer
 	// The shader program
 	private IDhApiShaderProgram lodRenderProgram = null;
 	public QuadElementBuffer quadIBO = null;
-	public boolean isSetupComplete = false;
+	private boolean isSetupComplete = false;
 	
 	// frameBuffer and texture ID's for this renderer
 	private IDhApiFramebuffer framebuffer;
@@ -252,6 +252,11 @@ public class LodRenderer
 			
 			ApiEventInjector.INSTANCE.fireAllEvents(DhApiBeforeRenderSetupEvent.class, renderEventParam);
 			this.setupGLStateAndRenderObjects(profiler, renderEventParam, renderingFirstPass);
+			if (!this.isSetupComplete)
+			{
+				// this shouldn't normally happen, but just in case
+				return;
+			}
 			
 			lightmap.bind();
 			this.quadIBO.bind();
@@ -542,17 +547,17 @@ public class LodRenderer
 			activeFrameBuffer = framebufferOverride;
 		}
 		
-		this.setActiveFramebufferId(activeFrameBuffer.getId());
-		this.setActiveDepthTextureId(this.depthTexture.getTextureId());
+		activeFramebufferId = activeFrameBuffer.getId();
+		activeDepthTextureId = this.depthTexture.getTextureId();
 		if (this.nullableColorTexture != null)
 		{
-			this.setActiveColorTextureId(this.nullableColorTexture.getTextureId());
+			activeColorTextureId = this.nullableColorTexture.getTextureId();
 		}
 		else
 		{
 			// get MC's color texture
 			int mcColorTextureId = GL32.glGetFramebufferAttachmentParameteri(GL32.GL_FRAMEBUFFER, GL32.GL_COLOR_ATTACHMENT0, GL32.GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME);
-			this.setActiveColorTextureId(mcColorTextureId);
+			activeColorTextureId = mcColorTextureId;
 		}
 		// Bind LOD frame buffer
 		activeFrameBuffer.bind();
@@ -633,7 +638,7 @@ public class LodRenderer
 			EVENT_LOGGER.warn("Renderer setup called but it has already completed setup!");
 			return;
 		}
-		if (GLProxy.getInstance() == null)
+		if (!GLProxy.hasInstance())
 		{
 			// shouldn't normally happen, but just in case
 			EVENT_LOGGER.warn("Renderer setup called but GLProxy has not yet been setup!");
@@ -646,7 +651,6 @@ public class LodRenderer
 			
 			
 			EVENT_LOGGER.info("Setting up renderer");
-			this.isSetupComplete = true;
 			this.lodRenderProgram = new DhTerrainShaderProgram();
 			
 			this.quadIBO = new QuadElementBuffer();
@@ -675,9 +679,11 @@ public class LodRenderer
 			{
 				// This generally means something wasn't bound, IE missing either the color or depth texture
 				EVENT_LOGGER.warn("FrameBuffer ["+this.framebuffer.getId()+"] isn't complete.");
+				return;
 			}
 			
 			
+			this.isSetupComplete = true;
 			EVENT_LOGGER.info("Renderer setup complete");
 		}
 		finally
@@ -744,15 +750,12 @@ public class LodRenderer
 	// API functions //
 	//===============//
 	
-	private void setActiveFramebufferId(int frameBufferId) { activeFramebufferId = frameBufferId; }
 	/** Returns -1 if no frame buffer has been bound yet */
 	public static int getActiveFramebufferId() { return activeFramebufferId; }
 	
-	private void setActiveColorTextureId(int colorTextureId) { activeColorTextureId = colorTextureId; }
 	/** Returns -1 if no texture has been bound yet */
 	public static int getActiveColorTextureId() { return activeColorTextureId; }
 	
-	private void setActiveDepthTextureId(int depthTextureId) { activeDepthTextureId = depthTextureId; }
 	/**
 	 * FIXME it's possible for this to return an invalid texture ID if the renderer is being re-built at the same time 
 	 * Returns -1 if no texture has been bound yet 
@@ -771,7 +774,7 @@ public class LodRenderer
 	 */
 	private void cleanup()
 	{
-		if (GLProxy.getInstance() == null)
+		if (!GLProxy.hasInstance())
 		{
 			// shouldn't normally happen, but just in case
 			EVENT_LOGGER.warn("Renderer Cleanup called but the GLProxy has never been initialized!");
@@ -804,8 +807,9 @@ public class LodRenderer
 				if (this.depthTexture != null)
 					this.depthTexture.destroy();
 				
-				this.setActiveDepthTextureId(-1);
-				this.setActiveColorTextureId(-1);
+				activeFramebufferId = -1;
+				activeColorTextureId = -1;
+				activeDepthTextureId = -1;
 				
 				EVENT_LOGGER.info("Renderer Cleanup Complete");
 			});

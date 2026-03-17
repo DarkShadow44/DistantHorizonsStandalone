@@ -45,6 +45,10 @@ public class ThreadPoolUtil
 	@Nullable
 	public static PriorityTaskPicker.Executor getFileHandlerExecutor() { return fileHandlerThreadPool; }
 	
+	private static PriorityTaskPicker.Executor renderSectionLoadThreadPool;
+	@Nullable
+	public static PriorityTaskPicker.Executor getRenderLoadingExecutor() { return renderSectionLoadThreadPool; }
+	
 	private static PriorityTaskPicker.Executor updatePropagatorThreadPool;
 	@Nullable
 	public static PriorityTaskPicker.Executor getUpdatePropagatorExecutor() { return updatePropagatorThreadPool; }
@@ -95,15 +99,16 @@ public class ThreadPoolUtil
 		
 		if (taskPicker != null)
 		{
-			taskPicker.shutdown();
+			taskPicker.shutdownNow();
 		}
 		taskPicker = new PriorityTaskPicker();
 		
-		networkCompressionThreadPool = taskPicker.createExecutor();
-		fileHandlerThreadPool = taskPicker.createExecutor();
-		chunkToLodBuilderThreadPool = taskPicker.createExecutor();
-		updatePropagatorThreadPool = taskPicker.createExecutor();
-		worldGenThreadPool = taskPicker.createExecutor();
+		networkCompressionThreadPool = taskPicker.createExecutor("Network");
+		fileHandlerThreadPool = taskPicker.createExecutor("IO");
+		renderSectionLoadThreadPool = taskPicker.createExecutor("Render Loader");
+		chunkToLodBuilderThreadPool = taskPicker.createExecutor("LOD Builder");
+		updatePropagatorThreadPool = taskPicker.createExecutor("Update Propagator");
+		worldGenThreadPool = taskPicker.createExecutor("World Gen");
 		
 		
 		
@@ -128,7 +133,7 @@ public class ThreadPoolUtil
 	public static void shutdownThreadPools()
 	{
 		// standalone threads
-		taskPicker.shutdown();
+		taskPicker.shutdownNow();
 		beaconCullingThreadPool.shutdown();
 		fullDataMigrationThreadPool.shutdown();
 	}

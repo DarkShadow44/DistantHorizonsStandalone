@@ -22,40 +22,37 @@ package com.seibel.distanthorizons.core.config.types;
 import com.seibel.distanthorizons.core.config.types.enums.EConfigEntryAppearance;
 
 /**
- * Creates a UI element that copies everything from another element.
- * This only effects the UI
- *
- * @author coolGi
+ * Adds empty space the height of a button.
+ * Useful for separating different categories.
  */
-public class ConfigUiLinkedEntry extends AbstractConfigType<AbstractConfigType<?, ?>, ConfigUiLinkedEntry>
+public class ConfigUISpacer extends AbstractConfigType<String, ConfigUISpacer>
 {
-	public ConfigUiLinkedEntry(AbstractConfigType<?, ?> value)
-	{
-		super(EConfigEntryAppearance.ONLY_IN_GUI, value);
-	}
+	public ConfigUISpacer()
+	{ super(EConfigEntryAppearance.ONLY_IN_GUI, ""); }
+	
+	
 	
 	/** Appearance shouldn't be changed */
 	@Override
 	public void setAppearance(EConfigEntryAppearance newAppearance) { }
 	
-	/** Value shouldn't be changed after creation */
+	/** Pointless to set the value */
 	@Override
-	public void set(AbstractConfigType<?, ?> newValue) { }
+	public void set(String newValue) { }
 	
 	
-	public static class Builder extends AbstractConfigType.Builder<AbstractConfigType<?, ?>, Builder>
+	
+	public static class Builder extends AbstractConfigType.Builder<String, Builder>
 	{
 		/** Appearance shouldn't be changed */
 		@Override
-		public Builder setAppearance(EConfigEntryAppearance newAppearance)
-		{
-			return this;
-		}
+		public Builder setAppearance(EConfigEntryAppearance newAppearance) { return this; }
 		
-		public ConfigUiLinkedEntry build()
-		{
-			return new ConfigUiLinkedEntry(this.tmpValue);
-		}
+		/** Pointless to set the value */
+		@Override
+		public Builder set(String newValue) { return this; }
+		
+		public ConfigUISpacer build() { return new ConfigUISpacer(); }
 		
 	}
 	

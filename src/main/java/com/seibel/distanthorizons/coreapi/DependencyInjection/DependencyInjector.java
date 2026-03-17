@@ -43,11 +43,9 @@ public class DependencyInjector<BindableType extends IBindable> implements IDepe
 	protected final boolean allowDuplicateBindings;
 	
 	
-	public DependencyInjector(Class<BindableType> newBindableInterface)
-	{
-		this.bindableInterface = newBindableInterface;
-		this.allowDuplicateBindings = false;
-	}
+	//==============//
+	// constructors //
+	//==============//
 	
 	public DependencyInjector(Class<BindableType> newBindableInterface, boolean newAllowDuplicateBindings)
 	{
@@ -57,12 +55,16 @@ public class DependencyInjector<BindableType extends IBindable> implements IDepe
 	
 	
 	
+	//=========//
+	// binding //
+	//=========//
 	
 	@Override
 	public void bind(Class<? extends BindableType> dependencyInterface, BindableType dependencyImplementation) throws IllegalStateException, IllegalArgumentException
 	{
 		// duplicate check if requested
-		if (this.dependencies.containsKey(dependencyInterface) && !this.allowDuplicateBindings)
+		if (this.dependencies.containsKey(dependencyInterface) 
+			&& !this.allowDuplicateBindings)
 		{
 			throw new IllegalStateException("The dependency [" + dependencyInterface.getSimpleName() + "] has already been bound.");
 		}
@@ -129,6 +131,54 @@ public class DependencyInjector<BindableType extends IBindable> implements IDepe
 	@Override
 	public boolean checkIfClassExtends(Class<?> classToTest, Class<?> extensionToLookFor) { return extensionToLookFor.isAssignableFrom(classToTest); }
 	
+	
+	
+	//===========//
+	// unbinding //
+	//===========//
+	
+	// TODO having a bindOrReplace method would probably be better since it wouldn't have the possiblity of having nothing bound
+	public void unbind(Class<? extends BindableType> dependencyInterface, BindableType dependencyImplementation) throws IllegalStateException, IllegalArgumentException
+	{
+		// check if this object is bound
+		if (!this.dependencies.containsKey(dependencyInterface))
+		{
+			return;
+		}
+		
+		
+		// make sure the given dependency implements the necessary interfaces
+		boolean implementsInterface = this.checkIfClassImplements(dependencyImplementation.getClass(), dependencyInterface)
+				|| this.checkIfClassExtends(dependencyImplementation.getClass(), dependencyInterface);
+		boolean implementsBindable = this.checkIfClassImplements(dependencyImplementation.getClass(), this.bindableInterface);
+		
+		// display any errors
+		if (!implementsInterface)
+		{
+			throw new IllegalArgumentException("The dependency [" + dependencyImplementation.getClass().getSimpleName() + "] doesn't implement or extend: [" + dependencyInterface.getSimpleName() + "].");
+		}
+		if (!implementsBindable)
+		{
+			throw new IllegalArgumentException("The dependency [" + dependencyImplementation.getClass().getSimpleName() + "] doesn't implement the interface: [" + IBindable.class.getSimpleName() + "].");
+		}
+		
+		
+		// make sure the hashSet has an array to hold the dependency
+		if (!this.dependencies.containsKey(dependencyInterface))
+		{
+			this.dependencies.put(dependencyInterface, new ArrayList<BindableType>());
+		}
+		
+		// remove the dependency if present
+		this.dependencies.get(dependencyInterface).remove(dependencyImplementation);
+		this.dependencies.remove(dependencyInterface);
+	}
+	
+	
+	
+	//=========//
+	// getters //
+	//=========//
 	
 	@SuppressWarnings("unchecked")
 	@Override

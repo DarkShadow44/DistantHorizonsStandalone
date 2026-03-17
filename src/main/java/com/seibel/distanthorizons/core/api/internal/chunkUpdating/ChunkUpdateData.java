@@ -12,7 +12,7 @@ public class ChunkUpdateData
 	@Nullable
 	public ArrayList<IChunkWrapper> neighborChunkList;
 	public IDhLevel dhLevel;
-	public boolean canGetNeighborChunks;
+	public boolean canGetNeighboringChunks;
 	
 	
 	
@@ -21,6 +21,6 @@ public class ChunkUpdateData
 		this.chunkWrapper = chunkWrapper;
 		this.neighborChunkList = neighborChunkList;
 		this.dhLevel = dhLevel;
-		this.canGetNeighborChunks = canGetNeighborChunks;
+		this.canGetNeighboringChunks = canGetNeighborChunks;
 	}
 }

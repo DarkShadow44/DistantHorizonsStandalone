@@ -24,6 +24,7 @@ import com.seibel.distanthorizons.api.enums.config.EDhApiMcRenderingFadeMode;
 import com.seibel.distanthorizons.api.enums.rendering.EDhApiRenderPass;
 import com.seibel.distanthorizons.api.methods.events.abstractEvents.*;
 import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam;
+import com.seibel.distanthorizons.core.api.internal.rendering.RenderState;
 import com.seibel.distanthorizons.core.file.structure.ClientOnlySaveStructure;
 import com.seibel.distanthorizons.core.network.messages.MessageRegistry;
 import com.seibel.distanthorizons.core.pos.DhChunkPos;
@@ -399,21 +400,27 @@ public class ClientApi
 	//===========//
 	
 	/** Should be called before {@link ClientApi#renderDeferredLodsForShaders} */
-	public void renderLods(IClientLevelWrapper levelWrapper, Mat4f mcModelViewMatrix, Mat4f mcProjectionMatrix, float partialTicks)
-	{ this.renderLodLayer(levelWrapper, mcModelViewMatrix, mcProjectionMatrix, partialTicks, false); }
+	public void renderLods() { this.renderLodLayer(false); }
 	
 	/** 
 	 * Only necessary when Shaders are in use.
 	 * Should be called after {@link ClientApi#renderLods} 
 	 */
-	public void renderDeferredLodsForShaders(IClientLevelWrapper levelWrapper, Mat4f mcModelViewMatrix, Mat4f mcProjectionMatrix, float partialTicks)
-	{ this.renderLodLayer(levelWrapper, mcModelViewMatrix, mcProjectionMatrix, partialTicks, true); }
+	public void renderDeferredLodsForShaders() { this.renderLodLayer(true); }
 	
-	
-	private void renderLodLayer(
-			IClientLevelWrapper levelWrapper, Mat4f mcModelViewMatrix, Mat4f mcProjectionMatrix, float partialTicks,
-			boolean renderingDeferredLayer)
+	private void renderLodLayer(boolean renderingDeferredLayer)
 	{
+		// A global render state variable is used since MC has split up their
+		// render prep and actual rendering into different threads/methods
+		// this is annoying since it's possible to start a render with only
+		// partially complete info, but there isn't a better option at the moment
+		IClientLevelWrapper levelWrapper = RENDER_STATE.clientLevelWrapper;
+		Mat4f mcModelViewMatrix = RENDER_STATE.mcModelViewMatrix;
+		Mat4f mcProjectionMatrix = RENDER_STATE.mcProjectionMatrix;
+		float partialTicks = RENDER_STATE.frameTime;
+		
+		
+		
 		// logging //
 		
 		this.sendQueuedChatMessages();
@@ -580,8 +587,11 @@ public class ClientApi
 		}
 	}
 	
-	/** should be called after DH and MC finish rendering so we can smooth the transition between the two */
-	public void renderFadeOpaque(Mat4f mcModelViewMatrix, Mat4f mcProjectionMatrix, float partialTicks, IClientLevelWrapper level)
+	/** 
+	 * The first fade pass.
+	 * Called after MC finishes rendering the opaque passes. 
+	 */
+	public void renderFadeOpaque()
 	{
 		// only fade when DH is rendering
 		if (Config.Client.Advanced.Debugging.rendererMode.get() == EDhApiRendererMode.DEFAULT
@@ -590,11 +600,15 @@ public class ClientApi
 			// don't fade when Iris shaders are active, otherwise the rendering can get weird
 			&& !DhApiRenderProxy.INSTANCE.getDeferTransparentRendering())
 		{
-			FadeRenderer.INSTANCE.render(mcModelViewMatrix, mcProjectionMatrix, partialTicks, level);
+			FadeRenderer.INSTANCE.render(RENDER_STATE.mcModelViewMatrix, RENDER_STATE.mcProjectionMatrix, RENDER_STATE.frameTime, RENDER_STATE.clientLevelWrapper);
 		}
 	}
-	/** should be called after DH and MC finish rendering so we can smooth the transition between the two */
-	public void renderFade(Mat4f mcModelViewMatrix, Mat4f mcProjectionMatrix, float partialTicks, IClientLevelWrapper level)
+	/** 
+	 * The second fade pass.
+	 * Called after MC finishes rendering both opaque
+	 * and transparent passes. 
+	 */
+	public void renderFadeTransparent()
 	{
 		// only fade when DH is rendering
 		if (Config.Client.Advanced.Debugging.rendererMode.get() == EDhApiRendererMode.DEFAULT)
@@ -610,7 +624,7 @@ public class ClientApi
 				&& !DhApiRenderProxy.INSTANCE.getDeferTransparentRendering();
 			if (renderFade)
 			{
-				FadeRenderer.INSTANCE.render(mcModelViewMatrix, mcProjectionMatrix, partialTicks, level);
+				FadeRenderer.INSTANCE.render(RENDER_STATE.mcModelViewMatrix, RENDER_STATE.mcProjectionMatrix, RENDER_STATE.frameTime, RENDER_STATE.clientLevelWrapper);
 			}
 		}
 	}
@@ -689,6 +703,23 @@ public class ClientApi
 	}
 	private void detectAndSendBootTimeWarnings()
 	{
+		// dev build
+		if (ModInfo.IS_DEV_BUILD 
+			&& !this.isDevBuildMessagePrinted && MC_CLIENT.playerExists())
+		{
+			this.isDevBuildMessagePrinted = true;
+			this.lastStaticWarningMessageSentMsTime = System.currentTimeMillis();
+			
+			// remind the user that this is a development build
+			String message =
+					// green text
+					"\u00A72" + "Distant Horizons: nightly/unstable build, version: [" + ModInfo.VERSION+"]." + "\u00A7r\n" +
+							"Issues may occur with this version.\n" +
+							"Here be dragons!\n";
+			MC_CLIENT.sendChatMessage(message);
+		}
+		
+		
 		// memory
 		if (this.staticStartupMessageSentRecently()) return;
 		if (!this.lowMemoryWarningPrinted 
@@ -764,47 +795,6 @@ public class ClientApi
 	 * Similar to {@link ClientApi#showChatMessageNextFrame(String)} but appears above the toolbar.
 	 */
 	public void showOverlayMessageNextFrame(String message) { this.overlayMessageQueueForNextFrame.add(message); }
-	
-	
-	
-	//================//
-	// helper classes //
-	//================//
-	
-	public static class RenderState
-	{
-		public Mat4f mcModelViewMatrix = null;
-		public Mat4f mcProjectionMatrix = null;
-		public float frameTime = -1;
-		
-		
-		public void canRenderOrThrow() throws IllegalStateException
-		{
-			String errorReasons = "";
-			
-			if (this.mcModelViewMatrix == null)
-			{
-				errorReasons += "no MVM Matrix, ";
-			}
-			
-			if (this.mcProjectionMatrix == null)
-			{
-				errorReasons += "no Projection Matrix, ";
-			}
-			
-			if (this.frameTime == -1)
-			{
-				errorReasons += "no Frame Time, ";
-			}
-			
-			
-			if (!errorReasons.isEmpty())
-			{
-				throw new IllegalStateException(errorReasons);
-			}
-			
-		}
-	}
 	
 	
 	

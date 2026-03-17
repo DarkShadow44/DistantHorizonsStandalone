@@ -50,14 +50,14 @@ public class SSAOShader extends AbstractShaderRenderer
 	
 	
 	// uniforms
-	public int gProjUniform;
-	public int gInvProjUniform;
-	public int gSampleCountUniform;
-	public int gRadiusUniform;
-	public int gStrengthUniform;
-	public int gMinLightUniform;
-	public int gBiasUniform;
-	public int gDepthMapUniform;
+	public int uProj;
+	public int uInvProj;
+	public int uSampleCount;
+	public int uRadius;
+	public int uStrength;
+	public int uMinLight;
+	public int uBias;
+	public int uDepthMap;
 	
 	
 	
@@ -73,14 +73,14 @@ public class SSAOShader extends AbstractShaderRenderer
 		);
 		
 		// uniform setup
-		this.gProjUniform = this.shader.getUniformLocation("gProj");
-		this.gInvProjUniform = this.shader.getUniformLocation("gInvProj");
-		this.gSampleCountUniform = this.shader.getUniformLocation("gSampleCount");
-		this.gRadiusUniform = this.shader.getUniformLocation("gRadius");
-		this.gStrengthUniform = this.shader.getUniformLocation("gStrength");
-		this.gMinLightUniform = this.shader.getUniformLocation("gMinLight");
-		this.gBiasUniform = this.shader.getUniformLocation("gBias");
-		this.gDepthMapUniform = this.shader.getUniformLocation("gDepthMap");
+		this.uProj = this.shader.getUniformLocation("uProj");
+		this.uInvProj = this.shader.getUniformLocation("uInvProj");
+		this.uSampleCount = this.shader.getUniformLocation("uSampleCount");
+		this.uRadius = this.shader.getUniformLocation("uRadius");
+		this.uStrength = this.shader.getUniformLocation("uStrength");
+		this.uMinLight = this.shader.getUniformLocation("uMinLight");
+		this.uBias = this.shader.getUniformLocation("uBias");
+		this.uDepthMap = this.shader.getUniformLocation("uDepthMap");
 	}
 	
 	
@@ -100,28 +100,26 @@ public class SSAOShader extends AbstractShaderRenderer
 	@Override
 	protected void onApplyUniforms(float partialTicks)
 	{
-		this.shader.setUniform(this.gProjUniform, this.projection);
+		this.shader.setUniform(this.uProj, this.projection);
 		
-		this.shader.setUniform(this.gInvProjUniform, this.invertedProjection);
+		this.shader.setUniform(this.uInvProj, this.invertedProjection);
 		
-		this.shader.setUniform(this.gSampleCountUniform,
-				Config.Client.Advanced.Graphics.Ssao.sampleCount.get());
+		this.shader.setUniform(this.uSampleCount, Config.Client.Advanced.Graphics.Ssao.sampleCount.get());
 		
-		// Implicit Number cast needs to be done to prevent issues with the default value being a int
+		// Explicit Number casts need to be done to prevent issues with the default value being an int
 		Number radius = Config.Client.Advanced.Graphics.Ssao.radius.get(); 
-		this.shader.setUniform(this.gRadiusUniform, radius.floatValue());
-		
+		this.shader.setUniform(this.uRadius, radius.floatValue());
 		
 		Number strength = Config.Client.Advanced.Graphics.Ssao.strength.get();
-		this.shader.setUniform(this.gStrengthUniform, strength.floatValue());
+		this.shader.setUniform(this.uStrength, strength.floatValue());
 		
 		Number minLight = Config.Client.Advanced.Graphics.Ssao.minLight.get();
-		this.shader.setUniform(this.gMinLightUniform, minLight.floatValue());
+		this.shader.setUniform(this.uMinLight, minLight.floatValue());
 		
 		Number bias = Config.Client.Advanced.Graphics.Ssao.bias.get();
-		this.shader.setUniform(this.gBiasUniform, bias.floatValue());
+		this.shader.setUniform(this.uBias, bias.floatValue());
 		
-		GL32.glUniform1i(this.gDepthMapUniform, 0);
+		GL32.glUniform1i(this.uDepthMap, 0);
 	}
 	
 	

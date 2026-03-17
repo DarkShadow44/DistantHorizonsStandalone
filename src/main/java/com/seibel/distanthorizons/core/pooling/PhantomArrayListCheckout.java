@@ -10,13 +10,12 @@ import org.jetbrains.annotations.Nullable;
 
 import java.lang.ref.SoftReference;
 import java.util.ArrayList;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * This keeps track of all the poolable
  * arrays that can be retrieved via the {@link PhantomArrayListPool}.
  * 
- * @see PhantomArrayListParent
+ * @see AbstractPhantomArrayList
  * @see PhantomArrayListPool
  */
 public class PhantomArrayListCheckout implements AutoCloseable

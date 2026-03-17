@@ -22,8 +22,6 @@ package com.seibel.distanthorizons.core.render;
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
 import com.google.common.cache.Cache;
-import com.seibel.distanthorizons.api.interfaces.render.IDhApiRenderableBoxGroup;
-import com.seibel.distanthorizons.api.objects.render.DhApiRenderableBox;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.dataObjects.fullData.sources.FullDataSourceV2;
 import com.seibel.distanthorizons.core.dataObjects.render.CachedColumnRenderSource;
@@ -185,7 +183,7 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 			return false;
 		}
 		
-		PriorityTaskPicker.Executor executor = ThreadPoolUtil.getFileHandlerExecutor();
+		PriorityTaskPicker.Executor executor = ThreadPoolUtil.getRenderLoadingExecutor();
 		if (executor == null || executor.isTerminated())
 		{
 			return false;
@@ -335,7 +333,7 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 			
 			
 			
-			PriorityTaskPicker.Executor executor = ThreadPoolUtil.getFileHandlerExecutor();
+			PriorityTaskPicker.Executor executor = ThreadPoolUtil.getRenderLoadingExecutor();
 			if (executor == null || executor.isTerminated())
 			{
 				// should only happen if the threadpool is actively being re-sized
@@ -695,7 +693,7 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 		{
 			// remove the task from our executor if present
 			// note: don't cancel the task since that prevents cleanup, we just don't want it to run
-			PriorityTaskPicker.Executor executor = ThreadPoolUtil.getFileHandlerExecutor();
+			PriorityTaskPicker.Executor executor = ThreadPoolUtil.getRenderLoadingExecutor();
 			if (executor != null && !executor.isTerminated())
 			{
 				Runnable runnable = this.getAndBuildRenderDataRunnable;

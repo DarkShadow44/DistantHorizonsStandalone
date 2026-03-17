@@ -173,19 +173,6 @@ public class LodQuadBuilder
 		BufferQuad quad = new BufferQuad(minX, maxY, minZ, widthEastWest, widthNorthSouthOrUpDown, color, irisBlockMaterialId, skylight, blocklight, EDhDirection.UP);
 		boolean isTransparent = (this.doTransparency && ColorUtil.getAlpha(color) < 255);
 		ArrayList<BufferQuad> quadList = isTransparent ? this.transparentQuads[EDhDirection.UP.ordinal()] : this.opaqueQuads[EDhDirection.UP.ordinal()];
-		
-		
-		// attempt to merge this quad with adjacent ones
-		if (!quadList.isEmpty() &&
-				(
-					quadList.get(quadList.size() - 1).tryMerge(quad, BufferMergeDirectionEnum.EastWest)
-					|| quadList.get(quadList.size() - 1).tryMerge(quad, BufferMergeDirectionEnum.NorthSouthOrUpDown))
-			)
-		{
-			this.premergeCount++;
-			return;
-		}
-		
 		quadList.add(quad);
 	}
 	
@@ -194,14 +181,6 @@ public class LodQuadBuilder
 		BufferQuad quad = new BufferQuad(x, y, z, width, wz, color, irisBlockMaterialId, skylight, blocklight, EDhDirection.DOWN);
 		ArrayList<BufferQuad> qs = (doTransparency && ColorUtil.getAlpha(color) < 255)
 				? transparentQuads[EDhDirection.DOWN.ordinal()] : opaqueQuads[EDhDirection.DOWN.ordinal()];
-		if (!qs.isEmpty()
-				&& (qs.get(qs.size() - 1).tryMerge(quad, BufferMergeDirectionEnum.EastWest)
-						|| qs.get(qs.size() - 1).tryMerge(quad, BufferMergeDirectionEnum.NorthSouthOrUpDown))
-			)
-		{
-			premergeCount++;
-			return;
-		}
 		qs.add(quad);
 	}
 	

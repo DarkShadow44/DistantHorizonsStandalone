@@ -153,7 +153,7 @@ public class ClientNetworkState implements Closeable
 		
 		if (Config.Server.enableAdaptiveTransferSpeed.get())
 		{
-			sessionConfig.constrainValue(Config.Server.maxDataTransferSpeed, this.congestionControl.getDesiredRate());
+			sessionConfig.constrainValue(Config.Server.playerBandwidthLimit, this.congestionControl.getDesiredRate());
 		}
 		
 		if (blocking)

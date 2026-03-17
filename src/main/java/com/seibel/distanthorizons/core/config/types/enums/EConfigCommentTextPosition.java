@@ -17,20 +17,16 @@
  *    along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.seibel.distanthorizons.core.wrapperInterfaces.misc;
+package com.seibel.distanthorizons.core.config.types.enums;
 
-import com.seibel.distanthorizons.api.interfaces.IDhApiUnsafeWrapper;
-import com.seibel.distanthorizons.core.wrapperInterfaces.world.IServerLevelWrapper;
-import com.seibel.distanthorizons.core.util.math.Vec3d;
-
-import java.net.SocketAddress;
-
-public interface IServerPlayerWrapper extends IDhApiUnsafeWrapper
+/**
+ * RIGHT_OVER_BUTTONS <br/>
+ * CENTER_OF_SCREEN <br/>
+ * CENTERED_OVER_BUTTONS <br/>
+ */
+public enum EConfigCommentTextPosition
 {
-	String getName();
-	
-	IServerLevelWrapper getLevel();
-	
-	Vec3d getPosition();
-	
+	RIGHT_JUSTIFIED,
+	CENTER_OF_SCREEN,
+	CENTERED_OVER_BUTTONS,
 }

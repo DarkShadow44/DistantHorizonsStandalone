@@ -23,12 +23,12 @@ import com.seibel.distanthorizons.api.enums.config.EDhApiGLErrorHandlingMode;
 import com.seibel.distanthorizons.api.enums.config.EDhApiGpuUploadMethod;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
+import com.seibel.distanthorizons.core.jar.EPlatform;
 import com.seibel.distanthorizons.core.logging.ConfigBasedLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.util.objects.GLMessages.*;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
 import com.seibel.distanthorizons.coreapi.ModInfo;
-import com.seibel.distanthorizons.coreapi.util.StringUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.glfw.GLFW;
@@ -39,7 +39,6 @@ import org.lwjgl.opengl.GLUtil;
 
 import java.io.PrintStream;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -142,8 +141,9 @@ public class GLProxy
 		
 		if (Config.Client.Advanced.Debugging.OpenGl.overrideVanillaGLLogger.get())
 		{
-			//GLUtil.setupDebugMessageCallback(new PrintStream(new GLMessageOutputStream(GLProxy::logMessage, this.vanillaDebugMessageBuilder), true));
+			GLUtil.setupDebugMessageCallback(new PrintStream(new GLMessageOutputStream(GLProxy::logMessage, this.vanillaDebugMessageBuilder), true));
 		}
+		
 		
 		
 		//======================//
@@ -172,17 +172,26 @@ public class GLProxy
 		
 		// get the best automatic upload method
 		String vendor = GL32.glGetString(GL32.GL_VENDOR).toUpperCase(); // example return: "NVIDIA CORPORATION"
-		if (vendor.contains("NVIDIA") || vendor.contains("GEFORCE"))
+		if (EPlatform.get() != EPlatform.MACOS)
 		{
-			// NVIDIA card
-			this.preferredUploadMethod = this.bufferStorageSupported ? EDhApiGpuUploadMethod.BUFFER_STORAGE : EDhApiGpuUploadMethod.SUB_DATA;
+			if (vendor.contains("NVIDIA") || vendor.contains("GEFORCE"))
+			{
+				// NVIDIA card
+				this.preferredUploadMethod = this.bufferStorageSupported ? EDhApiGpuUploadMethod.BUFFER_STORAGE : EDhApiGpuUploadMethod.SUB_DATA;
+			}
+			else
+			{
+				// AMD or Intel card
+				this.preferredUploadMethod = this.bufferStorageSupported ? EDhApiGpuUploadMethod.BUFFER_STORAGE : EDhApiGpuUploadMethod.DATA;
+			}
 		}
 		else
 		{
-			// AMD or Intel card
-			this.preferredUploadMethod = this.bufferStorageSupported ? EDhApiGpuUploadMethod.BUFFER_STORAGE : EDhApiGpuUploadMethod.DATA;
+			// Mac may have an issue with Buffer Storage, so default to the most basic
+			// form of uploading
+			this.preferredUploadMethod = EDhApiGpuUploadMethod.DATA;
 		}
-		GL_LOGGER.info("GPU Vendor [" + vendor + "], Preferred upload method is [" + this.preferredUploadMethod + "].");
+		GL_LOGGER.info("GPU Vendor [" + vendor + "] with OS [" + EPlatform.get().getName() + "], Preferred upload method is [" + this.preferredUploadMethod + "].");
 		
 		
 		
@@ -201,7 +210,8 @@ public class GLProxy
 	//=========//
 	
 	public static boolean hasInstance() { return instance != null; }
-	public static GLProxy getInstance()
+	/** @throws IllegalStateException if the Proxy hasn't been created yet and this is called outside the render thread */
+	public static GLProxy getInstance() throws IllegalStateException
 	{
 		if (instance == null)
 		{

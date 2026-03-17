@@ -14,7 +14,7 @@ import com.seibel.distanthorizons.core.sql.dto.IBaseDTO;
  */
 public interface IDataSource<TDhLevel extends IDhLevel> extends IBaseDTO<Long>, AutoCloseable
 {
-	Long getPos();
+	long getPos();
 	
 	/** @return true if the data was changed */
 	boolean update(FullDataSourceV2 chunkData, TDhLevel level);

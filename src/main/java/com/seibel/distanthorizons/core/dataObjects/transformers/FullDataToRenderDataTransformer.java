@@ -131,7 +131,7 @@ public class FullDataToRenderDataTransformer
 				LongArrayList dataColumn = fullDataSource.get(x, z);
 				
 				updateOrReplaceRenderDataViewColumnWithFullDataColumn(
-						levelWrapper, fullDataSource.mapping, 
+						levelWrapper, fullDataSource, 
 						// bitshift is to account for LODs with a detail level greater than 0 so the block pos is correct
 						baseX + BitShiftUtil.pow(x,dataDetail), baseZ + BitShiftUtil.pow(z,dataDetail), 
 						columnArrayView, dataColumn);
@@ -145,13 +145,14 @@ public class FullDataToRenderDataTransformer
 	
 	/** Updates the given {@link ColumnArrayView} to match the incoming Full data {@link LongArrayList} */
 	public static void updateOrReplaceRenderDataViewColumnWithFullDataColumn(
-			IClientLevelWrapper levelWrapper, 
-			FullDataPointIdMap fullDataMapping, int blockX, int blockZ, 
+			IClientLevelWrapper levelWrapper,
+			FullDataSourceV2 fullDataSource, int blockX, int blockZ, 
 			ColumnArrayView columnArrayView, 
 			LongArrayList fullDataColumn)
 	{
 		// we can't do anything if the full data is missing or empty
-		if (fullDataColumn == null || fullDataColumn.size() == 0)
+		if (fullDataColumn == null 
+			|| fullDataColumn.size() == 0)
 		{
 			return;
 		}
@@ -160,7 +161,7 @@ public class FullDataToRenderDataTransformer
 		if (fullDataLength <= columnArrayView.verticalSize())
 		{
 			// Directly use the arrayView since it fits.
-			setRenderColumnView(levelWrapper, fullDataMapping, blockX, blockZ, columnArrayView, fullDataColumn);
+			setRenderColumnView(levelWrapper, fullDataSource, blockX, blockZ, columnArrayView, fullDataColumn);
 		}
 		else
 		{
@@ -171,7 +172,7 @@ public class FullDataToRenderDataTransformer
 			{
 				// expand the ColumnArrayView to fit the new larger max vertical size
 				ColumnArrayView newColumnArrayView = new ColumnArrayView(dataArrayList, fullDataLength, 0, fullDataLength);
-				setRenderColumnView(levelWrapper, fullDataMapping, blockX, blockZ, newColumnArrayView, fullDataColumn);
+				setRenderColumnView(levelWrapper, fullDataSource, blockX, blockZ, newColumnArrayView, fullDataColumn);
 				columnArrayView.changeVerticalSizeFrom(newColumnArrayView);
 			}
 			finally
@@ -181,7 +182,7 @@ public class FullDataToRenderDataTransformer
 		}
 	}
 	private static void setRenderColumnView(
-			IClientLevelWrapper levelWrapper, FullDataPointIdMap fullDataMapping,
+			IClientLevelWrapper levelWrapper, FullDataSourceV2 fullDataSource,
 			int blockX, int blockZ,
 			ColumnArrayView renderColumnData, LongArrayList fullColumnData)
 	{
@@ -221,6 +222,8 @@ public class FullDataToRenderDataTransformer
 		//==================================//
 		// convert full data to render data //
 		//==================================//
+		
+		FullDataPointIdMap fullDataMapping = fullDataSource.mapping;
 		
 		DhBlockPosMutable mutableBlockPos = new DhBlockPosMutable(blockX, 0, blockZ);
 		
@@ -320,11 +323,13 @@ public class FullDataToRenderDataTransformer
 			//=======================//
 			
 			if (ignoreNonCollidingBlocks 
-				&& !block.isSolid() && !block.isLiquid() && block.getOpacity() != LodUtil.BLOCK_FULLY_OPAQUE)
+				&& !block.isSolid() 
+				&& !block.isLiquid() 
+				&& block.getOpacity() != LodUtil.BLOCK_FULLY_OPAQUE)
 			{
 				if (colorBelowWithAvoidedBlocks)
 				{
-					int tempColor = levelWrapper.getBlockColor(mutableBlockPos, biome, block);
+					int tempColor = levelWrapper.getBlockColor(mutableBlockPos, biome, fullDataSource, block);
 					
 					// don't transfer the color when alpha is 0
 					// this prevents issues if grass is transparent
@@ -345,7 +350,7 @@ public class FullDataToRenderDataTransformer
 			if (colorToApplyToNextBlock == -1)
 			{
 				// use this block's color
-				color = levelWrapper.getBlockColor(mutableBlockPos, biome, block);
+				color = levelWrapper.getBlockColor(mutableBlockPos, biome, fullDataSource, block);
 			}
 			else
 			{

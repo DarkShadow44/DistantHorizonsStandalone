@@ -29,12 +29,16 @@ import com.seibel.distanthorizons.core.file.AbstractDataSourceHandler;
 import com.seibel.distanthorizons.core.file.IDataSource;
 import com.seibel.distanthorizons.core.level.IDhLevel;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
-import com.seibel.distanthorizons.core.pooling.PhantomArrayListParent;
+import com.seibel.distanthorizons.core.pooling.AbstractPhantomArrayList;
+import com.seibel.distanthorizons.core.pooling.PhantomArrayListCheckout;
 import com.seibel.distanthorizons.core.pooling.PhantomArrayListPool;
+import com.seibel.distanthorizons.core.pos.DhLodPos;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
+import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos;
 import com.seibel.distanthorizons.core.util.*;
 import com.seibel.distanthorizons.core.util.objects.DataCorruptedException;
 import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.IChunkWrapper;
+import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
 import com.seibel.distanthorizons.coreapi.ModInfo;
 import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
@@ -53,7 +57,7 @@ import java.util.List;
  * @see FullDataSourceV1
  */
 public class FullDataSourceV2 
-		extends PhantomArrayListParent
+		extends AbstractPhantomArrayList
 		implements IDataSource<IDhLevel>, IDhApiFullDataSource
 {
 	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
@@ -132,7 +136,7 @@ public class FullDataSourceV2
 	// constructors //
 	//==============//
 	
-	public static FullDataSourceV2 createFromChunk(IChunkWrapper chunkWrapper) { return LodDataBuilder.createFromChunk(chunkWrapper); }
+	public static FullDataSourceV2 createFromChunk(ILevelWrapper levelWrapper, IChunkWrapper chunkWrapper) { return LodDataBuilder.createFromChunk(levelWrapper, chunkWrapper); }
 	
 	public static FullDataSourceV2 createFromLegacyDataSourceV1(FullDataSourceV1 legacyData)
 	{
@@ -279,10 +283,83 @@ public class FullDataSourceV2
 	
 	
 	//======//
-	// data //
+	// getters //
 	//======//
 	
-	public LongArrayList get(int relX, int relZ) throws IndexOutOfBoundsException { return this.dataPoints[relativePosToIndex(relX, relZ)]; }
+	public LongArrayList get(int relX, int relZ) throws IndexOutOfBoundsException 
+	{ return this.dataPoints[relativePosToIndex(relX, relZ)]; }
+	
+	/** 
+	 * returns {@link FullDataPointUtil#EMPTY_DATA_POINT} if the given {@link DhBlockPos}
+	 * is outside this data source's boundaries.
+	 */
+	public long getAtBlockPos(DhBlockPos blockPos)
+	{
+		DhLodPos requestedPos = new DhLodPos(LodUtil.BLOCK_DETAIL_LEVEL, blockPos.getX(), blockPos.getZ());
+		
+		// stop if the requested blockPos is outside this datasource
+		{
+			// get the detail levels for this request
+			byte requestedDetailLevel = requestedPos.detailLevel;
+			byte requestedSectionDetailLevel = (byte) (requestedDetailLevel + DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL);
+	
+			// get the positions for this request
+			long sectionPos = requestedPos.getSectionPosWithSectionDetailLevel(requestedSectionDetailLevel);
+			if (!DhSectionPos.contains(this.pos, sectionPos))
+			{
+				return FullDataPointUtil.EMPTY_DATA_POINT;
+			}
+		}
+		
+		
+		// get the relative data source position
+		byte requestDetailLevel = (byte) (DhSectionPos.getDetailLevel(this.pos) - DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL);
+		DhLodPos relativePos = requestedPos.getDhSectionRelativePositionForDetailLevel(requestDetailLevel);
+		
+		// get the data column
+		LongArrayList dataColumn = this.get(relativePos.x, relativePos.z);
+		if (dataColumn == null)
+		{
+			return FullDataPointUtil.EMPTY_DATA_POINT;
+		}
+		
+		
+		// search for a datapoint that contains the given block y position
+		long dataPoint;
+		for (int i = 0; i < dataColumn.size(); i++)
+		{
+			dataPoint = dataColumn.getLong(i);
+			
+			// we are looking for a specific datapoint,
+			// don't look at null ones
+			if (dataPoint == FullDataPointUtil.EMPTY_DATA_POINT)
+			{
+				continue;
+			}
+			
+			
+			
+			int requestedY = blockPos.getY();
+			int bottomY = FullDataPointUtil.getBottomY(dataPoint) + this.levelMinY;
+			int height = FullDataPointUtil.getHeight(dataPoint);
+			int topY = bottomY + height;
+			
+			// does this datapoint contain the requested Y position? 
+			if (bottomY <= requestedY
+				&& requestedY < topY) // blockPositions start from the bottom of the block, thus "<=" for bottomY, just "<" for topY
+			{
+				return dataPoint;
+			}
+		}
+		
+		return FullDataPointUtil.EMPTY_DATA_POINT;
+	}
+	
+	
+	
+	//==========//
+	// updating //
+	//==========//
 	
 	@Override
 	public boolean update(@NotNull FullDataSourceV2 inputDataSource, @Nullable IDhLevel level) { return this.update(inputDataSource); }
@@ -989,6 +1066,7 @@ public class FullDataSourceV2
 	}
 	
 	
+	
 	//================//
 	// helper methods //
 	//================//
@@ -1073,7 +1151,7 @@ public class FullDataSourceV2
 	//=====================//
 	
 	@Override
-	public Long getPos() { return this.pos; }
+	public long getPos() { return this.pos; }
 	
 	@Override
 	public byte getDataDetailLevel() { return (byte) (DhSectionPos.getDetailLevel(this.pos) - DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL); }
@@ -1160,6 +1238,15 @@ public class FullDataSourceV2
 		
 		return apiList;
 	}
+	
+	
+	
+	//============//
+	// unit tests //
+	//============//
+	
+	public PhantomArrayListCheckout getPhantomArrayCheckoutForUnitTesting()
+	{ return this.pooledArraysCheckout; }
 	
 	
 	

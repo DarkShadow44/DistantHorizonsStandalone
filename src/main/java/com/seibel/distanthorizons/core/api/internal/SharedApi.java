@@ -78,6 +78,7 @@ public class SharedApi
 	public static final int MIN_MS_BETWEEN_OVERLOADED_LOG_MESSAGE = 30_000;
 	
 	
+	@Nullable
 	private static AbstractDhWorld currentWorld;
 	private static int lastWorldGenTickDelta = 0;
 	
@@ -150,6 +151,7 @@ public class SharedApi
 		}
 	}
 	
+	@Nullable
 	public static AbstractDhWorld getAbstractDhWorld() { return currentWorld; }
 	/** returns null if the {@link SharedApi#currentWorld} isn't a {@link DhClientServerWorld} */
 	public static DhClientServerWorld getDhClientServerWorld() { return (currentWorld instanceof DhClientServerWorld) ? (DhClientServerWorld) currentWorld : null; }
@@ -187,10 +189,11 @@ public class SharedApi
 	
 	
 	/** handles both block place and break events */
-	public void chunkBlockChangedEvent(IChunkWrapper chunk, ILevelWrapper level) { this.applyChunkUpdate(chunk, level, true); }
-	public void chunkLoadEvent(IChunkWrapper chunk, ILevelWrapper level) { this.applyChunkUpdate(chunk, level, false); }
+	public void chunkBlockChangedEvent(IChunkWrapper chunk, ILevelWrapper level) { this.applyChunkUpdate(chunk, level, true, false); }
+	public void chunkLoadEvent(IChunkWrapper chunk, ILevelWrapper level) { this.applyChunkUpdate(chunk, level, true, true); }
 	
-	public void applyChunkUpdate(IChunkWrapper chunkWrapper, ILevelWrapper level, boolean canGetNeighborChunks)
+	//public void applyChunkUpdate(IChunkWrapper chunkWrapper, ILevelWrapper level, boolean canGetNeighboringChunks) { this.applyChunkUpdate(chunkWrapper, level, canGetNeighboringChunks, false); }
+	public void applyChunkUpdate(IChunkWrapper chunkWrapper, ILevelWrapper level, boolean canGetNeighboringChunks, boolean newlyLoaded)
 	{
 		//========================//
 		// world and level checks //
@@ -252,7 +255,54 @@ public class SharedApi
 			return;
 		}
 		
-		queueChunkUpdate(chunkWrapper, dhLevel, canGetNeighborChunks);
+		
+		
+		//===============================//
+		// update the necessary chunk(s) //
+		//===============================//
+		
+		if (!canGetNeighboringChunks)
+		{
+			// only update the center chunk
+			queueChunkUpdate(chunkWrapper, null, dhLevel, false);
+			return;
+		}
+		
+		
+		ArrayList<IChunkWrapper> neighboringChunkList = getNeighborChunkListForChunk(chunkWrapper, dhLevel);
+		
+		if (newlyLoaded)
+		{
+			// this means this chunkWrapper is a newly loaded chunk 
+			// which may be missing some neighboring chunk data
+			// because it is bordering the render distance
+			// thus, only the chunks neighboring this chunkWrapper will get updated
+			// because those are more likely to have their full neighboring chunk data
+			//TODO this does not prevent those neighboring chunks from updating
+			// this newly loaded chunk that were just skipped
+			// leading to occasional lighting issues
+			for (IChunkWrapper neighboringChunk : neighboringChunkList)
+			{
+				if (neighboringChunk == chunkWrapper)
+				{
+					continue;
+				}
+				
+				this.applyChunkUpdate(neighboringChunk, level, true, false);
+			}
+		}
+		else
+		{
+			// if not all neighboring chunk data is available, do not try to update
+			if (neighboringChunkList.size() < 9)
+			{
+				return;
+			}
+			
+			// update the center with any existing neighbour chunks. 
+			// this is done so lighting changes are propagated correctly
+			queueChunkUpdate(chunkWrapper, neighboringChunkList, dhLevel, true);
+		}
 	}
 	private static ArrayList<IChunkWrapper> getNeighborChunkListForChunk(IChunkWrapper chunkWrapper, IDhLevel dhLevel)
 	{
@@ -282,16 +332,18 @@ public class SharedApi
 		return neighborChunkList;
 	}
 	
-	private static void queueChunkUpdate(IChunkWrapper chunkWrapper, IDhLevel dhLevel,boolean canGetNeighborChunks)
+	private static void queueChunkUpdate(IChunkWrapper chunkWrapper, @Nullable ArrayList<IChunkWrapper> neighborChunkList, IDhLevel dhLevel, boolean canGetNeighboringChunks)
 	{
+				
 		// return if the chunk is already queued
 		if (CHUNK_UPDATE_QUEUE_MANAGER.contains(chunkWrapper.getChunkPos()))
 		{
 			return;
 		}
+			
 		
 		// add chunk update data to preUpdate queue
-		ChunkUpdateData updateData = new ChunkUpdateData(chunkWrapper,null,dhLevel,canGetNeighborChunks);
+		ChunkUpdateData updateData = new ChunkUpdateData(chunkWrapper, neighborChunkList, dhLevel, canGetNeighboringChunks);
 		CHUNK_UPDATE_QUEUE_MANAGER.addItemToPreUpdateQueue(chunkWrapper.getChunkPos(), updateData);
 		
 		
@@ -328,6 +380,7 @@ public class SharedApi
 			// Also includes spawn chunks since they're likely to be intentionally utilized with updates
 			maxUpdateSizeMultiplier = 1 + MC_SHARED.getPlayerCount();
 		}
+		
 		CHUNK_UPDATE_QUEUE_MANAGER.maxSize = MAX_UPDATING_CHUNK_COUNT_PER_THREAD_AND_PLAYER
 				* Config.Common.MultiThreading.numberOfThreads.get()
 				* maxUpdateSizeMultiplier;
@@ -370,14 +423,11 @@ public class SharedApi
 		
 		IDhLevel dhLevel = preUpdateData.dhLevel;
 		IChunkWrapper chunkWrapper = preUpdateData.chunkWrapper;
-		boolean canGetNeighborChunks = preUpdateData.canGetNeighborChunks;
+		boolean canGetNeighboringChunks = preUpdateData.canGetNeighboringChunks;
+		ArrayList<IChunkWrapper> neighborChunkList = preUpdateData.neighborChunkList;
 		
 		try
 		{
-			// get neighbor chunks if possible
-			ArrayList<IChunkWrapper> neighborChunkList = (canGetNeighborChunks) ? getNeighborChunkListForChunk(chunkWrapper, dhLevel) : null;
-			preUpdateData.neighborChunkList = neighborChunkList;
-			
 			// check if this chunk has been converted into an LOD already
 			boolean checkChunkHash = !Config.Common.LodBuilding.disableUnchangedChunkCheck.get();
 			if (checkChunkHash)
@@ -392,19 +442,29 @@ public class SharedApi
 					return;
 				}
 				
-				if (canGetNeighborChunks)
+				// if this chunk will update and can get neighbors
+				// then queue neighboring chunks to update as well
+				// neighboring chunk will get added directly to the update queue
+				// so they won't queue further chunk updates
+				if (neighborChunkList != null 
+					&& !neighborChunkList.isEmpty())
 				{
-					// if this chunk will update and can get neighbors
-					// then queue neighboring chunks to update as well
-					// neighboring chunks will get added directly to the update queue
-					// so they won't queue further chunk updates
 					for (IChunkWrapper adjacentChunk : neighborChunkList)
 					{
 						// pulling a new chunkWrapper is necessary to prevent concurrent modification on the existing chunkWrappers
 						IChunkWrapper newCenterChunk = dhLevel.getLevelWrapper().tryGetChunk(adjacentChunk.getChunkPos());
 						if (newCenterChunk != null)
 						{
-							ChunkUpdateData newUpdateData = new ChunkUpdateData(newCenterChunk, getNeighborChunkListForChunk(newCenterChunk, dhLevel), dhLevel, true);
+							ChunkUpdateData newUpdateData;
+							if (canGetNeighboringChunks)
+							{
+								newUpdateData = new ChunkUpdateData(newCenterChunk, getNeighborChunkListForChunk(newCenterChunk, dhLevel), dhLevel, true);
+							}
+							else
+							{
+								newUpdateData = new ChunkUpdateData(newCenterChunk, null, dhLevel, false);
+							}
+							
 							CHUNK_UPDATE_QUEUE_MANAGER.addItemToUpdateQueue(newCenterChunk.getChunkPos(), newUpdateData);
 						}
 					}

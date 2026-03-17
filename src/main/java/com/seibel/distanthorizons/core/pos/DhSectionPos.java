@@ -221,11 +221,27 @@ public class DhSectionPos
 		byte offset = (byte) (detailLevel - returnDetailLevel);
 		return BitShiftUtil.powerOfTwo(offset);
 	}
-
-	/** @return how wide this section is in blocks */
-	public static int getBlockWidth(long pos) { return BitShiftUtil.powerOfTwo(getDetailLevel(pos)); }
+	
+	
 	/** @return how wide this section is in chunks */
 	public static int getChunkWidth(long pos) { return DhSectionPos.getBlockWidth(pos) / LodUtil.CHUNK_WIDTH; }
+	/** @see DhSectionPos#getDetailLevelWidthInBlocks(byte) */
+	public static int getBlockWidth(long pos) { return getDetailLevelWidthInBlocks(getDetailLevel(pos)); }
+	/**
+	 * Returns how many blocks wide a single LOD at the given detail level would be in blocks. <br>
+	 * IE: <br>
+	 * <code>
+	 * 0 => 1 <br>
+	 * 1 => 2 <br>
+	 * 2 => 4 <br>
+	 * 3 => 8 <br>
+	 * 4 => 16 <br>
+	 * 5 => 32 <br>
+	 * 6 => 64 <br>
+	 * etc. <br>
+	 * </code>
+	 */
+	public static int getDetailLevelWidthInBlocks(byte detailLevel) { return BitShiftUtil.powerOfTwo(detailLevel); }
 	
 
 	public static DhBlockPos2D getCenterBlockPos(long pos) { return new DhBlockPos2D(getCenterBlockPosX(pos), getCenterBlockPosZ(pos)); }

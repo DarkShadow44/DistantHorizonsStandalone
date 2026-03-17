@@ -156,7 +156,7 @@ public abstract class AbstractDhLevel implements IDhLevel
 	@Override
 	public void updateChunkAsync(IChunkWrapper chunkWrapper, int chunkHash)
 	{
-		try (FullDataSourceV2 dataSource = FullDataSourceV2.createFromChunk(chunkWrapper))
+		try (FullDataSourceV2 dataSource = FullDataSourceV2.createFromChunk(this.getLevelWrapper(), chunkWrapper))
 		{
 			if (dataSource == null)
 			{

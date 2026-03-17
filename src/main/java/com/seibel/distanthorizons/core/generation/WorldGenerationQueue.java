@@ -410,8 +410,15 @@ public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDeb
 					{
 						try
 						{
-							IChunkWrapper chunk = WRAPPER_FACTORY.createChunkWrapper(generatedObjectArray);
-							try (FullDataSourceV2 dataSource = LodDataBuilder.createFromChunk(chunk))
+							IChunkWrapper chunkWrapper = WRAPPER_FACTORY.createChunkWrapper(generatedObjectArray);
+							
+							// TODO light data should be pulled (if possible) from the ChunkAccess object itself via ChunkFileReader.readLight
+							// but this should work for now
+							ArrayList<IChunkWrapper> nearbyChunkList = new ArrayList<IChunkWrapper>();
+							nearbyChunkList.add(chunkWrapper);
+							DhLightingEngine.INSTANCE.bakeChunkBlockLighting(chunkWrapper, nearbyChunkList, this.level.hasSkyLight() ? LodUtil.MAX_MC_LIGHT : LodUtil.MIN_MC_LIGHT);
+							
+							try (FullDataSourceV2 dataSource = LodDataBuilder.createFromChunk(this.level.getLevelWrapper(), chunkWrapper))
 							{
 								LodUtil.assertTrue(dataSource != null);
 								dataSourceConsumer.accept(dataSource);

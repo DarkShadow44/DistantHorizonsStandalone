@@ -34,7 +34,7 @@ public class QuadNodeChildIndexIterator<T> implements Iterator<Integer>
 	public QuadNodeChildIndexIterator(QuadNode<T> parentNode, boolean returnNullChildPos)
 	{
 		// only get the children if this section isn't at the bottom of the tree
-		if (DhSectionPos.getDetailLevel(parentNode.sectionPos) > parentNode.minimumDetailLevel)
+		if (DhSectionPos.getDetailLevel(parentNode.sectionPos) > parentNode.parentTreeLeafDetailLevel)
 		{
 			// go over each child pos
 			for (int i = 0; i < 4; i++)

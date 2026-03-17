@@ -23,6 +23,7 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 
@@ -34,6 +35,8 @@ public class JavaScreenHandlerScreen extends AbstractScreen
 	public static Frame frame;
 	public static boolean firstRun = true;
 	public final Component jComponent;
+	
+	
 	
 	static
 	{
@@ -54,19 +57,25 @@ public class JavaScreenHandlerScreen extends AbstractScreen
 	public void init()
 	{
 		if (firstRun)
+		{
 			frame = EmbeddedFrameUtil.embeddedFrameCreate(this.minecraftWindow); // Don't call this multiple times
+		}
 		
-		frame.add(jComponent);
+		frame.add(this.jComponent);
+		frame.setBackground(new Color(0, 125, 155));
 		
 		JavaScreenHandlerScreen thiss = this;
 		
-		frame.addKeyListener(new KeyListener() {
+		frame.addKeyListener(new KeyListener() 
+		{
 			@Override
 			public void keyPressed(KeyEvent keyEvent)
 			{
 				System.out.println("Key pressed code=" + keyEvent.getKeyCode() + ", char=" + keyEvent.getKeyChar());
 				if (keyEvent.getKeyCode() == KeyEvent.VK_ESCAPE)
+				{
 					thiss.close = true;
+				}
 			}
 			
 			@Override
@@ -80,8 +89,8 @@ public class JavaScreenHandlerScreen extends AbstractScreen
 			EmbeddedFrameUtil.embeddedFrameSetBounds(frame, 0, 0, this.width, this.height);
 			firstRun = false;
 		}
-		else
-			EmbeddedFrameUtil.showFrame(frame);
+		
+		EmbeddedFrameUtil.showFrame(frame);
 	}
 	
 	/** A testing/debug screen */
@@ -89,13 +98,43 @@ public class JavaScreenHandlerScreen extends AbstractScreen
 	{
 		public ExampleScreen()
 		{
-			setLayout(new GridBagLayout());
-			GridBagConstraints constraints = new GridBagConstraints();
-			constraints.fill = GridBagConstraints.HORIZONTAL;
-			constraints.weightx = 0.5;
-			constraints.gridx = 0;
-			constraints.gridy = 0;
-			add(new JLabel("Hello World!"), constraints);
+			this.setLayout(new GridBagLayout());
+			this.setBackground(new Color(255, 0, 0)); // doesn't appear to be used
+			
+			GridBagConstraints helloWorldConstraints = new GridBagConstraints();
+			helloWorldConstraints.weightx = 0.5;
+			helloWorldConstraints.gridx = 0;
+			helloWorldConstraints.gridy = 0;
+			//helloWorldConstraints.fill = GridBagConstraints.BOTH;
+			this.add(new JLabel("Hello World!"), helloWorldConstraints);
+			
+			
+			GridBagConstraints buttonConstraints = new GridBagConstraints();
+			buttonConstraints.weightx = 0.5;
+			buttonConstraints.gridx = 0;
+			buttonConstraints.gridy = 1;
+			//buttonConstraints.fill = GridBagConstraints.BOTH;
+			JButton button = new JButton();
+			button.setBackground(Color.GREEN);
+			button.setFocusable(false); // otherwise we can't use escape to leave
+			button.setAction(new ExampleButtonEventHandler("Button text"));
+			this.add(button, buttonConstraints);
+		}
+		
+		private class ExampleButtonEventHandler extends AbstractAction
+		{
+			public ExampleButtonEventHandler(String text)
+			{
+				super(text);
+				//this.putValue(SHORT_DESCRIPTION, text);
+				//this.putValue(MNEMONIC_KEY, text);
+			}
+			
+			@Override
+			public void actionPerformed(ActionEvent e)
+			{
+				System.out.println("button pressed");
+			}
 		}
 		
 	}
@@ -116,8 +155,10 @@ public class JavaScreenHandlerScreen extends AbstractScreen
 	@Override
 	public void onClose()
 	{
-		frame.remove(jComponent);
+		frame.remove(this.jComponent);
 		EmbeddedFrameUtil.hideFrame(frame);
 	}
+	
+	
 	
 }

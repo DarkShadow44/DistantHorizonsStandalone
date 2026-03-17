@@ -88,7 +88,11 @@ public class DhDataOutputStream extends DataOutputStream
 			}
 	}
 	
-	@Override
-	public void close() throws IOException { /* Do nothing. */ }
+	
+	// TODO at one point closing the streams caused errors, is that due to a bug with LZMA streams or some bug in DH's code that was since fixed?
+	//  if streams aren't closed that cause cause higher-than-expected native memory use if the GC decides
+	//  it doesn't want to clear the stream objects
+	//@Override
+	//public void close() throws IOException { /* Do nothing. */ }
 	
 }

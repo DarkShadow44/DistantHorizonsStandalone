@@ -342,7 +342,7 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 					// outdated when child LODs are updated.
 					// (They'd have to be reloaded from file anyway during an update)
 					long parentPos = renderSection.pos;
-					while (DhSectionPos.getDetailLevel(parentPos) <= this.treeMinDetailLevel)
+					while (DhSectionPos.getDetailLevel(parentPos) <= this.treeRootDetailLevel)
 					{
 						QuadNode<LodRenderSection> parentNode = this.getNode(parentPos);
 						if (parentNode != null)
@@ -579,7 +579,7 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 		// If not done corners may not be flush with the other LODs, which looks bad.
 		byte minSectionDetailLevel = this.getDetailLevelFromDistance(this.blockRenderDistanceDiameter); // get the minimum allowed detail level
 		minSectionDetailLevel -= 1; // -1 so corners can't render lower than their adjacent neighbors. space
-		minSectionDetailLevel = (byte) Math.min(minSectionDetailLevel, this.treeMinDetailLevel); // don't allow rendering lower detail sections than what the tree contains
+		minSectionDetailLevel = (byte) Math.min(minSectionDetailLevel, this.treeRootDetailLevel); // don't allow rendering lower detail sections than what the tree contains
 		this.minRenderDetailLevel = (byte) Math.max(minSectionDetailLevel, this.maxRenderDetailLevel); // respect the user's selected max resolution if it is lower detail (IE they want 2x2 block, but minSectionDetailLevel is specifically for 1x1 block render resolution)
 	}
 	

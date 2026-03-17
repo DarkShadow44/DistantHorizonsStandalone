@@ -116,7 +116,7 @@ public class FullDataSourceV1 implements IDataSource<IDhLevel>
 	public String getKeyDisplayString() { return DhSectionPos.toString(this.pos); }
 	
 	@Override
-	public Long getPos() { return this.pos; }
+	public long getPos() { return this.pos; }
 	
 	public void resizeDataStructuresForRepopulation(long pos)
 	{

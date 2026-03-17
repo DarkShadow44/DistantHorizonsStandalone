@@ -410,10 +410,9 @@ public class FullDataSourceV2Repo extends AbstractDhRepo<Long, FullDataSourceV2D
 				byte compressionModeEnumValue = result.getByte("CompressionMode");
 				EDhApiDataCompressionMode compressionModeEnum = EDhApiDataCompressionMode.getFromValue(compressionModeEnumValue);
 				
-				try
+				// decompress the data
+				try(DhDataInputStream compressedIn = new DhDataInputStream(result.getBinaryStream("ColumnGenerationStep"), compressionModeEnum))
 				{
-					// decompress the data
-					DhDataInputStream compressedIn = new DhDataInputStream(result.getBinaryStream("ColumnGenerationStep"), compressionModeEnum);
 					putAllBytes(compressedIn, outputByteArray);
 				}
 				catch (IOException e)

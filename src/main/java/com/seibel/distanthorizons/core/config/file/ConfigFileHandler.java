@@ -27,6 +27,7 @@ import com.seibel.distanthorizons.core.config.types.ConfigEntry;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftSharedWrapper;
+import com.seibel.distanthorizons.coreapi.ModInfo;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -41,10 +42,9 @@ import java.util.concurrent.locks.ReentrantLock;
  * @author coolGi
  * @version 2023-8-26
  */
-public class ConfigFileHandling
+public class ConfigFileHandler
 {
 	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
-	private static final IMinecraftSharedWrapper MC_SHARED = SingletonInjector.INSTANCE.get(IMinecraftSharedWrapper.class);
 	
 	
 	public final ConfigBase configBase;
@@ -64,9 +64,9 @@ public class ConfigFileHandling
 	// constructor //
 	//=============//
 	
-	public ConfigFileHandling(ConfigBase configBase, Path configPath)
+	public ConfigFileHandler(ConfigBase configBase, Path configPath)
 	{
-		this.logger = LogManager.getLogger(this.getClass().getSimpleName() + ", " + configBase.modID);
+		this.logger = LogManager.getLogger(this.getClass().getSimpleName() + ", " + ModInfo.ID);
 		this.configBase = configBase;
 		this.configPath = configPath;
 		
@@ -80,6 +80,9 @@ public class ConfigFileHandling
 	
 	
 	
+	//====================//
+	// entire config file //
+	//====================//
 	
 	/** Saves the entire config to the file */
 	public void saveToFile() { this.saveToFile(this.nightConfig); }
@@ -161,7 +164,7 @@ public class ConfigFileHandling
 			}
 			else // if (currentCfgVersion < configBase.configVersion)
 			{
-				this.logger.warn(this.configBase.modName + " config is of an older version, currently there is no config updater... so resetting config");
+				this.logger.warn(ModInfo.NAME + " config is of an older version, currently there is no config updater... so resetting config");
 				try
 				{
 					Files.delete(this.configPath);
@@ -223,6 +226,9 @@ public class ConfigFileHandling
 	
 	
 	
+	//=======================//
+	// single config entries //
+	//=======================//
 	
 	// Save an entry when only given the entry
 	public void saveEntry(ConfigEntry<?> entry)
@@ -240,7 +246,7 @@ public class ConfigFileHandling
 		else if (entry.getTrueValue() == null)
 		{
 			// TODO when can this happen?
-			throw new IllegalArgumentException("Entry [" + entry.getNameWCategory() + "] is null, this may be a problem with [" + this.configBase.modName + "]. Please contact the authors.");
+			throw new IllegalArgumentException("Entry [" + entry.getNameWCategory() + "] is null, this may be a problem with [" + ModInfo.NAME + "]. Please contact the authors.");
 		}
 		
 		workConfig.set(entry.getNameWCategory(), ConfigTypeConverters.attemptToConvertToString(entry.getType(), entry.getTrueValue()));
@@ -319,10 +325,12 @@ public class ConfigFileHandling
 	
 	
 	
-	
+	//=============//
+	// nightconfig //
+	//=============//
 	
 	/**
-	 * Uses {@link ConfigFileHandling#nightConfig} to do {@link CommentedFileConfig#load()} but with error checking
+	 * Uses {@link ConfigFileHandler#nightConfig} to do {@link CommentedFileConfig#load()} but with error checking
 	 *
 	 * @apiNote This overwrites any value currently stored in the config
 	 */
@@ -360,6 +368,10 @@ public class ConfigFileHandling
 	}
 	
 	
+	
+	//===============//
+	// file handling //
+	//===============//
 	
 	public static void reCreateFile(Path path)
 	{

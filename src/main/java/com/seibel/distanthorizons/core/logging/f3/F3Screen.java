@@ -82,6 +82,7 @@ public class F3Screen
 		// multi thread pools
 		PriorityTaskPicker.Executor worldGenPool = ThreadPoolUtil.getWorldGenExecutor();
 		PriorityTaskPicker.Executor fileHandlerPool = ThreadPoolUtil.getFileHandlerExecutor();
+		PriorityTaskPicker.Executor renderLoadingPool = ThreadPoolUtil.getRenderLoadingExecutor();
 		PriorityTaskPicker.Executor updatePool = ThreadPoolUtil.getUpdatePropagatorExecutor();
 		PriorityTaskPicker.Executor lodBuilderPool = ThreadPoolUtil.getChunkToLodBuilderExecutor();
 		PriorityTaskPicker.Executor networkPool = ThreadPoolUtil.getNetworkCompressionExecutor();
@@ -92,6 +93,11 @@ public class F3Screen
 		ThreadPoolExecutor migrationPool = ThreadPoolUtil.getFullDataMigrationExecutor();
 		
 		AbstractDhWorld world = SharedApi.getAbstractDhWorld();
+		if (world == null)
+		{
+			return;
+		}
+		
 		Iterable<? extends IDhLevel> levelIterator = world.getAllLoadedLevels();
 		
 		
@@ -124,6 +130,7 @@ public class F3Screen
 		{
 			// multi thread pools
 			messageList.add(getThreadPoolStatString("World Gen/Import", worldGenPool));
+			messageList.add(getThreadPoolStatString("Render Load", renderLoadingPool));
 			messageList.add(getThreadPoolStatString("File Handler", fileHandlerPool));
 			messageList.add(getThreadPoolStatString("Update Propagator", updatePool));
 			messageList.add(getThreadPoolStatString("LOD Builder", lodBuilderPool));

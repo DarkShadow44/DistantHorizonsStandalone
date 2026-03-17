@@ -24,15 +24,15 @@ import java.util.List;
 
 import com.seibel.distanthorizons.api.enums.config.EDhApiWorldCompressionMode;
 import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiWorldGenerationStep;
+import com.seibel.distanthorizons.api.interfaces.block.IDhApiBiomeWrapper;
+import com.seibel.distanthorizons.api.interfaces.block.IDhApiBlockStateWrapper;
+import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiChunkProcessingEvent;
 import com.seibel.distanthorizons.api.objects.data.DhApiChunk;
 import com.seibel.distanthorizons.api.objects.data.DhApiTerrainDataPoint;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.dataObjects.fullData.sources.FullDataSourceV2;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
-import com.seibel.distanthorizons.core.enums.EDhDirection;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
-import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos;
-import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPosMutable;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
 import com.seibel.distanthorizons.core.util.FullDataPointUtil;
 import com.seibel.distanthorizons.core.util.LodUtil;
@@ -43,6 +43,8 @@ import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.IChunkWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.misc.IMutableBlockPosWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IBiomeWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.IWrapperFactory;
+import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
+import com.seibel.distanthorizons.coreapi.DependencyInjection.ApiEventInjector;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.Nullable;
@@ -50,7 +52,8 @@ import org.jetbrains.annotations.Nullable;
 public class LodDataBuilder
 {
 	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
-	private static final IBlockStateWrapper AIR = SingletonInjector.INSTANCE.get(IWrapperFactory.class).getAirBlockStateWrapper();
+	private static final IWrapperFactory WRAPPER_FACTORY = SingletonInjector.INSTANCE.get(IWrapperFactory.class);
+	private static final IBlockStateWrapper AIR = WRAPPER_FACTORY.getAirBlockStateWrapper();
 	
 	private static boolean getTopErrorLogged = false;
 	
@@ -60,10 +63,13 @@ public class LodDataBuilder
 	// converters //
 	//============//
 	
-	public static FullDataSourceV2 createFromChunk(IChunkWrapper chunkWrapper)
+	public static FullDataSourceV2 createFromChunk(ILevelWrapper levelWrapper, IChunkWrapper chunkWrapper)
 	{
 		// only block lighting is needed here, sky lighting is populated at the data source stage
-		LodUtil.assertTrue(chunkWrapper.isDhBlockLightingCorrect());
+		LodUtil.assertTrue(chunkWrapper.isDhBlockLightingCorrect(), "Provided chunk's DH Block lighting hasn't been baked.");
+		
+		int chunkPosX = chunkWrapper.getChunkPos().getX();
+		int chunkPosZ = chunkWrapper.getChunkPos().getZ();
 		
 		int sectionPosX = getXOrZSectionPosFromChunkPos(chunkWrapper.getChunkPos().getX());
 		int sectionPosZ = getXOrZSectionPosFromChunkPos(chunkWrapper.getChunkPos().getZ());
@@ -119,6 +125,9 @@ public class LodDataBuilder
 			IMutableBlockPosWrapper mcBlockPos = chunkWrapper.getMutableBlockPosWrapper();
 			IBlockStateWrapper previousBlockState = null;
 			
+			DhApiChunkProcessingEvent.EventParam mutableChunkProcessedEventParam 
+					= new DhApiChunkProcessingEvent.EventParam(levelWrapper, chunkPosX, chunkPosZ);
+			
 			int minBuildHeight = chunkWrapper.getMinNonEmptyHeight();
 			int exclusiveMaxBuildHeight = chunkWrapper.getExclusiveMaxBuildHeight();
 			int inclusiveMinBuildHeight = chunkWrapper.getInclusiveMinBuildHeight();
@@ -144,9 +153,9 @@ public class LodDataBuilder
 					}
 					
 					int lastY = exclusiveMaxBuildHeight;
-					IBiomeWrapper biome = chunkWrapper.getBiome(relBlockX, lastY, relBlockZ);
-					IBlockStateWrapper blockState = AIR;
-					int mappedId = dataSource.mapping.addIfNotPresentAndGetId(biome, blockState);
+					IBiomeWrapper currentBiome = chunkWrapper.getBiome(relBlockX, lastY, relBlockZ);
+					IBlockStateWrapper currentBlockState = AIR;
+					int mappedId = dataSource.mapping.addIfNotPresentAndGetId(currentBiome, currentBlockState);
 					
 					// Determine lighting (we are at the height limit. There are no torches here, and sky is not obscured.) // TODO: Per face lighting someday?
 					byte blockLight = LodUtil.MIN_MC_LIGHT;
@@ -162,7 +171,8 @@ public class LodDataBuilder
 					
 					// Go up until we reach open air or the world limit
 					IBlockStateWrapper topBlockState = previousBlockState = chunkWrapper.getBlockState(relBlockX, y, relBlockZ, mcBlockPos, previousBlockState);
-					while (!topBlockState.isAir() && y < exclusiveMaxBuildHeight)
+					while (!topBlockState.isAir() 
+							&& y < exclusiveMaxBuildHeight)
 					{
 						try
 						{
@@ -194,22 +204,46 @@ public class LodDataBuilder
 						byte newSkyLight = (byte) chunkWrapper.getDhSkyLight(relBlockX, y + 1, relBlockZ);
 						
 						// Save the biome/block change if different from previous
-						if (!newBiome.equals(biome) || !newBlockState.equals(blockState) || forceSingleBlock)
+						if (!newBiome.equals(currentBiome) 
+							|| !newBlockState.equals(currentBlockState) 
+							|| forceSingleBlock)
 						{
 							// if the previous block potentially colors this block
 							// make this block a single entry, aka add the next block even if it is the same
 							// this is done to allow fire, snow, flowers, etc. to properly color the top of columns vs the whole column
 							forceSingleBlock = 
-									!blockState.isAir()
-									&& !blockState.isSolid()
-									&& !blockState.isLiquid()
-									&& blockState.getOpacity() != LodUtil.BLOCK_FULLY_OPAQUE;
+									!currentBlockState.isAir()
+									&& !currentBlockState.isSolid()
+									&& !currentBlockState.isLiquid()
+									&& currentBlockState.getOpacity() != LodUtil.BLOCK_FULLY_OPAQUE;
+							
+							
+							// check for API overrides
+							{
+								mutableChunkProcessedEventParam.updateForPosition(relBlockX, y, relBlockZ, newBlockState, newBiome);
+								ApiEventInjector.INSTANCE.fireAllEvents(DhApiChunkProcessingEvent.class, mutableChunkProcessedEventParam);
+								
+								// did the API user override this block?
+								if (mutableChunkProcessedEventParam.getBlockOverride() != null)
+								{
+									// API users shouldn't be creating their own IBlockStateWrapper objects
+									newBlockState = (IBlockStateWrapper)mutableChunkProcessedEventParam.getBlockOverride();
+								}
+								
+								// did the API user override this biome?
+								if (mutableChunkProcessedEventParam.getBiomeOverride() != null)
+								{
+									// API users shouldn't be creating their own IBlockStateWrapper objects
+									newBiome = (IBiomeWrapper) mutableChunkProcessedEventParam.getBiomeOverride();
+								}
+							}
+							
 							
 							longs.add(FullDataPointUtil.encode(mappedId, lastY - y, y + 1 - inclusiveMinBuildHeight, blockLight, skyLight));
-							biome = newBiome;
-							blockState = newBlockState;
+							currentBiome = newBiome;
+							currentBlockState = newBlockState;
 							
-							mappedId = dataSource.mapping.addIfNotPresentAndGetId(biome, blockState);
+							mappedId = dataSource.mapping.addIfNotPresentAndGetId(currentBiome, currentBlockState);
 							blockLight = newBlockLight;
 							skyLight = newSkyLight;
 							lastY = y;
@@ -281,6 +315,12 @@ public class LodDataBuilder
 					if (centerIndex + 1 < centerColumn.size()
 							&& isTranslucent(dataSource, centerColumn.getLong(centerIndex + 1))
 					)
+					{
+						continue;
+					}
+					
+					// the lowest/bedrock segment should not be culled
+					if (centerIndex + 1 == centerColumn.size())
 					{
 						continue;
 					}
@@ -538,11 +578,11 @@ public class LodDataBuilder
 	
 	
 	
-	//================//
-	// helper methods //
-	//================//
+	//==================//
+	// internal helpers //
+	//==================//
 	
-	public static int getXOrZSectionPosFromChunkPos(int chunkXOrZPos)
+	private static int getXOrZSectionPosFromChunkPos(int chunkXOrZPos)
 	{
 		// get the section position
 		int sectionPos = chunkXOrZPos;
@@ -550,5 +590,7 @@ public class LodDataBuilder
 		sectionPos = (sectionPos < 0) ? ((sectionPos + 1) / FullDataSourceV2.NUMB_OF_CHUNKS_WIDE) - 1 : (sectionPos / FullDataSourceV2.NUMB_OF_CHUNKS_WIDE);
 		return sectionPos;
 	}
+	
+	
 	
 }

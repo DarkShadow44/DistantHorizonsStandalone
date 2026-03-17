@@ -45,7 +45,7 @@ public class SessionConfig implements INetworkObject
 		registerConfigEntry(Config.Server.maxSyncOnLoadRequestDistance, Math::min);
 		registerConfigEntry(Config.Server.syncOnLoadRateLimit, Math::min);
 		
-		registerConfigEntry(Config.Server.maxDataTransferSpeed, (x, y) -> {
+		registerConfigEntry(Config.Server.playerBandwidthLimit, (x, y) -> {
 			if (x == 0 && y == 0)
 			{
 				return 0;
@@ -80,7 +80,7 @@ public class SessionConfig implements INetworkObject
 	public int getMaxSyncOnLoadDistance() { return this.getValue(Config.Server.maxSyncOnLoadRequestDistance); }
 	public int getSyncOnLoginRateLimit() { return this.getValue(Config.Server.syncOnLoadRateLimit); }
 	
-	public int getMaxDataTransferSpeed() { return this.getValue(Config.Server.maxDataTransferSpeed); }
+	public int getPlayerBandwidthLimit() { return this.getValue(Config.Server.playerBandwidthLimit); }
 	
 	
 	

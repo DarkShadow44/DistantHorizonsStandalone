@@ -1,9 +1,5 @@
 package com.seibel.distanthorizons.core.file.fullDatafile;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.RemovalCause;
-import com.google.common.cache.RemovalNotification;
 import com.seibel.distanthorizons.core.dataObjects.fullData.sources.FullDataSourceV2;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
@@ -14,6 +10,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.lang.ref.WeakReference;
 import java.util.Collections;
+import java.util.Enumeration;
 import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.ReentrantLock;
@@ -38,7 +35,7 @@ public class DelayedFullDataSourceSaveCache implements AutoCloseable
 	
 	
 	
-	private final Cache<Long, FullDataSourceV2> dataSourceByPosition;
+	private final ConcurrentHashMap<Long, DataSourceSavedTimePair> dataSourceByPosition = new ConcurrentHashMap<Long, DataSourceSavedTimePair>();
 	
 	/* don't let two threads load the same position at the same time */
 	protected final KeyedLockContainer<Long> saveLockContainer = new KeyedLockContainer<>();
@@ -60,15 +57,14 @@ public class DelayedFullDataSourceSaveCache implements AutoCloseable
 	public DelayedFullDataSourceSaveCache(@NotNull ISaveDataSourceFunc onSaveTimeoutAsyncFunc, int saveDelayInMs)
 	{
 		this.onSaveTimeoutAsyncFunc = onSaveTimeoutAsyncFunc;
+		
+		// we can't clean items faster than the cleanup timer fires
+		if (saveDelayInMs < CLEANUP_CHECK_TIME_IN_MS)
+		{
+			LOGGER.warn("The save delay ["+saveDelayInMs+"] shouldn't be less than the cleanup check timer interval ["+CLEANUP_CHECK_TIME_IN_MS+"].");
+		}
 		this.saveDelayInMs = saveDelayInMs;
 		
-		
-		this.dataSourceByPosition =
-			CacheBuilder.newBuilder()
-				.expireAfterAccess(this.saveDelayInMs, TimeUnit.MILLISECONDS)
-				.expireAfterWrite(this.saveDelayInMs, TimeUnit.MILLISECONDS)
-				.removalListener(this::handleDataSourceRemoval)
-				.<Long, FullDataSourceV2>build();
 		
 		SAVE_CACHE_SET.add(new WeakReference<>(this));
 	}
@@ -83,61 +79,61 @@ public class DelayedFullDataSourceSaveCache implements AutoCloseable
 	 * Writing into memory is done synchronously so inputDataSource can 
 	 * be closed after this method finishes.
 	 */
-	public void writeDataSourceToMemoryAndQueueSave(FullDataSourceV2 inputDataSource)
+	public void writeDataSourceToMemoryAndQueueSave(@NotNull FullDataSourceV2 inputDataSource)
 	{
 		long inputPos = inputDataSource.getPos();
 		
-		ReentrantLock lock = this.saveLockContainer.getLockForPos(inputPos);
+		ReentrantLock lockForPos = this.saveLockContainer.getLockForPos(inputPos);
 		try
 		{
-			lock.lock();
+			lockForPos.lock();
 			
-			FullDataSourceV2 memoryDataSource = this.dataSourceByPosition.getIfPresent(inputPos);
-			if (memoryDataSource == null)
+			FullDataSourceV2 memoryDataSource;
+			
+			DataSourceSavedTimePair pair = this.dataSourceByPosition.getOrDefault(inputPos, null);
+			if (pair == null)
 			{
+				// no data currently in the memory cache for this position
 				memoryDataSource = FullDataSourceV2.createEmpty(inputPos);
-			}
-			memoryDataSource.update(inputDataSource);
-			this.dataSourceByPosition.put(inputPos, memoryDataSource);
-		}
-		finally
-		{
-			lock.unlock();
-		}
-	}
-	
-	public void handleDataSourceRemoval(RemovalNotification<Long, FullDataSourceV2> removalNotification)
-	{
-		RemovalCause cause = removalNotification.getCause();
-		if (cause == RemovalCause.EXPIRED
-			|| cause == RemovalCause.COLLECTED
-			|| cause == RemovalCause.EXPLICIT
-			|| cause == RemovalCause.SIZE)
-		{
-			// close the data source after it has expired from the cache
-			FullDataSourceV2 dataSource = removalNotification.getValue();
-			if (dataSource != null)
-			{
-				this.onSaveTimeoutAsyncFunc.saveAsync(dataSource)
-					.handle((voidObj, throwable) ->
-					{
-						try
-						{
-							dataSource.close();
-						}
-						catch (Exception e)
-						{
-							LOGGER.error("Unable to close datasource ["+ DhSectionPos.toString(dataSource.getPos()) +"], removal cause: ["+cause+"], error: ["+e.getMessage()+"].", e);
-						}
-						
-						return null;
-					});
+				pair = new DataSourceSavedTimePair(memoryDataSource);
+				this.dataSourceByPosition.put(inputPos, pair);
 			}
 			else
 			{
-				LOGGER.error("Unable to close null cached data source.");
+				memoryDataSource = pair.dataSource;
 			}
+			
+			// write the new data into memory
+			memoryDataSource.update(inputDataSource);
+			// keep track of when the last time we saved something was
+			pair.updateLastWrittenTimestamp();
 		}
+		finally
+		{
+			lockForPos.unlock();
+		}
+	}
+	
+	/** when this method is called the datasource should no longer be in the memory cache */
+	public void handleDataSourceRemoval(@NotNull FullDataSourceV2 removedDataSource)
+	{
+		this.onSaveTimeoutAsyncFunc.saveAsync(removedDataSource)
+			.handle((voidObj, throwable) ->
+			{
+				try
+				{
+					// if this close method is fired multiple times
+					// monoliths can appear due to concurrent writing to the
+					// backend arrays
+					removedDataSource.close();
+				}
+				catch (Exception e)
+				{
+					LOGGER.error("Unable to close datasource ["+ DhSectionPos.toString(removedDataSource.getPos()) +"], error: ["+e.getMessage()+"].", e);
+				}
+				
+				return null;
+			});
 	}
 	
 	
@@ -146,26 +142,36 @@ public class DelayedFullDataSourceSaveCache implements AutoCloseable
 	// List methods //
 	//==============//
 	
-	public int getUnsavedCount() { return (int)this.dataSourceByPosition.size(); }
+	public int getUnsavedCount() { return this.dataSourceByPosition.size(); }
 	
+	public void flush() { this.cleanUp(true); }
 	/** Removes everything from the memory cache and fires the {@link DelayedFullDataSourceSaveCache#onSaveTimeoutAsyncFunc} for each. */
-	public void flush()
+	public void cleanUp(boolean flushAll)
 	{
-		Set<Long> keySet = this.dataSourceByPosition.asMap().keySet();
-		for (Long pos : keySet)
+		Enumeration<Long> keyIterator = this.dataSourceByPosition.keys();
+		while (keyIterator.hasMoreElements())
 		{
-			ReentrantLock lock = this.saveLockContainer.getLockForPos(pos);
+			Long pos = keyIterator.nextElement();
+			ReentrantLock posLock = this.saveLockContainer.getLockForPos(pos);
 			try
 			{
-				lock.lock();
+				posLock.lock();
 				
-				this.dataSourceByPosition.invalidate(pos);
+				DataSourceSavedTimePair savedPair = this.dataSourceByPosition.getOrDefault(pos, null);
+				if (savedPair != null)
+				{
+					if (flushAll
+						|| savedPair.dataSourceHasTimedOut(this.saveDelayInMs))
+					{
+						this.dataSourceByPosition.remove(pos);
+						this.handleDataSourceRemoval(savedPair.dataSource);
+					}
+				}
 			}
 			finally
 			{
-				lock.unlock();
+				posLock.unlock();
 			}
-			
 		}
 	}
 	
@@ -197,7 +203,7 @@ public class DelayedFullDataSourceSaveCache implements AutoCloseable
 					}
 					else
 					{
-						cache.dataSourceByPosition.cleanUp();
+						cache.cleanUp(false);
 					}
 				});
 			}
@@ -239,5 +245,37 @@ public class DelayedFullDataSourceSaveCache implements AutoCloseable
 		/** called after the timeout expires */
 		CompletableFuture<Void> saveAsync(FullDataSourceV2 inputDataSource);
 	}
+	
+	/** 
+	 * used to keep track of when data sources
+	 * were written to so we can flush them once
+	 * enough time has passed.
+	 */
+	private static class DataSourceSavedTimePair
+	{
+		@NotNull
+		public final FullDataSourceV2 dataSource;
+		/** the last unix millisecond time this data source was written to */
+		public long lastWrittenDateTimeMs;
+		
+		
+		public DataSourceSavedTimePair(@NotNull FullDataSourceV2 dataSource)
+		{
+			this.dataSource = dataSource;
+			this.lastWrittenDateTimeMs = System.currentTimeMillis();
+		}
+		
+		
+		public void updateLastWrittenTimestamp()
+		{ this.lastWrittenDateTimeMs = System.currentTimeMillis(); }
+		
+		public boolean dataSourceHasTimedOut(long msTillTimeout)
+		{
+			long currentTime = System.currentTimeMillis();
+			long timeSinceUpdate = currentTime - this.lastWrittenDateTimeMs;
+			return (timeSinceUpdate > msTillTimeout);
+		}
+	}
+	
 	
 }

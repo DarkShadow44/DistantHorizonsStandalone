@@ -22,7 +22,7 @@ package com.seibel.distanthorizons.core.util;
 import com.google.common.annotations.VisibleForTesting;
 import com.seibel.distanthorizons.core.dataObjects.render.columnViews.ColumnArrayView;
 import com.seibel.distanthorizons.core.dataObjects.render.columnViews.IColumnDataView;
-import com.seibel.distanthorizons.core.pooling.PhantomArrayListParent;
+import com.seibel.distanthorizons.core.pooling.AbstractPhantomArrayList;
 import com.seibel.distanthorizons.core.pooling.PhantomArrayListPool;
 import com.seibel.distanthorizons.core.util.LodUtil.AssertFailureException;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
@@ -46,7 +46,7 @@ import it.unimi.dsi.fastutil.shorts.ShortArrays;
  *
  * @author Builderb0y
  */
-public class RenderDataPointReducingList extends PhantomArrayListParent
+public class RenderDataPointReducingList extends AbstractPhantomArrayList
 {
 
 	/**

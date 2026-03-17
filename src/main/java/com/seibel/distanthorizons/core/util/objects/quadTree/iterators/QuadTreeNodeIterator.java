@@ -21,6 +21,8 @@ package com.seibel.distanthorizons.core.util.objects.quadTree.iterators;
 
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
 import com.seibel.distanthorizons.core.util.objects.quadTree.QuadNode;
+import com.seibel.distanthorizons.core.util.objects.quadTree.QuadTree;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.function.Consumer;
@@ -36,31 +38,36 @@ public class QuadTreeNodeIterator<T> implements Iterator<QuadNode<T>>
 	private byte iteratorDetailLevel = 0;
 	
 	private final boolean onlyReturnLeafValues;
+	@Nullable
+	private final QuadTree.INodeIteratorStoppingFunc<T> stopIteratingFunc;
 	
 	
-	
-	public QuadTreeNodeIterator(QuadNode<T> rootNode, boolean onlyReturnLeafValues)
+	public QuadTreeNodeIterator(
+			QuadNode<T> rootNode, 
+			boolean onlyReturnLeafValues, @Nullable QuadTree.INodeIteratorStoppingFunc<T> stopIteratingFunc)
 	{
 		this.onlyReturnLeafValues = onlyReturnLeafValues;
+		this.stopIteratingFunc = stopIteratingFunc;
 		// TODO the naming conversion for these are flipped in a lot of places
-		this.highestDetailLevel = rootNode.minimumDetailLevel;
+		this.highestDetailLevel = rootNode.parentTreeLeafDetailLevel;
 		this.iteratorDetailLevel = DhSectionPos.getDetailLevel(rootNode.sectionPos);
 		
 		
 		if (!this.onlyReturnLeafValues)
 		{
+			// return all nodes
+			
 			// set the start for the iterator
 			this.validNodesForDetailLevel.add(rootNode);
 			this.iteratorNodeQueue.add(rootNode);
 		}
 		else
 		{
-			// fully populate the iterator
+			// return leaf nodes
 			
+			// fully populate the iterator
 			// this isn't the best way to do this, especially for large trees, 
 			// but it is simple and functions well enough for now
-			
-			
 			Queue<QuadNode<T>> parentNodeQueue = new ArrayDeque<>();
 			parentNodeQueue.add(rootNode);
 			
@@ -68,6 +75,13 @@ public class QuadTreeNodeIterator<T> implements Iterator<QuadNode<T>>
 			while (parentNodeQueue.peek() != null)
 			{
 				QuadNode<T> parentNode = parentNodeQueue.poll();
+				
+				if (stopIteratingFunc != null
+					&& stopIteratingFunc.iteratorShouldStop(parentNode))
+				{
+					continue;
+				}
+				
 				for (int i = 0; i < 4; i++)
 				{
 					QuadNode<T> childNode = parentNode.getChildByIndex(i);
@@ -112,7 +126,8 @@ public class QuadTreeNodeIterator<T> implements Iterator<QuadNode<T>>
 		
 		// the iterator queue should be fully populated for leaf values,
 		// for all values, it needs to be populated for each detail level
-		if (this.iteratorNodeQueue.size() == 0 && !onlyReturnLeafValues)
+		if (this.iteratorNodeQueue.size() == 0 
+			&& !this.onlyReturnLeafValues)
 		{
 			// populate the next detail level list
 			
@@ -123,17 +138,32 @@ public class QuadTreeNodeIterator<T> implements Iterator<QuadNode<T>>
 				Queue<QuadNode<T>> parentNodes = new LinkedList<>(this.validNodesForDetailLevel);
 				this.validNodesForDetailLevel.clear();
 				
-				// populate the list of nodes for this level
+				// populate the list of nodes for this detail level
 				for (QuadNode<T> parentNode : parentNodes)
 				{
+					if (this.stopIteratingFunc != null
+						&& this.stopIteratingFunc.iteratorShouldStop(parentNode))
+					{
+						continue;
+					}
+					
+					
 					for (int i = 0; i < 4; i++)
 					{
 						QuadNode<T> childNode = parentNode.getChildByIndex(i);
-						if (childNode != null)
+						if (childNode == null)
 						{
-							this.iteratorNodeQueue.add(childNode);
-							this.validNodesForDetailLevel.add(childNode);
+							continue;
 						}
+						
+						if (this.stopIteratingFunc != null
+							&& this.stopIteratingFunc.iteratorShouldStop(childNode))
+						{
+							continue;
+						}
+						
+						this.iteratorNodeQueue.add(childNode);
+						this.validNodesForDetailLevel.add(childNode);
 					}
 				}
 			}
