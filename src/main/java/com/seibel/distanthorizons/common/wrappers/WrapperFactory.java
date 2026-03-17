@@ -126,17 +126,32 @@ public class WrapperFactory implements IWrapperFactory
 	@Override
 	public IBlockStateWrapper getAirBlockStateWrapper() { return BlockStateWrapper.AIR; }
 
-	@Override
+    @Override
+    public IBlockStateWrapper getWaterBlockStateWrapper(ILevelWrapper levelWrapper) {
+        return null;
+    }
+
+    @Override
 	public ObjectOpenHashSet<IBlockStateWrapper> getRendererIgnoredBlocks(ILevelWrapper levelWrapper) { return BlockStateWrapper.getRendererIgnoredBlocks(levelWrapper); }
 	@Override
 	public ObjectOpenHashSet<IBlockStateWrapper> getRendererIgnoredCaveBlocks(ILevelWrapper levelWrapper) { return BlockStateWrapper.getRendererIgnoredCaveBlocks(levelWrapper); }
 
-	@Override
-	public void resetRendererIgnoredCaveBlocks() { BlockStateWrapper.clearRendererIgnoredCaveBlocks(); }
-	@Override
-	public void resetRendererIgnoredBlocksSet() { BlockStateWrapper.clearRendererIgnoredBlocks(); }
+    @Override
+    public ObjectOpenHashSet<IBlockStateWrapper> getWaterSubsurfaceReplacementBlocks(ILevelWrapper levelWrapper) {
+        return new ObjectOpenHashSet<>();
+    }
 
+    @Override
+    public ObjectOpenHashSet<IBlockStateWrapper> getWaterSurfaceReplacementBlocks(ILevelWrapper levelWrapper) {
+        return new ObjectOpenHashSet<>();
+    }
 
+    @Override
+    public void resetCachedIgnoredBlocksSets() {
+        BlockStateWrapper.clearRendererIgnoredCaveBlocks();
+        BlockStateWrapper.clearRendererIgnoredBlocks();
+    }
+    
 	/**
 	 * Note: when this is updated for different MC versions, make sure you also update the documentation in
 	 * {@link IDhApiWorldGenerator#generateChunks} and the type list in {@link WrapperFactory#createChunkWrapperErrorMessage}. <br><br>

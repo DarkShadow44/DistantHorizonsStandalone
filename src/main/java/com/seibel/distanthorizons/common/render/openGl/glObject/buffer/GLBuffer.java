@@ -136,7 +136,7 @@ public class GLBuffer implements AutoCloseable
             return;
         }
 
-        RenderThreadTaskHandler.INSTANCE.queueRunningOnRenderThread(() -> { destroyBufferIdNow(this.id); });
+        RenderThreadTaskHandler.INSTANCE.queueRunningOnRenderThread("GLBuffer destroyAsync", () -> { destroyBufferIdNow(this.id); });
 
         this.id = 0;
         this.size = 0;
@@ -354,7 +354,7 @@ public class GLBuffer implements AutoCloseable
                     if (PHANTOM_TO_BUFFER_ID.containsKey(phantomRef))
                     {
                         int id = PHANTOM_TO_BUFFER_ID.get(phantomRef);
-                        RenderThreadTaskHandler.INSTANCE.queueRunningOnRenderThread(() -> { destroyBufferIdNow(id); });
+                        RenderThreadTaskHandler.INSTANCE.queueRunningOnRenderThread("GLBuffer phantom destroy", () -> { destroyBufferIdNow(id); });
                         //LOGGER.warn("Buffer Phantom collected, ID: ["+id+"]");
                     }
 

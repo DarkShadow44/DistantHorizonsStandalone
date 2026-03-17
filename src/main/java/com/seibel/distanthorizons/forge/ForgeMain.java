@@ -23,6 +23,7 @@ import com.seibel.distanthorizons.common.AbstractModInitializer;
 import com.seibel.distanthorizons.core.api.internal.ServerApi;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.render.renderer.AbstractDebugWireframeRenderer;
+import com.seibel.distanthorizons.core.render.renderer.StubDebugWireframeRenderer;
 import com.seibel.distanthorizons.core.wrapperInterfaces.misc.IPluginPacketSender;
 import com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor.IModChecker;
 import com.seibel.distanthorizons.coreapi.ModInfo;
