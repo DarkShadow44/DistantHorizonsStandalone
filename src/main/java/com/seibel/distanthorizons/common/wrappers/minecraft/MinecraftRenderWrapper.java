@@ -23,6 +23,7 @@ import java.awt.Color;
 import java.lang.invoke.MethodHandles;
 
 import com.seibel.distanthorizons.api.enums.config.EDhApiLodShading;
+import com.seibel.distanthorizons.core.api.internal.ClientApi;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.enums.EDhDirection;
 import com.seibel.distanthorizons.core.logging.DhLogger;
@@ -94,6 +95,11 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
     }
 
     @Override
+    public float getPartialTickTime() {
+        return ((IMixinMinecraft) Minecraft.getMinecraft()).getTimer().renderPartialTicks;
+    }
+
+    @Override
     public Vec3d getCameraExactPosition()
     {
         float frameTime = ((IMixinMinecraft)Minecraft.getMinecraft()).getTimer().renderPartialTicks;
@@ -148,6 +154,11 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
             return MC.gameSettings.renderDistanceChunks - 2;
         }
         return MC.gameSettings.renderDistanceChunks;
+    }
+
+    @Override
+    public int getFrameLimit() {
+        return MC.gameSettings.limitFramerate;
     }
 
     @Override

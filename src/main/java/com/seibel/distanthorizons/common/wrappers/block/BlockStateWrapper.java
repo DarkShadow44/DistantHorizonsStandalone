@@ -34,6 +34,7 @@ import cpw.mods.fml.common.registry.GameData;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMaps;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockBeacon;
 import net.minecraft.block.BlockGrass;
@@ -44,6 +45,7 @@ import org.apache.logging.log4j.Logger;
 import java.awt.*;
 import java.io.IOException;
 import java.util.*;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.jetbrains.annotations.Nullable;
@@ -56,6 +58,14 @@ public class BlockStateWrapper implements IBlockStateWrapper
     public static final String STATE_STRING_SEPARATOR = "_STATE_";
 
 
+    static final List<String> BEACON_BASE_BLOCK_NAME_LIST = Arrays.asList(
+        "iron_block",
+        "gold_block",
+        "diamond_block",
+        "emerald_block",
+        "netherite_block"
+    );
+
     // must be defined before AIR, otherwise a null pointer will be thrown
     private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 
@@ -67,8 +77,8 @@ public class BlockStateWrapper implements IBlockStateWrapper
 
     public static final String DIRT_RESOURCE_LOCATION_STRING = "minecraft:dirt";
 
-    public static HashSet<IBlockStateWrapper> rendererIgnoredBlocks = null;
-    public static HashSet<IBlockStateWrapper> rendererIgnoredCaveBlocks = null;
+    public static ObjectOpenHashSet<IBlockStateWrapper> rendererIgnoredBlocks = null;
+    public static ObjectOpenHashSet<IBlockStateWrapper> rendererIgnoredCaveBlocks = null;
 
     /** keep track of broken blocks so we don't log every time */
     private static final HashSet<String> BROKEN_RESOURCE_LOCATIONS = new HashSet<>();
@@ -142,9 +152,9 @@ public class BlockStateWrapper implements IBlockStateWrapper
         // beacon blocks
         String lowercaseSerial = this.serialString.toLowerCase();
         boolean isBeaconBaseBlock = false;
-        for (int i = 0; i < LodUtil.BEACON_BASE_BLOCK_NAME_LIST.size(); i++)
+        for (int i = 0; i < BEACON_BASE_BLOCK_NAME_LIST.size(); i++)
         {
-            String baseBlockName = LodUtil.BEACON_BASE_BLOCK_NAME_LIST.get(i);
+            String baseBlockName = BEACON_BASE_BLOCK_NAME_LIST.get(i);
             if (lowercaseSerial.contains(baseBlockName))
             {
                 isBeaconBaseBlock = true;
@@ -196,7 +206,7 @@ public class BlockStateWrapper implements IBlockStateWrapper
      * Requires a {@link ILevelWrapper} since {@link BlockStateWrapper#deserialize(String,ILevelWrapper)} also requires one.
      * This way the method won't accidentally be called before the deserialization can be completed.
      */
-    public static HashSet<IBlockStateWrapper> getRendererIgnoredBlocks(ILevelWrapper levelWrapper)
+    public static ObjectOpenHashSet<IBlockStateWrapper> getRendererIgnoredBlocks(ILevelWrapper levelWrapper)
     {
         // use the cached version if possible
         if (rendererIgnoredBlocks != null)
@@ -213,7 +223,7 @@ public class BlockStateWrapper implements IBlockStateWrapper
      * Requires a {@link ILevelWrapper} since {@link BlockStateWrapper#deserialize(String,ILevelWrapper)} also requires one.
      * This way the method won't accidentally be called before the deserialization can be completed.
      */
-    public static HashSet<IBlockStateWrapper> getRendererIgnoredCaveBlocks(ILevelWrapper levelWrapper)
+    public static ObjectOpenHashSet<IBlockStateWrapper> getRendererIgnoredCaveBlocks(ILevelWrapper levelWrapper)
     {
         // use the cached version if possible
         if (rendererIgnoredCaveBlocks != null)
@@ -234,7 +244,7 @@ public class BlockStateWrapper implements IBlockStateWrapper
 
     // lod builder helpers //
 
-    private static HashSet<IBlockStateWrapper> getBlockWrappers(ConfigEntry<String> config, HashSet<String> baseResourceLocations, ILevelWrapper levelWrapper)
+    private static ObjectOpenHashSet<IBlockStateWrapper> getBlockWrappers(ConfigEntry<String> config, HashSet<String> baseResourceLocations, ILevelWrapper levelWrapper)
     {
         // get the base blocks
         HashSet<String> blockStringList = new HashSet<>();
@@ -252,10 +262,10 @@ public class BlockStateWrapper implements IBlockStateWrapper
 
         return getBlockWrappers(blockStringList, levelWrapper);
     }
-    private static HashSet<IBlockStateWrapper> getBlockWrappers(HashSet<String> blockResourceLocationSet, ILevelWrapper levelWrapper)
+    private static ObjectOpenHashSet<IBlockStateWrapper> getBlockWrappers(HashSet<String> blockResourceLocationSet, ILevelWrapper levelWrapper)
     {
         // deserialize each of the given resource locations
-        HashSet<IBlockStateWrapper> blockStateWrappers = new HashSet<>();
+        ObjectOpenHashSet<IBlockStateWrapper> blockStateWrappers = new ObjectOpenHashSet<>();
         for (String blockResourceLocation : blockResourceLocationSet)
         {
             try

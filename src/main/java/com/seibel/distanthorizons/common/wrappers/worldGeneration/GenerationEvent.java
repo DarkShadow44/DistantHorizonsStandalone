@@ -167,7 +167,6 @@ public final class GenerationEvent
     public boolean terminate()
     {
         LOGGER.info("======================DUMPING ALL THREADS FOR WORLD GEN=======================");
-        ThreadPoolUtil.WORLD_GEN_THREAD_FACTORY.dumpAllThreadStacks();
         this.future.cancel(true);
         return this.future.isCancelled();
     }

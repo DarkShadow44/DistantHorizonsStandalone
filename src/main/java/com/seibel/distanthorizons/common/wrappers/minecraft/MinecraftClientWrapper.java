@@ -221,6 +221,11 @@ public class MinecraftClientWrapper implements IMinecraftClientWrapper, IMinecra
         // TODO
     }
 
+    @Override
+    public void disableFabulousTransparency() {
+        // TODO
+    }
+
     /**
      * Crashes Minecraft, displaying the given errorMessage <br> <br>
      * In the following format: <br>
@@ -234,6 +239,11 @@ public class MinecraftClientWrapper implements IMinecraftClientWrapper, IMinecra
     {
         LOGGER.error(ModInfo.READABLE_NAME + " had the following error: [" + errorMessage + "]. Crashing Minecraft...", exception);
        throw new RuntimeException(exception); // TODO
+    }
+
+    @Override
+    public void executeOnRenderThread(Runnable runnable) {
+        MINECRAFT.func_152344_a(runnable);
     }
 
     @Override

@@ -196,7 +196,8 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
     @SubscribeEvent
     public void clickBlockEvent(PlayerInteractEvent event)
     {
-        if (SharedApi.isChunkAtBlockPosAlreadyUpdating(event.x, event.z))
+        ILevelWrapper wrappedLevel = ProxyUtil.getLevelWrapper(event.world);
+        if (SharedApi.isChunkAtBlockPosAlreadyUpdating(wrappedLevel, event.x, event.z))
         {
             return;
         }
@@ -207,8 +208,7 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
         schedule(false, () ->
         {
             Chunk chunk = level.getChunkFromBlockCoords(event.x, event.z);
-            ILevelWrapper wrappedLevel = ProxyUtil.getLevelWrapper(level);
-            SharedApi.INSTANCE.chunkBlockChangedEvent(new ChunkWrapper(chunk, wrappedLevel, false), wrappedLevel);
+            SharedApi.INSTANCE.applyChunkUpdate(new ChunkWrapper(chunk, wrappedLevel, false), wrappedLevel);
             return null;
         });
     }
