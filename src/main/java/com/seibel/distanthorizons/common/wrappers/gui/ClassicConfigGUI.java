@@ -2,8 +2,10 @@ package com.seibel.distanthorizons.common.wrappers.gui;
 
 import com.mojang.realmsclient.gui.ChatFormatting;
 import com.seibel.distanthorizons.api.enums.config.DisallowSelectingViaConfigGui;
-import com.seibel.distanthorizons.core.config.ConfigBase;
+import com.seibel.distanthorizons.core.config.ConfigHandler;
+import com.seibel.distanthorizons.core.config.gui.IConfigGuiInfo;
 import com.seibel.distanthorizons.core.config.types.*;
+import com.seibel.distanthorizons.core.config.types.enums.EConfigValidity;
 import com.seibel.distanthorizons.core.jar.updater.SelfUpdater;
 import com.seibel.distanthorizons.core.util.AnnotationUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.config.IConfigGui;
@@ -69,7 +71,7 @@ public class ClassicConfigGUI {
     /**
      * The terribly coded old stuff
      */
-    public static class EntryInfo {
+    public static class EntryInfo implements IConfigGuiInfo {
         Object widget;
         Map.Entry<GuiTextField, String> error;
         String tempValue;
@@ -80,7 +82,7 @@ public class ClassicConfigGUI {
     /**
      * creates a text field
      */
-    private static void textField(AbstractConfigType info, Function<String, Number> func, Pattern pattern, boolean cast) {
+    private static void textField(AbstractConfigBase info, Function<String, Number> func, Pattern pattern, boolean cast) {
         ((EntryInfo) info.guiValue).widget = (BiFunction<GuiTextField, GuiButton, Predicate<String>>) (editBox, button) -> stringValue ->
         {
             boolean isNumber = (pattern != null);
@@ -100,32 +102,32 @@ public class ClassicConfigGUI {
                     value = null;
                 }
 
-                byte isValid = ((ConfigEntry) info).isValid(value);
-                switch (isValid) {
-                    case 0:
+                EConfigValidity validity = ((ConfigEntry) info).getValidity(value);
+                switch (validity) {
+                    case VALID:
                         ((EntryInfo) info.guiValue).error = null;
                         break;
-                    case -1:
+                    case NUMBER_TOO_LOW:
                         ((EntryInfo) info.guiValue).error = new AbstractMap.SimpleEntry<>(editBox, TextOrTranslatable("§cMinimum length is " + ((ConfigEntry) info).getMin()));
                         break;
-                    case 1:
+                    case NUMBER_TOO_HIGH:
                         ((EntryInfo) info.guiValue).error = new AbstractMap.SimpleEntry<>(editBox, TextOrTranslatable("§cMaximum length is " + ((ConfigEntry) info).getMax()));
                         break;
-                    case 2:
+                    case INVALID:
                         ((EntryInfo) info.guiValue).error = new AbstractMap.SimpleEntry<>(editBox, TextOrTranslatable("§cValue is invalid"));
                         break;
                 }
             }
 
             ((EntryInfo) info.guiValue).tempValue = stringValue;
-            editBox.setTextColor(((ConfigEntry) info).isValid(value) == 0 ? 0xFFFFFFFF : 0xFFFF7777); // white and red
+            editBox.setTextColor(((ConfigEntry) info).getValidity(value) == EConfigValidity.VALID ? 0xFFFFFFFF : 0xFFFF7777); // white and red
 //            button.active = entries.stream().allMatch(e -> e.inLimits);
 
 
             if (info.getType() == String.class
                 || info.getType() == List.class) {
                 ((ConfigEntry) info).uiSetWithoutSaving(stringValue);
-            } else if (((ConfigEntry) info).isValid(value) == 0) {
+            } else if (((ConfigEntry) info).getValidity(value) == EConfigValidity.VALID) {
                 if (!cast) {
                     ((ConfigEntry) info).uiSetWithoutSaving(value);
                 } else {
@@ -144,15 +146,15 @@ public class ClassicConfigGUI {
     /**
      * if you want to get this config gui's screen call this
      */
-    public static GuiScreen getScreen(ConfigBase configBase, GuiScreen parent, String category) {
-        return new ConfigScreen(configBase, parent, category);
+    public static GuiScreen getScreen(ConfigHandler configHandler, GuiScreen parent, String category) {
+        return new ConfigScreen(configHandler, parent, category);
     }
 
     /**
      * Pain
      */
     private static class ConfigScreen extends DhScreen {
-        protected ConfigScreen(ConfigBase configBase, GuiScreen parent, String category) {
+        protected ConfigScreen(ConfigHandler configBase, GuiScreen parent, String category) {
             super(Translatable(
                 StatCollector.canTranslate(ModInfo.ID + ".config" + (category.isEmpty() ? "." + category : "") + ".title") ?
                     ModInfo.ID + ".config.title" :
@@ -164,7 +166,7 @@ public class ClassicConfigGUI {
             this.translationPrefix = ModInfo.ID + ".config.";
         }
 
-        private final ConfigBase configBase;
+        private final ConfigHandler configBase;
 
         private final String translationPrefix;
         private final GuiScreen parent;
@@ -231,7 +233,7 @@ public class ClassicConfigGUI {
          */
         @Override
         public void onGuiClosed() {
-            ConfigBase.INSTANCE.configFileHandler.saveToFile();
+            ConfigHandler.INSTANCE.configFileHandler.saveToFile();
             //Minecraft.getMinecraft().displayGuiScreen(this.parent);
 
             CONFIG_CORE_INTERFACE.onScreenChangeListenerList.forEach((listener) -> listener.run());
@@ -241,7 +243,7 @@ public class ClassicConfigGUI {
         public void initGui() {
             super.initGui();
             if (!reload) {
-                ConfigBase.INSTANCE.configFileHandler.loadFromFile();
+                ConfigHandler.INSTANCE.configFileHandler.loadFromFile();
             }
 
             /*
@@ -278,11 +280,11 @@ public class ClassicConfigGUI {
                 150, 20,
                 button ->
                 {
-                    ConfigBase.INSTANCE.configFileHandler.loadFromFile();
+                    ConfigHandler.INSTANCE.configFileHandler.loadFromFile();
                     Minecraft.getMinecraft().displayGuiScreen(parent);
                 }));
             doneButton = addBtn(MakeBtn(Translatable("distanthorizons.general.done"), this.width / 2 + 4, this.height - 28, 150, 20, (button) -> {
-                ConfigBase.INSTANCE.configFileHandler.saveToFile();
+                ConfigHandler.INSTANCE.configFileHandler.saveToFile();
                 Minecraft.getMinecraft().displayGuiScreen(parent);
             }));
 
@@ -295,7 +297,7 @@ public class ClassicConfigGUI {
 
 			this.addWidget(this.list);*/
 
-            for (AbstractConfigType info : ConfigBase.INSTANCE.entries) {
+            for (AbstractConfigBase info : ConfigHandler.INSTANCE.configBaseList) {
                 try {
                     if (info.getCategory().matches(category) && info.getAppearance().showInGui)
                         addMenuItem(info);
@@ -314,9 +316,9 @@ public class ClassicConfigGUI {
 
         }
 
-        private void addMenuItem(AbstractConfigType info) {
+        private void addMenuItem(AbstractConfigBase info) {
             initEntry(info, this.translationPrefix);
-            String name = Translatable(translationPrefix + info.getNameWCategory());
+            String name = Translatable(translationPrefix + info.getNameAndCategory());
 
 
             if (ConfigEntry.class.isAssignableFrom(info.getClass())) {
@@ -352,7 +354,7 @@ public class ClassicConfigGUI {
             }
             if (ConfigCategory.class.isAssignableFrom(info.getClass())) {
                 GuiButton widget = MakeBtn(name, this.width / 2 - 100, this.height - 28, 100 * 2, 20, (button -> {
-                    ConfigBase.INSTANCE.configFileHandler.saveToFile();
+                    ConfigHandler.INSTANCE.configFileHandler.saveToFile();
                     Minecraft.getMinecraft().displayGuiScreen(ClassicConfigGUI.getScreen(this.configBase, this, ((ConfigCategory) info).getDestination()));
                 }));
                 this.list.addButton(widget, null, null, null);
@@ -374,7 +376,7 @@ public class ClassicConfigGUI {
                 return;
             }
 
-            LOGGER.warn("Config [" + info.getNameWCategory() + "] failed to show. Please try something like changing its type.");
+            LOGGER.warn("Config [" + info.getNameAndCategory() + "] failed to show. Please try something like changing its type.");
         }
 
         @Override
@@ -396,7 +398,7 @@ public class ClassicConfigGUI {
 
 
             // Render the tooltip only if it can find a tooltip in the language file
-            for (AbstractConfigType info : ConfigBase.INSTANCE.entries) {
+            for (AbstractConfigBase info : ConfigHandler.INSTANCE.configBaseList) {
                 if (info.getCategory().matches(category) && info.getAppearance().showInGui) {
                     if (list.getHoveredButton(mouseX, mouseY).isPresent()) {
                         Gui buttonWidget = list.getHoveredButton(mouseX, mouseY).get();
@@ -406,7 +408,7 @@ public class ClassicConfigGUI {
                         }
 
                         // A quick fix for tooltips on linked entries
-                        AbstractConfigType newInfo = ConfigUiLinkedEntry.class.isAssignableFrom(info.getClass()) ?
+                        AbstractConfigBase newInfo = ConfigUiLinkedEntry.class.isAssignableFrom(info.getClass()) ?
                             ((ConfigUiLinkedEntry) info).get() :
                             info;
 
@@ -430,7 +432,7 @@ public class ClassicConfigGUI {
     }
 
 
-    private static void initEntry(AbstractConfigType configType, String translationPrefix) {
+    private static void initEntry(AbstractConfigBase configType, String translationPrefix) {
         configType.guiValue = new EntryInfo();
         Class<?> fieldClass = configType.getType();
 

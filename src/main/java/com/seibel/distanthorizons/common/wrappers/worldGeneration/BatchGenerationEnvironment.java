@@ -21,6 +21,9 @@
 package com.seibel.distanthorizons.common.wrappers.worldGeneration;
 
 import com.google.common.collect.ImmutableMap;
+import com.seibel.distanthorizons.core.logging.DhLogger;
+import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
+import com.seibel.distanthorizons.core.wrapperInterfaces.worldGeneration.IBatchGeneratorEnvironmentWrapper;
 import copy.com.gtnewhorizons.angelica.compat.mojang.ChunkPos;
 import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiDistantGeneratorMode;
 import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiWorldGenerationStep;
@@ -29,16 +32,12 @@ import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.generation.DhLightingEngine;
 import com.seibel.distanthorizons.core.level.IDhServerLevel;
 import com.seibel.distanthorizons.core.config.Config;
-import com.seibel.distanthorizons.core.logging.ConfigBasedLogger;
-import com.seibel.distanthorizons.core.logging.ConfigBasedSpamLogger;
 import com.seibel.distanthorizons.core.pos.DhChunkPos;
-import com.seibel.distanthorizons.core.util.objects.EventTimer;
 import com.seibel.distanthorizons.core.util.LodUtil;
 import com.seibel.distanthorizons.core.util.gridList.ArrayGridList;
 import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.ChunkLightStorage;
 import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.IChunkWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor.IModChecker;
-import com.seibel.distanthorizons.core.wrapperInterfaces.worldGeneration.AbstractBatchGenerationEnvironmentWrapper;
 import com.seibel.distanthorizons.common.wrappers.chunk.ChunkWrapper;
 
 import java.io.IOException;
@@ -79,17 +78,18 @@ Carver Step:             0.000009923s
 Feature Step:            0.389072425s
 Lod Generation:          0.269023348s
 */
-public final class BatchGenerationEnvironment extends AbstractBatchGenerationEnvironmentWrapper
+public final class BatchGenerationEnvironment implements IBatchGeneratorEnvironmentWrapper
 {
-    public static final ConfigBasedSpamLogger PREF_LOGGER =
-        new ConfigBasedSpamLogger(LogManager.getLogger("LodWorldGen"),
-            () -> Config.Common.Logging.logWorldGenPerformance.get(), 1);
-    public static final ConfigBasedLogger EVENT_LOGGER =
-        new ConfigBasedLogger(LogManager.getLogger("LodWorldGen"),
-            () -> Config.Common.Logging.logWorldGenEvent.get());
-    public static final ConfigBasedLogger LOAD_LOGGER =
-        new ConfigBasedLogger(LogManager.getLogger("LodWorldGen"),
-            () -> Config.Common.Logging.logWorldGenLoadEvent.get());
+    public static final DhLogger PREF_LOGGER =
+        new DhLoggerBuilder().name("LodWorldGen-Perf")
+            .fileLevelConfig(Config.Common.Logging.logWorldGenEventToFile)
+            .maxCountPerSecond(1).build();
+    public static final DhLogger EVENT_LOGGER =
+        new DhLoggerBuilder().name("LodWorldGen-Event")
+            .fileLevelConfig(Config.Common.Logging.logWorldGenEventToFile).build();
+    public static final DhLogger LOAD_LOGGER =
+        new DhLoggerBuilder().name("LodWorldGen-Load")
+            .fileLevelConfig(Config.Common.Logging.logWorldGenChunkLoadEventToFile).build();
 
     private static final IModChecker MOD_CHECKER = SingletonInjector.INSTANCE.get(IModChecker.class);
 
@@ -285,6 +285,13 @@ public final class BatchGenerationEnvironment extends AbstractBatchGenerationEnv
         }
     }
 
+    @Override
+    public CompletableFuture<Void> queueGenEvent(int minX, int minZ, int genSize, EDhApiDistantGeneratorMode generatorMode, EDhApiWorldGenerationStep targetStep, ExecutorService worldGeneratorThreadPool, Consumer<IChunkWrapper> resultConsumer) {
+        // TODO: Check event overlap via e.tooClose()
+        GenerationEvent genEvent = GenerationEvent.startEvent(new DhChunkPos(minX, minZ), genSize, this, generatorMode, targetStep, resultConsumer, worldGeneratorThreadPool);
+        this.generationEventList.add(genEvent);
+        return genEvent.future;
+    }
 
 
     //==================//
@@ -1017,7 +1024,7 @@ public final class BatchGenerationEnvironment extends AbstractBatchGenerationEnv
     public int getEventCount() { return this.generationEventList.size(); }
 
     @Override
-    public void stop()
+    public void close()
     {
         EVENT_LOGGER.info(BatchGenerationEnvironment.class.getSimpleName() + " shutting down...");
 
@@ -1046,20 +1053,6 @@ public final class BatchGenerationEnvironment extends AbstractBatchGenerationEnv
         }*/
 
         EVENT_LOGGER.info(BatchGenerationEnvironment.class.getSimpleName() + " shutdown complete.");
-    }
-
-    @Override
-    public CompletableFuture<Void> generateChunks(
-        int minX, int minZ, int genSize,
-        EDhApiDistantGeneratorMode generatorMode, EDhApiWorldGenerationStep targetStep,
-        ExecutorService worldGeneratorThreadPool, Consumer<IChunkWrapper> resultConsumer)
-    {
-        //System.out.println("GenerationEvent: "+genSize+"@"+minX+","+minZ+" "+targetStep);
-
-        // TODO: Check event overlap via e.tooClose()
-        GenerationEvent genEvent = GenerationEvent.startEvent(new DhChunkPos(minX, minZ), genSize, this, generatorMode, targetStep, resultConsumer, worldGeneratorThreadPool);
-        this.generationEventList.add(genEvent);
-        return genEvent.future;
     }
 
 

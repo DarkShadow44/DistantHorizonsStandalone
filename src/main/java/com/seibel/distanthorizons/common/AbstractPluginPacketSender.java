@@ -1,7 +1,8 @@
 package com.seibel.distanthorizons.common;
 
 import com.seibel.distanthorizons.core.config.Config;
-import com.seibel.distanthorizons.core.logging.ConfigBasedLogger;
+import com.seibel.distanthorizons.core.logging.DhLogger;
+import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.network.event.internal.IncompatibleMessageInternalEvent;
 import com.seibel.distanthorizons.core.network.event.internal.ProtocolErrorInternalEvent;
 import com.seibel.distanthorizons.core.network.messages.MessageRegistry;
@@ -20,8 +21,8 @@ import java.util.Objects;
 
 public abstract class AbstractPluginPacketSender implements IPluginPacketSender
 {
-	private static final ConfigBasedLogger LOGGER = new ConfigBasedLogger(LogManager.getLogger(),
-			() -> Config.Common.Logging.logNetworkEvent.get());
+    private static final DhLogger LOGGER = new DhLoggerBuilder().name("PluginPacketSender")
+			.fileLevelConfig(Config.Common.Logging.logNetworkEventToFile).build();
 
 	public static final String WRAPPER_PACKET_RESOURCE = "channelDH";
 
