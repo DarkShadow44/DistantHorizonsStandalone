@@ -73,21 +73,6 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 	private final FullDataSourceProviderV2 fullDataSourceProvider;
 	private final LodQuadTree quadTree;
 	
-	/** 
-	 * contains the list of beacons currently being rendered in this section 
-	 * if this list is modified the {@link LodRenderSection#beaconRenderHandler} should be updated to match.
-	 */
-	private final ArrayList<BeaconBeamDTO> activeBeaconList = new ArrayList<>();
-	@Nullable
-	public final BeaconRenderHandler beaconRenderHandler;
-	@Nullable
-	public final BeaconBeamRepo beaconBeamRepo;
-	/** 
-	 * locking is necessary to prevent some weird threading issues 
-	 * causing beacons to appear/disappear at the wrong times.
-	 */
-	private final ReentrantLock beaconRenderHandlingLock = new ReentrantLock(); 
-	
 	
 	private boolean renderingEnabled = false;
 	private boolean beaconsRendering = false;
@@ -133,9 +118,6 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 		this.level = level;
 		this.levelWrapper = level.getClientLevelWrapper();
 		this.fullDataSourceProvider = fullDataSourceProvider;
-		
-		this.beaconRenderHandler = this.quadTree.beaconRenderHandler;
-		this.beaconBeamRepo = this.level.getBeaconBeamRepo();
 		
 		DEBUG_RENDERER.register(this, Config.Client.Advanced.Debugging.DebugWireframe.showRenderSectionStatus);
 	}
@@ -188,8 +170,6 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 			{
 				try
 				{
-					this.refreshActiveBeaconList();
-					
 					LodQuadBuilder lodQuadBuilder = this.getAndBuildRenderData();
 					if (lodQuadBuilder == null)
 					{
@@ -376,130 +356,6 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 	
 	
 	
-	//=================//
-	// beacon handling //
-	//=================//
-	//region beacon handling
-	
-	/** gets the active beacon list and stops/starts beacon rendering as necessary */
-	private void refreshActiveBeaconList()
-	{
-		try
-		{
-			this.beaconRenderHandlingLock.lock();
-			
-			// do nothing if beacon rendering or repos are unavailable
-			if (this.beaconBeamRepo == null
-				|| this.beaconRenderHandler == null)
-			{
-				return;
-			}
-			
-			
-			
-			// Synchronized to prevent two threads for accessing the array at once
-			synchronized (this.activeBeaconList)
-			{
-				ArrayList<BeaconBeamDTO> activeBeacons = this.beaconBeamRepo.getAllBeamsForPos(this.pos);
-				
-				// swap old and new active beacon list
-				this.activeBeaconList.clear();
-				this.activeBeaconList.addAll(activeBeacons);
-				
-				// if the beacons are currently rendering, 
-				// re-create them so we can see any potential changes
-				if (this.beaconsRendering)
-				{
-					this.tryDisableBeacons();
-					this.tryEnableBeacons();
-				}
-			}
-		}
-		finally
-		{
-			this.beaconRenderHandlingLock.unlock();
-		}
-	}
-	
-	public void tryDisableBeacons()
-	{
-		try
-		{
-			this.beaconRenderHandlingLock.lock();
-			
-			
-			// do nothing if beacon rendering is unavailable
-			if (this.beaconRenderHandler == null)
-			{
-				return;
-			}
-			
-			if (!this.beaconsRendering)
-			{
-				return;
-			}
-			this.beaconsRendering = false;
-			
-			
-			
-			if (Config.Client.Advanced.Debugging.DebugWireframe.showRenderSectionStatus.get())
-			{
-				// show that this position has just been disabled
-				DEBUG_RENDERER.makeParticle(
-					new AbstractDebugWireframeRenderer.BoxParticle(
-						new AbstractDebugWireframeRenderer.Box(this.pos, 128f, 156f, 0.09f, Color.CYAN.darker()),
-						0.2, 32f
-					)
-				);
-			}
-			
-			synchronized (this.activeBeaconList)
-			{
-				this.beaconRenderHandler.stopRenderingBeaconsInRange(this.pos);
-			}
-		}
-		finally
-		{
-			this.beaconRenderHandlingLock.unlock();
-		}
-	}
-	
-	public void tryEnableBeacons()
-	{
-		try
-		{
-			this.beaconRenderHandlingLock.lock();
-			
-			
-			// do nothing if beacon rendering is unavailable 
-			if (this.beaconRenderHandler == null)
-			{
-				return;
-			}
-			
-			if (this.beaconsRendering)
-			{
-				return;
-			}
-			this.beaconsRendering = true;
-			
-			
-			synchronized (this.activeBeaconList)
-			{
-				byte absoluteDetailLevel = (byte)(DhSectionPos.getDetailLevel(this.pos) - DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL);
-				this.beaconRenderHandler.startRenderingBeacons(this.activeBeaconList, absoluteDetailLevel);
-			}
-		}
-		finally
-		{
-			this.beaconRenderHandlingLock.unlock();
-		}
-	}
-	
-	//endregion beacon handling
-	
-	
-	
 	//==============//
 	// base methods //
 	//==============//
@@ -561,8 +417,6 @@ public class LodRenderSection implements IDebugRenderable, AutoCloseable
 			);
 		}
 		
-		
-		this.tryDisableBeacons();
 		
 		if (this.renderBufferContainer != null)
 		{

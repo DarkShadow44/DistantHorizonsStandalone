@@ -129,7 +129,7 @@ public class LodBufferContainer implements AutoCloseable
 		
 		
 		// upload on MC's render thread
-		RenderThreadTaskHandler.INSTANCE.queueRunningOnRenderThread(() ->
+		RenderThreadTaskHandler.INSTANCE.queueRunningOnRenderThread("LodBufferContainer Upload", () ->
 		{
 			try
 			{
@@ -291,7 +291,7 @@ public class LodBufferContainer implements AutoCloseable
 	{
 		this.buffersUploaded = false;
 		
-		RenderThreadTaskHandler.INSTANCE.queueRunningOnRenderThread(() -> 
+		RenderThreadTaskHandler.INSTANCE.queueRunningOnRenderThread("LodBufferContainer Close", () -> 
 		{
 			for (IVertexBufferWrapper buffer : this.vbos)
 			{

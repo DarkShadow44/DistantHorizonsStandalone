@@ -182,7 +182,6 @@ public class DhClientLevel extends AbstractDhLevel implements IDhClientLevel
 					{
 						try
 						{
-							// TODO this has a lock which can cause stuttering/lag issues
 							this.updateBeaconBeamsForSectionPos(dataSourceDto.pos, message.payload.beaconBeams);
 						}
 						catch (Exception e)

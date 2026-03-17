@@ -86,6 +86,17 @@ public class QuadNode<T>
 	
 	
 	
+	/** @return the number of non-null direct child nodes */
+	public int getDirectChildCount()
+	{
+		int count = 0;
+		if (this.nwChild != null) { count++; }
+		if (this.neChild != null) { count++; }
+		if (this.swChild != null) { count++; }
+		if (this.seChild != null) { count++; }
+		return count;
+	}
+	
 	/**
 	 * Use {@link QuadNode#getNonNullChildCount()} if you want the number of non-null child values.
 	 *

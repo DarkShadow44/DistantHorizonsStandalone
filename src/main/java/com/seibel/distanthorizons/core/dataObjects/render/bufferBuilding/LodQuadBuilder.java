@@ -57,8 +57,9 @@ public class LodQuadBuilder
 	private final EDhApiDebugRendering debugRenderingMode;
 	private final EDhApiGrassSideRendering grassSideRenderingMode;
 	
-	/** the number of bytes for */
-	public static final int BYTES_PER_VERTEX = 14;
+	/** the number of bytes for a single vertex */
+	public static final int BYTES_PER_VERTEX = 16;
+	public static final int BYTES_PER_QUAD = BYTES_PER_VERTEX * 4;
 	
 	public static final int[][][] DIRECTION_VERTEX_IBO_QUAD = new int[][][]
 	///region
@@ -308,7 +309,8 @@ public class LodQuadBuilder
 			{
 				// if this is the first iteration or the buffer is full, 
 				// create a new buffer
-				if (buffer == null || !buffer.hasRemaining())
+				if (buffer == null 
+					|| buffer.remaining() < BYTES_PER_QUAD)
 				{
 					buffer = MemoryUtil.memAlloc(getMaxBufferByteSize());
 					byteBufferList.add(buffer);
@@ -498,16 +500,15 @@ public class LodQuadBuilder
 			return maxBufferByteSize;
 		}
 		
-		// number of bytes a single quad takes
-		int QUADS_BYTE_SIZE = BYTES_PER_VERTEX * 4;
 		// how big a single VBO can be in bytes
-		int MAX_VBO_BYTE_SIZE = 10 * 1024 * 1024; // 10 MB
-		int MAX_QUADS_PER_BUFFER = MAX_VBO_BYTE_SIZE / QUADS_BYTE_SIZE;
-		int FULL_SIZED_BUFFER = MAX_QUADS_PER_BUFFER * QUADS_BYTE_SIZE;
+		int maxVboByteSize = 10 * 1024 * 1024; // 10 MB
+		int maxQuadsPerBuffer = maxVboByteSize / BYTES_PER_QUAD;
+		// integer truncation to remove decimal component
+		int fullSizedBuffer = maxQuadsPerBuffer * BYTES_PER_QUAD;
 		
-		maxBufferByteSize = FULL_SIZED_BUFFER;
+		maxBufferByteSize = fullSizedBuffer;
 		
-		return FULL_SIZED_BUFFER;
+		return fullSizedBuffer;
 	}
 	
 	///endregion

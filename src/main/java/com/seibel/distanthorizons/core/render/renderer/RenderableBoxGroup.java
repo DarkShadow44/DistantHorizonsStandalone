@@ -56,7 +56,7 @@ public class RenderableBoxGroup
 	
 	public boolean active = true;
 	public boolean ssaoEnabled = true;
-	private boolean vertexDataDirty = true;
+	private boolean vertexDataDirty = false;
 	
 	public byte skyLight = LodUtil.MAX_MC_LIGHT;
 	public byte blockLight = LodUtil.MIN_MC_LIGHT;
@@ -198,6 +198,7 @@ public class RenderableBoxGroup
 		if (this.altVertexBufferContainer.getState() == IDhGenericObjectVertexBufferContainer.EState.READY_TO_UPLOAD)
 		{
 			this.altVertexBufferContainer.uploadDataToGpu();
+			this.altVertexBufferContainer.setState(IDhGenericObjectVertexBufferContainer.EState.RENDER);
 			
 			// swap VBO references for rendering
 			IDhGenericObjectVertexBufferContainer temp = this.vertexBufferContainer;
@@ -248,6 +249,7 @@ public class RenderableBoxGroup
 				try
 				{
 					this.altVertexBufferContainer.updateVertexData(this.uploadBoxList);
+					this.altVertexBufferContainer.setState(IDhGenericObjectVertexBufferContainer.EState.READY_TO_UPLOAD);
 				}
 				catch (Exception e)
 				{
@@ -346,7 +348,7 @@ public class RenderableBoxGroup
 	@Override 
 	public void close()
 	{
-		RenderThreadTaskHandler.INSTANCE.queueRunningOnRenderThread(() ->
+		RenderThreadTaskHandler.INSTANCE.queueRunningOnRenderThread("RenderBoxGroup Close", () ->
 		{
 			this.vertexBufferContainer.close();
 			this.altVertexBufferContainer.close();

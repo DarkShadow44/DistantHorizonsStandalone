@@ -65,6 +65,7 @@ public interface IWrapperFactory extends IDhApiWrapperFactory, IBindable
 	
 	IBlockStateWrapper deserializeBlockStateWrapper(String str, ILevelWrapper levelWrapper) throws IOException;
 	IBlockStateWrapper getAirBlockStateWrapper();
+	IBlockStateWrapper getWaterBlockStateWrapper(ILevelWrapper levelWrapper);
 	default IBlockStateWrapper deserializeBlockStateWrapperOrGetDefault(String str, ILevelWrapper levelWrapper)
 	{
 		IBlockStateWrapper blockState;
@@ -92,10 +93,10 @@ public interface IWrapperFactory extends IDhApiWrapperFactory, IBindable
 	 */
 	ObjectOpenHashSet<IBlockStateWrapper> getRendererIgnoredCaveBlocks(ILevelWrapper levelWrapper);
 	
+	ObjectOpenHashSet<IBlockStateWrapper> getWaterSubsurfaceReplacementBlocks(ILevelWrapper levelWrapper);
+	ObjectOpenHashSet<IBlockStateWrapper> getWaterSurfaceReplacementBlocks(ILevelWrapper levelWrapper);
 	/** clears the cached values */
-	void resetRendererIgnoredCaveBlocks();
-	/** clears the cached values */
-	void resetRendererIgnoredBlocksSet();
+	void resetCachedIgnoredBlocksSets();
 	
 	
 	/**

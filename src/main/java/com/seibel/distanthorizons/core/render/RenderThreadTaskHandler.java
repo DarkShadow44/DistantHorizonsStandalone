@@ -7,6 +7,8 @@ import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.util.TimerUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
+import com.seibel.distanthorizons.coreapi.ModInfo;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Timer;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -47,23 +49,17 @@ public class RenderThreadTaskHandler
 	//==============//
 	//region
 	
-	public void queueRunningOnRenderThread(Runnable renderCall)
+	public void queueRunningOnRenderThread(String name, Runnable renderCall)
 	{
-		StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
-		RENDER_THREAD_RUNNABLE_QUEUE.add(() -> this.createRenderThreadRunnable(renderCall, stackTrace));
-	}
-	private void createRenderThreadRunnable(Runnable renderCall, StackTraceElement[] stackTrace)
-	{
-		try
+		// don't get the stacktrace on release to reduce GC pressure
+		StackTraceElement[] stackTrace = null;
+		if (ModInfo.IS_DEV_BUILD)
 		{
-			renderCall.run();
+			stackTrace = Thread.currentThread().getStackTrace();
 		}
-		catch (Exception e)
-		{
-			RuntimeException error = new RuntimeException("Uncaught Exception during GL call execution:", e);
-			error.setStackTrace(stackTrace);
-			LOGGER.error("[" + Thread.currentThread().getName() + "] ran into an unexpected error running a GL call, Error: ["+ e.getMessage() +"].", error);
-		}
+		
+		QueuedRunnable runnable = new QueuedRunnable(name, renderCall, stackTrace);
+		RENDER_THREAD_RUNNABLE_QUEUE.add(runnable);
 	}
 	
 	//endregion
@@ -91,6 +87,7 @@ public class RenderThreadTaskHandler
 		
 		// https://fpstoms.com/
 		int msPerFrame = 1000 / frameLimit;
+		msPerFrame /= 2; // divide the time in half so we can only impact half of the framerate at worst
 		this.runRenderThreadTasks(msPerFrame);
 	}
 	private void runRenderThreadTasks(long msMaxRunTime)
@@ -123,7 +120,7 @@ public class RenderThreadTaskHandler
 	{
 		long nowMs = System.currentTimeMillis();
 		long msSinceLast = nowMs - this.msSinceGlTasksRun;
-		if (msSinceLast > MS_BEFORE_RUN_CLEANUP_TIMER)
+		if (msSinceLast < MS_BEFORE_RUN_CLEANUP_TIMER)
 		{
 			return;
 		}
@@ -136,7 +133,82 @@ public class RenderThreadTaskHandler
 		MC.executeOnRenderThread(() -> this.runRenderThreadTasks(1_000));
 	}
 	
-	//end region
+	//endregion
+	
+	
+	
+	//================//
+	// helper classes //
+	//================//
+	//region
+	
+	private static class QueuedRunnable implements Runnable
+	{
+		/** used to easily track what's being done on the render thread */
+		public final String name;
+		public final Runnable renderCall;
+		/** will be null on release build to reduce GC pressure */
+		@Nullable
+		public final StackTraceElement[] stackTrace;
+		
+		
+		
+		//=============//
+		// constructor //
+		//=============//
+		//region
+		
+		public QueuedRunnable(String name, Runnable renderCall, @Nullable StackTraceElement[] stackTrace)
+		{
+			this.name = name;
+			this.renderCall = renderCall;
+			this.stackTrace = stackTrace;
+		}
+		
+		//endregion
+		
+		
+		
+		//=========//
+		// running //
+		//=========//
+		//region
+		
+		@Override
+		public void run()
+		{
+			try
+			{
+				this.renderCall.run();
+			}
+			catch (Exception e)
+			{
+				RuntimeException error = new RuntimeException("Uncaught Exception during GL call execution. StackTrace: ["+(this.stackTrace != null ? "Present" : "Missing")+"] Error: ["+e.getMessage()+"]", e);
+				if (this.stackTrace != null)
+				{
+					error.setStackTrace(this.stackTrace);
+				}
+				LOGGER.error("[" + Thread.currentThread().getName() + "] ran into an unexpected error running a GL call, Error: ["+ e.getMessage() +"].", error);
+			}
+		}
+		
+		//endregion
+		
+		
+		
+		//================//
+		// base overrides //
+		//================//
+		//region
+		
+		@Override
+		public String toString() { return this.name; }
+		
+		//endregion
+		
+	}
+	
+	//endregion
 	
 	
 	

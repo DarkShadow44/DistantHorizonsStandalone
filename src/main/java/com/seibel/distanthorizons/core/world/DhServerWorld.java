@@ -21,13 +21,20 @@ package com.seibel.distanthorizons.core.world;
 
 import com.seibel.distanthorizons.core.api.internal.ClientApi;
 import com.seibel.distanthorizons.core.enums.MinecraftTextFormat;
+import com.seibel.distanthorizons.core.generation.PregenManager;
 import com.seibel.distanthorizons.core.level.DhServerLevel;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IServerLevelWrapper;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.concurrent.CompletableFuture;
+
 public class DhServerWorld extends AbstractDhServerWorld<DhServerLevel>
 {
+	private final PregenManager pregenManager = new PregenManager();
+	public PregenManager getPregenManager() { return this.pregenManager; }
+	
+	
 	//==============//
 	// constructors //
 	//==============//
@@ -86,6 +93,19 @@ public class DhServerWorld extends AbstractDhServerWorld<DhServerLevel>
 			wrapper.onUnload();
 			this.dhLevelByLevelWrapper.remove(wrapper).close();
 		}
+	}
+	
+	@Override
+	public void close()
+	{
+		CompletableFuture<Void> runningPregen = this.pregenManager.getRunningPregen();
+		if (runningPregen != null)
+		{
+			LOGGER.info("Stopping the running pregen task.");
+			runningPregen.cancel(true);
+		}
+		
+		super.close();
 	}
 	
 }

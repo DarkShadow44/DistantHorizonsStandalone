@@ -745,57 +745,56 @@ public class Config
 									+ "Disable this if shadows render incorrectly.")
 							.build();
 					
+					public static ConfigUISpacer ignoreCsvStartSpacer = new ConfigUISpacer.Builder().build();
+					
 					public static ConfigEntry<String> ignoredRenderBlockCsv = new ConfigEntry.Builder<String>()
 							.set("minecraft:barrier,minecraft:structure_void,minecraft:light,minecraft:tripwire,minecraft:brown_mushroom")
 							.setAppearance(EConfigEntryAppearance.ALL)
+						.addListener(RenderBlockCacheCsvHandler.INSTANCE)
 							.comment(""
 									+ "A comma separated list of block resource locations that won't be rendered by DH. \n"
 									+ "Air is always included in this list. \n"
-									+ "Requires a restart to change. \n"
 									+ "\n"
 									+ "Note:\n"
 									+ "If you see gaps, or holes you may have to change\n"
 									+ "worldCompression to ["+EDhApiWorldCompressionMode.MERGE_SAME_BLOCKS+"] and re-generate the LODs.\n"
-									+ "Black spots may happen occur to block lighting being zero for covered blocks.\n"
 									+ "")
 							.build();
 					
 					public static ConfigEntry<String> ignoredRenderCaveBlockCsv = new ConfigEntry.Builder<String>()
-							.set("") // config is empty since most cave blocks will be automatically ignored due to being: transparent, non-solid, or liquids, but new blocks can be added here if needed
+							.set("")
 							.setAppearance(EConfigEntryAppearance.ALL)
+						.addListener(RenderBlockCacheCsvHandler.INSTANCE)
 							.comment(""
 									+ "A comma separated list of block resource locations that shouldn't be rendered \n"
 									+ "if they are in a 0 sky light underground area. \n"
 									+ "Air is always included in this list. \n"
-									+ "Requires a restart to change. \n"
+									+ "\n"
+									+ "Defaults to an empty list since most cave blocks will be automatically ignored due to being: \n"
+									+ "transparent, non-solid, or liquids, but new blocks can be added here if needed.\n"
 									+ "")
 							.build();
 					
+					public static ConfigEntry<String> waterSubSurfaceBlockReplacementCsv = new ConfigEntry.Builder<String>()
+						.set("minecraft:kelp,minecraft:tall_seagrass,minecraft:seagrass")
+						.setAppearance(EConfigEntryAppearance.ALL)
+						.addListener(RenderBlockCacheCsvHandler.INSTANCE)
+						.comment(""
+							+ "A comma separated list of block resource locations that will be replaced by water \n"
+							+ "if they're visible on the water's surface. \n"
+							+ "")
+						.build();
 					
-					static
-					{
-						ignoredRenderBlockCsv.addListener(new ConfigChangeListener<String>(ignoredRenderBlockCsv,
-								(blockCsv) ->
-								{
-									IWrapperFactory wrapperFactory = SingletonInjector.INSTANCE.get(IWrapperFactory.class);
-									if (wrapperFactory != null)
-									{
-										wrapperFactory.resetRendererIgnoredBlocksSet();
-										DhApi.Delayed.renderProxy.clearRenderDataCache();
-									}
-								}));
-						
-						ignoredRenderCaveBlockCsv.addListener(new ConfigChangeListener<String>(ignoredRenderCaveBlockCsv,
-								(blockCsv) ->
-								{
-									IWrapperFactory wrapperFactory = SingletonInjector.INSTANCE.get(IWrapperFactory.class);
-									if (wrapperFactory != null)
-									{
-										wrapperFactory.resetRendererIgnoredCaveBlocks();
-										DhApi.Delayed.renderProxy.clearRenderDataCache();
-									}
-								}));
-					}
+					public static ConfigEntry<String> waterSurfaceBlockReplacementCsv = new ConfigEntry.Builder<String>()
+						.set("minecraft:lily_pad")
+						.setAppearance(EConfigEntryAppearance.ALL)
+						.addListener(RenderBlockCacheCsvHandler.INSTANCE)
+						.comment(""
+							+ "A comma separated list of block resource locations that will be removed \n"
+							+ "when on top of water. \n"
+							+ "")
+						.build();
+					
 				}
 				
 				public static class Experimental
@@ -834,8 +833,7 @@ public class Config
 						.build();
 					
 					public static ConfigEntry<EDhApiRenderApi> renderingApi = new ConfigEntry.Builder<EDhApiRenderApi>()
-						.set(EDhApiRenderApi.AUTO)
-						.setAppearance(EConfigEntryAppearance.ONLY_IN_FILE) // very experimental option and only supported 
+						.set(EDhApiRenderApi.AUTO) 
 						.comment(""
 							+ "Requires a restart to change. \n"
 							+ " \n"

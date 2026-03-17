@@ -72,6 +72,20 @@ public class BeaconBeamDTO implements IBaseDTO<DhBlockPos>, INetworkObject
 	@Override
 	public DhBlockPos getKey() { return this.blockPos; }
 	
+	@Override 
+	public boolean equals(Object obj)
+	{
+		if (obj == null
+			|| obj.getClass() != this.getClass())
+		{
+			return false;
+		}
+		
+		BeaconBeamDTO that = (BeaconBeamDTO)obj;
+		return this.blockPos.equals(that.blockPos) 
+			&& this.color.equals(that.color);
+	}
+	
 	@Override
 	public void close()
 	{ /* no closing needed */ }

@@ -11,6 +11,9 @@ distanthorizons.general.next=Next
 distanthorizons.general.done=Done
 distanthorizons.general.cancel=Cancel
 distanthorizons.general.reset=Reset
+distanthorizons.general.spacer=
+distanthorizons.general.apiOverride=API LOCK
+distanthorizons.general.disabledByApi.@tooltip=This option is controlled by another mod via DH's API \nso it cannot be changed via the UI or config file.
 
 
 
@@ -76,8 +79,6 @@ distanthorizons.config.client.advanced.graphics.quality.blocksToIgnore=Blocks To
 distanthorizons.config.client.advanced.graphics.quality.blocksToIgnore.@tooltip=Defines the types of blocks to ignore when generating LODs.
 distanthorizons.config.client.advanced.graphics.quality.tintWithAvoidedBlocks=Tint With Avoided Blocks
 distanthorizons.config.client.advanced.graphics.quality.tintWithAvoidedBlocks.@tooltip=§4Note: makes snow, carpet, and trapdoors look really bad§r\nShould the blocks underneath avoided blocks gain the color of the avoided block?\n§6True:§r a red flower on grass will tint the grass below it red\n§6False:§r skipped blocks will not change color of surface below them
-distanthorizons.config.client.advanced.graphics.quality.lodBias=LOD Bias §6(Affects vanilla terrain)§r
-distanthorizons.config.client.advanced.graphics.quality.lodBias.@tooltip=Sets vanilla's lod bias value\nPlease press F3+T to reload your texture packs when changing this value to apply it.
 distanthorizons.config.client.advanced.graphics.quality.lodShading=LOD Shading
 distanthorizons.config.client.advanced.graphics.quality.lodShading.@tooltip=Defines how LODs should be shaded. \nCan be used to improve shader compatibility.
 distanthorizons.config.client.advanced.graphics.quality.grassSideRendering=Grass Side Rendering
@@ -86,6 +87,8 @@ distanthorizons.config.client.advanced.graphics.quality.ditherDhFade=Fade Nearby
 distanthorizons.config.client.advanced.graphics.quality.ditherDhFade.@tooltip=If true LODs will fade away as you get closer to them. \nIf false LODs will cut off abruptly at a set distance from the camera. \nThis setting is affected by the vanilla overdraw prevention config.
 distanthorizons.config.client.advanced.graphics.quality.vanillaFadeMode=Vanilla Fade Mode
 distanthorizons.config.client.advanced.graphics.quality.vanillaFadeMode.@tooltip=How should vanilla Minecraft fade into Distant Horizons LODs? \n\nNONE: Fastest, there will be a pronounced border between DH and MC rendering. \nSINGLE_PASS: Fades after MC's transparent pass, opaque blocks underwater won't be faded. \nDOUBLE_PASS: Slowest, fades after both MC's opaque and transparent passes, provides the smoothest transition.
+distanthorizons.config.client.advanced.graphics.quality.dhFadeFarClipPlane=Fade Before Far Clip Plane
+distanthorizons.config.client.advanced.graphics.quality.dhFadeFarClipPlane.@tooltip=Should DH fade out before reaching the far plane? \nThis is helpful to prevent DH clouds from cutting off in the distance.
 distanthorizons.config.client.advanced.graphics.quality.brightnessMultiplier=Brightness Multiplier
 distanthorizons.config.client.advanced.graphics.quality.brightnessMultiplier.@tooltip=How bright LOD colors are.\n\n0 = black \n1 = normal \n2 = near white
 distanthorizons.config.client.advanced.graphics.quality.saturationMultiplier=Saturation Multiplier
@@ -111,6 +114,8 @@ distanthorizons.config.client.advanced.graphics.ssao.minLight=Min Light
 distanthorizons.config.client.advanced.graphics.ssao.minLight.@tooltip=Determines how dark the occlusion shadows can be. \n0 = totally black at the corners \n1 = no shadow
 distanthorizons.config.client.advanced.graphics.ssao.blurRadius=Blur Radius
 distanthorizons.config.client.advanced.graphics.ssao.blurRadius.@tooltip=The radius, measured in pixels, that blurring is calculated for the SSAO. \nHigher numbers will reduce banding at the cost of GPU performance.
+distanthorizons.config.client.advanced.graphics.ssao.fadeDistanceInBlocks=Fade Distance
+distanthorizons.config.client.advanced.graphics.ssao.fadeDistanceInBlocks.@tooltip=The distance in blocks from the camera where the SSAO will fade out to. \nThis is done to prevent banding and noise at extreme distances.
 
 
 
@@ -120,9 +125,15 @@ distanthorizons.config.client.advanced.graphics.genericRendering.enableGenericRe
 distanthorizons.config.client.advanced.graphics.genericRendering.enableBeaconRendering=Enable Beacon Rendering
 distanthorizons.config.client.advanced.graphics.genericRendering.beaconRenderHeight=Beacon render height
 distanthorizons.config.client.advanced.graphics.genericRendering.beaconRenderHeight.@tooltip=Sets the maximum height at which beacons will render. \nThis will only affect new beacons coming into LOD render distance. \nBeacons currently visible in LOD chunks will not be affected.
+distanthorizons.config.client.advanced.graphics.genericRendering.expandDistantBeacons=Expand Distant Beacons
+distanthorizons.config.client.advanced.graphics.genericRendering.expandDistantBeacons.@tooltip=If true LOD beacon beams will be rendered wider at extreme distances, \nmaking them easier to see. \nIf false all LOD beacon beams will only ever be 1 block wide.
 distanthorizons.config.client.advanced.graphics.genericRendering.enableBeaconRendering.@tooltip=If true LOD beacon beams will be rendered.
 distanthorizons.config.client.advanced.graphics.genericRendering.enableCloudRendering=Enable Cloud Rendering
 distanthorizons.config.client.advanced.graphics.genericRendering.enableCloudRendering.@tooltip=If true LOD clouds will be rendered.
+distanthorizons.config.client.advanced.graphics.genericRendering.dimensionEnabledCloudRenderingCsv=Enable Cloud Rendering
+distanthorizons.config.client.advanced.graphics.genericRendering.dimensionEnabledCloudRenderingCsv.@tooltip=A comma separated separated list of dimension resource locations where DH clouds will render. \n\nExample: \"minecraft:overworld,minecraft:the_end\" \n\nChanges will only be seen when the world is re-loaded.
+distanthorizons.config.client.advanced.graphics.genericRendering.enableUnexploredFogRendering=Enable Unexplored Fog Rendering
+distanthorizons.config.client.advanced.graphics.genericRendering.enableUnexploredFogRendering.@tooltip=If true unexplored/ungenerated LODs will be rendered as large dark gray boxes.
 distanthorizons.config.client.advanced.graphics.genericRendering.enableInstancedRendering=Enable Instanced Rendering
 distanthorizons.config.client.advanced.graphics.genericRendering.enableInstancedRendering.@tooltip=Can be disabled to use much slower but more compatible direct rendering. \nDisabling this can be used to fix some crashes on Mac.
 
@@ -147,7 +158,7 @@ distanthorizons.config.client.advanced.graphics.fog.farFogMin.@tooltip=What is t
 distanthorizons.config.client.advanced.graphics.fog.farFogMax=Fog Max
 distanthorizons.config.client.advanced.graphics.fog.farFogMax.@tooltip=What is the maximum fog thickness? \n\n  '0.0': No fog at all.\n  '1.0': Fully fog color.\n
 distanthorizons.config.client.advanced.graphics.fog.farFogFalloff=Fog Falloff
-distanthorizons.config.client.advanced.graphics.fog.farFogFalloff.@tooltip=How should the fog thickness should be calculated? \n\nLINEAR: Linear based on distance (will ignore 'density')\nEXPONENTIAL: 1/(e^(distance*density)) \nEXPONENTIAL_SQUARED: 1/(e^((distance*density)^2) \n
+distanthorizons.config.client.advanced.graphics.fog.farFogFalloff.@tooltip=How should the fog thickness should be calculated? \n\nLINEAR: Linear based on distance (will ignore 'density')\nEXPONENTIAL: 1/(e^(distance*density)) \nEXPONENTIAL_SQUARED: 1/(e^((distance*density)^2)) \n
 distanthorizons.config.client.advanced.graphics.fog.farFogDensity=Fog Density
 distanthorizons.config.client.advanced.graphics.fog.farFogDensity.@tooltip=What is the fog's density? 
 
@@ -170,7 +181,7 @@ distanthorizons.config.client.advanced.graphics.fog.heightFog.heightFogMin.@tool
 distanthorizons.config.client.advanced.graphics.fog.heightFog.heightFogMax=Height Fog Max
 distanthorizons.config.client.advanced.graphics.fog.heightFog.heightFogMax.@tooltip=What is the maximum fog thickness? \n\n  '0.0': No fog at all.\n  '1.0': Fully fog color.\n
 distanthorizons.config.client.advanced.graphics.fog.heightFog.heightFogFalloff=Height Fog Falloff
-distanthorizons.config.client.advanced.graphics.fog.heightFog.heightFogFalloff.@tooltip=How should the height fog thickness should be calculated? \n\nLINEAR: Linear based on height (will ignore 'density')\nEXPONENTIAL: 1/(e^(height*density)) \nEXPONENTIAL_SQUARED: 1/(e^((height*density)^2) \n
+distanthorizons.config.client.advanced.graphics.fog.heightFog.heightFogFalloff.@tooltip=How should the height fog thickness should be calculated? \n\nLINEAR: Linear based on height (will ignore 'density')\nEXPONENTIAL: 1/(e^(height*density)) \nEXPONENTIAL_SQUARED: 1/(e^((height*density)^2)) \n
 distanthorizons.config.client.advanced.graphics.fog.heightFog.heightFogDensity=Height Fog Density
 distanthorizons.config.client.advanced.graphics.fog.heightFog.heightFogDensity.@tooltip=What is the height fog's density? 
 
@@ -192,7 +203,9 @@ distanthorizons.config.client.advanced.graphics.noiseTexture.noiseDropoff.@toolt
 distanthorizons.config.client.advanced.graphics.culling=Culling
 
 distanthorizons.config.client.advanced.graphics.culling.overdrawPrevention=Overdraw Prevention
-distanthorizons.config.client.advanced.graphics.culling.overdrawPrevention.@tooltip=Determines how far from the camera Distant Horizons will start rendering. \nMeasured as a percentage of the vanilla render distance.\n0 = Auto, overdraw will change based on the vanilla render distance.\n\nHigher values will prevent LODs from rendering behind vanilla blocks at a higher distance,\nbut may cause holes to appear in the LODs. \nHoles are most likely to appear when flying through unloaded terrain. \n\nIncreasing the vanilla render distance increases the effectiveness of this setting.
+distanthorizons.config.client.advanced.graphics.culling.overdrawPrevention.@tooltip=Determines how far from the camera Distant Horizons will start rendering. \nMeasured as a percentage of the vanilla render distance.\n-1 = Auto, overdraw will change based on the vanilla render distance.\n\nHigher values will prevent LODs from rendering behind vanilla blocks at a higher distance,\nbut may cause holes to appear in the LODs. \nHoles are most likely to appear when flying through unloaded terrain. \n\nIncreasing the vanilla render distance increases the effectiveness of this setting.
+distanthorizons.config.client.advanced.graphics.culling.reduceOverdrawWithFastMovement=Reduce Overdraw With Fast Movement
+distanthorizons.config.client.advanced.graphics.culling.reduceOverdrawWithFastMovement.@tooltip=If set to true the overdraw prevention radius will get closer \nto the camera when flying/moving quickly. \n\nThis helps reduce issues where Minecraft can't load or \ngenerate chunks fast enough to keep up with DH.
 distanthorizons.config.client.advanced.graphics.culling.enableCaveCulling=Cave Culling
 distanthorizons.config.client.advanced.graphics.culling.enableCaveCulling.@tooltip=If enabled caves will be culled \n\nAdditional Info: Currently this cull all faces \n with skylight value of 0 under the cave culling height in dimensions that \n do not have a ceiling. \n
 distanthorizons.config.client.advanced.graphics.culling.caveCullingHeight=Cave Culling Height
@@ -204,16 +217,27 @@ distanthorizons.config.client.advanced.graphics.culling.disableFrustumCulling.@t
 distanthorizons.config.client.advanced.graphics.culling.disableShadowPassFrustumCulling=Disable Shadow Pass Frustum Culling
 distanthorizons.config.client.advanced.graphics.culling.disableShadowPassFrustumCulling.@tooltip=Identical to the other frustum culling option except that it is \nonly used when a shader mod is present using the DH API \nand the shadow pass is being rendered. \n\nDisable this if shadows render incorrectly.
 distanthorizons.config.client.advanced.graphics.culling.ignoredRenderBlockCsv=Ignored Block CSV
-distanthorizons.config.client.advanced.graphics.culling.ignoredRenderBlockCsv.@tooltip=A comma separated list of block resource locations that won't be rendered by DH. \nNote: air is always included in this list.
+distanthorizons.config.client.advanced.graphics.culling.ignoredRenderBlockCsv.@tooltip=A comma separated list of block resource locations that won't be rendered by DH. \nAir is always included in this list. \n\nNote: \nIf you see gaps, or holes you may have to change \nworldCompression to [MERGE_SAME_BLOCKS] and re-generate the LODs.
 distanthorizons.config.client.advanced.graphics.culling.ignoredRenderCaveBlockCsv=Ignored Cave Block CSV
-distanthorizons.config.client.advanced.graphics.culling.ignoredRenderCaveBlockCsv.@tooltip=A comma separated list of block resource locations that shouldn't be rendered \nif they are in a 0 sky light underground area. \nNote: air is always included in this list.
+distanthorizons.config.client.advanced.graphics.culling.ignoredRenderCaveBlockCsv.@tooltip=A comma separated list of block resource locations that shouldn't be rendered \nif they are in a 0 sky light underground area. \nAir is always included in this list. \n\nDefaults to an empty list since most cave blocks will be automatically ignored due to being: \ntransparent, non-solid, or liquids, but new blocks can be added here if needed.
+distanthorizons.config.client.advanced.graphics.culling.waterSubSurfaceBlockReplacementCsv=Water Sub-Surface Replacement
+distanthorizons.config.client.advanced.graphics.culling.waterSubSurfaceBlockReplacementCsv.@tooltip=A comma separated list of block resource locations that will be replaced by water \nif they're visible on the water's surface.
+distanthorizons.config.client.advanced.graphics.culling.waterSurfaceBlockReplacementCsv=Water Surface Replacement
+distanthorizons.config.client.advanced.graphics.culling.waterSurfaceBlockReplacementCsv.@tooltip=A comma separated list of block resource locations that will be removed \nwhen on top of water.
+
+distanthorizons.config.client.advanced.graphics.overrideVanillaGraphicsSettings=Override Vanilla Settings
+distanthorizons.config.client.advanced.graphics.overrideVanillaGraphicsSettings.@tooltip=If true some vanilla graphics settings will be automatically changed \nduring DH setup to provide a better experience. \n\nIE disabling vanilla clouds (which render on top of DH LODs), \nand chunk fading (DH already fades MC chunks).
 
 
 
 distanthorizons.config.client.advanced.graphics.experimental=Experimental
 
-distanthorizons.config.client.advanced.graphics.experimental.earthCurveRatio=Earth Curve Ratio §6(EXPERIMENTAL)§r
+distanthorizons.config.client.advanced.graphics.experimental.earthCurveRatio=Earth Curve Ratio
 distanthorizons.config.client.advanced.graphics.experimental.earthCurveRatio.@tooltip=A value of 1 is equivalent to the curvature of Earth in real life. \nThe minimum accepted value is 50 and the maximum value is 5000. \nEverything between 1 and 49 will be rounded up to 50.
+distanthorizons.config.client.advanced.graphics.experimental.ignoredDimensionCsv=Ignored Dimension CSV
+distanthorizons.config.client.advanced.graphics.experimental.ignoredDimensionCsv.@tooltip=A comma separated list of dimension resource locations where DH won't render. Example: \"minecraft:the_nether,minecraft:the_end\" \n\nNote: \nSome DH settings will be disabled and/or changed to improve \nvisuals when DH rendering is disabled.
+distanthorizons.config.client.advanced.graphics.experimental.renderingApi=Rendering API
+distanthorizons.config.client.advanced.graphics.experimental.renderingApi.@tooltip=Requires a restart to change.
 
 
 
@@ -244,7 +268,7 @@ distanthorizons.config.client.advanced.debugging.lodOnlyMode.@tooltip=If enabled
 distanthorizons.config.client.advanced.debugging.renderWireframe=Render Wireframe
 distanthorizons.config.client.advanced.debugging.renderWireframe.@tooltip=If enabled the LODs will render as wireframe.
 distanthorizons.config.client.advanced.debugging.enableDebugKeybindings=Enable debug keybindings
-distanthorizons.config.client.advanced.debugging.enableDebugKeybindings.@tooltip=§6True:§r debug keybindings can be used to change the Debug mode in game.
+distanthorizons.config.client.advanced.debugging.enableDebugKeybindings.@tooltip=If true several keys can be used to toggle debug states. \nF6 - enable/disable LOD rendering \nF7 - enable/disable LOD only rendering \nF8 - cycle through the different debug rendering modes
 distanthorizons.config.client.advanced.debugging.enableWhiteWorld=Enable white world
 distanthorizons.config.client.advanced.debugging.enableWhiteWorld.@tooltip=If enabled, vertex color will not be passed.\nUseful for debugging shaders.
 distanthorizons.config.client.advanced.debugging.showOverlappingQuadErrors=Show overlapping quad errors
@@ -273,11 +297,15 @@ distanthorizons.config.client.advanced.debugging.debugWireframe.showFullDataUpda
 distanthorizons.config.client.advanced.debugging.openGl=Open GL
 
 distanthorizons.config.client.advanced.debugging.openGl.overrideVanillaGLLogger=Override Vanilla GL Logger
-distanthorizons.config.client.advanced.debugging.openGl.overrideVanillaGLLogger.@tooltip=Defines how OpenGL errors are handled. \n Requires rebooting Minecraft to apply. \nMay incorrectly catch OpenGL errors thrown by other mods.
+distanthorizons.config.client.advanced.debugging.openGl.overrideVanillaGLLogger.@tooltip=Defines how OpenGL errors are handled. \nRequires rebooting Minecraft to change. \nWill catch OpenGL errors thrown by other mods.
+distanthorizons.config.client.advanced.debugging.openGl.onlyLogGlErrorsOnce=Only Log GL Errors Once
+distanthorizons.config.client.advanced.debugging.openGl.onlyLogGlErrorsOnce.@tooltip=If true each Open GL error will only be logged once. \nTEnabling this may cause some error logs to be missed. \nDoes nothing if overrideVanillaGLLogger is set to false. \n\nGenerally this can be kept as 'true' to prevent log spam. \nHowever, Please set this to 'false' if a developer needs your log to debug a GL issue. \n
 distanthorizons.config.client.advanced.debugging.openGl.glErrorHandlingMode=OpenGL Error Handling Mode
 distanthorizons.config.client.advanced.debugging.openGl.glErrorHandlingMode.@tooltip=Defines how OpenGL errors are handled. \n Requires rebooting Minecraft to apply. \nMay incorrectly catch OpenGL errors thrown by other mods.
 distanthorizons.config.client.advanced.debugging.openGl.validateBufferIdsBeforeRendering=Validate Buffer IDs Before Rendering
 distanthorizons.config.client.advanced.debugging.openGl.validateBufferIdsBeforeRendering.@tooltip=Massively reduces FPS. \nShould only be used if mysterious EXCEPTION_ACCESS_VIOLATION crashes are happening in DH's rendering code and you're attempting to troubleshoot it.
+distanthorizons.config.client.advanced.debugging.openGl.glUploadMode=Uploade Mode
+distanthorizons.config.client.advanced.debugging.openGl.glUploadMode.@tooltip=Only for debugging
 
 
 
@@ -302,6 +330,7 @@ distanthorizons.config.client.advanced.debugging.f3Screen.showCombinedObjectPool
 distanthorizons.config.client.advanced.debugging.f3Screen.showSeparatedObjectPools=Show Separated Object Pools
 distanthorizons.config.client.advanced.debugging.f3Screen.showQueuedChunkUpdateCount=Show Queued Chunk Update Count
 distanthorizons.config.client.advanced.debugging.f3Screen.showLevelStatus=Show Level Status
+distanthorizons.config.client.advanced.debugging.f3Screen.onlyShowRenderingLevels=Only Show Rendering Levels
 
 
 
@@ -342,6 +371,8 @@ distanthorizons.config.common.worldGenerator.generationProgressDisplayIntervalIn
 distanthorizons.config.common.worldGenerator.generationProgressDisplayIntervalInSeconds.@tooltip=Determines how long between progress update displays.
 distanthorizons.config.common.worldGenerator.generationProgressDisableMessageDisplayTimeInSeconds=Seconds To Show Progress Hiding Instructions
 distanthorizons.config.common.worldGenerator.generationProgressDisableMessageDisplayTimeInSeconds.@tooltip=For how many seconds should instructions for disabling the distant generator progress be displayed? \nSetting this to 0 hides the instructional message so the world gen progress is shown immediately when it starts.
+distanthorizons.config.common.worldGenerator.generationProgressIncludeChunksPerSecond=Show Generation Speed in Chunks/Second
+distanthorizons.config.common.worldGenerator.generationProgressIncludeChunksPerSecond.@tooltip=When logging generation progress also include the rate at which chunks \nare being generated. \nThis can be useful for troubleshooting performance.
 
 
 distanthorizons.config.common.lodBuilding=Lod Building
@@ -374,18 +405,25 @@ distanthorizons.config.common.multiThreading=Multi-Threading
 distanthorizons.config.common.multiThreading.numberOfThreads=NO. of threads
 distanthorizons.config.common.multiThreading.numberOfThreads.@tooltip=How many threads DH will use.
 distanthorizons.config.common.multiThreading.threadRunTimeRatio=Runtime % for threads
+distanthorizons.config.common.multiThreading.threadPriority=Thread Priority
+distanthorizons.config.common.multiThreading.threadPriority.@tooltip=What Java thread priority should DH's primary thread pools run with?\n\nYou probably don't need to change this unless you are also \nrunning C2ME and are seeing thread starvation in either C2ME or DH.
 
 
 
 distanthorizons.config.common.logging=Logging
 distanthorizons.config.common.logging.@tooltip=Controls how logging should be handled.
 
-distanthorizons.config.common.logging.logWorldGenEvent=World Gen Events
-distanthorizons.config.common.logging.logWorldGenPerformance=World Gen Performance
-distanthorizons.config.common.logging.logWorldGenLoadEvent=World Gen Load Events
-distanthorizons.config.common.logging.logRendererBufferEvent=Renderer Buffer Events
-distanthorizons.config.common.logging.logRendererGLEvent=OpenGL Events
-distanthorizons.config.common.logging.logNetworkEvent=Network Events
+distanthorizons.config.common.logging.globalFileMaxLevel=Global File Max
+distanthorizons.config.common.logging.globalChatMaxLevel=Global Chat Max
+
+distanthorizons.config.common.logging.logWorldGenEventToFile=World Gen Events - File
+distanthorizons.config.common.logging.logWorldGenPerformanceToFile=World Gen Performance - File
+distanthorizons.config.common.logging.logWorldGenChunkLoadEventToFile=World Gen Load Events - File
+distanthorizons.config.common.logging.logRendererEventToFile=Renderer Events - File
+distanthorizons.config.common.logging.logRendererGLEventToFile=OpenGL Events - File
+distanthorizons.config.common.logging.logRendererGLEventToChat=OpenGL Events - Chat
+distanthorizons.config.common.logging.logNetworkEventToFile=Network Events - File
+distanthorizons.config.common.logging.logConnectionConfigChangesToFile=Network Connection Config Changes - File
 
 distanthorizons.config.common.logging.warning=Warnings
 distanthorizons.config.common.logging.warning.showLowMemoryWarningOnStartup=Show Low Memory Warning On Startup
@@ -394,7 +432,10 @@ distanthorizons.config.common.logging.warning.showPoolInsufficientMemoryWarning.
 distanthorizons.config.common.logging.warning.showHighVanillaRenderDistanceWarning=Show High Vanilla Render Distance Warning
 distanthorizons.config.common.logging.warning.showReplayWarningOnStartup=Show Replay Warning
 distanthorizons.config.common.logging.warning.showUpdateQueueOverloadedChatWarning=Show Update Queue Overloaded Warning
+distanthorizons.config.common.logging.warning.showSlowWorldGenSettingWarnings=Show Slow World Gen Warnings
 distanthorizons.config.common.logging.warning.showModCompatibilityWarningsOnStartup=Show Mod Compatibility Warnings
+distanthorizons.config.common.logging.warning.showGarbageCollectorWarning=Show Garbage Collector Warning
+distanthorizons.config.common.logging.warning.logGarbageCollectorWarning=Log Garbage Collector Warning
 
 
 
@@ -408,6 +449,9 @@ distanthorizons.config.server.sendLevelKeys.@tooltip=Makes the server send level
 
 distanthorizons.config.server.levelKeyPrefix=Level Key Prefix
 distanthorizons.config.server.levelKeyPrefix.@tooltip=Prefix of the level keys sent to the clients.\nIf the mod is running behind a proxy, each backend should use a unique value.\nIf this value is empty, level key will be based on the server's seed hash.
+
+distanthorizons.config.server.enableServerGeneration=Enable Server Generation
+distanthorizons.config.server.enableServerGeneration.@tooltip=When enabled, Distant Horizons will attempt to download missing LODs from the server.\n\nNote: the server must have Distant Generation enabled for it to work.
 
 distanthorizons.config.server.generationRequestRateLimit=Rate Limit for Generation Requests
 distanthorizons.config.server.generationRequestRateLimit.@tooltip=How many LOD generation requests per second should a client send?\nAlso limits the number of client requests allowed to stay in the server's queue.
@@ -430,8 +474,12 @@ distanthorizons.config.server.syncOnLoadRateLimit.@tooltip=How many LOD sync req
 distanthorizons.config.server.maxSyncOnLoadRequestDistance=Max Sync on Load Request Distance
 distanthorizons.config.server.maxSyncOnLoadRequestDistance.@tooltip=Defines the distance allowed to be synchronized around the player.\nShould be the same or larger than maxGenerationRequestDistance in most cases.
 
-distanthorizons.config.server.maxDataTransferSpeed=Maximum Data Transfer Speed, KB/s
-distanthorizons.config.server.maxDataTransferSpeed.@tooltip=Maximum speed for uploading LODs to the clients, in KB/s.\nValue of 0 disables the limit.
+distanthorizons.config.server.playerBandwidthLimit=Per-player Bandwidth Limit, KB/s
+distanthorizons.config.server.playerBandwidthLimit.@tooltip=Maximum per-player speed for uploading LODs to the clients, in KB/s.\nValue of 0 disables the limit.
+distanthorizons.config.server.globalBandwidthLimit=Global Bandwidth Limit, KB/s
+distanthorizons.config.server.globalBandwidthLimit.@tooltip=Maximum global speed for uploading LODs to the clients, in KB/s.\nValue of 0 disables the limit.
+distanthorizons.config.server.enableAdaptiveTransferSpeed=Enable Adaptive Transfer Speed
+distanthorizons.config.server.enableAdaptiveTransferSpeed.@tooltip=Enables adaptive transfer speed based on client performance.\nIf true, DH will automatically adjust transfer rate to minimize connection lag.\nIf false, transfer speed will remain fixed.
 
 
 distanthorizons.config.server.experimental=Experimental
@@ -525,13 +573,13 @@ distanthorizons.config.enum.EDhApiVanillaOverdraw.NEVER=Never
 distanthorizons.config.enum.EDhApiVanillaOverdraw.DYNAMIC=Dynamic
 distanthorizons.config.enum.EDhApiVanillaOverdraw.ALWAYS=Always
 
-distanthorizons.config.enum.EDhApiDistantGeneratorMode.NONE=Existing Only
-distanthorizons.config.enum.EDhApiDistantGeneratorMode.PRE_EXISTING_ONLY=Pre-Existing Chunks only
-distanthorizons.config.enum.EDhApiDistantGeneratorMode.BIOME_ONLY=Biome only
-distanthorizons.config.enum.EDhApiDistantGeneratorMode.BIOME_ONLY_SIMULATE_HEIGHT=Biome only simulate height
-distanthorizons.config.enum.EDhApiDistantGeneratorMode.SURFACE=Surface
-distanthorizons.config.enum.EDhApiDistantGeneratorMode.FEATURES=Features
-distanthorizons.config.enum.EDhApiDistantGeneratorMode.INTERNAL_SERVER=Internal Server
+distanthorizons.config.enum.EDhApiDistantGeneratorMode.NONE=1. Existing Only
+distanthorizons.config.enum.EDhApiDistantGeneratorMode.PRE_EXISTING_ONLY=2. Pre-Existing Chunks only
+distanthorizons.config.enum.EDhApiDistantGeneratorMode.BIOME_ONLY=3. Biome only
+distanthorizons.config.enum.EDhApiDistantGeneratorMode.BIOME_ONLY_SIMULATE_HEIGHT=4. Biome only simulate height
+distanthorizons.config.enum.EDhApiDistantGeneratorMode.SURFACE=5. Surface
+distanthorizons.config.enum.EDhApiDistantGeneratorMode.FEATURES=6. Features
+distanthorizons.config.enum.EDhApiDistantGeneratorMode.INTERNAL_SERVER=7. Full - Save Chunks
 
 distanthorizons.config.enum.EDhApiDistantGeneratorProgressDisplayLocation.OVERLAY=Overlay
 distanthorizons.config.enum.EDhApiDistantGeneratorProgressDisplayLocation.CHAT=Chat
@@ -539,8 +587,10 @@ distanthorizons.config.enum.EDhApiDistantGeneratorProgressDisplayLocation.LOG=Lo
 distanthorizons.config.enum.EDhApiDistantGeneratorProgressDisplayLocation.DISABLED=Disabled
 
 distanthorizons.config.enum.EDhApiDataCompressionMode.UNCOMPRESSED=Uncompressed
-distanthorizons.config.enum.EDhApiDataCompressionMode.LZ4=Fast/Big - LZ4
-distanthorizons.config.enum.EDhApiDataCompressionMode.LZMA2=Slow/Small - LZMA2
+distanthorizons.config.enum.EDhApiDataCompressionMode.LZ4=Fastest/Big - LZ4
+distanthorizons.config.enum.EDhApiDataCompressionMode.Z_STD_BLOCK=Fastest/Small - Z_STD - Block
+distanthorizons.config.enum.EDhApiDataCompressionMode.Z_STD_STREAM=Fast/Small - Z_STD - Stream
+distanthorizons.config.enum.EDhApiDataCompressionMode.LZMA2=Slow/Smallest - LZMA2
 
 distanthorizons.config.enum.EDhApiWorldCompressionMode.MERGE_SAME_BLOCKS=1. Merge Same Blocks
 distanthorizons.config.enum.EDhApiWorldCompressionMode.VISUALLY_EQUAL=2. Visually Equal
@@ -555,7 +605,7 @@ distanthorizons.config.enum.EDhApiServerFolderNameMode.NAME_IP_PORT=Name, IP, Po
 distanthorizons.config.enum.EDhApiServerFolderNameMode.NAME_IP_PORT_MC_VERSION=Name, IP, Port, MC version
 
 distanthorizons.config.enum.EDhApiRendererMode.DEFAULT=Default
-distanthorizons.config.enum.EDhApiRendererMode.DEBUG=Debug
+distanthorizons.config.enum.EDhApiRendererMode.DEBUG=Debug Triangle
 distanthorizons.config.enum.EDhApiRendererMode.DISABLED=Disabled
 
 distanthorizons.config.enum.EDhApiDebugRendering.OFF=Off
@@ -573,21 +623,16 @@ distanthorizons.config.enum.EDhApiGlProfileMode.CORE=Core
 distanthorizons.config.enum.EDhApiGlProfileMode.COMPAT=Compat
 distanthorizons.config.enum.EDhApiGlProfileMode.ANY=Any
 
-distanthorizons.config.enum.EDhApiLoggerMode.DISABLED=Disabled
-distanthorizons.config.enum.EDhApiLoggerMode.LOG_ALL_TO_FILE=File: All, Chat: Off
-distanthorizons.config.enum.EDhApiLoggerMode.LOG_ERROR_TO_CHAT=File: All, Chat: Error
-distanthorizons.config.enum.EDhApiLoggerMode.LOG_WARNING_TO_CHAT=File: All, Chat: Warning
-distanthorizons.config.enum.EDhApiLoggerMode.LOG_INFO_TO_CHAT=File: All, Chat: Info
-distanthorizons.config.enum.EDhApiLoggerMode.LOG_DEBUG_TO_CHAT=File: All, Chat: Debug
-distanthorizons.config.enum.EDhApiLoggerMode.LOG_ALL_TO_CHAT=File: All, Chat: All
-distanthorizons.config.enum.EDhApiLoggerMode.LOG_ERROR_TO_CHAT_AND_FILE=File: Error, Chat: Error
-distanthorizons.config.enum.EDhApiLoggerMode.LOG_WARNING_TO_CHAT_AND_FILE=File: Warning, Chat: Warning
-distanthorizons.config.enum.EDhApiLoggerMode.LOG_INFO_TO_CHAT_AND_FILE=File: Info, Chat: Info
-distanthorizons.config.enum.EDhApiLoggerMode.LOG_DEBUG_TO_CHAT_AND_FILE=File: Debug, Chat: Debug
-distanthorizons.config.enum.EDhApiLoggerMode.LOG_WARNING_TO_CHAT_AND_INFO_TO_FILE=File: Info, Chat: Warning
-distanthorizons.config.enum.EDhApiLoggerMode.LOG_ERROR_TO_CHAT_AND_INFO_TO_FILE=File: Info, Chat: Error
+distanthorizons.config.enum.EDhApiLoggerLevel.ALL=1. All
+distanthorizons.config.enum.EDhApiLoggerLevel.DEBUG=2. Debug
+distanthorizons.config.enum.EDhApiLoggerLevel.INFO=3. Info
+distanthorizons.config.enum.EDhApiLoggerLevel.WARN=4. Warn
+distanthorizons.config.enum.EDhApiLoggerLevel.ERROR=5. Error
+distanthorizons.config.enum.EDhApiLoggerLevel.DISABLED=6. Disabled
+
 
 distanthorizons.config.enum.EDhApiGpuUploadMethod.AUTO=Auto
+distanthorizons.config.enum.EDhApiGpuUploadMethod.NONE=None
 distanthorizons.config.enum.EDhApiGpuUploadMethod.BUFFER_STORAGE=Buffer storage
 distanthorizons.config.enum.EDhApiGpuUploadMethod.SUB_DATA=Sub data
 distanthorizons.config.enum.EDhApiGpuUploadMethod.BUFFER_MAPPING=Buffer mapping
@@ -604,3 +649,11 @@ distanthorizons.config.enum.EDhApiUpdateBranch.AUTO=Auto
 distanthorizons.config.enum.EDhApiGrassSideRendering.AS_GRASS=As Grass
 distanthorizons.config.enum.EDhApiGrassSideRendering.FADE_TO_DIRT=Fade To Dirt
 distanthorizons.config.enum.EDhApiGrassSideRendering.AS_DIRT=As Dirt
+
+distanthorizons.config.enum.EDhApiRenderApi.AUTO=Auto
+distanthorizons.config.enum.EDhApiRenderApi.OPEN_GL=OpenGL
+"distanthorizons.config.enum.EDhApiRenderApi.BLAZE_3D":"Blaze3D"
+
+
+
+}

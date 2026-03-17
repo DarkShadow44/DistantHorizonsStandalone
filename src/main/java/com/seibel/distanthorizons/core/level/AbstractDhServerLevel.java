@@ -98,7 +98,7 @@ public abstract class AbstractDhServerLevel extends AbstractDhLevel implements I
 	
 	@Override
 	public boolean shouldDoWorldGen()
-	{ return Config.Common.WorldGenerator.enableDistantGeneration.get() && !this.worldGenPlayerCenteringQueue.isEmpty(); }
+	{ return Config.Common.WorldGenerator.enableDistantGeneration.get(); }
 	
 	@Override
 	public DhBlockPos2D getTargetPosForGeneration()

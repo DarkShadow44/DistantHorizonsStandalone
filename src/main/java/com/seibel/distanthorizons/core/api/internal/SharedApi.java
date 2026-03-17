@@ -63,6 +63,7 @@ public class SharedApi
 	
 	@Nullable
 	private static AbstractDhWorld currentWorld;
+	private static final Object worldLockObject = new Object();
 	
 	
 	
@@ -87,46 +88,49 @@ public class SharedApi
 	
 	public static void setDhWorld(AbstractDhWorld newWorld)
 	{
-		AbstractDhWorld oldWorld = currentWorld;
-		if (oldWorld != null)
+		synchronized (worldLockObject)
 		{
-			oldWorld.close();
-		}
-		currentWorld = newWorld;
-		
-		// starting and stopping the DataRenderTransformer is necessary to prevent attempting to
-		// access the MC level at inappropriate times, which can cause exceptions
-		if (currentWorld != null)
-		{
-			ThreadPoolUtil.setupThreadPools();
-			
-			ApiEventInjector.INSTANCE.fireAllEvents(DhApiWorldLoadEvent.class, new DhApiWorldLoadEvent.EventParam());
-		}
-		else
-		{
-			ThreadPoolUtil.shutdownThreadPools();
-			
-			// delayed get because SharedApi will be created before the singleton has been bound 
-			AbstractDebugWireframeRenderer debugWireframeRenderer = SingletonInjector.INSTANCE.get(AbstractDebugWireframeRenderer.class);
-			debugWireframeRenderer.clearRenderables();
-			
-			if (MC_RENDER != null)
+			AbstractDhWorld oldWorld = currentWorld;
+			if (oldWorld != null)
 			{
-				MC_RENDER.clearTargetFrameBuffer();
+				oldWorld.close();
 			}
+			currentWorld = newWorld;
 			
-			// shouldn't be necessary, but if we missed closing one of the connections this should make sure they're all closed
-			AbstractDhRepo.closeAllConnections();
-			// needs to be closed on world shutdown to clear out un-processed chunks
-			WORLD_CHUNK_UPDATE_MANAGER.clear();
-			
-			// recommend that the garbage collector cleans up any objects from the old world and thread pools
-			System.gc();
-			
-			ApiEventInjector.INSTANCE.fireAllEvents(DhApiWorldUnloadEvent.class, new DhApiWorldUnloadEvent.EventParam());
-			
-			// fired after the unload event so API users can't change the read-only for any new worlds
-			DhApiWorldProxy.INSTANCE.setReadOnly(false, false);
+			// starting and stopping the DataRenderTransformer is necessary to prevent attempting to
+			// access the MC level at inappropriate times, which can cause exceptions
+			if (currentWorld != null)
+			{
+				ThreadPoolUtil.setupThreadPools();
+				
+				ApiEventInjector.INSTANCE.fireAllEvents(DhApiWorldLoadEvent.class, new DhApiWorldLoadEvent.EventParam());
+			}
+			else
+			{
+				ThreadPoolUtil.shutdownThreadPools();
+				
+				// delayed get because SharedApi will be created before the singleton has been bound 
+				AbstractDebugWireframeRenderer debugWireframeRenderer = SingletonInjector.INSTANCE.get(AbstractDebugWireframeRenderer.class);
+				debugWireframeRenderer.clearRenderables();
+				
+				if (MC_RENDER != null)
+				{
+					MC_RENDER.clearTargetFrameBuffer();
+				}
+				
+				// shouldn't be necessary, but if we missed closing one of the connections this should make sure they're all closed
+				AbstractDhRepo.closeAllConnections();
+				// needs to be closed on world shutdown to clear out un-processed chunks
+				WORLD_CHUNK_UPDATE_MANAGER.clear();
+				
+				// recommend that the garbage collector cleans up any objects from the old world and thread pools
+				System.gc();
+				
+				ApiEventInjector.INSTANCE.fireAllEvents(DhApiWorldUnloadEvent.class, new DhApiWorldUnloadEvent.EventParam());
+				
+				// fired after the unload event so API users can't change the read-only for any new worlds
+				DhApiWorldProxy.INSTANCE.setReadOnly(false, false);
+			}
 		}
 	}
 	

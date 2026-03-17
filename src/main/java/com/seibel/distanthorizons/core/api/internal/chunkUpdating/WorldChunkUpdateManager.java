@@ -11,6 +11,8 @@ import com.seibel.distanthorizons.core.wrapperInterfaces.world.IServerLevelWrapp
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -28,12 +30,16 @@ public class WorldChunkUpdateManager
 	/** singleton since we only expect to have one world loaded at a time */
 	public static final WorldChunkUpdateManager INSTANCE = new WorldChunkUpdateManager();
 	
+	public static final Set<String> LOGGED_GET_ERROR_MESSAGES = Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
+	
+	
 	/** 
 	 * Queues are only removed during world shutdown.
 	 * The assumption is that there will be a limited number of {@link ILevelWrapper}'s
 	 * for a given world.
 	 */
 	private final ConcurrentHashMap<ILevelWrapper, ChunkUpdateQueueManager> updateQueueByLevelWrapper = new ConcurrentHashMap<>();
+	
 	
 	
 	
@@ -62,6 +68,7 @@ public class WorldChunkUpdateManager
 		AbstractDhWorld world = SharedApi.getAbstractDhWorld();
 		if (world == null)
 		{
+			// world isn't loaded, no warnings need to be logged
 			return null;
 		}
 		
@@ -73,6 +80,8 @@ public class WorldChunkUpdateManager
 			// but this check confirms it
 			&& !(levelWrapper instanceof IClientLevelWrapper))
 		{
+			// how did we get a server level wrapper on the client?
+			// this shouldn't happen, but just in case
 			return null;
 		}
 		else if (
@@ -81,6 +90,7 @@ public class WorldChunkUpdateManager
 				// when hosting a server we only care about the server wrappers
 				&& !(levelWrapper instanceof IServerLevelWrapper))
 		{
+			// ignore client updates on the server
 			return null;
 		}
 		

@@ -194,8 +194,12 @@ public class FullDataToRenderDataTransformer
 		boolean ignoreNonCollidingBlocks = (Config.Client.Advanced.Graphics.Quality.blocksToIgnore.get() == EDhApiBlocksToAvoid.NON_COLLIDING);
 		boolean colorBelowWithAvoidedBlocks = Config.Client.Advanced.Graphics.Quality.tintWithAvoidedBlocks.get();
 		
-		ObjectOpenHashSet<IBlockStateWrapper> blockStatesToIgnore = WRAPPER_FACTORY.getRendererIgnoredBlocks(levelWrapper);
-		ObjectOpenHashSet<IBlockStateWrapper> caveBlockStatesToIgnore = WRAPPER_FACTORY.getRendererIgnoredCaveBlocks(levelWrapper);
+		final ObjectOpenHashSet<IBlockStateWrapper> blockStatesToIgnore = WRAPPER_FACTORY.getRendererIgnoredBlocks(levelWrapper);
+		final ObjectOpenHashSet<IBlockStateWrapper> caveBlockStatesToIgnore = WRAPPER_FACTORY.getRendererIgnoredCaveBlocks(levelWrapper);
+		final ObjectOpenHashSet<IBlockStateWrapper> waterSubsurfaceReplacementBlocks = WRAPPER_FACTORY.getWaterSubsurfaceReplacementBlocks(levelWrapper);
+		final ObjectOpenHashSet<IBlockStateWrapper> waterSurfaceReplacementBlocks = WRAPPER_FACTORY.getWaterSurfaceReplacementBlocks(levelWrapper);
+		final IBlockStateWrapper water = WRAPPER_FACTORY.getWaterBlockStateWrapper(levelWrapper);
+		
 		
 		// build snow block cache if needed
 		if (snowLayerBlockStates == null)
@@ -223,6 +227,7 @@ public class FullDataToRenderDataTransformer
 		int colorToApplyToNextBlock = -1;
 		int lastColor = 0;
 		int lastBottom = -10_000;
+		IBlockStateWrapper lastBlock = null;
 		
 		int skylightToApplyToNextBlock = -1;
 		int blocklightToApplyToNextBlock = -1;
@@ -283,6 +288,12 @@ public class FullDataToRenderDataTransformer
 			// cave culling check //
 			//====================//
 			
+			if (waterSubsurfaceReplacementBlocks.contains(block)
+				&& (lastBlock == null || lastBlock.isAir()))
+			{
+				block = water;
+			}
+			
 			boolean ignoreBlock = blockStatesToIgnore.contains(block);
 			boolean caveBlock = caveBlockStatesToIgnore.contains(block);
 			if (caveBlock
@@ -328,6 +339,9 @@ public class FullDataToRenderDataTransformer
 			else if (ignoreBlock)
 			{
 				// this is an ignored block, but shouldn't be merged like a cave block
+				
+				// applying this sky light to the next block should prevent black spots for opaque covering blocks 
+				skylightToApplyToNextBlock = skyLight;
 				continue;
 			}
 			
@@ -343,21 +357,37 @@ public class FullDataToRenderDataTransformer
 				&& !block.isLiquid()
 				&& block.getOpacity() != LodUtil.BLOCK_FULLY_OPAQUE;
 			
-			// merge snow into the block below it
-			if (snowLayerBlockStates.contains(block))
+			// handle height reduction
+			boolean isSnowLayer = snowLayerBlockStates.contains(block);
+			boolean isWaterSurfaceReplacement = waterSurfaceReplacementBlocks.contains(block);
+			if (isSnowLayer || isWaterSurfaceReplacement)
 			{
-				// sometimes a snow datapoint will be multiple blocks tall,
+				if (isWaterSurfaceReplacement)
+				{
+					// replace the block with water
+					block = WRAPPER_FACTORY.getWaterBlockStateWrapper(levelWrapper);
+				}
+				
+				// sometimes a datapoint will be multiple blocks tall,
 				// in that case we just want to drop the top by 1
 				blockHeight -= 1;
 				if (blockHeight == 0)
 				{
-					// this snow block was entirely removed, just color the block below it
+					// this block was entirely removed, just color the block below it
 					ignoreNonSolidBlock = true;
 					
-					// snow is a special case where it should always tint the block
-					// below it, if not done grass will appear as gray
-					int snowColor = levelWrapper.getBlockColor(mutableBlockPos, biome, fullDataSource, block);
-					colorToApplyToNextBlock = ColorUtil.setAlpha(snowColor, 255);
+					
+					if (isSnowLayer)
+					{
+						// snow is a special case where it should always tint the block
+						// below it, if not done grass will appear as gray
+						int snowColor = levelWrapper.getBlockColor(mutableBlockPos, biome, fullDataSource, block);
+						colorToApplyToNextBlock = ColorUtil.setAlpha(snowColor, 255);
+					}
+					else //if (isWaterSurfaceReplacement)
+					{
+						colorToApplyToNextBlock = levelWrapper.getBlockColor(mutableBlockPos, biome, fullDataSource, block);
+					}
 				}
 			}
 			
@@ -449,6 +479,7 @@ public class FullDataToRenderDataTransformer
 			}
 			lastBottom = bottomY;
 			lastColor = color;
+			lastBlock = block;
 		}
 		
 		
