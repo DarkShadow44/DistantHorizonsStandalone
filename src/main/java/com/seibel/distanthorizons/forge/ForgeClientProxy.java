@@ -26,6 +26,7 @@ import com.seibel.distanthorizons.common.wrappers.world.ClientLevelWrapper;
 import com.seibel.distanthorizons.core.api.internal.ClientApi;
 import com.seibel.distanthorizons.core.api.internal.SharedApi;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.logging.f3.F3Screen;
 import com.seibel.distanthorizons.core.util.threading.ThreadPoolUtil;
@@ -73,7 +74,7 @@ import java.util.concurrent.AbstractExecutorService;
 public class ForgeClientProxy implements AbstractModInitializer.IEventProxy
 {
 	private static final IMinecraftClientWrapper MC = SingletonInjector.INSTANCE.get(IMinecraftClientWrapper.class);
-	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 
 	private static World GetEventLevel(WorldEvent e) { return e.world; }
 
@@ -89,21 +90,6 @@ public class ForgeClientProxy implements AbstractModInitializer.IEventProxy
         ItemStack stack = new ItemStack(Items.dye, 1, 4);
        String s = stack.getDisplayName();
        s = s;
-	}
-
-
-
-	//=============//
-	// tick events //
-	//=============//
-
-	@SubscribeEvent
-	public void clientTickEvent(TickEvent.ClientTickEvent event)
-	{
-		if (event.phase == TickEvent.Phase.START)
-		{
-			ClientApi.INSTANCE.clientTickEvent();
-		}
 	}
 
 

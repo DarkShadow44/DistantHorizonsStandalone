@@ -184,7 +184,6 @@ public final class BatchGenerationEnvironment implements IBatchGeneratorEnvironm
 
     public BatchGenerationEnvironment(IDhServerLevel serverlevel)
     {
-        super(serverlevel);
         this.serverlevel = serverlevel;
 
         EVENT_LOGGER.info("================WORLD_GEN_STEP_INITING=============");
@@ -263,7 +262,7 @@ public final class BatchGenerationEnvironment implements IBatchGeneratorEnvironm
                     try
                     {
                         event.future.get(); // Should throw exception
-                        LodUtil.assertNotReach();
+                        LodUtil.assertNotReach("Uh oh");
                     }
                     catch (Exception e)
                     {
@@ -699,7 +698,6 @@ public final class BatchGenerationEnvironment implements IBatchGeneratorEnvironm
 
     private CompletableFuture<Void> generateChunksViaInternalServerAsync(GenerationEvent genEvent) throws InterruptedException
     {
-        genEvent.timer.nextEvent("requestFromServer");
         LinkedBlockingQueue<Runnable> runnableQueue = new LinkedBlockingQueue<>();
 
         Map<DhChunkPos, ChunkWrapper> chunkWrappersByDhPos = Collections.synchronizedMap(new HashMap<>());
@@ -745,13 +743,12 @@ public final class BatchGenerationEnvironment implements IBatchGeneratorEnvironm
                 .whenCompleteAsync((voidObj, throwable) ->
                 {
                     // generate chunk lighting using DH's lighting engine
-                    genEvent.timer.nextEvent("light");
                     int maxSkyLight = this.serverlevel.getServerLevelWrapper().hasSkyLight() ? LodUtil.MAX_MC_LIGHT : LodUtil.MIN_MC_LIGHT;
 
                     ArrayList<IChunkWrapper> generatedChunks = new ArrayList<>(chunkWrappersByDhPos.values());
                     for (IChunkWrapper iChunkWrapper : generatedChunks)
                     {
-                        ((ChunkWrapper) iChunkWrapper).recalculateDhHeightMapsIfNeeded();
+                        iChunkWrapper.createDhHeightMaps();
 
                         // pre-generated chunks should have lighting but new ones won't
                         if (!iChunkWrapper.isDhBlockLightingCorrect())
@@ -762,7 +759,6 @@ public final class BatchGenerationEnvironment implements IBatchGeneratorEnvironm
                         this.serverlevel.updateBeaconBeamsForChunk(iChunkWrapper, generatedChunks);
                     }
 
-                    genEvent.timer.nextEvent("cleanup");
                     for (IChunkWrapper iChunkWrapper : generatedChunks)
                     {
                         genEvent.resultConsumer.accept(iChunkWrapper);
@@ -781,13 +777,7 @@ public final class BatchGenerationEnvironment implements IBatchGeneratorEnvironm
 
                     releaseFuture.join();
 
-                    genEvent.timer.complete();
                     genEvent.refreshTimeout();
-                    if (PREF_LOGGER.canMaybeLog())
-                    {
-                        genEvent.threadedParam.perf.recordEvent(genEvent.timer);
-                        PREF_LOGGER.debugInc(genEvent.timer.toString());
-                    }
                 });
 
         processGeneratedChunksFuture.whenCompleteAsync((unused, throwable) -> { }, runnableQueue::add); // trigger wakeup
@@ -1019,10 +1009,6 @@ public final class BatchGenerationEnvironment implements IBatchGeneratorEnvironm
     //private static <T> ArrayGridList<T> GetCutoutFrom(ArrayGridList<T> total, EDhApiWorldGenerationStep step) { return GetCutoutFrom(total, MaxBorderNeeded - WORLD_GEN_CHUNK_BORDER_NEEDED_BY_GEN_STEP.get(step)); }
     private static <T> ArrayGridList<T> GetCutoutFrom(ArrayGridList<T> total, EDhApiWorldGenerationStep step) { return GetCutoutFrom(total, 0); }
 
-
-    @Override
-    public int getEventCount() { return this.generationEventList.size(); }
-
     @Override
     public void close()
     {
@@ -1155,59 +1141,4 @@ public final class BatchGenerationEnvironment implements IBatchGeneratorEnvironm
             return true;
         }
     }
-
-    public static class PerfCalculator
-    {
-        private static final String[] TIME_NAMES = {
-            "total",
-            "setup",
-            "structStart",
-            "structRef",
-            "biome",
-            "noise",
-            "surface",
-            "carver",
-            "feature",
-            "light",
-            "cleanup",
-            //"lodCreation" (No longer used)
-        };
-
-        public static final int SIZE = 50;
-        ArrayList<Rolling> times = new ArrayList<>();
-
-        public PerfCalculator()
-        {
-            for (int i = 0; i < 11; i++)
-            {
-                times.add(new Rolling(SIZE));
-            }
-        }
-
-        public void recordEvent(EventTimer event)
-        {
-            for (EventTimer.Event e : event.events)
-            {
-                String name = e.name;
-                int index = Arrays.asList(TIME_NAMES).indexOf(name);
-                if (index == -1) continue;
-                times.get(index).add(e.timeNs);
-            }
-            times.get(0).add(event.getTotalTimeNs());
-        }
-
-        public String toString()
-        {
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < times.size(); i++)
-            {
-                if (times.get(i).getAverage() == 0) continue;
-                sb.append(TIME_NAMES[i]).append(": ").append(times.get(i).getAverage()).append("\n");
-            }
-            return sb.toString();
-        }
-
-    }
-
-
 }

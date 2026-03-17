@@ -25,6 +25,7 @@ import com.seibel.distanthorizons.common.wrappers.block.BlockStateWrapper;
 import com.seibel.distanthorizons.common.wrappers.block.FakeBlockState;
 import com.seibel.distanthorizons.common.wrappers.misc.MutableBlockPosWrapper;
 import com.seibel.distanthorizons.core.config.Config;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos;
 import com.seibel.distanthorizons.core.pos.DhChunkPos;
@@ -49,7 +50,7 @@ import java.util.concurrent.ExecutionException;
 
 public class ChunkWrapper implements IChunkWrapper
 {
-    private static final Logger LOGGER = DhLoggerBuilder.getLogger();
+    private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 
     /** can be used for interactions with the underlying chunk where creating new BlockPos objects could cause issues for the garbage collector. */
     private static final ThreadLocal<BlockPos> MUTABLE_BLOCK_POS_REF = ThreadLocal.withInitial(() -> new BlockPos());
@@ -118,19 +119,8 @@ public class ChunkWrapper implements IChunkWrapper
             runFillBiomeMap(chunk.worldObj.isRemote);
         }
 
-        // use DH heightmaps if requested
-        if (Config.Common.LodBuilding.recalculateChunkHeightmaps.get())
-        {
-            this.solidHeightMap = new int[LodUtil.CHUNK_WIDTH][LodUtil.CHUNK_WIDTH];
-            this.lightBlockingHeightMap = new int[LodUtil.CHUNK_WIDTH][LodUtil.CHUNK_WIDTH];
-
-            this.recalculateDhHeightMapsIfNeeded();
-        }
-        else
-        {
-            this.solidHeightMap = null;
-            this.lightBlockingHeightMap = null;
-        }
+        this.solidHeightMap = null;
+        this.lightBlockingHeightMap = null;
     }
 
 
@@ -187,8 +177,8 @@ public class ChunkWrapper implements IChunkWrapper
 
     private int getChunkSectionMinHeight(int index) { return (index * 16) + this.getInclusiveMinBuildHeight(); }
 
-    /** Will only run if the config says the MC heightmaps shouldn't be trusted. */
-    public void recalculateDhHeightMapsIfNeeded()
+    @Override
+    public void createDhHeightMaps()
     {
         // re-calculate the min/max heights for consistency (during world gen these may be wrong)
         this.minNonEmptyHeight = Integer.MIN_VALUE;
@@ -279,6 +269,11 @@ public class ChunkWrapper implements IChunkWrapper
     {
         BiomeGenBase biome = biomeList[(relX * 16) + relZ];
         return BiomeWrapper.getBiomeWrapper(biome, this.wrappedLevel);
+    }
+
+    @Override
+    public IChunkWrapper copy() {
+        return new ChunkWrapper(chunk, wrappedLevel, false);
     }
 
     @Override
@@ -505,16 +500,6 @@ public class ChunkWrapper implements IChunkWrapper
 
         return this.blockLightPosList;
     }
-
-
-
-    //===============//
-    // other methods //
-    //===============//
-
-    @Override
-    public boolean isStillValid() { return this.wrappedLevel.tryGetChunk(this.chunkPos) == this; }
-
 
 
     //================//

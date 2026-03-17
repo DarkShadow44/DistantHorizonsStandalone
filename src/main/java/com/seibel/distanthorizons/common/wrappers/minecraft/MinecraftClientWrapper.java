@@ -31,6 +31,7 @@ import com.seibel.distanthorizons.common.wrappers.world.ServerLevelWrapper;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.enums.EDhDirection;
 import com.seibel.distanthorizons.core.file.structure.ClientOnlySaveStructure;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
 import com.seibel.distanthorizons.coreapi.ModInfo;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
@@ -60,7 +61,7 @@ import org.jetbrains.annotations.Nullable;
  */
 public class MinecraftClientWrapper implements IMinecraftClientWrapper, IMinecraftSharedWrapper
 {
-    private static final Logger LOGGER = DhLoggerBuilder.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
+    private static final DhLogger LOGGER = new DhLoggerBuilder().build();
     private static final Minecraft MINECRAFT = Minecraft.getMinecraft();
 
     public static final MinecraftClientWrapper INSTANCE = new MinecraftClientWrapper();
@@ -86,53 +87,6 @@ public class MinecraftClientWrapper implements IMinecraftClientWrapper, IMinecra
     // helper methods //
     //================//
 
-    /**
-     * This should be called at the beginning of every frame to
-     * clear any Minecraft data that becomes out of date after a frame. <br> <br>
-     * <p>
-     * LightMaps and other time sensitive objects fall in this category. <br> <br>
-     * <p>
-     * This doesn't affect OpenGL objects in any way.
-     */
-    @Override
-    public void clearFrameObjectCache() {
-        // TODO
-    }
-
-
-
-    //=================//
-    // method wrappers //
-    //=================//
-
-    @Override
-    public float getShade(EDhDirection lodDirection)
-    {
-        EDhApiLodShading lodShading = Config.Client.Advanced.Graphics.Quality.lodShading.get();
-        switch (lodShading)
-        {
-            default:
-            case AUTO:
-            case ENABLED:
-                switch (lodDirection)
-                {
-                    case DOWN:
-                        return 0.5F;
-                    default:
-                    case UP:
-                        return 1.0F;
-                    case NORTH:
-                    case SOUTH:
-                        return 0.8F;
-                    case WEST:
-                    case EAST:
-                        return 0.6F;
-                }
-
-            case DISABLED:
-                return 1.0F;
-        }
-    }
 
     @Override
     public boolean hasSinglePlayerServer() { return MINECRAFT.isSingleplayer(); }
@@ -186,12 +140,6 @@ public class MinecraftClientWrapper implements IMinecraftClientWrapper, IMinecra
     public boolean playerExists() { return MINECRAFT.thePlayer != null; }
 
     @Override
-    public UUID getPlayerUUID() { return this.getPlayer().getUniqueID(); }
-
-    @Override
-    public String getUsername() { return MINECRAFT.thePlayer.getGameProfile().getName(); }
-
-    @Override
     public DhBlockPos getPlayerBlockPos()
     {
         EntityPlayerSP player = this.getPlayer();
@@ -240,23 +188,6 @@ public class MinecraftClientWrapper implements IMinecraftClientWrapper, IMinecra
         return this.profilerWrapper;
     }
 
-    /** Returns all worlds available to the server */
-    @Override
-    public ArrayList<ILevelWrapper> getAllServerWorlds()
-    {
-        ArrayList<ILevelWrapper> worlds = new ArrayList<ILevelWrapper>();
-
-        WorldServer[] serverWorlds = MINECRAFT.getIntegratedServer().worldServers;
-        for (WorldServer world : serverWorlds)
-        {
-            worlds.add(ServerLevelWrapper.getWrapper(world));
-        }
-
-        return worlds;
-    }
-
-
-
     @Override
     public void sendChatMessage(String string)
     {
@@ -278,6 +209,16 @@ public class MinecraftClientWrapper implements IMinecraftClientWrapper, IMinecra
         }
 
         player.addChatMessage(new ChatComponentText(string)); // TODO
+    }
+
+    @Override
+    public void disableVanillaClouds() {
+        // TODO
+    }
+
+    @Override
+    public void disableVanillaChunkFadeIn() {
+        // TODO
     }
 
     /**
@@ -303,10 +244,6 @@ public class MinecraftClientWrapper implements IMinecraftClientWrapper, IMinecra
 
     @Override
     public File getInstallationDirectory() { return MINECRAFT.mcDataDir; }
-
-    @Override
-    public void executeOnRenderThread(Runnable runnable) { MINECRAFT.func_152344_a(runnable); /** TODO? */ }
-
     @Override
     public int getPlayerCount()
     {

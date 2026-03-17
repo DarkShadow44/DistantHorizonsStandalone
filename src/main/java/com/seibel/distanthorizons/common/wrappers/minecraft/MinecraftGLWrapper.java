@@ -19,6 +19,7 @@
 
 package com.seibel.distanthorizons.common.wrappers.minecraft;
 
+import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftGLWrapper;
 
@@ -29,7 +30,7 @@ public class MinecraftGLWrapper implements IMinecraftGLWrapper
 {
     public static final MinecraftGLWrapper INSTANCE = new MinecraftGLWrapper();
 
-    private static final Logger LOGGER = DhLoggerBuilder.getLogger();
+    private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 
 
 

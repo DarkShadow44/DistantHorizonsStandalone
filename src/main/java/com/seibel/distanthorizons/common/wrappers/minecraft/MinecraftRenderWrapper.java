@@ -22,6 +22,10 @@ package com.seibel.distanthorizons.common.wrappers.minecraft;
 import java.awt.Color;
 import java.lang.invoke.MethodHandles;
 
+import com.seibel.distanthorizons.api.enums.config.EDhApiLodShading;
+import com.seibel.distanthorizons.core.config.Config;
+import com.seibel.distanthorizons.core.enums.EDhDirection;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.forge.ForgeMain;
 import copy.com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.seibel.distanthorizons.common.wrappers.WrapperFactory;
@@ -57,7 +61,7 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
 {
     public static final MinecraftRenderWrapper INSTANCE = new MinecraftRenderWrapper();
 
-    private static final Logger LOGGER = DhLoggerBuilder.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
+    private static final DhLogger LOGGER = new DhLoggerBuilder().build();
     private static final Minecraft MC = Minecraft.getMinecraft();
     private static final IWrapperFactory FACTORY = WrapperFactory.INSTANCE;
 
@@ -147,28 +151,14 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
     }
 
     @Override
-    public int getScreenWidth()
+    public int getTargetFramebufferViewportWidth()
     {
-        // alternate ways of getting the window's resolution,
-        // using one of these methods may fix the optifine render resolution bug
-        // TODO: test these once we can run with Optifine again
-//		int[] heightArray = new int[1];
-//		int[] widthArray = new int[1];
-//
-//		long window = GLProxy.getInstance().minecraftGlContext;
-//		GLFW.glfwGetWindowSize(window, widthArray, heightArray); // option 1
-//		GLFW.glfwGetFramebufferSize(window, widthArray, heightArray); // option 2
-
-
-
-        int width = MC.displayWidth;
-        return width;
+        return MC.getFramebuffer().framebufferWidth;
     }
     @Override
-    public int getScreenHeight()
+    public int getTargetFramebufferViewportHeight()
     {
-        int height = MC.displayWidth;
-        return height;
+        return MC.getFramebuffer().framebufferHeight;
     }
 
     @Override
@@ -183,7 +173,7 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
 
 
     @Override
-    public int getTargetFrameBuffer()
+    public int getTargetFramebuffer()
     {
         return Minecraft.getMinecraft().getFramebuffer().framebufferObject;
     }
@@ -209,19 +199,36 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
     }
 
     @Override
-    public int getTargetFrameBufferViewportWidth()
-    {
-        return Minecraft.getMinecraft().getFramebuffer().framebufferWidth;
-    }
-
-    @Override
-    public int getTargetFrameBufferViewportHeight()
-    {
-        return  Minecraft.getMinecraft().getFramebuffer().framebufferHeight;
-    }
-
-    @Override
     public ILightMapWrapper getLightmapWrapper(ILevelWrapper level) { return new LightMapWrapper(); }
+
+    @Override
+    public float getShade(EDhDirection lodDirection)
+    {
+        EDhApiLodShading lodShading = Config.Client.Advanced.Graphics.Quality.lodShading.get();
+        switch (lodShading)
+        {
+            default:
+            case AUTO:
+            case ENABLED:
+                switch (lodDirection)
+                {
+                    case DOWN:
+                        return 0.5F;
+                    default:
+                    case UP:
+                        return 1.0F;
+                    case NORTH:
+                    case SOUTH:
+                        return 0.8F;
+                    case WEST:
+                    case EAST:
+                        return 0.6F;
+                }
+
+            case DISABLED:
+                return 1.0F;
+        }
+    }
 
     @Override
     public boolean isFogStateSpecial()

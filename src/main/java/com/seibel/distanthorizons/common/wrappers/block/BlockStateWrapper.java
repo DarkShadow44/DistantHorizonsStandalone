@@ -22,6 +22,7 @@ package com.seibel.distanthorizons.common.wrappers.block;
 import com.seibel.distanthorizons.api.enums.rendering.EDhApiBlockMaterial;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.config.types.ConfigEntry;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.util.ColorUtil;
 import com.seibel.distanthorizons.core.util.LodUtil;
@@ -56,7 +57,7 @@ public class BlockStateWrapper implements IBlockStateWrapper
 
 
     // must be defined before AIR, otherwise a null pointer will be thrown
-    private static final Logger LOGGER = DhLoggerBuilder.getLogger();
+    private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 
     public static final Int2ObjectMap<BlockStateWrapper> WRAPPER_BY_BLOCK_ID_AND_META = Int2ObjectMaps.synchronize(new Int2ObjectOpenHashMap<>());
     public static final ConcurrentHashMap<String, BlockStateWrapper> WRAPPER_BY_RESOURCE_LOCATION = new ConcurrentHashMap<>();

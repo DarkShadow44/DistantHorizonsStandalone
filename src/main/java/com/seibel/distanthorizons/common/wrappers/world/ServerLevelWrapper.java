@@ -30,6 +30,7 @@ import com.seibel.distanthorizons.common.wrappers.block.BlockStateWrapper;
 import com.seibel.distanthorizons.common.wrappers.block.FakeBlockState;
 import com.seibel.distanthorizons.common.wrappers.chunk.ChunkWrapper;
 import com.seibel.distanthorizons.core.level.IDhLevel;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos;
 import com.seibel.distanthorizons.core.pos.DhChunkPos;
@@ -43,15 +44,15 @@ import net.minecraft.block.Block;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.chunk.Chunk;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.Nullable;
 
 public class ServerLevelWrapper implements IServerLevelWrapper
 {
-    private static final Logger LOGGER = DhLoggerBuilder.getLogger();
+    private static final DhLogger LOGGER = new DhLoggerBuilder().build();
     private static final ConcurrentHashMap<WorldServer, ServerLevelWrapper> LEVEL_WRAPPER_BY_SERVER_LEVEL = new ConcurrentHashMap<>();
 
     private final WorldServer level;
-    @Deprecated // TODO circular references are bad
-    private IDhLevel parentDhLevel;
+    private IDhLevel dhLevel;
 
 
 
@@ -77,12 +78,8 @@ public class ServerLevelWrapper implements IServerLevelWrapper
     }
 
     @Override
-    public String getWorldFolderName()
-    {
-        String ret =  this.level.provider.getSaveFolder();
-        if (ret == null)
-            ret = "";
-		return ret;
+    public String getKeyedLevelDimensionName() {
+        return getDimensionName();
     }
 
     @Override
@@ -118,78 +115,41 @@ public class ServerLevelWrapper implements IServerLevelWrapper
     }
 
     @Override
-    public IChunkWrapper tryGetChunk(DhChunkPos pos)
-    {
-        if (!this.level.theChunkProviderServer.chunkExists(pos.getX(), pos.getZ()))
-        {
-            return null;
-        }
-
-        Chunk chunk = this.level.theChunkProviderServer.provideChunk(pos.getX(), pos.getZ());
-        if (chunk == null)
-        {
-            return null;
-        }
-
-        ChunkWrapper wrapper = new ChunkWrapper(chunk, this, false);
-        if (!wrapper.isChunkReady())
-        {
-            return null;
-        }
-
-        return wrapper;
-    }
-
-    @Override
-    public boolean hasChunkLoaded(int chunkX, int chunkZ)
-    {
-        // world.hasChunk(chunkX, chunkZ); THIS DOES NOT WORK FOR CLIENT LEVEL CAUSE MOJANG ALWAYS RETURN TRUE FOR THAT!
-        return this.level.theChunkProviderServer.chunkExists(chunkX, chunkZ); // TODO?
-    }
-
-    @Override
-    public IBlockStateWrapper getBlockState(DhBlockPos pos) {
-        final Block block = this.level.getBlock(pos.getX(), pos.getY(), pos.getZ());
-        final int meta = this.level.getBlockMetadata(pos.getX(), pos.getY(), pos.getZ());
-        return BlockStateWrapper.fromBlockAndMeta(block, meta, this);
-    }
-
-    @Override
-    public IBiomeWrapper getBiome(DhBlockPos pos)
-    {
-        return BiomeWrapper.getBiomeWrapper(this.level.getBiomeGenForCoords(pos.getX(), pos.getZ()), this);
-    }
-
-    @Override
     public WorldServer getWrappedMcObject() { return this.level; }
 
     @Override
     public void onUnload() { LEVEL_WRAPPER_BY_SERVER_LEVEL.remove(this.level); }
 
+    @Override
+    public void setDhLevel(IDhLevel level) {
+        dhLevel = level;
+    }
 
     @Override
-    public void setParentLevel(IDhLevel parentLevel) { this.parentDhLevel = parentLevel; }
+    public @Nullable IDhLevel getDhLevel() {
+        return dhLevel;
+    }
 
     @Override
     public IDhApiCustomRenderRegister getRenderRegister()
     {
-        if (this.parentDhLevel == null)
+        if (this.dhLevel == null)
         {
             return null;
         }
 
-        return this.parentDhLevel.getGenericRenderer();
+        return this.dhLevel.getGenericRenderer();
     }
 
     @Override
     public File getDhSaveFolder()
     {
-        if (this.parentDhLevel == null)
+        if (this.dhLevel == null)
         {
             return null;
         }
 
-        return this.parentDhLevel.getSaveStructure().getSaveFolder(this);
+        return this.dhLevel.getSaveStructure().getSaveFolder(this);
     }
 
 

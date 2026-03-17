@@ -7,11 +7,13 @@ import com.seibel.distanthorizons.common.wrappers.minecraft.MinecraftServerWrapp
 import com.seibel.distanthorizons.core.api.internal.ClientApi;
 import com.seibel.distanthorizons.core.api.internal.SharedApi;
 import com.seibel.distanthorizons.core.config.Config;
+import com.seibel.distanthorizons.core.config.ConfigHandler;
 import com.seibel.distanthorizons.core.config.eventHandlers.presets.ThreadPresetConfigEventHandler;
 import com.seibel.distanthorizons.core.dependencyInjection.ModAccessorInjector;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.jar.ModJarInfo;
 import com.seibel.distanthorizons.core.jar.updater.SelfUpdater;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor.IModAccessor;
 import com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor.IModChecker;
@@ -31,7 +33,7 @@ import java.util.function.Supplier;
  */
 public abstract class AbstractModInitializer
 {
-	protected static final Logger LOGGER = DhLoggerBuilder.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
+	protected static final DhLogger LOGGER = new DhLoggerBuilder().build();
 
 
 
@@ -153,7 +155,7 @@ public abstract class AbstractModInitializer
 
 	private void initConfig()
 	{
-		ConfigBase.RunFirstTimeSetup();
+		ConfigHandler.tryRunFirstTimeSetup();
 		Config.completeDelayedSetup();
 	}
 

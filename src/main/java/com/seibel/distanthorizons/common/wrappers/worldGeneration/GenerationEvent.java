@@ -25,18 +25,16 @@ import java.util.function.Consumer;
 
 import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiDistantGeneratorMode;
 import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiWorldGenerationStep;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.util.objects.UncheckedInterruptedException;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pos.DhChunkPos;
-import com.seibel.distanthorizons.core.util.objects.EventTimer;
 import com.seibel.distanthorizons.core.util.threading.ThreadPoolUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.IChunkWrapper;
 
-import org.apache.logging.log4j.Logger;
-
 public final class GenerationEvent
 {
-    private static final Logger LOGGER = DhLoggerBuilder.getLogger(MethodHandles.lookup().lookupClass().getSimpleName());
+    private static final DhLogger LOGGER = new DhLoggerBuilder().build();
     private static int generationFutureDebugIDs = 0;
 
     public final int id;
@@ -46,7 +44,6 @@ public final class GenerationEvent
     public final int size;
     public final EDhApiWorldGenerationStep targetGenerationStep;
     public final EDhApiDistantGeneratorMode generatorMode;
-    public EventTimer timer = null;
     public long inQueueTime;
     public long timeoutTime = -1;
     public CompletableFuture<Void> future = null;
@@ -81,7 +78,6 @@ public final class GenerationEvent
             long runStartTime = System.nanoTime();
             generationEvent.timeoutTime = runStartTime;
             generationEvent.inQueueTime = runStartTime - generationEvent.inQueueTime;
-            generationEvent.timer = new EventTimer("setup");
 
             BatchGenerationEnvironment.isDistantGeneratorThread.set(true);
 

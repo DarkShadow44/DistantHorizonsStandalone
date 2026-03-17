@@ -21,6 +21,7 @@ package com.seibel.distanthorizons.common.wrappers.block;
 
 import com.seibel.distanthorizons.common.wrappers.McObjectConverter;
 import com.seibel.distanthorizons.common.wrappers.world.ClientLevelWrapper;
+import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos;
 import com.seibel.distanthorizons.core.util.ColorUtil;
@@ -41,7 +42,6 @@ import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraftforge.common.IShearable;
 import net.minecraftforge.common.util.ForgeDirection;
-import org.apache.logging.log4j.Logger;
 
 import java.util.HashSet;
 import java.util.List;
@@ -56,7 +56,7 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class ClientBlockStateColorCache
 {
-	private static final Logger LOGGER = DhLoggerBuilder.getLogger();
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
     private static ThreadLocal<FakeWorld> fakeWorld = ThreadLocal.withInitial(FakeWorld::new);
 
 	private static final HashSet<FakeBlockState> BLOCK_STATES_THAT_NEED_LEVEL = new HashSet<>();

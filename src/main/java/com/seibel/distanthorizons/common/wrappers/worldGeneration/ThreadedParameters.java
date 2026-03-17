@@ -20,8 +20,6 @@
 
 package com.seibel.distanthorizons.common.wrappers.worldGeneration;
 
-import com.seibel.distanthorizons.common.wrappers.worldGeneration.BatchGenerationEnvironment.PerfCalculator;
-
 import net.minecraft.world.WorldServer;
 
 public final class ThreadedParameters
@@ -30,7 +28,6 @@ public final class ThreadedParameters
 
     final WorldServer level;
     boolean isValid = true;
-    public final PerfCalculator perf = new PerfCalculator();
 
     private static GlobalParameters previousGlobalParameters = null;
 
