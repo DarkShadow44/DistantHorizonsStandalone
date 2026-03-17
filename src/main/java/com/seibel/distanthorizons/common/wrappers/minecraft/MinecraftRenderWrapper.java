@@ -143,7 +143,7 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
         if (ForgeMain.angelicaCompat != null) {
             return MC.gameSettings.renderDistanceChunks - 2;
         }
-        return MC.gameSettings.renderDistanceChunks - 1; // To defend against chunks not being loaded yet
+        return MC.gameSettings.renderDistanceChunks;
     }
 
     @Override
