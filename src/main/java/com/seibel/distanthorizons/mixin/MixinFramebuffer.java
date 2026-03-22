@@ -1,6 +1,8 @@
 package com.seibel.distanthorizons.mixin;
 
 import net.minecraft.client.renderer.texture.TextureUtil;
+import com.seibel.distanthorizons.MixinFlags;
+import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.shader.Framebuffer;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL14;
@@ -37,6 +39,10 @@ public class MixinFramebuffer {
 
     @Redirect(method = "createFramebuffer", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/OpenGlHelper;func_153176_h(II)V"))
     private void bindDepthTexture(int frameBufferId, int depthTexture) {
+        if (!MixinFlags.framebufferMixinEnabled) {
+            OpenGlHelper.func_153176_h(frameBufferId, depthTexture);
+            return;
+        }
         GL30.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_DEPTH_ATTACHMENT, GL11.GL_TEXTURE_2D, depthTexture, 0);
     }
 
