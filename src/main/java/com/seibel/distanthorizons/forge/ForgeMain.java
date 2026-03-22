@@ -19,7 +19,6 @@
 
 package com.seibel.distanthorizons.forge;
 
-import com.gtnewhorizons.angelica.AngelicaMod;
 import com.seibel.distanthorizons.common.AbstractModInitializer;
 import com.seibel.distanthorizons.core.api.internal.ServerApi;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
@@ -34,13 +33,17 @@ import com.seibel.distanthorizons.forge.wrappers.modAccessor.ModChecker;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.Mod;
+import cpw.mods.fml.common.ModContainer;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerAboutToStartEvent;
 import cpw.mods.fml.common.event.FMLServerStoppedEvent;
 import cpw.mods.fml.common.event.FMLServerStoppingEvent;
 import cpw.mods.fml.common.network.NetworkCheckHandler;
+import cpw.mods.fml.common.versioning.ArtifactVersion;
+import cpw.mods.fml.common.versioning.DefaultArtifactVersion;
+import cpw.mods.fml.common.versioning.VersionParser;
+import cpw.mods.fml.common.versioning.VersionRange;
 import cpw.mods.fml.relauncher.Side;
-import net.coderbot.iris.Iris;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.World;
 import net.minecraftforge.common.ForgeChunkManager;
@@ -55,9 +58,13 @@ import java.util.function.Consumer;
  * If you are looking for the real start of the mod
  * check out the ClientProxy.
  */
-@Mod(modid = "distanthorizons", name = "DistantHorizons")
+@Mod(modid = "distanthorizons", name = "DistantHorizons", dependencies = "after:angelica;")
 public class ForgeMain extends AbstractModInitializer
 {
+    private static final String ANGELICA_MOD_ID = "angelica";
+    private static final String MINIMUM_ANGELICA_VERSION = "2.1.5";
+    private static final VersionRange SUPPORTED_ANGELICA_RANGE = VersionParser.parseRange("[" + MINIMUM_ANGELICA_VERSION + ",)");
+
     @Mod.Instance
     public static Object instance;
 
@@ -82,7 +89,8 @@ public class ForgeMain extends AbstractModInitializer
             if (Loader.isModLoaded("gregtech") && enableGTCompat()) {
                 gtCompat = new GTCompat();
             }
-            if (Loader.isModLoaded("angelica")) {
+            if (Loader.isModLoaded(ANGELICA_MOD_ID)) {
+                verifyAngelicaVersion();
                 angelicaCompat = new AngelicaCompat();
             }
             if (Loader.isModLoaded("rple")) {
@@ -99,6 +107,24 @@ public class ForgeMain extends AbstractModInitializer
     private void chunkLoadedCallback()
     {
 
+    }
+
+    private static void verifyAngelicaVersion()
+    {
+        ModContainer angelica = Loader.instance().getIndexedModList().get(ANGELICA_MOD_ID);
+        if (angelica == null)
+        {
+            throw new IllegalStateException("Angelica mod container could not be found.");
+        }
+
+        String installedVersion = angelica.getVersion();
+        ArtifactVersion installedArtifactVersion = new DefaultArtifactVersion(installedVersion);
+        if (SUPPORTED_ANGELICA_RANGE.containsVersion(installedArtifactVersion))
+        {
+            return;
+        }
+
+        throw new AngelicaVersionGuiException(installedVersion, MINIMUM_ANGELICA_VERSION);
     }
 
     // ServerWorldLoadEvent
@@ -137,7 +163,9 @@ public class ForgeMain extends AbstractModInitializer
 	@Override
 	protected void initializeModCompat()
 	{
-        this.tryCreateModCompatAccessor(AngelicaMod.MOD_ID, IIrisAccessor.class, IrisAccessor::new);
+        if (Loader.isModLoaded("angelica")) {
+            this.tryCreateModCompatAccessor("angelica", IIrisAccessor.class, IrisAccessor::new);
+        }
         /* TODO
 		ModLoadingContext.get().registerExtensionPoint(ExtensionPoint.CONFIGGUIFACTORY,
 				() -> (client, parent) -> GetConfigScreen.getScreen(parent));
