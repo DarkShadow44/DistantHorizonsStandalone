@@ -29,4 +29,16 @@ public class MixinRenderGlobal {
             RenderHelper.drawLodsFade(true);
         }
     }
+
+    @Inject(
+        method = "sortAndRender",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/client/renderer/EntityRenderer;enableLightmap(D)V",
+            shift = At.Shift.AFTER))
+    void renderDeferredLodsDuringTranslucentSetup(EntityLivingBase p_72719_1_, int renderPass, double p_72719_3_, CallbackInfoReturnable<Integer> cir) {
+        if (renderPass == 1) {
+            RenderHelper.drawDeferredLods();
+        }
+    }
 }
