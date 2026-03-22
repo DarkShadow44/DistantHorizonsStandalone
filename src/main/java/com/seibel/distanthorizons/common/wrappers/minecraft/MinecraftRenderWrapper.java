@@ -112,6 +112,9 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
     @Override
     public Color getFogColor(float partialTicks)
     {
+        if (ForgeMain.angelicaCompat != null) {
+            return ForgeMain.angelicaCompat.getFogColor();
+        }
         float[] colorValues = new float[4];
         GL15.glGetFloatv(GL15.GL_FOG_COLOR, colorValues);
         return new Color(
