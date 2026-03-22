@@ -1,7 +1,8 @@
 // Add any additional repositories for your dependencies here.
 
 repositories {
-     maven {
+    mavenLocal()
+    maven {
         name = 'mavenpattern'
         url = 'https://mvn.falsepattern.com/releases'
         content {
