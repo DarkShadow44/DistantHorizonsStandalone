@@ -14,7 +14,6 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL32;
 
-import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 
 public class RenderHelper {
@@ -24,13 +23,17 @@ public class RenderHelper {
         ClientApi.RENDER_STATE.mcProjectionMatrix = getProjectionMatrix();
         ClientApi.RENDER_STATE.clientLevelWrapper = ClientLevelWrapper.getWrapper(Minecraft.getMinecraft().theWorld);
 
-        GL32.glDisable(GL32.GL_ALPHA_TEST);
+        if (ForgeMain.angelicaCompat == null) {
+            GL32.glDisable(GL32.GL_ALPHA_TEST);
+        }
         GL11.glClearColor(1, 1, 1, 0.0F);
         int oldActiveTex = GL11.glGetInteger(GL32.GL_ACTIVE_TEXTURE);
         int oldBoundTex = GL11.glGetInteger(GL32.GL_TEXTURE_BINDING_2D);
         ClientApi.INSTANCE.renderLods();
         GL32.glDepthFunc(GL32.GL_LEQUAL);
-        GL32.glEnable(GL32.GL_ALPHA_TEST);
+        if (ForgeMain.angelicaCompat == null) {
+            GL32.glEnable(GL32.GL_ALPHA_TEST);
+        }
         GL32.glDisable(GL32.GL_BLEND);
         GL32.glActiveTexture(oldActiveTex);
         GL32.glBindTexture(GL32.GL_TEXTURE_2D, oldBoundTex);
@@ -52,13 +55,17 @@ public class RenderHelper {
         ClientApi.RENDER_STATE.mcProjectionMatrix = getProjectionMatrix();
         ClientApi.RENDER_STATE.clientLevelWrapper = ClientLevelWrapper.getWrapper(Minecraft.getMinecraft().theWorld);
 
-        GL32.glDisable(GL32.GL_ALPHA_TEST);
+        if (ForgeMain.angelicaCompat == null) {
+            GL32.glDisable(GL32.GL_ALPHA_TEST);
+        }
         if (translucent) {
             ClientApi.INSTANCE.renderFadeTransparent();
         } else {
             ClientApi.INSTANCE.renderFadeOpaque();
         }
-        GL32.glEnable(GL32.GL_ALPHA_TEST);
+        if (ForgeMain.angelicaCompat == null) {
+            GL32.glEnable(GL32.GL_ALPHA_TEST);
+        }
     }
 
     private static Matrix4f modelViewMatrix;
