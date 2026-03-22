@@ -59,6 +59,7 @@ public class RenderHelper {
             GL32.glDisable(GL32.GL_ALPHA_TEST);
         }
         if (translucent) {
+            ClientApi.INSTANCE.renderDeferredLodsForShaders();
             ClientApi.INSTANCE.renderFadeTransparent();
         } else {
             ClientApi.INSTANCE.renderFadeOpaque();
@@ -66,6 +67,9 @@ public class RenderHelper {
         if (ForgeMain.angelicaCompat == null) {
             GL32.glEnable(GL32.GL_ALPHA_TEST);
         }
+
+        GL32.glDepthFunc(GL32.GL_LEQUAL);
+        GL32.glDisable(GL32.GL_BLEND);
     }
 
     private static Matrix4f modelViewMatrix;
