@@ -253,7 +253,7 @@ public class LodRequestModule implements Closeable
 		
 		public IFullDataSourceRetrievalQueue retrievalQueue;
 		
-		private static final ThreadPoolExecutor PROGRESS_UPDATER_THREAD = ThreadUtil.makeSingleDaemonThreadPool("World Gen Progress Updater");
+		private static final ThreadPoolExecutor PROGRESS_UPDATER_THREAD = ThreadUtil.makeThreadPool(3, "World Gen Progress Updater", Thread.NORM_PRIORITY, true);
 		private boolean progressUpdateThreadRunning = false;
 		
 		
