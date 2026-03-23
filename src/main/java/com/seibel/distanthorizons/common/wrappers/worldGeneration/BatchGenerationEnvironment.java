@@ -847,16 +847,7 @@ public final class BatchGenerationEnvironment implements IBatchGeneratorEnvironm
     /** @param generateUpToFeatures if false this generate the chunk up to "FULL" status */
     private CompletableFuture<Chunk> requestChunkFromServerAsync(WorldServer level, ChunkPos pos, boolean generateUpToFeatures)
     {
-        return CompletableFuture.supplyAsync(() ->
-        {
-            try {
-                return forceLoadChunkAsync(level, pos.x, pos.z).get();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            } catch (ExecutionException e) {
-                throw new RuntimeException(e);
-            }
-        });
+        return forceLoadChunkAsync(level, pos.x, pos.z);
     }
     /** @param chunkWasGeneratedUpToFeatures if false this assumes the chunk was generated to "FULL" status */
     private CompletableFuture<Void> releaseChunkToServer(WorldServer level, ChunkPos pos, boolean chunkWasGeneratedUpToFeatures)
