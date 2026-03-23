@@ -78,9 +78,6 @@ public class RenderHelper {
         ClientApi.RENDER_STATE.clientLevelWrapper = ClientLevelWrapper.getWrapper(Minecraft.getMinecraft().theWorld);
 
         ClientApi.INSTANCE.renderDeferredLodsForShaders();
-
-        GL32.glDepthFunc(GL32.GL_LEQUAL);
-        GL32.glDisable(GL32.GL_BLEND);
     }
 
     private static Matrix4f modelViewMatrix;
