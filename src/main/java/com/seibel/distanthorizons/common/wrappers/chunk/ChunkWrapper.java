@@ -76,14 +76,16 @@ public class ChunkWrapper implements IChunkWrapper
     private final int[][] solidHeightMap;
     /** will be null if we are using MC heightmaps */
     private final int[][] lightBlockingHeightMap;
-    private final BiomeGenBase[] biomeList = new BiomeGenBase[256];
+    private final BiomeGenBase[] biomeList;
 
-    private void fillBiomeMap() {
+    private BiomeGenBase[] fillBiomeMap() {
+        BiomeGenBase[] ret = new BiomeGenBase[256];
         for (int x = 0; x < 16; x++) {
             for (int z = 0; z < 16; z++) {
-                biomeList[x * 16 + z] = chunk.worldObj.getBiomeGenForCoords((chunk.xPosition << 4) + x, (chunk.zPosition << 4) + z);
+                ret[x * 16 + z] = chunk.worldObj.getBiomeGenForCoords((chunk.xPosition << 4) + x, (chunk.zPosition << 4) + z);
             }
         }
+        return ret;
     }
 
 
@@ -91,33 +93,24 @@ public class ChunkWrapper implements IChunkWrapper
     // constructor //
     //=============//
 
-    private void runFillBiomeMap(boolean isRemote)
+    private ChunkWrapper(ChunkWrapper other)
     {
-        try {
-            if (isRemote) {
-                Minecraft.getMinecraft().func_152344_a(this::fillBiomeMap).get();
-            } else {
-                ServerThreadUtil.addScheduledTask(this::fillBiomeMap).get();
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException("Unable to handle interruption on ", e);
-        } catch (ExecutionException e) {
-            throw new RuntimeException(e);
-        }
+        this.chunk = other.chunk;
+        this.chunkPos = new DhChunkPos(other.chunkPos.getX(), other.chunkPos.getZ());
+        this.wrappedLevel = other.wrappedLevel;
+        this.biomeList = other.biomeList;
+
+        this.solidHeightMap = null;
+        this.lightBlockingHeightMap = null;
     }
 
-    public ChunkWrapper(Chunk chunk, ILevelWrapper wrappedLevel, boolean certainMainThread)
+    public ChunkWrapper(Chunk chunk, ILevelWrapper wrappedLevel)
     {
         this.chunk = chunk;
         this.wrappedLevel = wrappedLevel;
         this.chunkPos = new DhChunkPos(chunk.xPosition, chunk.zPosition);
 
-        if (certainMainThread) {
-            fillBiomeMap();
-        } else {
-            runFillBiomeMap(chunk.worldObj.isRemote);
-        }
+        biomeList = fillBiomeMap();
 
         this.solidHeightMap = null;
         this.lightBlockingHeightMap = null;
@@ -273,7 +266,7 @@ public class ChunkWrapper implements IChunkWrapper
 
     @Override
     public IChunkWrapper copy() {
-        return new ChunkWrapper(chunk, wrappedLevel, false);
+        return new ChunkWrapper(this);
     }
 
     @Override

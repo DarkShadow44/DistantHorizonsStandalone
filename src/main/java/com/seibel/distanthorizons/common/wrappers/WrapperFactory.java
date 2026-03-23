@@ -203,7 +203,7 @@ public class WrapperFactory implements IWrapperFactory
 					: ServerLevelWrapper.getWrapper((WorldServer) level);
 
 
-			return new ChunkWrapper(chunk, levelWrapper, false);
+			throw new RuntimeException("Not supported to create ChunkWrapper off main thread");
 		}
 		// incorrect number of parameters from the API
 		else

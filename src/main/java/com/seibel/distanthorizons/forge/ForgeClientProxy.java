@@ -152,27 +152,16 @@ public class ForgeClientProxy implements AbstractModInitializer.IEventProxy
 				return;
 			}
 
-			//LOGGER.trace("interact or block place event at blockPos: " + event.getPos());
-
 			World level = event.world;
 
-			AbstractExecutorService executor = ThreadPoolUtil.getFileHandlerExecutor();
-			if (executor != null)
-			{
-				executor.execute(() ->
-				{
-					Chunk chunk = level.getChunkFromBlockCoords(event.x, event.z);
-					this.onBlockChangeEvent(level, chunk);
-				});
-			}
+            Minecraft.getMinecraft().func_152344_a(() -> {
+                Chunk chunk = level.getChunkFromBlockCoords(event.x, event.z);
+                ChunkWrapper chunkWrapper = new ChunkWrapper(chunk, wrappedLevel);
+                SharedApi.INSTANCE.applyChunkUpdate(chunkWrapper, wrappedLevel);
+            });
 		}
 	}
 
-	private void onBlockChangeEvent(World level, Chunk chunk)
-	{
-		ILevelWrapper wrappedLevel = ProxyUtil.getLevelWrapper(level);
-		SharedApi.INSTANCE.applyChunkUpdate(new ChunkWrapper(chunk, wrappedLevel, false), wrappedLevel);
-	}
 
 	@SubscribeEvent
 	public void clientChunkLoadEvent(ChunkEvent.Load event)
@@ -180,7 +169,7 @@ public class ForgeClientProxy implements AbstractModInitializer.IEventProxy
 		if (MC.clientConnectedToDedicatedServer())
 		{
 			ILevelWrapper wrappedLevel = ProxyUtil.getLevelWrapper(GetEventLevel(event));
-			IChunkWrapper chunk = new ChunkWrapper(event.getChunk(), wrappedLevel, true);
+			IChunkWrapper chunk = new ChunkWrapper(event.getChunk(), wrappedLevel);
 			SharedApi.INSTANCE.applyChunkUpdate(chunk, wrappedLevel);
 		}
 	}

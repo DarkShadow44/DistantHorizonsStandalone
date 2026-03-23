@@ -114,14 +114,14 @@ public class InternalServerGenerator
             // create gen requests //
             //=====================//
 
-            ArrayList<CompletableFuture<Chunk>> getChunkFutureList = new ArrayList<>();
+            ArrayList<CompletableFuture<ChunkWrapper>> getChunkFutureList = new ArrayList<>();
             {
                 Iterator<ChunkPos> chunkPosIterator = ChunkPosGenStream.getIterator(genEvent.minPos.getX(), genEvent.minPos.getZ(), genEvent.widthInChunks, 0);
                 while (chunkPosIterator.hasNext())
                 {
                     ChunkPos chunkPos = chunkPosIterator.next();
 
-                    CompletableFuture<Chunk> requestChunkFuture =
+                    CompletableFuture<ChunkWrapper> requestChunkFuture =
                         this.requestChunkFromServerAsync(chunkPos)
                             // log errors if necessary
                             .whenCompleteAsync(
@@ -164,11 +164,10 @@ public class InternalServerGenerator
             ArrayList<IChunkWrapper> chunkWrappers = new ArrayList<>();
             for (int i = 0; i < getChunkFutureList.size(); i++)
             {
-                CompletableFuture<Chunk> getChunkFuture = getChunkFutureList.get(i);
-                Chunk chunk = getChunkFuture.join();
-                if (chunk != null)
+                CompletableFuture<ChunkWrapper> getChunkFuture = getChunkFutureList.get(i);
+                ChunkWrapper chunkWrapper = getChunkFuture.join();
+                if (chunkWrapper != null)
                 {
-                    ChunkWrapper chunkWrapper = new ChunkWrapper(chunk, this.dhServerLevel.getLevelWrapper(), false);
                     chunkWrapper.createDhHeightMaps();
                     chunkWrappers.add(chunkWrapper);
                 }
@@ -247,7 +246,7 @@ public class InternalServerGenerator
         }
     }
 
-    private CompletableFuture<Chunk> requestChunkFromServerAsync(ChunkPos chunkPos)
+    private CompletableFuture<ChunkWrapper> requestChunkFromServerAsync(ChunkPos chunkPos)
     {
         return ForgeServerProxy.schedule(true, () ->
         {
@@ -265,7 +264,8 @@ public class InternalServerGenerator
                 }
             }
 
-            return provider.provideChunk(chunkPos.x, chunkPos.z);
+            Chunk chunk = provider.provideChunk(chunkPos.x, chunkPos.z);
+            return new ChunkWrapper(chunk, params.dhServerLevel.getLevelWrapper());
         });
     }
 
