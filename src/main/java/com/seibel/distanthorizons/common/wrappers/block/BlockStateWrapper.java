@@ -31,9 +31,6 @@ import com.seibel.distanthorizons.core.wrapperInterfaces.block.IBlockStateWrappe
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
 import com.seibel.distanthorizons.forge.ForgeMain;
 import cpw.mods.fml.common.registry.GameData;
-import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
-import it.unimi.dsi.fastutil.ints.Int2ObjectMaps;
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockBeacon;
@@ -69,7 +66,7 @@ public class BlockStateWrapper implements IBlockStateWrapper
     // must be defined before AIR, otherwise a null pointer will be thrown
     private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 
-    public static final Int2ObjectMap<BlockStateWrapper> WRAPPER_BY_BLOCK_ID_AND_META = Int2ObjectMaps.synchronize(new Int2ObjectOpenHashMap<>());
+    public static final ConcurrentHashMap<Integer, BlockStateWrapper> WRAPPER_BY_BLOCK_ID_AND_META = new ConcurrentHashMap<>();
     public static final ConcurrentHashMap<String, BlockStateWrapper> WRAPPER_BY_RESOURCE_LOCATION = new ConcurrentHashMap<>();
 
     public static final String AIR_STRING = "AIR";
@@ -118,14 +115,10 @@ public class BlockStateWrapper implements IBlockStateWrapper
         }
         final int blockId = Block.getIdFromBlock(block);
         final int packed = FakeBlockState.calculateHashCode(blockId, meta);
-        if(WRAPPER_BY_BLOCK_ID_AND_META.containsKey(packed)) {
-            return WRAPPER_BY_BLOCK_ID_AND_META.get(packed);
-        } else {
+        return WRAPPER_BY_BLOCK_ID_AND_META.computeIfAbsent(packed, key -> {
             final FakeBlockState blockState = new FakeBlockState(block, meta, blockId);
-            final BlockStateWrapper newWrapper = new BlockStateWrapper(blockState, levelWrapper);
-            WRAPPER_BY_BLOCK_ID_AND_META.put(packed, newWrapper);
-            return newWrapper;
-        }
+            return new BlockStateWrapper(blockState, levelWrapper);
+        });
     }
 
     /**
