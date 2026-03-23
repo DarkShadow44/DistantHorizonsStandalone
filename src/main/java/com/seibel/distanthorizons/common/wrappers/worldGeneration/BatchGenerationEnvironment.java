@@ -21,122 +21,88 @@
 package com.seibel.distanthorizons.common.wrappers.worldGeneration;
 
 import com.google.common.collect.ImmutableMap;
-import com.seibel.distanthorizons.core.logging.DhLogger;
-import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
-import com.seibel.distanthorizons.core.wrapperInterfaces.worldGeneration.IBatchGeneratorEnvironmentWrapper;
-import copy.com.gtnewhorizons.angelica.compat.mojang.ChunkPos;
+import com.seibel.distanthorizons.api.DhApi;
 import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiDistantGeneratorMode;
 import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiWorldGenerationStep;
 import com.seibel.distanthorizons.common.wrappers.world.ServerLevelWrapper;
-import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
+import com.seibel.distanthorizons.core.api.internal.SharedApi;
+import com.seibel.distanthorizons.core.api.internal.chunkUpdating.ChunkUpdateQueueManager;
+import com.seibel.distanthorizons.core.api.internal.chunkUpdating.WorldChunkUpdateManager;
 import com.seibel.distanthorizons.core.generation.DhLightingEngine;
 import com.seibel.distanthorizons.core.level.IDhServerLevel;
 import com.seibel.distanthorizons.core.config.Config;
+import com.seibel.distanthorizons.core.logging.DhLogger;
+import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pos.DhChunkPos;
+import com.seibel.distanthorizons.core.sql.dto.BeaconBeamDTO;
+import com.seibel.distanthorizons.core.util.ExceptionUtil;
 import com.seibel.distanthorizons.core.util.LodUtil;
+import com.seibel.distanthorizons.core.util.TimerUtil;
 import com.seibel.distanthorizons.core.util.gridList.ArrayGridList;
+import com.seibel.distanthorizons.core.util.objects.UncheckedInterruptedException;
 import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.ChunkLightStorage;
 import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.IChunkWrapper;
-import com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor.IModChecker;
+import com.seibel.distanthorizons.core.wrapperInterfaces.worldGeneration.IBatchGeneratorEnvironmentWrapper;
 import com.seibel.distanthorizons.common.wrappers.chunk.ChunkWrapper;
 
-import java.io.IOException;
-import java.lang.reflect.Field;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
-import com.seibel.distanthorizons.common.wrappers.DependencySetupDoneCheck;
+import com.seibel.distanthorizons.coreapi.ModInfo;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
-import com.seibel.distanthorizons.forge.ForgeMain;
-import com.seibel.distanthorizons.forge.ForgeServerProxy;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.world.ChunkCoordIntPair;
-import net.minecraft.world.WorldServer;
-import net.minecraft.world.chunk.Chunk;
-import net.minecraft.world.chunk.EmptyChunk;
-import net.minecraft.world.chunk.IChunkProvider;
-import net.minecraft.world.chunk.storage.AnvilChunkLoader;
-import net.minecraft.world.gen.ChunkProviderServer;
-import net.minecraftforge.common.ForgeChunkManager;
-import org.apache.logging.log4j.LogManager;
-
-/*
-Total:                   3.135214124s
-=====================================
-Empty Chunks:            0.000558328s
-StructureStart Step:     0.025177207s
-StructureReference Step: 0.00189559s
-Biome Step:              0.13789155s
-Noise Step:              1.570347555s
-Surface Step:            0.741238194s
-Carver Step:             0.000009923s
-Feature Step:            0.389072425s
-Lod Generation:          0.269023348s
-*/
 public final class BatchGenerationEnvironment implements IBatchGeneratorEnvironmentWrapper
 {
-    public static final DhLogger PREF_LOGGER =
-        new DhLoggerBuilder().name("LodWorldGen-Perf")
-            .fileLevelConfig(Config.Common.Logging.logWorldGenEventToFile)
-            .maxCountPerSecond(1).build();
-    public static final DhLogger EVENT_LOGGER =
-        new DhLoggerBuilder().name("LodWorldGen-Event")
-            .fileLevelConfig(Config.Common.Logging.logWorldGenEventToFile).build();
-    public static final DhLogger LOAD_LOGGER =
-        new DhLoggerBuilder().name("LodWorldGen-Load")
-            .fileLevelConfig(Config.Common.Logging.logWorldGenChunkLoadEventToFile).build();
+    public static final DhLogger LOGGER = new DhLoggerBuilder()
+        .name("LOD World Gen")
+        .fileLevelConfig(Config.Common.Logging.logWorldGenEventToFile)
+        .build();
 
-    private static final IModChecker MOD_CHECKER = SingletonInjector.INSTANCE.get(IModChecker.class);
+    public static final DhLogger RATE_LIMITED_LOGGER = new DhLoggerBuilder()
+        .name("LOD World Gen")
+        .maxCountPerSecond(1)
+        .build();
 
-    private final ForgeChunkManager.Ticket DH_SERVER_GEN_TICKET;
+    @NotNull
+    public static final ImmutableMap<EDhApiWorldGenerationStep, Integer> WORLD_GEN_CHUNK_BORDER_NEEDED_BY_GEN_STEP;
+    public static final int MAX_WORLD_GEN_CHUNK_BORDER_NEEDED;
 
-
-    private final IDhServerLevel serverlevel;
-
-    /**
-     * will be true if C2ME is installed (since they require us to
-     * pull chunks using their async method), or if there
-     * was an issue with the sync pulling method.
-     */
-    private boolean pullExistingChunkUsingMcAsyncMethod = false;
-
-
-
-    //=================Generation Step===================
-
-    public final LinkedBlockingQueue<GenerationEvent> generationEventList = new LinkedBlockingQueue<>();
-    public final GlobalParameters params;
-    public boolean unsafeThreadingRecorded = false;
     public static final long EXCEPTION_TIMER_RESET_TIME = TimeUnit.NANOSECONDS.convert(1, TimeUnit.SECONDS);
     public static final int EXCEPTION_COUNTER_TRIGGER = 20;
-    public static final int RANGE_TO_RANGE_EMPTY_EXTENSION = 1;
+
+    /**
+     * Used to revert the ignore logic in {@link SharedApi} so
+     * that a given chunk pos can be handled again.
+     * A timer is used so we don't have to inject into MC's code and it works sell enough
+     * most of the time.
+     * If a chunk does get through due the timeout not being long enough that isn't the end of the world.
+     */
+    private static final int MS_TO_IGNORE_CHUNK_AFTER_COMPLETION = 5_000;
+
+
+
+    private final IDhServerLevel dhServerLevel;
+    @Nullable
+    private final ChunkUpdateQueueManager updateManager;
+
+    public final InternalServerGenerator internalServerGenerator;
+
+    private final Timer chunkSaveIgnoreTimer = TimerUtil.CreateTimer("ChunkSaveIgnoreTimer");
+
+
+
+    public final LinkedBlockingQueue<GenerationEvent> generationEventQueue = new LinkedBlockingQueue<>();
+    public final GlobalWorldGenParams globalParams;
+
+    public boolean unsafeThreadingRecorded = false;
+    public boolean generatedChunkWithoutBiomeWarningLogged = false;
     public int unknownExceptionCount = 0;
     public long lastExceptionTriggerTime = 0;
 
-    /*
-    private final AtomicReference<RegionFileStorageExternalCache> regionFileStorageCacheRef = new AtomicReference<>();
-    public RegionFileStorageExternalCache getOrCreateRegionFileCache(RegionFileStorage storage)
-    {
-        RegionFileStorageExternalCache cache = this.regionFileStorageCacheRef.get();
-        if (cache == null)
-        {
-            cache = new RegionFileStorageExternalCache(storage);
-            if (!this.regionFileStorageCacheRef.compareAndSet(null, cache))
-            {
-                cache = this.regionFileStorageCacheRef.get();
-            }
-        }
-        return cache;
-    }
-     */
-
-    public static ThreadLocal<Boolean> isDistantGeneratorThread = new ThreadLocal<>();
-    public static boolean isCurrentThreadDistantGeneratorThread() { return (isDistantGeneratorThread.get() != null); }
+    public static ThreadLocal<Boolean> isDhWorldGenThreadRef = new ThreadLocal<>();
+    public static boolean isThisDhWorldGenThread() { return (isDhWorldGenThreadRef.get() != null); }
 
 
 
@@ -144,30 +110,24 @@ public final class BatchGenerationEnvironment implements IBatchGeneratorEnvironm
     // constructors //
     //==============//
 
-    public static final ImmutableMap<EDhApiWorldGenerationStep, Integer> WORLD_GEN_CHUNK_BORDER_NEEDED_BY_GEN_STEP;
-    public static final int MAX_WORLD_GEN_CHUNK_BORDER_NEEDED;
-
     static
     {
-        DependencySetupDoneCheck.getIsCurrentThreadDistantGeneratorThread = BatchGenerationEnvironment::isCurrentThreadDistantGeneratorThread;
-
-        boolean isTerraFirmaCraft = false;
+        boolean isTerraFirmaCraftPresent = false;
         try
         {
             Class.forName("net.dries007.tfc.world.TFCChunkGenerator");
-            isTerraFirmaCraft = true;
+            isTerraFirmaCraftPresent = true;
+            LOGGER.info("TerraFirmaCraft detected.");
         }
-        catch (ClassNotFoundException e)
-        {
-            //Ignore
-        }
-        EVENT_LOGGER.info("DH TerraFirmaCraft detection: " + isTerraFirmaCraft);
+        catch (ClassNotFoundException ignore) { }
+
+
         ImmutableMap.Builder<EDhApiWorldGenerationStep, Integer> builder = ImmutableMap.builder();
         builder.put(EDhApiWorldGenerationStep.EMPTY, 1);
         builder.put(EDhApiWorldGenerationStep.STRUCTURE_START, 0);
         builder.put(EDhApiWorldGenerationStep.STRUCTURE_REFERENCE, 0);
-        builder.put(EDhApiWorldGenerationStep.BIOMES, isTerraFirmaCraft ? 1 : 0);
-        builder.put(EDhApiWorldGenerationStep.NOISE, isTerraFirmaCraft ? 1 : 0);
+        builder.put(EDhApiWorldGenerationStep.BIOMES, isTerraFirmaCraftPresent ? 1 : 0);
+        builder.put(EDhApiWorldGenerationStep.NOISE, isTerraFirmaCraftPresent ? 1 : 0);
         builder.put(EDhApiWorldGenerationStep.SURFACE, 0);
         builder.put(EDhApiWorldGenerationStep.CARVERS, 0);
         builder.put(EDhApiWorldGenerationStep.LIQUID_CARVERS, 0);
@@ -175,69 +135,27 @@ public final class BatchGenerationEnvironment implements IBatchGeneratorEnvironm
         builder.put(EDhApiWorldGenerationStep.LIGHT, 0);
         WORLD_GEN_CHUNK_BORDER_NEEDED_BY_GEN_STEP = builder.build();
 
-        // TODO this is a test to see if the additional boarder is actually necessary or not.
-        //  If world generators end up having infinite loops or other unexplained issues,
-        //  this should be set back to the commented out logic below
+        // in James' testing as of 2025-09-13 a border here of 2
+        // and a getChunkPosToGenerateStream() radius of 14 provided more accurate
+        // structure generation, however it also caused extreme server lag
+        // a border of 0 here and a getChunkPosToGenerateStream() radius of 8 provided
+        // good-enough structure generation while not lagging the server
         MAX_WORLD_GEN_CHUNK_BORDER_NEEDED = 0;
-        //MAX_WORLD_GEN_CHUNK_BORDER_NEEDED = WORLD_GEN_CHUNK_BORDER_NEEDED_BY_GEN_STEP.values().stream().mapToInt(Integer::intValue).max().getAsInt();
     }
 
-    public BatchGenerationEnvironment(IDhServerLevel serverlevel)
+    public BatchGenerationEnvironment(IDhServerLevel dhServerLevel)
     {
-        this.serverlevel = serverlevel;
-
-        EVENT_LOGGER.info("================WORLD_GEN_STEP_INITING=============");
-
-        serverlevel.getServerLevelWrapper().getDimensionType();
-
-        this.params = new GlobalParameters(serverlevel);
-        DH_SERVER_GEN_TICKET = ForgeChunkManager.requestTicket(ForgeMain.instance, (WorldServer)serverlevel.getServerLevelWrapper().getWrappedMcObject(), ForgeChunkManager.Type.NORMAL);
-        increaseChunkLimit(DH_SERVER_GEN_TICKET, 1000);
+        this.dhServerLevel = dhServerLevel;
+        this.updateManager = WorldChunkUpdateManager.INSTANCE.getByLevelWrapper(this.dhServerLevel.getServerLevelWrapper());
+        this.globalParams = new GlobalWorldGenParams(dhServerLevel);
+        this.internalServerGenerator = new InternalServerGenerator(this.globalParams, this.dhServerLevel);
     }
 
-
-    static void increaseChunkLimit(ForgeChunkManager.Ticket ticket, int newMaxDepth) {
-            try {
-                Field maxDepthField = ticket.getClass().getDeclaredField("maxDepth");
-                maxDepthField.setAccessible(true);
-                maxDepthField.setInt(ticket, newMaxDepth);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
 
 
     //=================//
     // synchronization //
     //=================//
-
-    /**
-     * This method checks to make sure that all world gen is being
-     * run on DH threads instead of leaking out to other MC threads.
-     * This is done to prevent putting undue stress on MC threads
-     * and prevent potential issues with concurrent processing.
-     */
-    public <T> T confirmFutureWasRunSynchronously(CompletableFuture<T> future)
-    {
-        // this operation should be done since DH wants the
-        // operation to be done synchronously
-        if (!this.unsafeThreadingRecorded && !future.isDone())
-        {
-            EVENT_LOGGER.warn(
-                "Unsafe MultiThreading in Distant Horizons Chunk Generator. \n" +
-                    "This can happen if world generation is run on one of Minecraft's thread pools " +
-                    "instead of the thread DH provided. \n" +
-                    "This can likely be ignored, however if world generator crashes occur " +
-                    "setting DH's world generation thread count to 1 may improve stability. ",
-                new RuntimeException("Incorrect thread pool use"));
-            this.unsafeThreadingRecorded = true;
-        }
-
-        // if the future wasn't done synchronously,
-        // wait for it to finish so we can continue the world gen
-        // lifecycle like normal
-        return future.join();
-    }
 
     public void updateAllFutures()
     {
@@ -251,7 +169,7 @@ public final class BatchGenerationEnvironment implements IBatchGeneratorEnvironm
 
 
         // Update all current out standing jobs
-        Iterator<GenerationEvent> iter = this.generationEventList.iterator();
+        Iterator<GenerationEvent> iter = this.generationEventQueue.iterator();
         while (iter.hasNext())
         {
             GenerationEvent event = iter.next();
@@ -262,13 +180,13 @@ public final class BatchGenerationEnvironment implements IBatchGeneratorEnvironm
                     try
                     {
                         event.future.get(); // Should throw exception
-                        LodUtil.assertNotReach("Uh oh");
+                        LodUtil.assertNotReach("Exceptionally completed world gen Future should have thrown an exception.");
                     }
                     catch (Exception e)
                     {
                         this.unknownExceptionCount++;
                         this.lastExceptionTriggerTime = System.nanoTime();
-                        EVENT_LOGGER.error("Batching World Generator event ["+event+"] threw an exception: "+e.getMessage(), e);
+                        LOGGER.error("Batching World Generator event ["+event+"] threw an exception: "+e.getMessage(), e);
                     }
                 }
 
@@ -278,758 +196,53 @@ public final class BatchGenerationEnvironment implements IBatchGeneratorEnvironm
 
         if (this.unknownExceptionCount > EXCEPTION_COUNTER_TRIGGER)
         {
-            EVENT_LOGGER.error("Too many exceptions in Batching World Generator! Disabling the generator.");
+            LOGGER.error("Too many exceptions in Batching World Generator! Disabling the generator.");
             this.unknownExceptionCount = 0;
             Config.Common.WorldGenerator.enableDistantGeneration.set(false);
         }
     }
 
+    private static <T> ArrayGridList<T> GetCutoutFrom(ArrayGridList<T> total, int border) { return new ArrayGridList<>(total, border, total.gridSize - border); }
+    private static <T> ArrayGridList<T> GetCutoutFrom(ArrayGridList<T> total, EDhApiWorldGenerationStep step) { return GetCutoutFrom(total, WORLD_GEN_CHUNK_BORDER_NEEDED_BY_GEN_STEP.get(step)); }
+
+
+
+    // queue task //
+
     @Override
-    public CompletableFuture<Void> queueGenEvent(int minX, int minZ, int genSize, EDhApiDistantGeneratorMode generatorMode, EDhApiWorldGenerationStep targetStep, ExecutorService worldGeneratorThreadPool, Consumer<IChunkWrapper> resultConsumer) {
-        // TODO: Check event overlap via e.tooClose()
-        GenerationEvent genEvent = GenerationEvent.startEvent(new DhChunkPos(minX, minZ), genSize, this, generatorMode, targetStep, resultConsumer, worldGeneratorThreadPool);
-        this.generationEventList.add(genEvent);
+    public CompletableFuture<Void> queueGenEvent(
+        int minX, int minZ, int chunkWidthCount,
+        EDhApiDistantGeneratorMode generatorMode, EDhApiWorldGenerationStep targetStep,
+        ExecutorService worldGeneratorThreadPool, Consumer<IChunkWrapper> resultConsumer)
+    {
+        GenerationEvent genEvent = GenerationEvent.start(
+            new DhChunkPos(minX, minZ), chunkWidthCount, this,
+            generatorMode, targetStep, resultConsumer,
+            worldGeneratorThreadPool);
+        this.generationEventQueue.add(genEvent);
         return genEvent.future;
     }
 
 
-    //==================//
-    // world generation //
-    //==================//
 
-    // TODO this is already being run on a generator thread,
-    //  why are we passing in an executor?
-    /** @throws RejectedExecutionException if the given {@link Executor} is cancelled. */
-    public CompletableFuture<Void> generateLodFromListAsync(GenerationEvent genEvent, Executor executor) throws RejectedExecutionException, InterruptedException
-    {
-        EVENT_LOGGER.debug("Lod Generate Event: " + genEvent.minPos);
-
-        // Minecraft's generation events expect odd chunk width areas (3x3, 7x7, or 11x11),
-        // but DH submits square generation events (4x4).
-        // We handle this later, although that handling would need to change if the gen size ever changes.
-        LodUtil.assertTrue(genEvent.size % 2 == 0, "Generation events are expected to be an evan number of chunks wide.");
-
-        // TODO if (genEvent.generatorMode == EDhApiDistantGeneratorMode.INTERNAL_SERVER)
-        {
-            return this.generateChunksViaInternalServerAsync(genEvent);
-        }
-
-        /*
-        int borderSize = MAX_WORLD_GEN_CHUNK_BORDER_NEEDED;
-        // genEvent.size - 1 converts the even width size to an odd number for MC compatability
-        int refSize = (genEvent.size - 1) + (borderSize * 2);
-        int refPosX = genEvent.minPos.getX() - borderSize;
-        int refPosZ = genEvent.minPos.getZ() - borderSize;
-
-        LightGetterAdaptor lightGetterAdaptor = new LightGetterAdaptor(this.params.level);
-        DummyLightEngine dummyLightEngine = new DummyLightEngine(lightGetterAdaptor);
-
-
-
-        //====================================//
-        // offset and generate odd width area //
-        //====================================//
-
-        // reused data between each offset
-        Map<DhChunkPos, ChunkLightStorage> chunkSkyLightingByDhPos = Collections.synchronizedMap(new HashMap<>());
-        Map<DhChunkPos, ChunkLightStorage> chunkBlockLightingByDhPos = Collections.synchronizedMap(new HashMap<>());
-        Map<DhChunkPos, ChunkAccess> generatedChunkByDhPos = Collections.synchronizedMap(new HashMap<>());
-        Map<DhChunkPos, ChunkWrapper> chunkWrappersByDhPos = Collections.synchronizedMap(new HashMap<>());
-
-        // futures to handle getting empty chunks
-        CompletableFuture<?>[] readFutures =
-            // the extra radius of 8 is to account for structure references which need a chunk radius of 8
-            getChunkPosToGenerateStream(genEvent.minPos.getX(), genEvent.minPos.getZ(), genEvent.size, 8)
-                .map((chunkPos) -> this.createEmptyOrPreExistingChunkAsync(chunkPos.x, chunkPos.z, chunkSkyLightingByDhPos, chunkBlockLightingByDhPos, generatedChunkByDhPos))
-                .toArray(CompletableFuture[]::new);
-
-        // join to prevent an issue where DH queues too many tasks or something(?)
-        // also allows file IO to run in parallel so no one thread is waiting on disk IO (this is only an issue when C2ME is present)
-        CompletableFuture.allOf(readFutures).join();
-
-        // future chain for generation
-        return CompletableFuture.runAsync(() ->
-        {
-            // offset 1 chunk in both X and Z direction so we can generate an even number of chunks wide
-            // while still submitting an odd number width to MC's internal generators
-            for (int xOffset = 0; xOffset < 2; xOffset++)
-            {
-                // final is so the offset can be used in lambdas
-                final int xOffsetFinal = xOffset;
-                for (int zOffset = 0; zOffset < 2; zOffset++)
-                {
-                    final int zOffsetFinal = zOffset;
-
-
-
-                    //================//
-                    // variable setup //
-                    //================//
-
-                    int radius = refSize / 2;
-                    int centerX = refPosX + radius + xOffset;
-                    int centerZ = refPosZ + radius + zOffset;
-
-                    // get/create the list of chunks we're going to generate
-                    IEmptyChunkRetrievalFunc fallbackFunc =
-                        (chunkPosX, chunkPosZ) -> Objects.requireNonNull(
-                            generatedChunkByDhPos.get(new DhChunkPos(chunkPosX, chunkPosZ)),
-                            () -> String.format("Requested chunk [%d, %d] unavailable during world generation", chunkPosX, chunkPosZ));
-
-                    ArrayGridList<ChunkAccess> regionChunks = new ArrayGridList<>(
-                        refSize,
-                        (relX, relZ) -> fallbackFunc.getChunk(
-                            relX + refPosX + xOffsetFinal,
-                            relZ + refPosZ + zOffsetFinal));
-
-                    ChunkAccess centerChunk = regionChunks.stream()
-                        .filter((chunk) -> chunk.getPos().x == centerX && chunk.getPos().z == centerZ)
-                        .findFirst()
-                        .orElseGet(() -> regionChunks.getFirst());
-
-                    genEvent.refreshTimeout();
-                    DhLitWorldGenRegion region = new DhLitWorldGenRegion(
-                        centerX, centerZ,
-                        centerChunk,
-                        this.params.level, dummyLightEngine, regionChunks,
-                        ChunkStatus.STRUCTURE_STARTS, radius,
-                        // this method shouldn't be necessary since we're passing in a pre-populated
-                        // list of chunks, but just in case
-                        fallbackFunc
-                    );
-                    lightGetterAdaptor.setRegion(region);
-                    genEvent.threadedParam.makeStructFeat(region, this.params);
-
-
-
-                    //=============================//
-                    // create chunk wrappers       //
-                    // and process existing chunks //
-                    //=============================//
-
-                    ArrayGridList<ChunkWrapper> chunkWrapperList = new ArrayGridList<>(regionChunks.gridSize);
-                    regionChunks.forEachPos((relX, relZ) ->
-                    {
-                        // ArrayGridList's use relative positions and don't have a center position
-                        // so we need to use the offsetFinal to select the correct position
-                        DhChunkPos chunkPos = new DhChunkPos(relX + refPosX + xOffsetFinal, relZ + refPosZ + zOffsetFinal);
-                        ChunkAccess chunk = regionChunks.get(relX, relZ);
-
-                        if (chunkWrappersByDhPos.containsKey(chunkPos))
-                        {
-                            chunkWrapperList.set(relX, relZ, chunkWrappersByDhPos.get(chunkPos));
-                        }
-                        else if (chunk != null)
-                        {
-                            // wrap the chunk
-                            ChunkWrapper chunkWrapper = new ChunkWrapper(chunk, this.serverlevel.getLevelWrapper());
-                            chunkWrapperList.set(relX, relZ, chunkWrapper);
-
-                            // try setting the wrapper's lighting
-                            if (chunkBlockLightingByDhPos.containsKey(chunkWrapper.getChunkPos()))
-                            {
-                                chunkWrapper.setBlockLightStorage(chunkBlockLightingByDhPos.get(chunkWrapper.getChunkPos()));
-                                chunkWrapper.setSkyLightStorage(chunkSkyLightingByDhPos.get(chunkWrapper.getChunkPos()));
-                                chunkWrapper.setIsDhBlockLightCorrect(true);
-                                chunkWrapper.setIsDhSkyLightCorrect(true);
-                            }
-
-                            chunkWrappersByDhPos.put(chunkPos, chunkWrapper);
-                        }
-                        else //if (chunk == null)
-                        {
-                            LodUtil.assertNotReach("Programmer Error: No chunk found in grid list, position offset is likely wrong.");
-                        }
-                    });
-
-
-
-                    //=================//
-                    // generate chunks //
-                    //=================//
-
-                    try
-                    {
-                        this.generateDirect(genEvent, chunkWrapperList, region);
-                    }
-                    catch (InterruptedException e)
-                    {
-                        throw new CompletionException(e);
-                    }
-
-                    genEvent.timer.nextEvent("cleanup");
-                }
-            }
-
-            genEvent.timer.nextEvent("cleanup");
-
-
-
-            //=========================//
-            // submit generated chunks //
-            //=========================//
-
-            Iterator<ChunkPos> iterator = getChunkPosToGenerateStream(genEvent.minPos.getX(), genEvent.minPos.getZ(), genEvent.size, 0).iterator();
-            while (iterator.hasNext())
-            {
-                ChunkPos pos = iterator.next();
-                DhChunkPos dhPos = new DhChunkPos(pos.x, pos.z);
-                ChunkWrapper wrappedChunk = chunkWrappersByDhPos.get(dhPos);
-                genEvent.resultConsumer.accept(wrappedChunk);
-            }
-
-            genEvent.timer.complete();
-            genEvent.refreshTimeout();
-            if (PREF_LOGGER.canMaybeLog())
-            {
-                genEvent.threadedParam.perf.recordEvent(genEvent.timer);
-                PREF_LOGGER.debugInc(genEvent.timer.toString());
-            }
-        }, executor);
-         */
-    }
-    /** @param extraRadius in both the positive and negative directions */
-    private static Stream<ChunkPos> getChunkPosToGenerateStream(int genMinX, int genMinZ, int width, int extraRadius)
-    {
-        return StreamSupport.stream(new InclusiveChunkPosStream(genMinX, genMinZ, width, extraRadius), false);
-
-        // method this is replacing
-        //return ChunkPos.rangeClosed(
-        //		new ChunkPos(genMinX - extraRadius, genMinZ - extraRadius),
-        //		new ChunkPos(genMinX + (width - 1) + extraRadius, genMinZ + (width - 1) + extraRadius)
-        //);
-    }
-    /**
-     * If the given chunk pos already exists in the world, that chunk will be returned,
-     * otherwise this will return an empty chunk.
-     */
-    /*
-    private CompletableFuture<ChunkAccess> createEmptyOrPreExistingChunkAsync(
-        int x, int z,
-        Map<DhChunkPos, ChunkLightStorage> chunkSkyLightingByDhPos,
-        Map<DhChunkPos, ChunkLightStorage> chunkBlockLightingByDhPos,
-        Map<DhChunkPos, ChunkAccess> generatedChunkByDhPos)
-    {
-        ChunkPos chunkPos = new ChunkPos(x, z);
-        DhChunkPos dhChunkPos = new DhChunkPos(x, z);
-
-        if (generatedChunkByDhPos.containsKey(dhChunkPos))
-        {
-            return CompletableFuture.completedFuture(generatedChunkByDhPos.get(dhChunkPos));
-        }
-
-        return this.getChunkNbtDataAsync(chunkPos)
-            .thenApply((chunkData) ->
-            {
-                ChunkAccess newChunk = this.loadOrMakeChunk(chunkPos, chunkData);
-
-                if (Config.Common.LodBuilding.pullLightingForPregeneratedChunks.get())
-                {
-                    // attempt to get chunk lighting
-                    ChunkLoader.CombinedChunkLightStorage combinedLights = ChunkLoader.readLight(newChunk, chunkData);
-                    if (combinedLights != null)
-                    {
-                        chunkSkyLightingByDhPos.put(dhChunkPos, combinedLights.skyLightStorage);
-                        chunkBlockLightingByDhPos.put(dhChunkPos, combinedLights.blockLightStorage);
-                    }
-                }
-
-                return newChunk;
-            })
-            // separate handle so we can cleanly handle missing chunks and/or thrown errors
-            .handle((newChunk, throwable) ->
-            {
-                if (newChunk != null)
-                {
-                    return newChunk;
-                }
-                else
-                {
-                    return CreateEmptyChunk(this.params.level, chunkPos);
-                }
-            })
-            .thenApply((newChunk) ->
-            {
-                generatedChunkByDhPos.put(dhChunkPos, newChunk);
-                return newChunk;
-            });
-    }
-    // TODO FIXME this method can be called up to 25 times for the same chunk position, why?
-    private CompletableFuture<CompoundTag> getChunkNbtDataAsync(ChunkPos chunkPos)
-    {
-        ServerLevel level = this.params.level;
-
-        //if (true)
-        //	return CompletableFuture.completedFuture(null);
-
-        // TODO disabling drastically reduces GC overhead (2Gb/s -> 1GB/s)
-
-        try
-        {
-            IOWorker ioWorker = level.getChunkSource().chunkMap.worker;
-
-			#if MC_VER <= MC_1_18_2
-            return CompletableFuture.completedFuture(ioWorker.load(chunkPos));
-			#else
-
-            // storage will be null if C2ME is installed
-            if (!this.pullExistingChunkUsingMcAsyncMethod && ioWorker.storage != null)
-            {
-                try
-                {
-                    RegionFileStorage storage = this.params.level.getChunkSource().chunkMap.worker.storage;
-                    RegionFileStorageExternalCache cache = this.getOrCreateRegionFileCache(storage);
-                    return CompletableFuture.completedFuture(cache.read(chunkPos));
-                }
-                catch (NullPointerException e)
-                {
-                    // this shouldn't happen, if anything is null it should be
-                    // ioWorker.storage
-                    // but just in case
-                    EVENT_LOGGER.error("Unexpected issue pulling pre-existing chunk ["+chunkPos+"], falling back to async chunk pulling. This may cause server-tick lag.", e);
-                    this.pullExistingChunkUsingMcAsyncMethod = true;
-
-                    // try again now using the async method
-                    return this.getChunkNbtDataAsync(chunkPos);
-                }
-            }
-            else
-            {
-                // log if we unexpectedly weren't able to run the sync chunk pulling
-                if (!this.pullExistingChunkUsingMcAsyncMethod)
-                {
-                    // this shouldn't happen, but just in case
-                    EVENT_LOGGER.info("Unable to pull pre-existing chunk using synchronous method. Falling back to async method. this may cause server-tick lag.");
-                    this.pullExistingChunkUsingMcAsyncMethod = true;
-                }
-
-                //GET_CHUNK_COUNT_REF.incrementAndGet();
-
-                // When running in vanilla MC on versions before 1.21.4,
-                // DH would attempt to run loadAsync on this same thread via a threading mixin,
-                // to prevent causing lag on the server thread.
-                // However, if a mod like C2ME is installed this will run on a C2ME thread instead.
-                return ioWorker.loadAsync(chunkPos)
-                    .thenApply(optional ->
-                    {
-                        // Debugging note:
-                        // If there are reports of extreme memory use when C2ME is installed, that probably means
-                        // this method is queuing a lot of tasks (1,000+), which causes C2ME to explode.
-
-                        //GET_CHUNK_COUNT_REF.decrementAndGet();
-                        //PREF_LOGGER.info("chunk getter count ["+F3Screen.NUMBER_FORMAT.format(GET_CHUNK_COUNT_REF.get())+"]");
-                        return optional.orElse(null);
-                    })
-                    .exceptionally((throwable) ->
-                    {
-                        // unwrap the CompletionException if necessary
-                        Throwable actualThrowable = throwable;
-                        while (actualThrowable instanceof CompletionException completionException)
-                        {
-                            actualThrowable = completionException.getCause();
-                        }
-
-                        LOAD_LOGGER.warn("DistantHorizons: Couldn't load or make chunk ["+chunkPos+"], error: ["+actualThrowable.getMessage()+"].", actualThrowable);
-                        return null;
-                    });
-            }
-			#endif
-        }
-        catch (Exception e)
-        {
-            LOAD_LOGGER.warn("DistantHorizons: Couldn't load or make chunk [" + chunkPos + "]. Error: [" + e.getMessage() + "].", e);
-            return CompletableFuture.completedFuture(null);
-        }
-    }
-     */
-    /*
-    private ChunkAccess loadOrMakeChunk(ChunkPos chunkPos, CompoundTag chunkData)
-    {
-        ServerLevel level = this.params.level;
-
-        if (chunkData == null)
-        {
-            return CreateEmptyChunk(level, chunkPos);
-        }
-        else
-        {
-            try
-            {
-                LOAD_LOGGER.debug("DistantHorizons: Loading chunk [" + chunkPos + "] from disk.");
-
-                @Nullable
-                ChunkAccess chunk = ChunkLoader.read(level, chunkPos, chunkData);
-                if (chunk != null)
-                {
-                    if (Config.Common.LodBuilding.assumePreExistingChunksAreFinished.get())
-                    {
-                        // Sometimes the chunk status is wrong
-                        // (this might be an issue with some versions of chunky)
-                        // which can cause issues with some world gen steps re-running and locking up
-                        ChunkWrapper.trySetStatus(chunk, ChunkStatus.FULL);
-                    }
-                }
-                else
-                {
-                    chunk = CreateEmptyChunk(level, chunkPos);
-                }
-                return chunk;
-            }
-            catch (Exception e)
-            {
-                LOAD_LOGGER.error(
-                    "DistantHorizons: couldn't load or make chunk at [" + chunkPos + "]." +
-                        "Please try optimizing your world to fix this issue. \n" +
-                        "World optimization can be done from the singleplayer world selection screen.\n" +
-                        "Error: [" + e.getMessage() + "]."
-                    , e);
-
-                return CreateEmptyChunk(level, chunkPos);
-            }
-        }
-    }
-     */
-    private static EmptyChunk CreateEmptyChunk(WorldServer level, ChunkPos chunkPos)
-    {
-		return new EmptyChunk(level, chunkPos.x, chunkPos.z);
-    }
-
-
-
-    private CompletableFuture<Void> generateChunksViaInternalServerAsync(GenerationEvent genEvent) throws InterruptedException
-    {
-        LinkedBlockingQueue<Runnable> runnableQueue = new LinkedBlockingQueue<>();
-
-        Map<DhChunkPos, ChunkWrapper> chunkWrappersByDhPos = Collections.synchronizedMap(new HashMap<>());
-
-
-
-        //===================================//
-        // create generation queue runnables //
-        //===================================//
-
-        // request each chunk pos from the server
-        CompletableFuture<?>[] requestFutures =
-            getChunkPosToGenerateStream(genEvent.minPos.getX(), genEvent.minPos.getZ(), genEvent.size, 0)
-                .map(chunkPos ->
-                {
-                    return requestChunkFromServerAsync(this.params.level, chunkPos, true)
-                        .whenCompleteAsync((chunk, throwable) ->
-                        {
-                            // unwrap the CompletionException if necessary
-                            Throwable actualThrowable = throwable;
-                            while (actualThrowable instanceof CompletionException)
-                            {
-                                actualThrowable = actualThrowable.getCause();
-                            }
-
-                            if (throwable != null)
-                            {
-                                LOAD_LOGGER.warn("DistantHorizons: Couldn't load chunk [" + chunkPos + "] from server, error: [" + actualThrowable.getMessage() + "].", actualThrowable);
-                            }
-
-                            if (chunk != null)
-                            {
-                                ChunkWrapper chunkWrapper = new ChunkWrapper(chunk, this.serverlevel.getLevelWrapper(), false);
-                                chunkWrappersByDhPos.put(new DhChunkPos(chunkPos.x, chunkPos.z), chunkWrapper);
-                            }
-                        }, runnableQueue::add);
-                })
-                .toArray(CompletableFuture[]::new);
-
-        // handle each generated chunk
-        CompletableFuture<Void> processGeneratedChunksFuture =
-            CompletableFuture.allOf(requestFutures)
-                .whenCompleteAsync((voidObj, throwable) ->
-                {
-                    // generate chunk lighting using DH's lighting engine
-                    int maxSkyLight = this.serverlevel.getServerLevelWrapper().hasSkyLight() ? LodUtil.MAX_MC_LIGHT : LodUtil.MIN_MC_LIGHT;
-
-                    ArrayList<IChunkWrapper> generatedChunks = new ArrayList<>(chunkWrappersByDhPos.values());
-                    for (IChunkWrapper iChunkWrapper : generatedChunks)
-                    {
-                        iChunkWrapper.createDhHeightMaps();
-
-                        // pre-generated chunks should have lighting but new ones won't
-                        if (!iChunkWrapper.isDhBlockLightingCorrect())
-                        {
-                            DhLightingEngine.INSTANCE.bakeChunkBlockLighting(iChunkWrapper, generatedChunks, maxSkyLight);
-                        }
-
-                        this.serverlevel.updateBeaconBeamsForChunk(iChunkWrapper, generatedChunks);
-                    }
-
-                    for (IChunkWrapper iChunkWrapper : generatedChunks)
-                    {
-                        genEvent.resultConsumer.accept(iChunkWrapper);
-                    }
-                }, runnableQueue::add)
-                .whenCompleteAsync((unused, throwable) ->
-                {
-                    // cleanup
-                    // release the generated chunks
-
-                    Stream<ChunkPos> stream = getChunkPosToGenerateStream(genEvent.minPos.getX(), genEvent.minPos.getZ(), genEvent.size, 0);
-
-                    Stream<CompletableFuture<Void>> futures = stream.map(pos ->  releaseChunkToServer(this.params.level, pos, true));
-
-                    CompletableFuture<Void> releaseFuture = CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new));
-
-                    releaseFuture.join();
-
-                    genEvent.refreshTimeout();
-                });
-
-        processGeneratedChunksFuture.whenCompleteAsync((unused, throwable) -> { }, runnableQueue::add); // trigger wakeup
-
-
-
-        //===============//
-        // run each step //
-        //===============//
-
-        while (!processGeneratedChunksFuture.isDone())
-        {
-            try
-            {
-                Runnable command = runnableQueue.poll(1, TimeUnit.SECONDS);
-                if (command != null)
-                {
-                    command.run();
-                }
-            }
-            catch (InterruptedException e)
-            {
-                // interrupted, release chunk to server
-                Iterator<ChunkPos> iterator = getChunkPosToGenerateStream(genEvent.minPos.getX(), genEvent.minPos.getZ(), genEvent.size, 0).iterator();
-                while (iterator.hasNext())
-                {
-                    ChunkPos chunkPos = iterator.next();
-                    releaseChunkToServer(this.params.level, chunkPos, true);
-                }
-
-                throw e;
-            }
-        }
-
-        return processGeneratedChunksFuture;
-    }
-
-    private static void loadChunkIfNotExists(IChunkProvider provider, int x, int z)
-    {
-        if (!provider.chunkExists(x, z)) {
-            provider.loadChunk(x, z);
-        }
-    }
-
-    private CompletableFuture<Chunk> forceLoadChunkAsync(WorldServer world, int x, int z) {
-        return ForgeServerProxy.schedule(true, () ->
-            {
-                ChunkProviderServer provider = (ChunkProviderServer)world.getChunkProvider();
-                ForgeChunkManager.forceChunk(DH_SERVER_GEN_TICKET, new ChunkCoordIntPair(x, z));
-
-                for (int i = -1; i <= 1; i++)
-                {
-                    for (int j = -1; j <= 1; j++)
-                    {
-                        if (i != 0 || j != 0)
-                        {
-                            loadChunkIfNotExists(provider, x + i, z + j);
-                        }
-                    }
-                }
-
-                Chunk ret = provider.provideChunk(x, z);
-                return ret;
-            });
-    }
-
-    /** @param generateUpToFeatures if false this generate the chunk up to "FULL" status */
-    private CompletableFuture<Chunk> requestChunkFromServerAsync(WorldServer level, ChunkPos pos, boolean generateUpToFeatures)
-    {
-        return forceLoadChunkAsync(level, pos.x, pos.z);
-    }
-    /** @param chunkWasGeneratedUpToFeatures if false this assumes the chunk was generated to "FULL" status */
-    private CompletableFuture<Void> releaseChunkToServer(WorldServer level, ChunkPos pos, boolean chunkWasGeneratedUpToFeatures)
-    {
-        return ForgeServerProxy.schedule(false, () ->
-        {
-            ForgeChunkManager.unforceChunk(DH_SERVER_GEN_TICKET, new ChunkCoordIntPair(pos.x, pos.z));
-            return null;
-        });
-    }
-
-    /*
-    public void generateDirect(
-        GenerationEvent genEvent, ArrayGridList<ChunkWrapper> chunkWrappersToGenerate,
-        DhLitWorldGenRegion region) throws InterruptedException
-    {
-        if (Thread.interrupted())
-        {
-            return;
-        }
-
-        try
-        {
-            chunkWrappersToGenerate.forEach((chunkWrapper) ->
-            {
-                ChunkAccess chunk = chunkWrapper.getChunk();
-                if (chunk instanceof ProtoChunk)
-                {
-                    ProtoChunk protoChunk = ((ProtoChunk) chunk);
-
-                    protoChunk.setLightEngine(region.getLightEngine());
-                }
-            });
-
-            EDhApiWorldGenerationStep step = genEvent.targetGenerationStep;
-            if (step == EDhApiWorldGenerationStep.EMPTY)
-            {
-                // shouldn't normally happen but is here for consistency with the other world gen steps
-                return;
-            }
-
-            genEvent.timer.nextEvent("structStart");
-            throwIfThreadInterrupted();
-            this.stepStructureStart.generateGroup(genEvent.threadedParam, region, GetCutoutFrom(chunkWrappersToGenerate, EDhApiWorldGenerationStep.STRUCTURE_START));
-            genEvent.refreshTimeout();
-            if (step == EDhApiWorldGenerationStep.STRUCTURE_START)
-            {
-                return;
-            }
-
-            genEvent.timer.nextEvent("structRef");
-            throwIfThreadInterrupted();
-            this.stepStructureReference.generateGroup(genEvent.threadedParam, region, GetCutoutFrom(chunkWrappersToGenerate, EDhApiWorldGenerationStep.STRUCTURE_REFERENCE));
-            genEvent.refreshTimeout();
-            if (step == EDhApiWorldGenerationStep.STRUCTURE_REFERENCE)
-            {
-                return;
-            }
-
-            genEvent.timer.nextEvent("biome");
-            throwIfThreadInterrupted();
-            this.stepBiomes.generateGroup(genEvent.threadedParam, region, GetCutoutFrom(chunkWrappersToGenerate, EDhApiWorldGenerationStep.BIOMES));
-            genEvent.refreshTimeout();
-            if (step == EDhApiWorldGenerationStep.BIOMES)
-            {
-                return;
-            }
-
-            genEvent.timer.nextEvent("noise");
-            throwIfThreadInterrupted();
-            this.stepNoise.generateGroup(genEvent.threadedParam, region, GetCutoutFrom(chunkWrappersToGenerate, EDhApiWorldGenerationStep.NOISE));
-            genEvent.refreshTimeout();
-            if (step == EDhApiWorldGenerationStep.NOISE)
-            {
-                return;
-            }
-
-            genEvent.timer.nextEvent("surface");
-            throwIfThreadInterrupted();
-            this.stepSurface.generateGroup(genEvent.threadedParam, region, GetCutoutFrom(chunkWrappersToGenerate, EDhApiWorldGenerationStep.SURFACE));
-            genEvent.refreshTimeout();
-            if (step == EDhApiWorldGenerationStep.SURFACE)
-            {
-                return;
-            }
-
-            genEvent.timer.nextEvent("carver");
-            throwIfThreadInterrupted();
-            // caves can generally be ignored since they aren't generally visible from far away
-            if (step == EDhApiWorldGenerationStep.CARVERS)
-            {
-                return;
-            }
-
-            genEvent.timer.nextEvent("feature");
-            throwIfThreadInterrupted();
-            this.stepFeatures.generateGroup(genEvent.threadedParam, region, GetCutoutFrom(chunkWrappersToGenerate, EDhApiWorldGenerationStep.FEATURES));
-            genEvent.refreshTimeout();
-        }
-        finally
-        {
-            genEvent.timer.nextEvent("light");
-
-            // generate lighting using DH's lighting engine
-
-            int maxSkyLight = this.serverlevel.getServerLevelWrapper().hasSkyLight() ? 15 : 0;
-
-            // only light generated chunks,
-            // attempting to light un-generated chunks will cause lighting issues on bordering generated chunks
-            ArrayList<IChunkWrapper> iChunkWrapperList = new ArrayList<>();
-            for (int i = 0; i < chunkWrappersToGenerate.size(); i++) // regular for loop since enhanced for loops increase GC pressure slightly
-            {
-                ChunkWrapper chunkWrapper = chunkWrappersToGenerate.get(i);
-                if (chunkWrapper.getStatus() != ChunkStatus.EMPTY)
-                {
-                    iChunkWrapperList.add(chunkWrapper);
-                }
-            }
-
-            // light each chunk in the list
-            for (int i = 0; i < iChunkWrapperList.size(); i++)
-            {
-                ChunkWrapper centerChunk = (ChunkWrapper) iChunkWrapperList.get(i);
-                if (centerChunk == null)
-                {
-                    continue;
-                }
-
-                throwIfThreadInterrupted();
-
-                // make sure the height maps are all properly generated
-                // if this isn't done everything else afterward may fail
-                Heightmap.primeHeightmaps(centerChunk.getChunk(), ChunkStatus.FEATURES.heightmapsAfter());
-                centerChunk.recalculateDhHeightMapsIfNeeded();
-
-                // pre-generated chunks should have lighting but new ones won't
-                if (!centerChunk.isDhBlockLightingCorrect())
-                {
-                    DhLightingEngine.INSTANCE.bakeChunkBlockLighting(centerChunk, iChunkWrapperList, maxSkyLight);
-                }
-
-                this.serverlevel.updateBeaconBeamsForChunk(centerChunk, iChunkWrapperList);
-            }
-
-            genEvent.refreshTimeout();
-        }
-    }
-    */
-    private static <T> ArrayGridList<T> GetCutoutFrom(ArrayGridList<T> total, int border) { return new ArrayGridList<>(total, border, total.gridSize - border); }
-    //private static <T> ArrayGridList<T> GetCutoutFrom(ArrayGridList<T> total, EDhApiWorldGenerationStep step) { return GetCutoutFrom(total, MaxBorderNeeded - WORLD_GEN_CHUNK_BORDER_NEEDED_BY_GEN_STEP.get(step)); }
-    private static <T> ArrayGridList<T> GetCutoutFrom(ArrayGridList<T> total, EDhApiWorldGenerationStep step) { return GetCutoutFrom(total, 0); }
+    //================//
+    // base overrides //
+    //================//
 
     @Override
     public void close()
     {
-        EVENT_LOGGER.info(BatchGenerationEnvironment.class.getSimpleName() + " shutting down...");
+        LOGGER.info("Closing [" +BatchGenerationEnvironment.class.getSimpleName() + "]");
 
-        EVENT_LOGGER.info("Canceling in progress generation event futures...");
-        Iterator<GenerationEvent> iter = this.generationEventList.iterator();
-        while (iter.hasNext())
+
+        // cancel in-progress tasks
+        Iterator<GenerationEvent> genEventIter = this.generationEventQueue.iterator();
+        while (genEventIter.hasNext())
         {
-            GenerationEvent event = iter.next();
+            GenerationEvent event = genEventIter.next();
             event.future.cancel(true);
-            iter.remove();
+            genEventIter.remove();
         }
-
-        // clear the chunk cache
-        /*
-        RegionFileStorageExternalCache regionStorage = this.regionFileStorageCacheRef.get();
-        if (regionStorage != null)
-        {
-            try
-            {
-                regionStorage.close();
-            }
-            catch (IOException e)
-            {
-                EVENT_LOGGER.error("Failed to close region file storage cache!", e);
-            }
-        }*/
-
-        EVENT_LOGGER.info(BatchGenerationEnvironment.class.getSimpleName() + " shutdown complete.");
     }
 
 
@@ -1047,89 +260,7 @@ public final class BatchGenerationEnvironment implements IBatchGeneratorEnvironm
     {
         if (Thread.interrupted())
         {
-            throw new InterruptedException(BatchGenerationEnvironment.class.getSimpleName() + " task interrupted.");
-        }
-    }
-
-
-
-    //================//
-    // helper classes //
-    //================//
-
-    @FunctionalInterface
-    public interface IEmptyChunkRetrievalFunc
-    {
-        Chunk getChunk(int chunkPosX, int chunkPosZ);
-    }
-
-    private static class InclusiveChunkPosStream extends Spliterators.AbstractSpliterator<ChunkPos>
-    {
-        private final int minX;
-        private final int minZ;
-
-        private final int maxX;
-        private final int maxZ;
-
-
-        /** current X pos */
-        int x;
-        /** current Z pos */
-        private int z;
-
-
-
-        //=============//
-        // constructor //
-        //=============//
-
-        protected InclusiveChunkPosStream(int genMinX, int genMinZ, int width, int extraRadius)
-        {
-            super(getCount(width, extraRadius), Spliterator.SIZED);
-
-            this.minX = genMinX - extraRadius;
-            this.minZ = genMinZ - extraRadius;
-
-            this.maxX = genMinX + (width - 1) + extraRadius;
-            this.maxZ = genMinZ + (width - 1) + extraRadius;
-
-            // X starts at 1 minus the minX so we can immediately re-add 1 in the tryAdvance() loop
-            this.x = this.minX - 1;
-            this.z = this.minZ;
-        }
-        private static int getCount(int width, int extraRadius)
-        {
-            int widthPlusExtra = width + (extraRadius * 2);
-            return widthPlusExtra * widthPlusExtra;
-        }
-
-
-
-        //=================//
-        // iterator method //
-        //=================//
-
-        public boolean tryAdvance(Consumer<? super ChunkPos> consumer)
-        {
-            if (this.x == this.maxX && this.z == this.maxZ)
-            {
-                // the last returned position was the final valid position
-                return false;
-            }
-
-            if (this.x == this.maxX)
-            {
-                // we reached the max X position, loop back around in the next Z row
-                this.x = this.minX;
-                this.z++;
-            }
-            else
-            {
-                this.x++;
-            }
-
-            consumer.accept(new ChunkPos(this.x, this.z));
-            return true;
+            throw new InterruptedException("["+BatchGenerationEnvironment.class.getSimpleName()+"] task interrupted.");
         }
     }
 }

@@ -23,19 +23,26 @@ import com.seibel.distanthorizons.common.wrappers.world.ServerLevelWrapper;
 import com.seibel.distanthorizons.core.level.IDhServerLevel;
 import net.minecraft.world.WorldServer;
 
-public final class GlobalParameters
+/**
+ * Handles parameters that are relevant for the entire MC world.
+ *
+ */
+public final class GlobalWorldGenParams
 {
-    public final IDhServerLevel lodLevel;
-    public final WorldServer level;
-    public final long worldSeed;
+    public final IDhServerLevel dhServerLevel;
+    public final WorldServer mcServerLevel;
 
-    public GlobalParameters(IDhServerLevel lodLevel)
+    //=============//
+    // constructor //
+    //=============//
+
+    public GlobalWorldGenParams(IDhServerLevel dhServerLevel)
     {
-        this.lodLevel = lodLevel;
+        this.dhServerLevel = dhServerLevel;
 
-        this.level = ((ServerLevelWrapper) lodLevel.getServerLevelWrapper()).getWrappedMcObject();
-
-        this.worldSeed = level.getSeed();
+        this.mcServerLevel = ((ServerLevelWrapper) dhServerLevel.getServerLevelWrapper()).getWrappedMcObject();
     }
+
+
 
 }

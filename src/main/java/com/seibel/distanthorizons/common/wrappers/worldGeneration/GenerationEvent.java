@@ -19,110 +19,97 @@
 
 package com.seibel.distanthorizons.common.wrappers.worldGeneration;
 
-import java.lang.invoke.MethodHandles;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiDistantGeneratorMode;
 import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiWorldGenerationStep;
-import com.seibel.distanthorizons.core.logging.DhLogger;
-import com.seibel.distanthorizons.core.util.objects.UncheckedInterruptedException;
+import com.seibel.distanthorizons.core.util.ExceptionUtil;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pos.DhChunkPos;
-import com.seibel.distanthorizons.core.util.threading.ThreadPoolUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.IChunkWrapper;
+
+import com.seibel.distanthorizons.core.logging.DhLogger;
 
 public final class GenerationEvent
 {
-    private static final DhLogger LOGGER = new DhLoggerBuilder().build();
-    private static int generationFutureDebugIDs = 0;
+    private static final DhLogger LOGGER = new DhLoggerBuilder().build();;
 
+    private static final AtomicInteger DEBUG_ID_REF = new AtomicInteger(0);
+
+
+    /** can be used for troubleshooting */
     public final int id;
-    public final ThreadedParameters threadedParam;
+
     public final DhChunkPos minPos;
-    /** the number of chunks wide this event is */
-    public final int size;
+    public final int widthInChunks;
     public final EDhApiWorldGenerationStep targetGenerationStep;
     public final EDhApiDistantGeneratorMode generatorMode;
-    public long inQueueTime;
-    public long timeoutTime = -1;
-    public CompletableFuture<Void> future = null;
+    public final CompletableFuture<Void> future;
     public final Consumer<IChunkWrapper> resultConsumer;
 
 
 
-    public GenerationEvent(
-        DhChunkPos minPos, int size, BatchGenerationEnvironment generationGroup,
+    //=============//
+    // constructor //
+    //=============//
+
+    private GenerationEvent(
+        DhChunkPos minPos, int widthInChunks, BatchGenerationEnvironment generationGroup,
         EDhApiDistantGeneratorMode generatorMode, EDhApiWorldGenerationStep targetGenerationStep, Consumer<IChunkWrapper> resultConsumer)
     {
-        this.inQueueTime = System.nanoTime();
-        this.id = generationFutureDebugIDs++;
+        this.id = DEBUG_ID_REF.getAndIncrement();
+
         this.minPos = minPos;
-        this.size = size;
-        this.generatorMode = generatorMode;
+        this.widthInChunks = widthInChunks;
         this.targetGenerationStep = targetGenerationStep;
-        this.threadedParam = ThreadedParameters.getOrMake(generationGroup.params);
+        this.generatorMode = generatorMode;
+        this.future = new CompletableFuture<>();
         this.resultConsumer = resultConsumer;
     }
 
 
 
-    public static GenerationEvent startEvent(
-        DhChunkPos minPos, int size, BatchGenerationEnvironment genEnvironment,
+    //=======//
+    // start //
+    //=======//
+
+    public static GenerationEvent start(
+        DhChunkPos minPos, int widthInChunks, BatchGenerationEnvironment genEnvironment,
         EDhApiDistantGeneratorMode generatorMode, EDhApiWorldGenerationStep target, Consumer<IChunkWrapper> resultConsumer,
         ExecutorService worldGeneratorThreadPool)
     {
-        GenerationEvent generationEvent = new GenerationEvent(minPos, size, genEnvironment, generatorMode, target, resultConsumer);
-        generationEvent.future = CompletableFuture.supplyAsync(() ->
+        GenerationEvent genEvent = new GenerationEvent(minPos, widthInChunks, genEnvironment, generatorMode, target, resultConsumer);
+
+        try
         {
-            long runStartTime = System.nanoTime();
-            generationEvent.timeoutTime = runStartTime;
-            generationEvent.inQueueTime = runStartTime - generationEvent.inQueueTime;
-
-            BatchGenerationEnvironment.isDistantGeneratorThread.set(true);
-
-            try
+            worldGeneratorThreadPool.execute(() ->
             {
-                genEnvironment.generateLodFromListAsync(generationEvent, (runnable) ->
+                try
                 {
-                    worldGeneratorThreadPool.execute(() ->
-                    {
-                        boolean alreadyMarked = BatchGenerationEnvironment.isCurrentThreadDistantGeneratorThread();
-                        if (!alreadyMarked)
-                        {
-                            BatchGenerationEnvironment.isDistantGeneratorThread.set(true);
-                        }
+                    BatchGenerationEnvironment.isDhWorldGenThreadRef.set(true);
 
-                        try
-                        {
-                            runnable.run();
-                        }
-                        catch (Throwable throwable)
-                        {
-                            handleWorldGenThrowable(generationEvent, throwable);
-                        }
-                        finally
-                        {
-                            if (!alreadyMarked)
-                            {
-                                BatchGenerationEnvironment.isDistantGeneratorThread.set(false);
-                            }
-                        }
-                    });
-                });
-            }
-            catch (Throwable initialThrowable)
-            {
-                handleWorldGenThrowable(generationEvent, initialThrowable);
-            }
-            finally
-            {
-                BatchGenerationEnvironment.isDistantGeneratorThread.remove();
-            }
+                    // Only support internal server
+                    genEnvironment.internalServerGenerator.generateChunksViaInternalServer(genEvent);
+                    genEvent.future.complete(null);
+                }
+                catch (Throwable initialThrowable)
+                {
+                    handleWorldGenThrowable(genEvent, initialThrowable);
+                }
+                finally
+                {
+                    BatchGenerationEnvironment.isDhWorldGenThreadRef.remove();
+                }
+            });
+        }
+        catch (RejectedExecutionException e)
+        {
+            genEvent.future.completeExceptionally(e);
+        }
 
-            return null;
-        }, worldGeneratorThreadPool);
-        return generationEvent;
+        return genEvent;
     }
     /** There's probably a better way to handle this, but it'll work for now */
     private static void handleWorldGenThrowable(GenerationEvent generationEvent, Throwable initialThrowable)
@@ -133,9 +120,8 @@ public final class GenerationEvent
             throwable = throwable.getCause();
         }
 
-        if (throwable instanceof InterruptedException
-            || throwable instanceof UncheckedInterruptedException
-            || throwable instanceof RejectedExecutionException)
+        boolean isShutdownException = ExceptionUtil.isShutdownException(throwable);
+        if (isShutdownException)
         {
             // these exceptions can be ignored, generally they just mean
             // the thread is busy so it'll need to try again later.
@@ -150,34 +136,15 @@ public final class GenerationEvent
         }
     }
 
-    public boolean isComplete() { return this.future.isDone(); }
 
-    public boolean hasTimeout(int duration, TimeUnit unit)
-    {
-        if (this.timeoutTime == -1)
-        {
-            return false;
-        }
 
-        long currentTime = System.nanoTime();
-        long delta = currentTime - this.timeoutTime;
-        return (delta > TimeUnit.NANOSECONDS.convert(duration, unit));
-    }
-
-    public boolean terminate()
-    {
-        LOGGER.info("======================DUMPING ALL THREADS FOR WORLD GEN=======================");
-        this.future.cancel(true);
-        return this.future.isCancelled();
-    }
-
-    public void refreshTimeout()
-    {
-        this.timeoutTime = System.nanoTime();
-        UncheckedInterruptedException.throwIfInterrupted();
-    }
+    //================//
+    // base overrides //
+    //================//
 
     @Override
-    public String toString() { return this.id + ":" + this.size + "@" + this.minPos + "(" + this.targetGenerationStep + ")"; }
+    public String toString() { return this.id + ":" + this.widthInChunks + "@" + this.minPos + "(" + this.targetGenerationStep + ")"; }
+
+
 
 }
