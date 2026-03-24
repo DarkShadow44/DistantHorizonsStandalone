@@ -61,9 +61,9 @@ import java.util.function.Consumer;
 @Mod(modid = "distanthorizons", name = "DistantHorizons", dependencies = "after:angelica;")
 public class ForgeMain extends AbstractModInitializer
 {
-    private static final String ANGELICA_MOD_ID = "angelica";
-    private static final String MINIMUM_ANGELICA_VERSION = "2.1.5";
-    private static final VersionRange SUPPORTED_ANGELICA_RANGE = VersionParser.parseRange("[" + MINIMUM_ANGELICA_VERSION + ",)");
+    public static final String ANGELICA_MOD_ID = "angelica";
+    public static final String MINIMUM_ANGELICA_VERSION = "2.1.5";
+    public static final VersionRange SUPPORTED_ANGELICA_RANGE = VersionParser.parseRange("[" + MINIMUM_ANGELICA_VERSION + ",)");
 
     @Mod.Instance
     public static Object instance;
@@ -89,9 +89,9 @@ public class ForgeMain extends AbstractModInitializer
             if (Loader.isModLoaded("gregtech") && enableGTCompat()) {
                 gtCompat = new GTCompat();
             }
-            if (Loader.isModLoaded(ANGELICA_MOD_ID)) {
-                verifyAngelicaVersion();
+            if (Loader.isModLoaded(ANGELICA_MOD_ID) && event.getSide() == Side.CLIENT) {
                 angelicaCompat = new AngelicaCompat();
+                angelicaCompat.verifyAngelicaVersion();
             }
             if (Loader.isModLoaded("rple")) {
                 rpleCompat = new RPLECompat();
@@ -107,24 +107,6 @@ public class ForgeMain extends AbstractModInitializer
     private void chunkLoadedCallback()
     {
 
-    }
-
-    private static void verifyAngelicaVersion()
-    {
-        ModContainer angelica = Loader.instance().getIndexedModList().get(ANGELICA_MOD_ID);
-        if (angelica == null)
-        {
-            throw new IllegalStateException("Angelica mod container could not be found.");
-        }
-
-        String installedVersion = angelica.getVersion();
-        ArtifactVersion installedArtifactVersion = new DefaultArtifactVersion(installedVersion);
-        if (SUPPORTED_ANGELICA_RANGE.containsVersion(installedArtifactVersion))
-        {
-            return;
-        }
-
-        throw new AngelicaVersionGuiException(installedVersion, MINIMUM_ANGELICA_VERSION);
     }
 
     // ServerWorldLoadEvent
