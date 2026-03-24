@@ -4,6 +4,7 @@ import com.falsepattern.rple.api.client.RPLELightMapAPI;
 import com.falsepattern.rple.api.common.ServerColorHelper;
 import com.falsepattern.rple.api.common.block.RPLEBlock;
 import com.seibel.distanthorizons.common.wrappers.block.FakeBlockState;
+import net.minecraft.block.Block;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 
 
@@ -20,8 +21,8 @@ public class RPLECompat {
        return lightmapTexture.getGlTextureId();
     }
 
-    public int getColor(FakeBlockState blockState) {
-        short color = RPLEBlock.of(blockState.block).rple$getBrightnessColor(blockState.meta);
+    public int getColor(Block block, int meta) {
+        short color = RPLEBlock.of(block).rple$getBrightnessColor(meta);
         return ServerColorHelper.lightValueFromRGB16(color);
     }
 

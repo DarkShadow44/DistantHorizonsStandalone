@@ -364,17 +364,21 @@ public class BlockStateWrapper implements IBlockStateWrapper
         return this.opacity;
     }
 
+    public static int getLightEmission(Block block, int meta) {
+        if (ForgeMain.rpleCompat != null) {
+            return ForgeMain.rpleCompat.getColor(block, meta);
+        }
+
+        return Math.min(15, block.getLightValue());
+    }
+
     @Override
     public int getLightEmission() {
         if (this.blockState == null) {
             return 0;
         }
 
-        if (ForgeMain.rpleCompat != null) {
-            return ForgeMain.rpleCompat.getColor(blockState);
-        }
-
-        return Math.min(15, this.blockState.block.getLightValue());
+        return getLightEmission(blockState.block, blockState.meta);
     }
 
     @Override

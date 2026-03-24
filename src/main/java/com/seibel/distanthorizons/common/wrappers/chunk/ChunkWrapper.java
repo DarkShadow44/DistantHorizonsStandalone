@@ -481,8 +481,7 @@ public class ChunkWrapper implements IChunkWrapper
                     {
                         Block block = chunk.getBlock(x, y, z);
                         int meta = chunk.getBlockMetadata(x, y, z);
-                        BlockStateWrapper wrapper = BlockStateWrapper.fromBlockAndMeta(block, meta, wrappedLevel);
-                        if (wrapper.getLightEmission() > 0)
+                        if (BlockStateWrapper.getLightEmission(block, meta) > 0)
                         {
                             this.blockLightPosList.add(new DhBlockPos(x + chunkPos.getMinBlockX(), y, z + chunkPos.getMinBlockZ()));
                         }
