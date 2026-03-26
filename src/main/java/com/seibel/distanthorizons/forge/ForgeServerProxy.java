@@ -163,6 +163,10 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
         }
 		ILevelWrapper levelWrapper = ProxyUtil.getLevelWrapper(GetEventLevel(event));
 		ChunkWrapper chunk = new ChunkWrapper(event.getChunk(), levelWrapper);
+        if (chunk.isChunkReady()) {
+            this.serverApi.serverChunkLoadEvent(chunk, levelWrapper);
+            return;
+        }
         chunkLoadEvents.add(new ChunkLoadEvent(chunk, levelWrapper));
 	}
 
