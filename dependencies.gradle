@@ -40,6 +40,7 @@ minecraft {
 
 dependencies {
     api("com.github.GTNewHorizons:lwjgl3ify:3.0.10:dev")
+    api("com.github.GTNewHorizons:Hodgepodge:2.7.13:dev")
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:NotEnoughItems:2.7.4-GTNH:dev")
     shadowImplementation("com.electronwill.night-config:toml:3.6.6")
     shadowImplementation("com.electronwill.night-config:json:3.6.6")

@@ -6,6 +6,7 @@ import com.seibel.distanthorizons.common.wrappers.chunk.ChunkWrapper;
 import com.seibel.distanthorizons.common.wrappers.misc.ServerPlayerWrapper;
 import com.seibel.distanthorizons.common.wrappers.world.ServerLevelWrapper;
 import com.seibel.distanthorizons.common.wrappers.worldGeneration.BatchGenerationEnvironment;
+import com.seibel.distanthorizons.common.wrappers.worldGeneration.HodgePodgeCompat;
 import com.seibel.distanthorizons.common.wrappers.worldGeneration.InternalServerGenerator;
 import com.seibel.distanthorizons.core.api.internal.ServerApi;
 import com.seibel.distanthorizons.core.api.internal.SharedApi;
@@ -193,6 +194,9 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
             if (batchGenerationEnvironment != null && batchGenerationEnvironment.internalServerGenerator.updateManager != null) {
                 batchGenerationEnvironment.internalServerGenerator.updateManager.removePosToIgnore(new DhChunkPos(chunk.xPosition, chunk.zPosition));
             }
+        }
+        if (ForgeMain.isHodgePodgeInstalled) {
+            HodgePodgeCompat.preventChunkSimulation(event.world, chunk.xPosition, chunk.zPosition, false);
         }
     }
 

@@ -257,6 +257,9 @@ public class InternalServerGenerator
         return ForgeServerProxy.schedule(true, () ->
         {
             ChunkProviderServer provider = (ChunkProviderServer)params.mcServerLevel.getChunkProvider();
+            if (ForgeMain.isHodgePodgeInstalled) {
+                HodgePodgeCompat.preventChunkSimulation(params.mcServerLevel, chunkPos.x, chunkPos.z, true);
+            }
             ForgeChunkManager.forceChunk(DH_SERVER_GEN_TICKET, new ChunkCoordIntPair(chunkPos.x, chunkPos.z));
 
             for (int i = -1; i <= 1; i++)
@@ -269,6 +272,10 @@ public class InternalServerGenerator
                         {
                             this.updateManager.addPosToIgnore(new DhChunkPos(chunkPos.x + i, chunkPos.z + j));
                         }
+                        if (ForgeMain.isHodgePodgeInstalled) {
+                            HodgePodgeCompat.preventChunkSimulation(params.mcServerLevel, chunkPos.x + i, chunkPos.z + j, true);
+                        }
+                        ForgeChunkManager.forceChunk(DH_SERVER_GEN_TICKET, new ChunkCoordIntPair(chunkPos.x + i, chunkPos.z + j));
                         loadChunkIfNotExists(provider, chunkPos.x + i, chunkPos.z + j);
                     }
                 }
@@ -284,6 +291,17 @@ public class InternalServerGenerator
         return ForgeServerProxy.schedule(false, () ->
         {
             ForgeChunkManager.unforceChunk(DH_SERVER_GEN_TICKET, new ChunkCoordIntPair(chunkPos.x, chunkPos.z));
+            for (int i = -1; i <= 1; i++)
+            {
+                for (int j = -1; j <= 1; j++)
+                {
+                    if (i != 0 || j != 0)
+                    {
+                        ForgeChunkManager.unforceChunk(DH_SERVER_GEN_TICKET, new ChunkCoordIntPair(chunkPos.x + i, chunkPos.z + j));
+                        // TODO: Remove pos to ignore maybe?
+                    }
+                }
+            }
             return null;
         });
     }
