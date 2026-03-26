@@ -5,12 +5,17 @@ import com.seibel.distanthorizons.common.util.ProxyUtil;
 import com.seibel.distanthorizons.common.wrappers.chunk.ChunkWrapper;
 import com.seibel.distanthorizons.common.wrappers.misc.ServerPlayerWrapper;
 import com.seibel.distanthorizons.common.wrappers.world.ServerLevelWrapper;
+import com.seibel.distanthorizons.common.wrappers.worldGeneration.BatchGenerationEnvironment;
+import com.seibel.distanthorizons.common.wrappers.worldGeneration.InternalServerGenerator;
 import com.seibel.distanthorizons.core.api.internal.ServerApi;
 import com.seibel.distanthorizons.core.api.internal.SharedApi;
+import com.seibel.distanthorizons.core.generation.BatchGenerator;
+import com.seibel.distanthorizons.core.pos.DhChunkPos;
 import com.seibel.distanthorizons.core.util.threading.ThreadPoolUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.misc.IServerPlayerWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IServerLevelWrapper;
+import com.seibel.distanthorizons.coreapi.DependencyInjection.WorldGeneratorInjector;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.PlayerEvent;
@@ -177,8 +182,18 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
             return;
         }
         ILevelWrapper levelWrapper = ProxyUtil.getLevelWrapper(GetEventLevel(event));
-        ChunkWrapper chunk = new ChunkWrapper(event.getChunk(), levelWrapper);
-        ServerApi.INSTANCE.serverChunkSaveEvent(chunk, levelWrapper);
+        Chunk chunk = event.getChunk();
+        ChunkWrapper chunkWrapper = new ChunkWrapper(chunk, levelWrapper);
+        ServerApi.INSTANCE.serverChunkSaveEvent(chunkWrapper, levelWrapper);
+
+        BatchGenerator generator = (BatchGenerator) WorldGeneratorInjector.INSTANCE.get(levelWrapper);
+        if (generator != null) {
+            BatchGenerationEnvironment batchGenerationEnvironment = (BatchGenerationEnvironment) generator.generationEnvironment;
+
+            if (batchGenerationEnvironment != null && batchGenerationEnvironment.internalServerGenerator.updateManager != null) {
+                batchGenerationEnvironment.internalServerGenerator.updateManager.removePosToIgnore(new DhChunkPos(chunk.xPosition, chunk.zPosition));
+            }
+        }
     }
 
 	@SubscribeEvent

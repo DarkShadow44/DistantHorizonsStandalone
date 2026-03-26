@@ -69,7 +69,7 @@ public class InternalServerGenerator
     private final GlobalWorldGenParams params;
     private final IDhServerLevel dhServerLevel;
     @Nullable
-    private final ChunkUpdateQueueManager updateManager;
+    public final ChunkUpdateQueueManager updateManager;
     private final Timer chunkSaveIgnoreTimer = TimerUtil.CreateTimer("ChunkSaveIgnoreTimer");
 
 
@@ -248,6 +248,12 @@ public class InternalServerGenerator
 
     private CompletableFuture<ChunkWrapper> requestChunkFromServerAsync(ChunkPos chunkPos)
     {
+        // ignore chunk update events for this position
+        if (this.updateManager != null)
+        {
+            this.updateManager.addPosToIgnore(new DhChunkPos(chunkPos.x, chunkPos.z));
+        }
+
         return ForgeServerProxy.schedule(true, () ->
         {
             ChunkProviderServer provider = (ChunkProviderServer)params.mcServerLevel.getChunkProvider();
@@ -259,6 +265,10 @@ public class InternalServerGenerator
                 {
                     if (i != 0 || j != 0)
                     {
+                        if (this.updateManager != null)
+                        {
+                            this.updateManager.addPosToIgnore(new DhChunkPos(chunkPos.x + i, chunkPos.z + j));
+                        }
                         loadChunkIfNotExists(provider, chunkPos.x + i, chunkPos.z + j);
                     }
                 }
