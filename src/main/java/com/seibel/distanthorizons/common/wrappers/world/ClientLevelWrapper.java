@@ -127,6 +127,24 @@ public class ClientLevelWrapper implements IClientLevelWrapper
 
     private final Function<FakeBlockState, ClientBlockStateColorCache> cachedBlockColorCacheFunction = this::createBlockColorCache;
 
+    /** Clears cached biome tint colors on all cached block states for this level. */
+    public void clearBiomeColorCaches()
+    {
+        for (ClientBlockStateColorCache cache : this.blockCache.values())
+        {
+            cache.clearBiomeColorCache();
+        }
+    }
+
+    /** Clears biome color caches across all active ClientLevelWrappers. */
+    public static void clearAllBiomeColorCaches()
+    {
+        for (ClientLevelWrapper wrapper : LEVEL_WRAPPER_BY_CLIENT_LEVEL.values())
+        {
+            wrapper.clearBiomeColorCaches();
+        }
+    }
+
     //====================//
     // base level methods //
     //====================//

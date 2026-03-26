@@ -28,6 +28,7 @@ import net.minecraftforge.event.world.WorldEvent;
 
 import java.util.Iterator;
 import java.util.Queue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.AbstractExecutorService;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -116,19 +117,27 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
                 }
             }
 
-            int count = 0;
-            while (!taskQueue.isEmpty()) {
+            // Time budget instead of count
+            long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(15);
+            boolean processedAtLeastOne = false;
+            while (!taskQueue.isEmpty())
+            {
                 ScheduledTask<?> scheduledTask = taskQueue.poll();
-                if (scheduledTask == null) {
+                if (scheduledTask == null)
+                {
                     continue;
                 }
                 scheduledTask.run();
-                if (scheduledTask.isLimited()) {
-                    count++;
-                }
-                if (count >= 5)
+                if (scheduledTask.isLimited())
                 {
-                    break;
+                    if (!processedAtLeastOne)
+                    {
+                        processedAtLeastOne = true;
+                    }
+                    else if (System.nanoTime() >= deadline)
+                    {
+                        break;
+                    }
                 }
             }
         }

@@ -136,20 +136,25 @@ public class WrapperFactory implements IWrapperFactory
 	@Override
 	public ObjectOpenHashSet<IBlockStateWrapper> getRendererIgnoredCaveBlocks(ILevelWrapper levelWrapper) { return BlockStateWrapper.getRendererIgnoredCaveBlocks(levelWrapper); }
 
+    private static final ObjectOpenHashSet<IBlockStateWrapper> EMPTY_BLOCK_STATE_SET = new ObjectOpenHashSet<>();
+
     @Override
     public ObjectOpenHashSet<IBlockStateWrapper> getWaterSubsurfaceReplacementBlocks(ILevelWrapper levelWrapper) {
-        return new ObjectOpenHashSet<>();
+		// Shared empty set to avoid allocations, not safe to mutate
+        return EMPTY_BLOCK_STATE_SET;
     }
 
     @Override
     public ObjectOpenHashSet<IBlockStateWrapper> getWaterSurfaceReplacementBlocks(ILevelWrapper levelWrapper) {
-        return new ObjectOpenHashSet<>();
+		// Shared empty set to avoid allocations, not safe to mutate
+        return EMPTY_BLOCK_STATE_SET;
     }
 
     @Override
     public void resetCachedIgnoredBlocksSets() {
         BlockStateWrapper.clearRendererIgnoredCaveBlocks();
         BlockStateWrapper.clearRendererIgnoredBlocks();
+        ClientLevelWrapper.clearAllBiomeColorCaches();
     }
 
 	/**

@@ -471,7 +471,7 @@ public class ChunkWrapper implements IChunkWrapper
         // only populate the list once
         if (this.blockLightPosList == null)
         {
-            this.blockLightPosList = new ArrayList<>();
+            this.blockLightPosList = new ArrayList<>(128);
 
             for (int x = 0; x  < 16; x++)
             {

@@ -110,15 +110,20 @@ public class BlockStateWrapper implements IBlockStateWrapper
     //==============//
 
     public static BlockStateWrapper fromBlockAndMeta(Block block, int meta, ILevelWrapper levelWrapper) {
-        if(block == null || block == Blocks.air) {
+        if (block == null || block == Blocks.air) {
             return AIR;
         }
         final int blockId = Block.getIdFromBlock(block);
-        final int packed = FakeBlockState.calculateHashCode(blockId, meta);
-        return WRAPPER_BY_BLOCK_ID_AND_META.computeIfAbsent(packed, key -> {
-            final FakeBlockState blockState = new FakeBlockState(block, meta, blockId);
-            return new BlockStateWrapper(blockState, levelWrapper);
-        });
+        // Avoid Lambda allocation and double Integer boxing
+        final Integer packed = FakeBlockState.calculateHashCode(blockId, meta);
+        BlockStateWrapper cached = WRAPPER_BY_BLOCK_ID_AND_META.get(packed);
+        if (cached != null) {
+            return cached;
+        }
+        final FakeBlockState blockState = new FakeBlockState(block, meta, blockId);
+        BlockStateWrapper wrapper = new BlockStateWrapper(blockState, levelWrapper);
+        WRAPPER_BY_BLOCK_ID_AND_META.put(packed, wrapper);
+        return wrapper;
     }
 
     /**

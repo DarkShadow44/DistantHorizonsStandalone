@@ -128,20 +128,21 @@ public class FullDataToRenderDataTransformer
 			ColumnRenderView tempExpandingColumnView = ColumnRenderView.getPooled();
 			RenderDataPointReducingList reducingList = new RenderDataPointReducingList())
 		{
+			DhBlockPosMutable mutableBlockPos = new DhBlockPosMutable();
 			for (int x = 0; x < FullDataSourceV2.WIDTH; x++)
 			{
 				for (int z = 0; z < FullDataSourceV2.WIDTH; z++)
 				{
 					columnSource.populateColumnView(columnArrayView, x, z);
 					LongArrayList dataColumn = fullDataSource.getColumnAtRelPos(x, z);
-					
+
 					updateOrReplaceRenderDataViewColumnWithFullDataColumn(
 						levelWrapper, fullDataSource,
 						// bit shift is to account for LODs with a detail level greater than 0 so the block pos is correct
 						baseX + BitShiftUtil.pow(x, dataDetail), baseZ + BitShiftUtil.pow(z, dataDetail),
 						columnArrayView, dataColumn,
 						// pooled references so we don't need to re-allocate/get them 4000 times per render source
-						phantomCheckout, tempExpandingColumnView, reducingList);
+						phantomCheckout, tempExpandingColumnView, reducingList, mutableBlockPos);
 				}
 			}
 		}
@@ -152,11 +153,11 @@ public class FullDataToRenderDataTransformer
 	/** Updates the given {@link ColumnRenderView} to match the incoming Full data {@link LongArrayList} */
 	public static void updateOrReplaceRenderDataViewColumnWithFullDataColumn(
 			IClientLevelWrapper levelWrapper,
-			FullDataSourceV2 fullDataSource, int blockX, int blockZ, 
-			ColumnRenderView columnArrayView, 
+			FullDataSourceV2 fullDataSource, int blockX, int blockZ,
+			ColumnRenderView columnArrayView,
 			LongArrayList fullDataColumn,
 			// pooled references
-			PhantomArrayListCheckout phantomCheckout, ColumnRenderView tempExpandingColumnView, RenderDataPointReducingList reducingList)
+			PhantomArrayListCheckout phantomCheckout, ColumnRenderView tempExpandingColumnView, RenderDataPointReducingList reducingList, DhBlockPosMutable mutableBlockPos)
 	{
 		// we can't do anything if the full data is missing or empty
 		if (fullDataColumn == null 
@@ -169,15 +170,15 @@ public class FullDataToRenderDataTransformer
 		if (fullDataLength <= columnArrayView.maxVerticalSliceCount)
 		{
 			// Directly use the arrayView since it fits.
-			setRenderColumnView(levelWrapper, fullDataSource, blockX, blockZ, columnArrayView, fullDataColumn);
+			setRenderColumnView(levelWrapper, fullDataSource, blockX, blockZ, columnArrayView, fullDataColumn, mutableBlockPos);
 		}
 		else
 		{
 			LongArrayList dataArrayList = phantomCheckout.getLongArray(0, fullDataLength);
-			
+
 			// expand the ColumnArrayView to fit the new larger max vertical size
 			tempExpandingColumnView.populate(dataArrayList, fullDataLength, 0, fullDataLength);
-			setRenderColumnView(levelWrapper, fullDataSource, blockX, blockZ, tempExpandingColumnView, fullDataColumn);
+			setRenderColumnView(levelWrapper, fullDataSource, blockX, blockZ, tempExpandingColumnView, fullDataColumn, mutableBlockPos);
 			
 			columnArrayView.changeVerticalSizeFrom(tempExpandingColumnView, reducingList);
 		}
@@ -185,7 +186,8 @@ public class FullDataToRenderDataTransformer
 	private static void setRenderColumnView(
 			IClientLevelWrapper levelWrapper, FullDataSourceV2 fullDataSource,
 			int blockX, int blockZ,
-			ColumnRenderView renderColumnData, LongArrayList fullColumnData)
+			ColumnRenderView renderColumnData, LongArrayList fullColumnData,
+			DhBlockPosMutable mutableBlockPos)
 	{
 		//===============//
 		// config values //
@@ -241,7 +243,8 @@ public class FullDataToRenderDataTransformer
 		
 		FullDataPointIdMap fullDataMapping = fullDataSource.mapping;
 		
-		DhBlockPosMutable mutableBlockPos = new DhBlockPosMutable(blockX, 0, blockZ);
+		mutableBlockPos.setX(blockX);
+		mutableBlockPos.setZ(blockZ);
 		
 		// goes from the top down
 		for (int fullDataIndex = 0; fullDataIndex < fullColumnData.size(); fullDataIndex++)

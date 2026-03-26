@@ -252,49 +252,52 @@ public class ColumnBox
 		short x, short yMin, short z, short horizontalWidth, short ySize,
 		int color, byte irisBlockMaterialId, byte blockLight)
 	{
-		// pooled arrays
-		LongArrayList segments = phantomArrayCheckout.getLongArray(0, 0);
-		LongArrayList newSegments = phantomArrayCheckout.getLongArray(1, 0);
-		
-		
-		
+		// pooled arrays -- swap between pair[0] and pair[1] instead of copying
+		LongArrayList[] pair = {
+			phantomArrayCheckout.getLongArray(0, 0),
+			phantomArrayCheckout.getLongArray(1, 0)
+		};
+		int cur = 0;
+
+
+
 		//==================//
 		// create face with //
 		// no adjacent data //
 		//==================//
-		
+
 		color = ColorUtil.applyShade(color, MC_RENDER.getShade(direction));
-		
+
 		if (adjColumnView.size == 0
 			|| RenderDataPointUtil.hasZeroHeight(adjColumnView.get(0)))
 		{
 			builder.addQuadAdj(direction, x, yMin, z, horizontalWidth, ySize, color, irisBlockMaterialId, LodUtil.MAX_MC_LIGHT, blockLight);
 			return;
 		}
-		
-		
-		
+
+
+
 		//=================================//
 		// determine face visibility/light //
 		//=================================//
-		
+
 		boolean transparencyEnabled = Config.Client.Advanced.Graphics.Quality.transparency.get().transparencyEnabled;
 		boolean inputTransparent = ColorUtil.getAlpha(color) < 255 && transparencyEnabled;
 		short yMax = (short) (yMin + ySize);
-		
-		
+
+
 		int adjCount = adjColumnView.size;
-		
+
 		// Start with the entire range at max light
-		segments.add(YSegmentUtil.encode(yMin, yMax, LodUtil.MAX_MC_LIGHT));
-		
+		pair[cur].add(YSegmentUtil.encode(yMin, yMax, LodUtil.MAX_MC_LIGHT));
+
 		// Process each adjacent datapoint and split segments as needed
 		for (int adjIndex = 0; adjIndex < adjCount; adjIndex++)
 		{
 			long adjPoint = adjColumnView.get(adjIndex);
 			short adjMinY = RenderDataPointUtil.getYMin(adjPoint);
 			short adjMaxY = RenderDataPointUtil.getYMax(adjPoint);
-			
+
 			// skip empty adjacent points
 			// or points below this one
 			if (!RenderDataPointUtil.doesDataPointExist(adjPoint)
@@ -303,20 +306,20 @@ public class ColumnBox
 			{
 				continue;
 			}
-			
-			
+
+
 			long adjAbovePoint = (adjIndex != 0) ? adjColumnView.get(adjIndex - 1) : RenderDataPointUtil.EMPTY_DATA;
 			long adjBelowPoint = (adjIndex + 1 < adjCount) ? adjColumnView.get(adjIndex + 1) : RenderDataPointUtil.EMPTY_DATA;
-			
+
 			boolean adjOverVoid = !RenderDataPointUtil.doesDataPointExist(adjBelowPoint);
-			boolean adjTransparent = 
+			boolean adjTransparent =
 				!adjOverVoid
 				&& RenderDataPointUtil.getAlpha(adjPoint) < 255
 				&& transparencyEnabled;
-			
+
 			byte adjSkyLight = RenderDataPointUtil.getLightSky(adjPoint);
 			byte lightToApply;
-			
+
 			if (!adjTransparent)
 			{
 				// Adjacent is opaque
@@ -330,7 +333,7 @@ public class ColumnBox
 							|| (x == 256 && direction == EDhDirection.EAST)
 							|| (z == 256 && direction == EDhDirection.SOUTH)
 						);
-				
+
 				lightToApply = adjacentCoversThis ? adjSkyLight : SKYLIGHT_COVERED;
 			}
 			else
@@ -338,29 +341,32 @@ public class ColumnBox
 				// Adjacent is transparent, use below light
 				lightToApply = RenderDataPointUtil.getLightSky(adjBelowPoint);
 			}
-			
-			
+
+
 			// Apply light to the range [adjMinY, adjMaxY)
-			applyLightToRange(segments, newSegments, adjMinY, adjMaxY, lightToApply);
-			
+			applyLightToRange(pair[cur], pair[1 - cur], adjMinY, adjMaxY, lightToApply);
+			cur = 1 - cur;
+
 			// Fill overhang area [adjMaxY, adjAboveMinY) with adjSkyLight
 			short adjAboveMinY = RenderDataPointUtil.getYMin(adjAbovePoint);
 			if (adjMaxY < adjAboveMinY)
 			{
-				applyLightToRange(segments, newSegments, adjMaxY, adjAboveMinY, adjSkyLight);
+				applyLightToRange(pair[cur], pair[1 - cur], adjMaxY, adjAboveMinY, adjSkyLight);
+				cur = 1 - cur;
 			}
 		}
-		
-		
-		
+
+
+
 		//=======================//
 		// Create vertical faces //
 		// from segments         //
 		//=======================//
-		
-		for (int i = 0; i < segments.size(); i++)
+
+		LongArrayList finalSegments = pair[cur];
+		for (int i = 0; i < finalSegments.size(); i++)
 		{
-			long segment = segments.getLong(i);
+			long segment = finalSegments.getLong(i);
 			tryAddVerticalFaceWithSkyLightToBuilder(
 				builder, direction,
 				x, z, horizontalWidth,
@@ -419,9 +425,6 @@ public class ColumnBox
 				newSegments.add(YSegmentUtil.encode(rangeEnd, endY, skyLight));
 			}
 		}
-		
-		segments.clear();
-		segments.addAll(newSegments);
 	}
 	
 	private static void tryAddVerticalFaceWithSkyLightToBuilder(
