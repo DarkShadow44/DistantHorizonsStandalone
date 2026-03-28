@@ -181,7 +181,10 @@ public class ClientLevelWrapper implements IClientLevelWrapper
     }
 
     @Override
-    public void clearBlockColorCache() { this.blockCache.clear(); }
+    public void clearBlockColorCache() {
+        this.blockCache.clear();
+        this.clearBiomeColorCaches();
+    }
 
     @Override
     public DimensionTypeWrapper getDimensionType() { return DimensionTypeWrapper.getDimensionTypeWrapper(this.level.provider.dimensionId); }

@@ -154,7 +154,6 @@ public class WrapperFactory implements IWrapperFactory
     public void resetCachedIgnoredBlocksSets() {
         BlockStateWrapper.clearRendererIgnoredCaveBlocks();
         BlockStateWrapper.clearRendererIgnoredBlocks();
-        ClientLevelWrapper.clearAllBiomeColorCaches();
     }
 
 	/**
