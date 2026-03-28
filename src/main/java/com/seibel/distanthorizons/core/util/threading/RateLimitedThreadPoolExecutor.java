@@ -72,11 +72,18 @@ public class RateLimitedThreadPoolExecutor extends ThreadPoolExecutor
 	protected void afterExecute(Runnable runnable, Throwable throwable)
 	{
 		super.afterExecute(runnable, throwable);
-		
+
+		double ratio = this.runTimeRatioConfig.get();
+		if (ratio >= 1.0)
+		{
+			// Avoid a sleep 0
+			return;
+		}
+
 		try
 		{
 			long runTime = System.nanoTime() - this.runStartTime.get();
-			Thread.sleep(TimeUnit.NANOSECONDS.toMillis((long) (runTime / this.runTimeRatioConfig.get() - runTime)));
+			Thread.sleep(TimeUnit.NANOSECONDS.toMillis((long) (runTime / ratio - runTime)));
 		}
 		catch (InterruptedException ignore)
 		{

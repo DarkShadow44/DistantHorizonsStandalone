@@ -43,6 +43,8 @@ import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraftforge.common.IShearable;
 import net.minecraftforge.common.util.ForgeDirection;
 
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
@@ -91,6 +93,9 @@ public class ClientBlockStateColorCache
 	private boolean needShade = true;
 	private boolean needPostTinting = false;
 	private int tintIndex = 0;
+
+	/** Lazily initialized cache of biome ID -> tinted color result for this block state. */
+	private Int2IntOpenHashMap biomeColorCache;
 
 
 
@@ -456,6 +461,18 @@ public class ClientBlockStateColorCache
 			return this.baseColor;
 		}
 
+		// cache lookup by biome ID -- the tint color depends only on the biome, not the block position, so we can cache per biome for each block state.
+		// Avoids (potentially) expensive colorMultiplier om some Block subclasses
+		int biomeId = (biomeWrapper.biome != null) ? biomeWrapper.biome.biomeID : -1;
+		if (this.biomeColorCache != null)
+		{
+			int cached = this.biomeColorCache.getOrDefault(biomeId, Integer.MIN_VALUE);
+			if (cached != Integer.MIN_VALUE)
+			{
+				return cached;
+			}
+		}
+
         FakeWorld world = fakeWorld.get();
         world.update(level.getLevel(), biomeWrapper.biome, pos.getX(), pos.getY(), pos.getZ(), blockState);
 
@@ -463,15 +480,31 @@ public class ClientBlockStateColorCache
         // which will break if those chunks are unloaded - we'd just get 0 for meta.
         int tintColor = blockState.block.colorMultiplier(world, pos.getX(), pos.getY(), pos.getZ());
 
+		int result;
 		if (tintColor != -1)
 		{
-			return ColorUtil.multiplyARGBwithRGB(this.baseColor, tintColor);
+			result = ColorUtil.multiplyARGBwithRGB(this.baseColor, tintColor);
 		}
 		else
 		{
 			// unable to get the tinted color, use the base color instead
-			return this.baseColor;
+			result = this.baseColor;
 		}
+
+		if (this.biomeColorCache == null)
+		{
+			this.biomeColorCache = new Int2IntOpenHashMap();
+			this.biomeColorCache.defaultReturnValue(Integer.MIN_VALUE);
+		}
+		this.biomeColorCache.put(biomeId, result);
+
+		return result;
+	}
+
+	/** Clears the cached biome tint colors, forcing recomputation on next access. */
+	public void clearBiomeColorCache()
+	{
+		this.biomeColorCache = null;
 	}
 
 
