@@ -1,61 +1,52 @@
 /*
- *    This file is part of the Distant Horizons mod
- *    licensed under the GNU LGPL v3 License.
- *
- *    Copyright (C) 2020 James Seibel
- *
- *    This program is free software: you can redistribute it and/or modify
- *    it under the terms of the GNU Lesser General Public License as published by
- *    the Free Software Foundation, version 3.
- *
- *    This program is distributed in the hope that it will be useful,
- *    but WITHOUT ANY WARRANTY; without even the implied warranty of
- *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *    GNU Lesser General Public License for more details.
- *
- *    You should have received a copy of the GNU Lesser General Public License
- *    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * This file is part of the Distant Horizons mod
+ * licensed under the GNU LGPL v3 License.
+ * Copyright (C) 2020 James Seibel
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, version 3.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Lesser General Public License for more details.
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 package com.seibel.distanthorizons.common.wrappers.chunk;
 
+import java.util.*;
+
+import net.minecraft.block.Block;
+import net.minecraft.world.biome.BiomeGenBase;
+import net.minecraft.world.chunk.Chunk;
+
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
-import com.gtnewhorizon.gtnhlib.util.ServerThreadUtil;
 import com.seibel.distanthorizons.common.wrappers.block.BiomeWrapper;
 import com.seibel.distanthorizons.common.wrappers.block.BlockStateWrapper;
-import com.seibel.distanthorizons.common.wrappers.block.FakeBlockState;
 import com.seibel.distanthorizons.common.wrappers.misc.MutableBlockPosWrapper;
-import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
-import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos;
 import com.seibel.distanthorizons.core.pos.DhChunkPos;
+import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos;
 import com.seibel.distanthorizons.core.util.LodUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.block.IBlockStateWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.ChunkLightStorage;
 import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.IChunkWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.misc.IMutableBlockPosWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IBiomeWrapper;
-
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
 
-import net.minecraft.block.Block;
-import net.minecraft.client.Minecraft;
-import net.minecraft.init.Blocks;
-import net.minecraft.world.biome.BiomeGenBase;
-import net.minecraft.world.chunk.Chunk;
-import org.apache.logging.log4j.Logger;
+public class ChunkWrapper implements IChunkWrapper {
 
-import java.util.*;
-import java.util.concurrent.ExecutionException;
-
-public class ChunkWrapper implements IChunkWrapper
-{
     private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 
-    /** can be used for interactions with the underlying chunk where creating new BlockPos objects could cause issues for the garbage collector. */
+    /**
+     * can be used for interactions with the underlying chunk where creating new BlockPos objects could cause issues for
+     * the garbage collector.
+     */
     private static final ThreadLocal<BlockPos> MUTABLE_BLOCK_POS_REF = ThreadLocal.withInitial(() -> new BlockPos());
-    private static final ThreadLocal<MutableBlockPosWrapper> MUTABLE_BLOCK_POS_WRAPPER_REF = ThreadLocal.withInitial(() -> new MutableBlockPosWrapper());
-
+    private static final ThreadLocal<MutableBlockPosWrapper> MUTABLE_BLOCK_POS_WRAPPER_REF = ThreadLocal
+        .withInitial(() -> new MutableBlockPosWrapper());
 
     private final Chunk chunk;
     private final DhChunkPos chunkPos;
@@ -82,19 +73,18 @@ public class ChunkWrapper implements IChunkWrapper
         BiomeGenBase[] ret = new BiomeGenBase[256];
         for (int x = 0; x < 16; x++) {
             for (int z = 0; z < 16; z++) {
-                ret[x * 16 + z] = chunk.worldObj.getBiomeGenForCoords((chunk.xPosition << 4) + x, (chunk.zPosition << 4) + z);
+                ret[x * 16 + z] = chunk.worldObj
+                    .getBiomeGenForCoords((chunk.xPosition << 4) + x, (chunk.zPosition << 4) + z);
             }
         }
         return ret;
     }
 
-
-    //=============//
+    // =============//
     // constructor //
-    //=============//
+    // =============//
 
-    private ChunkWrapper(ChunkWrapper other)
-    {
+    private ChunkWrapper(ChunkWrapper other) {
         this.chunk = other.chunk;
         this.chunkPos = new DhChunkPos(other.chunkPos.getX(), other.chunkPos.getZ());
         this.wrappedLevel = other.wrappedLevel;
@@ -104,8 +94,7 @@ public class ChunkWrapper implements IChunkWrapper
         this.lightBlockingHeightMap = null;
     }
 
-    public ChunkWrapper(Chunk chunk, ILevelWrapper wrappedLevel)
-    {
+    public ChunkWrapper(Chunk chunk, ILevelWrapper wrappedLevel) {
         this.chunk = chunk;
         this.wrappedLevel = wrappedLevel;
         this.chunkPos = new DhChunkPos(chunk.xPosition, chunk.zPosition);
@@ -116,99 +105,89 @@ public class ChunkWrapper implements IChunkWrapper
         this.lightBlockingHeightMap = null;
     }
 
-
-
-    //=========//
+    // =========//
     // getters //
-    //=========//
+    // =========//
 
     @Override
-    public int getHeight() { return getHeight(this.chunk); }
-    public static int getHeight(Chunk chunk)
-    {
+    public int getHeight() {
+        return getHeight(this.chunk);
+    }
+
+    public static int getHeight(Chunk chunk) {
         return 255;
     }
 
     @Override
-    public int getInclusiveMinBuildHeight() { return getInclusiveMinBuildHeight(this.chunk); }
-    public static int getInclusiveMinBuildHeight(Chunk chunk)
-    {
+    public int getInclusiveMinBuildHeight() {
+        return getInclusiveMinBuildHeight(this.chunk);
+    }
+
+    public static int getInclusiveMinBuildHeight(Chunk chunk) {
         return 0;
     }
 
     @Override
-    public int getExclusiveMaxBuildHeight() { return getExclusiveMaxBuildHeight(this.chunk); }
-    public static int getExclusiveMaxBuildHeight(Chunk chunk)
-    {
-		return 256;
+    public int getExclusiveMaxBuildHeight() {
+        return getExclusiveMaxBuildHeight(this.chunk);
+    }
+
+    public static int getExclusiveMaxBuildHeight(Chunk chunk) {
+        return 256;
     }
 
     @Override
-    public int getMinNonEmptyHeight()
-    {
-        if (this.minNonEmptyHeight != Integer.MIN_VALUE)
-        {
+    public int getMinNonEmptyHeight() {
+        if (this.minNonEmptyHeight != Integer.MIN_VALUE) {
             return this.minNonEmptyHeight;
         }
 
         return 0;
-        //return this.chunk.heightMapMinimum; // TODO?
+        // return this.chunk.heightMapMinimum; // TODO?
     }
 
-
     @Override
-    public int getMaxNonEmptyHeight()
-    {
-        if (this.maxNonEmptyHeight != Integer.MAX_VALUE)
-        {
+    public int getMaxNonEmptyHeight() {
+        if (this.maxNonEmptyHeight != Integer.MAX_VALUE) {
             return this.maxNonEmptyHeight;
         }
 
-
-       return 255; // TODO
+        return 255; // TODO
     }
 
-    private int getChunkSectionMinHeight(int index) { return (index * 16) + this.getInclusiveMinBuildHeight(); }
+    private int getChunkSectionMinHeight(int index) {
+        return (index * 16) + this.getInclusiveMinBuildHeight();
+    }
 
     @Override
-    public void createDhHeightMaps()
-    {
+    public void createDhHeightMaps() {
         // re-calculate the min/max heights for consistency (during world gen these may be wrong)
         this.minNonEmptyHeight = Integer.MIN_VALUE;
         this.maxNonEmptyHeight = Integer.MAX_VALUE;
 
-
         // recalculate heightmaps if needed
-        if (this.solidHeightMap != null)
-        {
-            for (int x = 0; x < LodUtil.CHUNK_WIDTH; x++)
-            {
-                for (int z = 0; z < LodUtil.CHUNK_WIDTH; z++)
-                {
+        if (this.solidHeightMap != null) {
+            for (int x = 0; x < LodUtil.CHUNK_WIDTH; x++) {
+                for (int z = 0; z < LodUtil.CHUNK_WIDTH; z++) {
                     int minInclusiveBuildHeight = this.getMinNonEmptyHeight();
                     // if no blocks are found the height map will be at the bottom of the world
                     int solidHeight = minInclusiveBuildHeight;
                     int lightBlockingHeight = minInclusiveBuildHeight;
 
-
-                    int y = this.getMaxNonEmptyHeight(); //this.getExclusiveMaxBuildHeight();
+                    int y = this.getMaxNonEmptyHeight(); // this.getExclusiveMaxBuildHeight();
                     IBlockStateWrapper block = this.getBlockState(x, y, z);
                     while (// go down until we reach the minimum build height
-                        y > minInclusiveBuildHeight
-                            // keep going until we find both height map values
-                            && (solidHeight == minInclusiveBuildHeight || lightBlockingHeight == minInclusiveBuildHeight))
-                    {
+                    y > minInclusiveBuildHeight
+                        // keep going until we find both height map values
+                        && (solidHeight == minInclusiveBuildHeight || lightBlockingHeight == minInclusiveBuildHeight)) {
                         // is this block solid?
-                        if (solidHeight == minInclusiveBuildHeight
-                            && block.isSolid())
-                        {
+                        if (solidHeight == minInclusiveBuildHeight && block.isSolid()) {
                             solidHeight = y;
                         }
 
                         // is this block light blocking?
                         if (lightBlockingHeight == minInclusiveBuildHeight
-                            && block.getOpacity() != LodUtil.BLOCK_FULLY_TRANSPARENT)
-                        {
+                            && block.getOpacity() != LodUtil.BLOCK_FULLY_TRANSPARENT) {
                             lightBlockingHeight = y;
                         }
 
@@ -225,41 +204,35 @@ public class ChunkWrapper implements IChunkWrapper
     }
 
     @Override
-    public int getSolidHeightMapValue(int xRel, int zRel)
-    {
+    public int getSolidHeightMapValue(int xRel, int zRel) {
         return 255;
-        /*this.throwIndexOutOfBoundsIfRelativePosOutsideChunkBounds(xRel, zRel);
-
-        // will be null if we want to use MC heightmaps
-        if (this.solidHeightMap == null)
-        {
-            return this.chunk.getHeightValue(xRel, zRel); // TODO?
-        }
-        else
-        {
-            return this.solidHeightMap[xRel][zRel];
-        }*/
+        /*
+         * this.throwIndexOutOfBoundsIfRelativePosOutsideChunkBounds(xRel, zRel);
+         * // will be null if we want to use MC heightmaps
+         * if (this.solidHeightMap == null)
+         * {
+         * return this.chunk.getHeightValue(xRel, zRel); // TODO?
+         * }
+         * else
+         * {
+         * return this.solidHeightMap[xRel][zRel];
+         * }
+         */
     }
 
     @Override
-    public int getLightBlockingHeightMapValue(int xRel, int zRel)
-    {
+    public int getLightBlockingHeightMapValue(int xRel, int zRel) {
         this.throwIndexOutOfBoundsIfRelativePosOutsideChunkBounds(xRel, zRel);
 
-        if (this.lightBlockingHeightMap == null)
-        {
+        if (this.lightBlockingHeightMap == null) {
             return this.chunk.getHeightValue(xRel, zRel); // TODO
-        }
-        else
-        {
+        } else {
             return this.lightBlockingHeightMap[xRel][zRel];
         }
     }
 
-
     @Override
-    public IBiomeWrapper getBiome(int relX, int relY, int relZ)
-    {
+    public IBiomeWrapper getBiome(int relX, int relY, int relZ) {
         BiomeGenBase biome = biomeList[(relX * 16) + relZ];
         return BiomeWrapper.getBiomeWrapper(biome, this.wrappedLevel);
     }
@@ -270,8 +243,7 @@ public class ChunkWrapper implements IChunkWrapper
     }
 
     @Override
-    public IBlockStateWrapper getBlockState(int relX, int relY, int relZ)
-    {
+    public IBlockStateWrapper getBlockState(int relX, int relY, int relZ) {
         this.throwIndexOutOfBoundsIfRelativePosOutsideChunkBounds(relX, relY, relZ);
 
         // TODO copy into pooled array, this isn't thread safe and can cause MC to throw errors if the chunk is loaded
@@ -281,8 +253,8 @@ public class ChunkWrapper implements IChunkWrapper
     }
 
     @Override
-    public IBlockStateWrapper getBlockState(int relX, int relY, int relZ, IMutableBlockPosWrapper mcBlockPos, IBlockStateWrapper guess)
-    {
+    public IBlockStateWrapper getBlockState(int relX, int relY, int relZ, IMutableBlockPosWrapper mcBlockPos,
+        IBlockStateWrapper guess) {
         this.throwIndexOutOfBoundsIfRelativePosOutsideChunkBounds(relX, relY, relZ);
 
         final Block block = this.chunk.getBlock(relX, relY, relZ);
@@ -291,199 +263,237 @@ public class ChunkWrapper implements IChunkWrapper
     }
 
     /**
-
-     // Commented out experimental LevelChunkSection cloning logic to fix extremely rare concurrency modification issue
-     // James has only ever seen a report relating to LevelSection concurrent modification once,
-     // the issue can cause DH lighting/LOD building to fail due to the chunk being modified on the server.
-     // James has only heard of this issue once, so it isn't a high priority issue.
-     // And from James' quick look at a few different MC versions it appears the LevelChunkSection object changes quite drastically between MC versions,
-     // meaning any cloning logic would have to either be a new wrapper or very MC version dependent, either way a lot of additional work.
-     // Due to the large time cost and extremely rare nature of the issue, this logic is commented out unless this issue pops up again in the future.
-
-     // instance variable to hold the cloned sections
-     private final LevelChunkSection[] levelChunkSections;
-
-     // new constructor logic to clone the sections
-     public constructor(...)
-     {
-     // other constructor logic //
-
-     LevelChunkSection[] sections = this.chunk.getSections();
-     this.levelChunkSections = new LevelChunkSection[sections.length];
-     for (int i = 0; i < sections.length; i++)
-     {
-     LevelChunkSection section = sections[i];
-     if (section != null)
-     {
-     // TODO implement section cloning for older MC versions, only 1.21.4 MC (and maybe other semi recent versions) have a clean way to handle this
-     // TODO we probably want a wrapper object instead
-     #if MC_VER < MC_1_21_4
-     this.levelChunkSections[i] = section;
-     #else
-     this.levelChunkSections[i] = section.copy();
-     #endif
-     }
-     }
-     }
-
-     // replacement getters
-     @Override
-     public IBlockStateWrapper getBlockState(int relX, int relY, int relZ)
-     {
-     this.throwIndexOutOfBoundsIfRelativePosOutsideChunkBounds(relX, relY, relZ);
-     return this.getBlockStateInternal(relX, relY, relZ, null);
-     }
-
-     @Override
-     public IBlockStateWrapper getBlockState(int relX, int relY, int relZ, IMutableBlockPosWrapper mcBlockPos, IBlockStateWrapper guess)
-     {
-     this.throwIndexOutOfBoundsIfRelativePosOutsideChunkBounds(relX, relY, relZ);
-     return this.getBlockStateInternal(relX, relY, relZ, guess);
-     }
-
-     // internal getter logic
-     private IBlockStateWrapper getBlockStateInternal(int relX, int y, int relZ, @Nullable IBlockStateWrapper guess)
-     {
-     try
-     {
-     // attempt to get the section for this position
-     int i = (y - this.getInclusiveMinBuildHeight()) / 16;
-     if (i >= 0 && i < this.levelChunkSections.length)
-     {
-     LevelChunkSection section = this.levelChunkSections[i];
-     if (!section.hasOnlyAir())
-     {
-     if (guess != null)
-     {
-     return BlockStateWrapper.fromBlockState(section.getBlockState(relX & 15, y & 15, relZ & 15), this.wrappedLevel, guess);
-     }
-     else
-     {
-     return BlockStateWrapper.fromBlockState(section.getBlockState(relX & 15, y & 15, relZ & 15), this.wrappedLevel);
-     }
-     }
-     }
-
-     return BlockStateWrapper.AIR;
-     }
-     catch (Exception e)
-     {
-     return BlockStateWrapper.AIR;
-     }
-     }
+     * 
+     * // Commented out experimental LevelChunkSection cloning logic to fix extremely rare concurrency modification
+     * issue
+     * // James has only ever seen a report relating to LevelSection concurrent modification once,
+     * // the issue can cause DH lighting/LOD building to fail due to the chunk being modified on the server.
+     * // James has only heard of this issue once, so it isn't a high priority issue.
+     * // And from James' quick look at a few different MC versions it appears the LevelChunkSection object changes
+     * quite drastically between MC versions,
+     * // meaning any cloning logic would have to either be a new wrapper or very MC version dependent, either way a lot
+     * of additional work.
+     * // Due to the large time cost and extremely rare nature of the issue, this logic is commented out unless this
+     * issue pops up again in the future.
+     * 
+     * // instance variable to hold the cloned sections
+     * private final LevelChunkSection[] levelChunkSections;
+     * 
+     * // new constructor logic to clone the sections
+     * public constructor(...)
+     * {
+     * // other constructor logic //
+     * 
+     * LevelChunkSection[] sections = this.chunk.getSections();
+     * this.levelChunkSections = new LevelChunkSection[sections.length];
+     * for (int i = 0; i < sections.length; i++)
+     * {
+     * LevelChunkSection section = sections[i];
+     * if (section != null)
+     * {
+     * // TODO implement section cloning for older MC versions, only 1.21.4 MC (and maybe other semi recent versions)
+     * have a clean way to handle this
+     * // TODO we probably want a wrapper object instead
+     * #if MC_VER < MC_1_21_4
+     * this.levelChunkSections[i] = section;
+     * #else
+     * this.levelChunkSections[i] = section.copy();
+     * #endif
+     * }
+     * }
+     * }
+     * 
+     * // replacement getters
+     * 
+     * @Override
+     *           public IBlockStateWrapper getBlockState(int relX, int relY, int relZ)
+     *           {
+     *           this.throwIndexOutOfBoundsIfRelativePosOutsideChunkBounds(relX, relY, relZ);
+     *           return this.getBlockStateInternal(relX, relY, relZ, null);
+     *           }
+     * 
+     * @Override
+     *           public IBlockStateWrapper getBlockState(int relX, int relY, int relZ, IMutableBlockPosWrapper
+     *           mcBlockPos, IBlockStateWrapper guess)
+     *           {
+     *           this.throwIndexOutOfBoundsIfRelativePosOutsideChunkBounds(relX, relY, relZ);
+     *           return this.getBlockStateInternal(relX, relY, relZ, guess);
+     *           }
+     * 
+     *           // internal getter logic
+     *           private IBlockStateWrapper getBlockStateInternal(int relX, int y, int relZ, @Nullable
+     *           IBlockStateWrapper guess)
+     *           {
+     *           try
+     *           {
+     *           // attempt to get the section for this position
+     *           int i = (y - this.getInclusiveMinBuildHeight()) / 16;
+     *           if (i >= 0 && i < this.levelChunkSections.length)
+     *           {
+     *           LevelChunkSection section = this.levelChunkSections[i];
+     *           if (!section.hasOnlyAir())
+     *           {
+     *           if (guess != null)
+     *           {
+     *           return BlockStateWrapper.fromBlockState(section.getBlockState(relX & 15, y & 15, relZ & 15),
+     *           this.wrappedLevel, guess);
+     *           }
+     *           else
+     *           {
+     *           return BlockStateWrapper.fromBlockState(section.getBlockState(relX & 15, y & 15, relZ & 15),
+     *           this.wrappedLevel);
+     *           }
+     *           }
+     *           }
+     * 
+     *           return BlockStateWrapper.AIR;
+     *           }
+     *           catch (Exception e)
+     *           {
+     *           return BlockStateWrapper.AIR;
+     *           }
+     *           }
      */
 
-
+    @Override
+    public IMutableBlockPosWrapper getMutableBlockPosWrapper() {
+        return MUTABLE_BLOCK_POS_WRAPPER_REF.get();
+    }
 
     @Override
-    public IMutableBlockPosWrapper getMutableBlockPosWrapper() { return MUTABLE_BLOCK_POS_WRAPPER_REF.get(); }
+    public DhChunkPos getChunkPos() {
+        return this.chunkPos;
+    }
+
+    public Chunk getChunk() {
+        return this.chunk;
+    }
 
     @Override
-    public DhChunkPos getChunkPos() { return this.chunkPos; }
-
-    public Chunk getChunk() { return this.chunk; }
+    public int getMaxBlockX() {
+        return this.chunk.xPosition * 16 + 16;
+    }
 
     @Override
-    public int getMaxBlockX() { return this.chunk.xPosition * 16 + 16; }
-    @Override
-    public int getMaxBlockZ() { return this.chunk.zPosition * 16 + 16; }
-    @Override
-    public int getMinBlockX() { return this.chunk.xPosition * 16; }
-    @Override
-    public int getMinBlockZ() { return this.chunk.zPosition * 16; }
+    public int getMaxBlockZ() {
+        return this.chunk.zPosition * 16 + 16;
+    }
 
+    @Override
+    public int getMinBlockX() {
+        return this.chunk.xPosition * 16;
+    }
 
+    @Override
+    public int getMinBlockZ() {
+        return this.chunk.zPosition * 16;
+    }
 
-    //==========//
+    // ==========//
     // lighting //
-    //==========//
+    // ==========//
 
     @Override
-    public void setIsDhSkyLightCorrect(boolean isDhLightCorrect) { this.isDhSkyLightCorrect = isDhLightCorrect; }
-    @Override
-    public void setIsDhBlockLightCorrect(boolean isDhLightCorrect) { this.isDhBlockLightCorrect = isDhLightCorrect; }
-
-    @Override
-    public boolean isDhBlockLightingCorrect() { return this.isDhBlockLightCorrect; }
-    @Override
-    public boolean isDhSkyLightCorrect() { return this.isDhSkyLightCorrect; }
-
-
-    @Override
-    public int getDhBlockLight(int relX, int y, int relZ)
-    {
-        this.throwIndexOutOfBoundsIfRelativePosOutsideChunkBounds(relX, y, relZ);
-        return this.getBlockLightStorage().get(relX, y, relZ);
-    }
-    @Override
-    public void setDhBlockLight(int relX, int y, int relZ, int lightValue)
-    {
-        this.throwIndexOutOfBoundsIfRelativePosOutsideChunkBounds(relX, y, relZ);
-        this.getBlockLightStorage().set(relX, y, relZ, lightValue);
+    public void setIsDhSkyLightCorrect(boolean isDhLightCorrect) {
+        this.isDhSkyLightCorrect = isDhLightCorrect;
     }
 
-    private ChunkLightStorage getBlockLightStorage()
-    {
-        if (this.blockLightStorage == null)
-        {
+    @Override
+    public void setIsDhBlockLightCorrect(boolean isDhLightCorrect) {
+        this.isDhBlockLightCorrect = isDhLightCorrect;
+    }
+
+    @Override
+    public boolean isDhBlockLightingCorrect() {
+        return this.isDhBlockLightCorrect;
+    }
+
+    @Override
+    public boolean isDhSkyLightCorrect() {
+        return this.isDhSkyLightCorrect;
+    }
+
+    @Override
+    public int getDhBlockLight(int relX, int y, int relZ) {
+        this.throwIndexOutOfBoundsIfRelativePosOutsideChunkBounds(relX, y, relZ);
+        return this.getBlockLightStorage()
+            .get(relX, y, relZ);
+    }
+
+    @Override
+    public void setDhBlockLight(int relX, int y, int relZ, int lightValue) {
+        this.throwIndexOutOfBoundsIfRelativePosOutsideChunkBounds(relX, y, relZ);
+        this.getBlockLightStorage()
+            .set(relX, y, relZ, lightValue);
+    }
+
+    private ChunkLightStorage getBlockLightStorage() {
+        if (this.blockLightStorage == null) {
             this.blockLightStorage = ChunkLightStorage.createBlockLightStorage(this);
         }
         return this.blockLightStorage;
     }
-    public void setBlockLightStorage(ChunkLightStorage lightStorage) { this.blockLightStorage = lightStorage; }
-    @Override
-    public void clearDhBlockLighting() { this.getBlockLightStorage().clear(); }
 
-
-    @Override
-    public int getDhSkyLight(int relX, int y, int relZ)
-    {
-        this.throwIndexOutOfBoundsIfRelativePosOutsideChunkBounds(relX, y, relZ);
-        return this.getSkyLightStorage().get(relX, y, relZ);
+    public void setBlockLightStorage(ChunkLightStorage lightStorage) {
+        this.blockLightStorage = lightStorage;
     }
-    @Override
-    public void setDhSkyLight(int relX, int y, int relZ, int lightValue)
-    {
-        this.throwIndexOutOfBoundsIfRelativePosOutsideChunkBounds(relX, y, relZ);
-        this.getSkyLightStorage().set(relX, y, relZ, lightValue);
-    }
-    @Override
-    public void clearDhSkyLighting() { this.getSkyLightStorage().clear(); }
 
-    private ChunkLightStorage getSkyLightStorage()
-    {
-        if (this.skyLightStorage == null)
-        {
+    @Override
+    public void clearDhBlockLighting() {
+        this.getBlockLightStorage()
+            .clear();
+    }
+
+    @Override
+    public int getDhSkyLight(int relX, int y, int relZ) {
+        this.throwIndexOutOfBoundsIfRelativePosOutsideChunkBounds(relX, y, relZ);
+        return this.getSkyLightStorage()
+            .get(relX, y, relZ);
+    }
+
+    @Override
+    public void setDhSkyLight(int relX, int y, int relZ, int lightValue) {
+        this.throwIndexOutOfBoundsIfRelativePosOutsideChunkBounds(relX, y, relZ);
+        this.getSkyLightStorage()
+            .set(relX, y, relZ, lightValue);
+    }
+
+    @Override
+    public void clearDhSkyLighting() {
+        this.getSkyLightStorage()
+            .clear();
+    }
+
+    private ChunkLightStorage getSkyLightStorage() {
+        if (this.skyLightStorage == null) {
             this.skyLightStorage = ChunkLightStorage.createSkyLightStorage(this);
         }
         return this.skyLightStorage;
     }
-    public void setSkyLightStorage(ChunkLightStorage lightStorage) { this.skyLightStorage = lightStorage; }
 
+    public void setSkyLightStorage(ChunkLightStorage lightStorage) {
+        this.skyLightStorage = lightStorage;
+    }
 
     /**
-     * FIXME synchronized is necessary for a rare issue where this method is called from two separate threads at the same time
-     *  before the list has finished populating.
+     * FIXME synchronized is necessary for a rare issue where this method is called from two separate threads at the
+     * same time
+     * before the list has finished populating.
      */
     @Override
-    public synchronized ArrayList<DhBlockPos> getWorldBlockLightPosList()
-    {
+    public synchronized ArrayList<DhBlockPos> getWorldBlockLightPosList() {
         // only populate the list once
-        if (this.blockLightPosList == null)
-        {
+        if (this.blockLightPosList == null) {
             this.blockLightPosList = new ArrayList<>(128);
 
-            for (int x = 0; x  < 16; x++)
-            {
-                for (int z = 0; z < 16; z++)
-                {
-                    for (int y = 0; y < 256; y++)
-                    {
+            for (int x = 0; x < 16; x++) {
+                for (int z = 0; z < 16; z++) {
+                    for (int y = 0; y < 256; y++) {
                         Block block = chunk.getBlock(x, y, z);
                         int meta = chunk.getBlockMetadata(x, y, z);
-                        if (BlockStateWrapper.getLightEmission(block, meta) > 0)
-                        {
-                            this.blockLightPosList.add(new DhBlockPos(x + chunkPos.getMinBlockX(), y, z + chunkPos.getMinBlockZ()));
+                        if (BlockStateWrapper.getLightEmission(block, meta) > 0) {
+                            this.blockLightPosList
+                                .add(new DhBlockPos(x + chunkPos.getMinBlockX(), y, z + chunkPos.getMinBlockZ()));
                         }
                     }
                 }
@@ -493,28 +503,30 @@ public class ChunkWrapper implements IChunkWrapper
         return this.blockLightPosList;
     }
 
-
-    //================//
+    // ================//
     // base overrides //
-    //================//
+    // ================//
 
     @Override
-    public String toString() { return this.chunk.getClass().getSimpleName() + this.chunk.xPosition + "," + this.chunk.zPosition; }
+    public String toString() {
+        return this.chunk.getClass()
+            .getSimpleName() + this.chunk.xPosition + "," + this.chunk.zPosition;
+    }
 
     public boolean isChunkReady() {
         boolean ret = chunk.isTerrainPopulated && chunk.isLightPopulated;
         return ret;
     }
 
-    //@Override
-    //public int hashCode()
-    //{
-    //	if (this.blockBiomeHashCode == 0)
-    //	{
-    //		this.blockBiomeHashCode = this.getBlockBiomeHashCode();
-    //	}
+    // @Override
+    // public int hashCode()
+    // {
+    // if (this.blockBiomeHashCode == 0)
+    // {
+    // this.blockBiomeHashCode = this.getBlockBiomeHashCode();
+    // }
     //
-    //	return this.blockBiomeHashCode;
-    //}
+    // return this.blockBiomeHashCode;
+    // }
 
 }

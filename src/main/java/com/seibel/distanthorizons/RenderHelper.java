@@ -1,24 +1,24 @@
 package com.seibel.distanthorizons;
 
+import java.nio.FloatBuffer;
+
+import net.minecraft.client.Minecraft;
+
+import org.joml.Matrix4f;
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL20;
+import org.lwjgl.opengl.GL32;
+
 import com.seibel.distanthorizons.common.wrappers.McObjectConverter;
 import com.seibel.distanthorizons.common.wrappers.world.ClientLevelWrapper;
 import com.seibel.distanthorizons.core.api.internal.ClientApi;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.util.math.Mat4f;
 import com.seibel.distanthorizons.forge.ForgeMain;
-import com.seibel.distanthorizons.interfaces.IMixinMinecraft;
-import net.minecraft.client.Minecraft;
-import org.joml.Matrix4f;
-import org.lwjgl.BufferUtils;
-import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL20;
-import org.lwjgl.opengl.GL32;
-
-import java.nio.FloatBuffer;
 
 public class RenderHelper {
-    public static void drawLods()
-    {
+
+    public static void drawLods() {
         ClientApi.RENDER_STATE.mcModelViewMatrix = getModelViewMatrix();
         ClientApi.RENDER_STATE.mcProjectionMatrix = getProjectionMatrix();
         ClientApi.RENDER_STATE.clientLevelWrapper = ClientLevelWrapper.getWrapper(Minecraft.getMinecraft().theWorld);
@@ -39,13 +39,11 @@ public class RenderHelper {
         GL32.glBindTexture(GL32.GL_TEXTURE_2D, oldBoundTex);
     }
 
-    public static void beforeWater()
-    {
+    public static void beforeWater() {
         GL11.glDepthMask(true);
     }
 
-    public static void drawLodsFade(boolean translucent)
-    {
+    public static void drawLodsFade(boolean translucent) {
         if (ForgeMain.angelicaCompat != null) {
             if (!ForgeMain.angelicaCompat.canDoFadeShader()) {
                 return;
@@ -71,8 +69,7 @@ public class RenderHelper {
         GL32.glDisable(GL32.GL_BLEND);
     }
 
-    public static void drawDeferredLods()
-    {
+    public static void drawDeferredLods() {
         ClientApi.RENDER_STATE.mcModelViewMatrix = getModelViewMatrix();
         ClientApi.RENDER_STATE.mcProjectionMatrix = getProjectionMatrix();
         ClientApi.RENDER_STATE.clientLevelWrapper = ClientLevelWrapper.getWrapper(Minecraft.getMinecraft().theWorld);
@@ -96,7 +93,7 @@ public class RenderHelper {
     }
 
     public static Mat4f getProjectionMatrix() {
-       return McObjectConverter.Convert(projectionMatrix);
+        return McObjectConverter.Convert(projectionMatrix);
     }
 
     public static void setModelViewMatrix(FloatBuffer modelview) {

@@ -1,67 +1,52 @@
 /*
- *    This file is part of the Distant Horizons mod
- *    licensed under the GNU LGPL v3 License.
- *
- *    Copyright (C) 2021  Tom Lee (TomTheFurry)
- *    Copyright (C) 2020 James Seibel
- *
- *    This program is free software: you can redistribute it and/or modify
- *    it under the terms of the GNU Lesser General Public License as published by
- *    the Free Software Foundation, version 3.
- *
- *    This program is distributed in the hope that it will be useful,
- *    but WITHOUT ANY WARRANTY; without even the implied warranty of
- *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *    GNU Lesser General Public License for more details.
- *
- *    You should have received a copy of the GNU Lesser General Public License
- *    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * This file is part of the Distant Horizons mod
+ * licensed under the GNU LGPL v3 License.
+ * Copyright (C) 2021 Tom Lee (TomTheFurry)
+ * Copyright (C) 2020 James Seibel
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, version 3.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Lesser General Public License for more details.
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
 package com.seibel.distanthorizons.common.wrappers.worldGeneration;
-
-import com.google.common.collect.ImmutableMap;
-import com.seibel.distanthorizons.api.DhApi;
-import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiDistantGeneratorMode;
-import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiWorldGenerationStep;
-import com.seibel.distanthorizons.common.wrappers.world.ServerLevelWrapper;
-import com.seibel.distanthorizons.core.api.internal.SharedApi;
-import com.seibel.distanthorizons.core.api.internal.chunkUpdating.ChunkUpdateQueueManager;
-import com.seibel.distanthorizons.core.api.internal.chunkUpdating.WorldChunkUpdateManager;
-import com.seibel.distanthorizons.core.generation.DhLightingEngine;
-import com.seibel.distanthorizons.core.level.IDhServerLevel;
-import com.seibel.distanthorizons.core.config.Config;
-import com.seibel.distanthorizons.core.logging.DhLogger;
-import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
-import com.seibel.distanthorizons.core.pos.DhChunkPos;
-import com.seibel.distanthorizons.core.sql.dto.BeaconBeamDTO;
-import com.seibel.distanthorizons.core.util.ExceptionUtil;
-import com.seibel.distanthorizons.core.util.LodUtil;
-import com.seibel.distanthorizons.core.util.TimerUtil;
-import com.seibel.distanthorizons.core.util.gridList.ArrayGridList;
-import com.seibel.distanthorizons.core.util.objects.UncheckedInterruptedException;
-import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.ChunkLightStorage;
-import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.IChunkWrapper;
-import com.seibel.distanthorizons.core.wrapperInterfaces.worldGeneration.IBatchGeneratorEnvironmentWrapper;
-import com.seibel.distanthorizons.common.wrappers.chunk.ChunkWrapper;
 
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
 
-import com.seibel.distanthorizons.coreapi.ModInfo;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-public final class BatchGenerationEnvironment implements IBatchGeneratorEnvironmentWrapper
-{
-    public static final DhLogger LOGGER = new DhLoggerBuilder()
-        .name("LOD World Gen")
+import com.google.common.collect.ImmutableMap;
+import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiDistantGeneratorMode;
+import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiWorldGenerationStep;
+import com.seibel.distanthorizons.core.api.internal.SharedApi;
+import com.seibel.distanthorizons.core.api.internal.chunkUpdating.ChunkUpdateQueueManager;
+import com.seibel.distanthorizons.core.api.internal.chunkUpdating.WorldChunkUpdateManager;
+import com.seibel.distanthorizons.core.config.Config;
+import com.seibel.distanthorizons.core.level.IDhServerLevel;
+import com.seibel.distanthorizons.core.logging.DhLogger;
+import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
+import com.seibel.distanthorizons.core.pos.DhChunkPos;
+import com.seibel.distanthorizons.core.util.LodUtil;
+import com.seibel.distanthorizons.core.util.TimerUtil;
+import com.seibel.distanthorizons.core.util.gridList.ArrayGridList;
+import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.IChunkWrapper;
+import com.seibel.distanthorizons.core.wrapperInterfaces.worldGeneration.IBatchGeneratorEnvironmentWrapper;
+
+public final class BatchGenerationEnvironment implements IBatchGeneratorEnvironmentWrapper {
+
+    public static final DhLogger LOGGER = new DhLoggerBuilder().name("LOD World Gen")
         .fileLevelConfig(Config.Common.Logging.logWorldGenEventToFile)
         .build();
 
-    public static final DhLogger RATE_LIMITED_LOGGER = new DhLoggerBuilder()
-        .name("LOD World Gen")
+    public static final DhLogger RATE_LIMITED_LOGGER = new DhLoggerBuilder().name("LOD World Gen")
         .maxCountPerSecond(1)
         .build();
 
@@ -81,8 +66,6 @@ public final class BatchGenerationEnvironment implements IBatchGeneratorEnvironm
      */
     private static final int MS_TO_IGNORE_CHUNK_AFTER_COMPLETION = 5_000;
 
-
-
     private final IDhServerLevel dhServerLevel;
     @Nullable
     private final ChunkUpdateQueueManager updateManager;
@@ -90,8 +73,6 @@ public final class BatchGenerationEnvironment implements IBatchGeneratorEnvironm
     public final InternalServerGenerator internalServerGenerator;
 
     private final Timer chunkSaveIgnoreTimer = TimerUtil.CreateTimer("ChunkSaveIgnoreTimer");
-
-
 
     public final LinkedBlockingQueue<GenerationEvent> generationEventQueue = new LinkedBlockingQueue<>();
     public final GlobalWorldGenParams globalParams;
@@ -102,25 +83,22 @@ public final class BatchGenerationEnvironment implements IBatchGeneratorEnvironm
     public long lastExceptionTriggerTime = 0;
 
     public static ThreadLocal<Boolean> isDhWorldGenThreadRef = new ThreadLocal<>();
-    public static boolean isThisDhWorldGenThread() { return (isDhWorldGenThreadRef.get() != null); }
 
+    public static boolean isThisDhWorldGenThread() {
+        return (isDhWorldGenThreadRef.get() != null);
+    }
 
-
-    //==============//
+    // ==============//
     // constructors //
-    //==============//
+    // ==============//
 
-    static
-    {
+    static {
         boolean isTerraFirmaCraftPresent = false;
-        try
-        {
+        try {
             Class.forName("net.dries007.tfc.world.TFCChunkGenerator");
             isTerraFirmaCraftPresent = true;
             LOGGER.info("TerraFirmaCraft detected.");
-        }
-        catch (ClassNotFoundException ignore) { }
-
+        } catch (ClassNotFoundException ignore) {}
 
         ImmutableMap.Builder<EDhApiWorldGenerationStep, Integer> builder = ImmutableMap.builder();
         builder.put(EDhApiWorldGenerationStep.EMPTY, 1);
@@ -143,50 +121,41 @@ public final class BatchGenerationEnvironment implements IBatchGeneratorEnvironm
         MAX_WORLD_GEN_CHUNK_BORDER_NEEDED = 0;
     }
 
-    public BatchGenerationEnvironment(IDhServerLevel dhServerLevel)
-    {
+    public BatchGenerationEnvironment(IDhServerLevel dhServerLevel) {
         this.dhServerLevel = dhServerLevel;
-        this.updateManager = WorldChunkUpdateManager.INSTANCE.getByLevelWrapper(this.dhServerLevel.getServerLevelWrapper());
+        this.updateManager = WorldChunkUpdateManager.INSTANCE
+            .getByLevelWrapper(this.dhServerLevel.getServerLevelWrapper());
         this.globalParams = new GlobalWorldGenParams(dhServerLevel);
         this.internalServerGenerator = new InternalServerGenerator(this.globalParams, this.dhServerLevel);
     }
 
-
-
-    //=================//
+    // =================//
     // synchronization //
-    //=================//
+    // =================//
 
-    public void updateAllFutures()
-    {
-        if (this.unknownExceptionCount > 0)
-        {
-            if (System.nanoTime() - this.lastExceptionTriggerTime >= EXCEPTION_TIMER_RESET_TIME)
-            {
+    public void updateAllFutures() {
+        if (this.unknownExceptionCount > 0) {
+            if (System.nanoTime() - this.lastExceptionTriggerTime >= EXCEPTION_TIMER_RESET_TIME) {
                 this.unknownExceptionCount = 0;
             }
         }
 
-
         // Update all current out standing jobs
         Iterator<GenerationEvent> iter = this.generationEventQueue.iterator();
-        while (iter.hasNext())
-        {
+        while (iter.hasNext()) {
             GenerationEvent event = iter.next();
-            if (event.future.isDone())
-            {
-                if (event.future.isCompletedExceptionally() && !event.future.isCancelled())
-                {
-                    try
-                    {
+            if (event.future.isDone()) {
+                if (event.future.isCompletedExceptionally() && !event.future.isCancelled()) {
+                    try {
                         event.future.get(); // Should throw exception
-                        LodUtil.assertNotReach("Exceptionally completed world gen Future should have thrown an exception.");
-                    }
-                    catch (Exception e)
-                    {
+                        LodUtil.assertNotReach(
+                            "Exceptionally completed world gen Future should have thrown an exception.");
+                    } catch (Exception e) {
                         this.unknownExceptionCount++;
                         this.lastExceptionTriggerTime = System.nanoTime();
-                        LOGGER.error("Batching World Generator event ["+event+"] threw an exception: "+e.getMessage(), e);
+                        LOGGER.error(
+                            "Batching World Generator event [" + event + "] threw an exception: " + e.getMessage(),
+                            e);
                     }
                 }
 
@@ -194,73 +163,69 @@ public final class BatchGenerationEnvironment implements IBatchGeneratorEnvironm
             }
         }
 
-        if (this.unknownExceptionCount > EXCEPTION_COUNTER_TRIGGER)
-        {
+        if (this.unknownExceptionCount > EXCEPTION_COUNTER_TRIGGER) {
             LOGGER.error("Too many exceptions in Batching World Generator! Disabling the generator.");
             this.unknownExceptionCount = 0;
             Config.Common.WorldGenerator.enableDistantGeneration.set(false);
         }
     }
 
-    private static <T> ArrayGridList<T> GetCutoutFrom(ArrayGridList<T> total, int border) { return new ArrayGridList<>(total, border, total.gridSize - border); }
-    private static <T> ArrayGridList<T> GetCutoutFrom(ArrayGridList<T> total, EDhApiWorldGenerationStep step) { return GetCutoutFrom(total, WORLD_GEN_CHUNK_BORDER_NEEDED_BY_GEN_STEP.get(step)); }
+    private static <T> ArrayGridList<T> GetCutoutFrom(ArrayGridList<T> total, int border) {
+        return new ArrayGridList<>(total, border, total.gridSize - border);
+    }
 
-
+    private static <T> ArrayGridList<T> GetCutoutFrom(ArrayGridList<T> total, EDhApiWorldGenerationStep step) {
+        return GetCutoutFrom(total, WORLD_GEN_CHUNK_BORDER_NEEDED_BY_GEN_STEP.get(step));
+    }
 
     // queue task //
 
     @Override
-    public CompletableFuture<Void> queueGenEvent(
-        int minX, int minZ, int chunkWidthCount,
+    public CompletableFuture<Void> queueGenEvent(int minX, int minZ, int chunkWidthCount,
         EDhApiDistantGeneratorMode generatorMode, EDhApiWorldGenerationStep targetStep,
-        ExecutorService worldGeneratorThreadPool, Consumer<IChunkWrapper> resultConsumer)
-    {
+        ExecutorService worldGeneratorThreadPool, Consumer<IChunkWrapper> resultConsumer) {
         GenerationEvent genEvent = GenerationEvent.start(
-            new DhChunkPos(minX, minZ), chunkWidthCount, this,
-            generatorMode, targetStep, resultConsumer,
+            new DhChunkPos(minX, minZ),
+            chunkWidthCount,
+            this,
+            generatorMode,
+            targetStep,
+            resultConsumer,
             worldGeneratorThreadPool);
         this.generationEventQueue.add(genEvent);
         return genEvent.future;
     }
 
-
-
-    //================//
+    // ================//
     // base overrides //
-    //================//
+    // ================//
 
     @Override
-    public void close()
-    {
-        LOGGER.info("Closing [" +BatchGenerationEnvironment.class.getSimpleName() + "]");
-
+    public void close() {
+        LOGGER.info("Closing [" + BatchGenerationEnvironment.class.getSimpleName() + "]");
 
         // cancel in-progress tasks
         Iterator<GenerationEvent> genEventIter = this.generationEventQueue.iterator();
-        while (genEventIter.hasNext())
-        {
+        while (genEventIter.hasNext()) {
             GenerationEvent event = genEventIter.next();
             event.future.cancel(true);
             genEventIter.remove();
         }
     }
 
-
-
-    //================//
+    // ================//
     // helper methods //
-    //================//
+    // ================//
 
     /**
      * Called before code that may run for an extended period of time. <br>
      * This is necessary to allow canceling world gen since waiting
      * for some world gen requests to finish can take a while.
      */
-    public static void throwIfThreadInterrupted() throws InterruptedException
-    {
-        if (Thread.interrupted())
-        {
-            throw new InterruptedException("["+BatchGenerationEnvironment.class.getSimpleName()+"] task interrupted.");
+    public static void throwIfThreadInterrupted() throws InterruptedException {
+        if (Thread.interrupted()) {
+            throw new InterruptedException(
+                "[" + BatchGenerationEnvironment.class.getSimpleName() + "] task interrupted.");
         }
     }
 }

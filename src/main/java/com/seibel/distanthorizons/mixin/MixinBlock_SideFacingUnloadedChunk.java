@@ -18,8 +18,8 @@ public class MixinBlock_SideFacingUnloadedChunk {
 
     @ModifyReturnValue(method = "shouldSideBeRendered", at = @At("TAIL"))
     private boolean shouldSideBeRenderedFix(boolean original, @Local(argsOnly = true) IBlockAccess blockAccess,
-                                            @Local(argsOnly = true, ordinal = 0) int x, @Local(argsOnly = true, ordinal = 2) int z,
-                                            @Local(argsOnly = true, ordinal = 3) int side) {
+        @Local(argsOnly = true, ordinal = 0) int x, @Local(argsOnly = true, ordinal = 2) int z,
+        @Local(argsOnly = true, ordinal = 3) int side) {
         // Skip invalid orientations, and early exit for UP/DOWN
         if (side < 2 || side >= 6) {
             return original;

@@ -1,20 +1,21 @@
 package com.seibel.distanthorizons.forge;
 
-import gregtech.api.interfaces.IIconContainer;
-import gregtech.api.interfaces.ITexture;
-import gregtech.common.render.GTRenderedTexture;
+import java.lang.reflect.Field;
+
 import net.minecraft.block.Block;
 import net.minecraft.util.IIcon;
 
 import gregtech.api.interfaces.IBlockWithTextures;
-
-import java.lang.reflect.Field;
+import gregtech.api.interfaces.IIconContainer;
+import gregtech.api.interfaces.ITexture;
+import gregtech.common.render.GTRenderedTexture;
 
 public class GTCompat {
 
     private Object getObjectByReflection(Object base, String name) {
         try {
-            Field field = base.getClass().getDeclaredField(name);
+            Field field = base.getClass()
+                .getDeclaredField(name);
             field.setAccessible(true);
             return field.get(base);
         } catch (NoSuchFieldException | IllegalAccessException e) {

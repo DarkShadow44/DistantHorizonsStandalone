@@ -1,14 +1,16 @@
 package com.seibel.distanthorizons;
 
-import com.gtnewhorizon.gtnhmixins.IEarlyMixinLoader;
-import com.gtnewhorizon.gtnhmixins.builders.IMixins;
-import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
-
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.gtnewhorizon.gtnhmixins.IEarlyMixinLoader;
+import com.gtnewhorizon.gtnhmixins.builders.IMixins;
+
+import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
+
 public class DistantHorizonsTweaker implements IEarlyMixinLoader, IFMLLoadingPlugin {
+
     @Override
     public String getMixinConfig() {
         return "mixins.distanthorizons.early.json";

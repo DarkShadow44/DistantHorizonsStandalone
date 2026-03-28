@@ -3,6 +3,7 @@ package com.seibel.distanthorizons.common.wrappers.gui;
 import net.minecraft.util.StatCollector;
 
 public class GuiHelper {
+
     /**
      * Helper static methods for versional compat
      */

@@ -3,28 +3,25 @@ package com.seibel.distanthorizons.common.wrappers.misc;
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
 import com.seibel.distanthorizons.core.wrapperInterfaces.misc.IMutableBlockPosWrapper;
 
-public class MutableBlockPosWrapper implements IMutableBlockPosWrapper
-{
-	public final BlockPos pos;
+public class MutableBlockPosWrapper implements IMutableBlockPosWrapper {
 
+    public final BlockPos pos;
 
+    // =============//
+    // constructor //
+    // =============//
 
-	//=============//
-	// constructor //
-	//=============//
+    public MutableBlockPosWrapper() {
+        this.pos = new BlockPos();
+    }
 
-	public MutableBlockPosWrapper()
-	{
-		this.pos = new BlockPos();
-	}
+    // ===========//
+    // overrides //
+    // ===========//
 
-
-
-	//===========//
-	// overrides //
-	//===========//
-
-	@Override
-	public Object getWrappedMcObject() { return this.pos; }
+    @Override
+    public Object getWrappedMcObject() {
+        return this.pos;
+    }
 
 }

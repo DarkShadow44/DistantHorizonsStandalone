@@ -1,12 +1,13 @@
 package com.seibel.distanthorizons.forge;
 
-import net.minecraft.world.biome.BiomeGenBase;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+import net.minecraft.world.biome.BiomeGenBase;
+
 public class BiomeHandler {
+
     private static final List<BiomeGenBase> biomes = new ArrayList<>();
     private static HashMap<String, BiomeGenBase> biomeMap;
 

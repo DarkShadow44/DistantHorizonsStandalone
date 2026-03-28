@@ -17,7 +17,8 @@ public class FakeWorld implements IBlockAccess {
     private FakeBlockState blockState;
     private BiomeGenBase biome;
 
-    public void update(IBlockAccess real, BiomeGenBase biome, int blockX, int blockY, int blockZ, FakeBlockState blockState) {
+    public void update(IBlockAccess real, BiomeGenBase biome, int blockX, int blockY, int blockZ,
+        FakeBlockState blockState) {
         this.real = real;
         this.blockX = blockX;
         this.blockY = blockY;

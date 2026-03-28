@@ -1,73 +1,51 @@
 /*
- *    This file is part of the Distant Horizons mod
- *    licensed under the GNU LGPL v3 License.
- *
- *    Copyright (C) 2020 James Seibel
- *
- *    This program is free software: you can redistribute it and/or modify
- *    it under the terms of the GNU Lesser General Public License as published by
- *    the Free Software Foundation, version 3.
- *
- *    This program is distributed in the hope that it will be useful,
- *    but WITHOUT ANY WARRANTY; without even the implied warranty of
- *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *    GNU Lesser General Public License for more details.
- *
- *    You should have received a copy of the GNU Lesser General Public License
- *    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * This file is part of the Distant Horizons mod
+ * licensed under the GNU LGPL v3 License.
+ * Copyright (C) 2020 James Seibel
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, version 3.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Lesser General Public License for more details.
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
 package com.seibel.distanthorizons.forge;
 
-import com.seibel.distanthorizons.api.enums.config.EDhApiRenderApi;
-import com.seibel.distanthorizons.common.AbstractModInitializer;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.WorldClient;
+import net.minecraft.world.World;
+import net.minecraft.world.chunk.Chunk;
+import net.minecraftforge.client.event.RenderGameOverlayEvent;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.entity.player.PlayerInteractEvent;
+import net.minecraftforge.event.world.ChunkEvent;
+import net.minecraftforge.event.world.WorldEvent;
+
 import com.seibel.distanthorizons.MixinFlags;
+import com.seibel.distanthorizons.common.AbstractModInitializer;
 import com.seibel.distanthorizons.common.render.openGl.GlDhRenderApiDefinition;
 import com.seibel.distanthorizons.common.util.ProxyUtil;
-import com.seibel.distanthorizons.common.wrappers.minecraft.MinecraftRenderWrapper;
+import com.seibel.distanthorizons.common.wrappers.chunk.ChunkWrapper;
 import com.seibel.distanthorizons.common.wrappers.world.ClientLevelWrapper;
 import com.seibel.distanthorizons.core.api.internal.ClientApi;
 import com.seibel.distanthorizons.core.api.internal.SharedApi;
-import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.logging.f3.F3Screen;
-import com.seibel.distanthorizons.core.util.threading.ThreadPoolUtil;
-import com.seibel.distanthorizons.core.wrapperInterfaces.IVersionConstants;
 import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.IChunkWrapper;
-
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.AbstractDhRenderApiDefinition;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
+
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.InputEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
-import net.minecraft.client.multiplayer.WorldClient;
-import net.minecraft.init.Items;
-import net.minecraft.item.ItemBlock;
-import net.minecraft.item.ItemStack;
-import net.minecraft.world.World;
-
-import net.minecraft.world.chunk.Chunk;
-import net.minecraftforge.client.event.RenderGameOverlayEvent;
-import net.minecraftforge.event.world.ChunkEvent;
-import net.minecraftforge.event.world.WorldEvent;
-
-
-import net.minecraftforge.event.entity.player.PlayerInteractEvent;
-
-import net.minecraftforge.common.MinecraftForge;
-import org.apache.logging.log4j.Logger;
-
-import com.seibel.distanthorizons.common.wrappers.chunk.ChunkWrapper;
-
-import net.minecraft.client.Minecraft;
-import org.lwjgl.opengl.GL32;
-
-import java.util.concurrent.AbstractExecutorService;
 
 /**
  * This handles all events sent to the client,
@@ -76,149 +54,130 @@ import java.util.concurrent.AbstractExecutorService;
  * @author James_Seibel
  * @version 2023-7-27
  */
-public class ForgeClientProxy implements AbstractModInitializer.IEventProxy
-{
-	private static final IMinecraftClientWrapper MC = SingletonInjector.INSTANCE.get(IMinecraftClientWrapper.class);
-	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
+public class ForgeClientProxy implements AbstractModInitializer.IEventProxy {
 
-	private static World GetEventLevel(WorldEvent e) { return e.world; }
+    private static final IMinecraftClientWrapper MC = SingletonInjector.INSTANCE.get(IMinecraftClientWrapper.class);
+    private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 
+    private static World GetEventLevel(WorldEvent e) {
+        return e.world;
+    }
 
-
-	@Override
-	public void registerEvents()
-	{
+    @Override
+    public void registerEvents() {
         MinecraftForge.EVENT_BUS.register(this);
-        FMLCommonHandler.instance().bus().register(this);
+        FMLCommonHandler.instance()
+            .bus()
+            .register(this);
         ForgePluginPacketSender.setPacketHandler(ClientApi.INSTANCE::pluginMessageReceived);
-
 
         GlDhRenderApiDefinition renderDefinition = new GlDhRenderApiDefinition();
         renderDefinition.bindRenderers();
-	}
+    }
 
+    // ==============//
+    // world events //
+    // ==============//
 
-
-	//==============//
-	// world events //
-	//==============//
-
-	@SubscribeEvent
-	public void clientLevelLoadEvent(WorldEvent.Load event)
-	{
-		LOGGER.info("level load");
-
-		World level = event.world;
-		if (!(level instanceof WorldClient))
-		{
-			return;
-		}
-
-        WorldClient clientLevel = (WorldClient) level;
-		IClientLevelWrapper clientLevelWrapper = ClientLevelWrapper.getWrapper(clientLevel, true);
-		// TODO this causes a crash due to level being set to null somewhere
-		ClientApi.INSTANCE.clientLevelLoadEvent(clientLevelWrapper);
-	}
-	@SubscribeEvent
-	public void clientLevelUnloadEvent(WorldEvent.Unload event)
-	{
-		LOGGER.info("level unload");
+    @SubscribeEvent
+    public void clientLevelLoadEvent(WorldEvent.Load event) {
+        LOGGER.info("level load");
 
         World level = event.world;
-		if (!(level instanceof WorldClient))
-		{
-			return;
-		}
+        if (!(level instanceof WorldClient)) {
+            return;
+        }
 
         WorldClient clientLevel = (WorldClient) level;
-		IClientLevelWrapper clientLevelWrapper = ClientLevelWrapper.getWrapper(clientLevel);
-		ClientApi.INSTANCE.clientLevelUnloadEvent(clientLevelWrapper);
-	}
+        IClientLevelWrapper clientLevelWrapper = ClientLevelWrapper.getWrapper(clientLevel, true);
+        // TODO this causes a crash due to level being set to null somewhere
+        ClientApi.INSTANCE.clientLevelLoadEvent(clientLevelWrapper);
+    }
 
+    @SubscribeEvent
+    public void clientLevelUnloadEvent(WorldEvent.Unload event) {
+        LOGGER.info("level unload");
 
+        World level = event.world;
+        if (!(level instanceof WorldClient)) {
+            return;
+        }
 
-	//==============//
-	// chunk events //
-	//==============//
+        WorldClient clientLevel = (WorldClient) level;
+        IClientLevelWrapper clientLevelWrapper = ClientLevelWrapper.getWrapper(clientLevel);
+        ClientApi.INSTANCE.clientLevelUnloadEvent(clientLevelWrapper);
+    }
 
-	@SubscribeEvent
-	public void clickBlockEvent(PlayerInteractEvent event)
-	{
-		if (MC.clientConnectedToDedicatedServer())
-		{
+    // ==============//
+    // chunk events //
+    // ==============//
+
+    @SubscribeEvent
+    public void clickBlockEvent(PlayerInteractEvent event) {
+        if (MC.clientConnectedToDedicatedServer()) {
             ILevelWrapper wrappedLevel = ProxyUtil.getLevelWrapper(event.world);
-			if (SharedApi.isChunkAtBlockPosAlreadyUpdating(wrappedLevel, event.x, event.z))
-			{
-				return;
-			}
+            if (SharedApi.isChunkAtBlockPosAlreadyUpdating(wrappedLevel, event.x, event.z)) {
+                return;
+            }
 
-			World level = event.world;
+            World level = event.world;
 
-            Minecraft.getMinecraft().func_152344_a(() -> {
-                Chunk chunk = level.getChunkFromBlockCoords(event.x, event.z);
-                ChunkWrapper chunkWrapper = new ChunkWrapper(chunk, wrappedLevel);
-                SharedApi.INSTANCE.applyChunkUpdate(chunkWrapper, wrappedLevel);
-            });
-		}
-	}
+            Minecraft.getMinecraft()
+                .func_152344_a(() -> {
+                    Chunk chunk = level.getChunkFromBlockCoords(event.x, event.z);
+                    ChunkWrapper chunkWrapper = new ChunkWrapper(chunk, wrappedLevel);
+                    SharedApi.INSTANCE.applyChunkUpdate(chunkWrapper, wrappedLevel);
+                });
+        }
+    }
 
+    @SubscribeEvent
+    public void clientChunkLoadEvent(ChunkEvent.Load event) {
+        if (MC.clientConnectedToDedicatedServer()) {
+            ILevelWrapper wrappedLevel = ProxyUtil.getLevelWrapper(GetEventLevel(event));
+            IChunkWrapper chunk = new ChunkWrapper(event.getChunk(), wrappedLevel);
+            SharedApi.INSTANCE.applyChunkUpdate(chunk, wrappedLevel);
+        }
+    }
 
-	@SubscribeEvent
-	public void clientChunkLoadEvent(ChunkEvent.Load event)
-	{
-		if (MC.clientConnectedToDedicatedServer())
-		{
-			ILevelWrapper wrappedLevel = ProxyUtil.getLevelWrapper(GetEventLevel(event));
-			IChunkWrapper chunk = new ChunkWrapper(event.getChunk(), wrappedLevel);
-			SharedApi.INSTANCE.applyChunkUpdate(chunk, wrappedLevel);
-		}
-	}
+    // ==============//
+    // key bindings //
+    // ==============//
 
+    @SubscribeEvent
+    public void registerKeyBindings(InputEvent.KeyInputEvent event) {
+        if (Minecraft.getMinecraft().thePlayer == null) {
+            return;
+        }
+        /*
+         * TODO if (event.getAction() != GLFW.GLFW_PRESS)
+         * {
+         * return;
+         * }
+         */
 
+        // TODO ClientApi.INSTANCE.keyPressedEvent(event.getKey());
+    }
 
-	//==============//
-	// key bindings //
-	//==============//
+    // ===========//
+    // rendering //
+    // ===========//
 
-	@SubscribeEvent
-	public void registerKeyBindings(InputEvent.KeyInputEvent event)
-	{
-		if (Minecraft.getMinecraft().thePlayer == null)
-		{
-			return;
-		}
-		/* TODO if (event.getAction() != GLFW.GLFW_PRESS)
-		{
-			return;
-		}*/
-
-		// TODO ClientApi.INSTANCE.keyPressedEvent(event.getKey());
-	}
-
-
-	//===========//
-	// rendering //
-	//===========//
-
-	@SubscribeEvent
-	public void afterLevelRenderEvent(TickEvent.RenderTickEvent event)
-	{
-		if (event.type.equals(TickEvent.RenderTickEvent.Type.RENDER))
-		{
+    @SubscribeEvent
+    public void afterLevelRenderEvent(TickEvent.RenderTickEvent event) {
+        if (event.type.equals(TickEvent.RenderTickEvent.Type.RENDER)) {
             MixinFlags.framebufferMixinEnabled = true;
-			try
-			{
-				// should generally only need to be set once per game session
-				// allows DH to render directly to Optifine's level frame buffer,
-				// allowing better shader support
-				//MinecraftRenderWrapper.INSTANCE.finalLevelFrameBufferId = GL32.glGetInteger(GL32.GL_FRAMEBUFFER_BINDING);
-			}
-			catch (Exception | Error e)
-			{
-				LOGGER.error("Unexpected error in afterLevelRenderEvent: "+e.getMessage(), e);
-			}
-		}
-	}
+            try {
+                // should generally only need to be set once per game session
+                // allows DH to render directly to Optifine's level frame buffer,
+                // allowing better shader support
+                // MinecraftRenderWrapper.INSTANCE.finalLevelFrameBufferId =
+                // GL32.glGetInteger(GL32.GL_FRAMEBUFFER_BINDING);
+            } catch (Exception | Error e) {
+                LOGGER.error("Unexpected error in afterLevelRenderEvent: " + e.getMessage(), e);
+            }
+        }
+    }
 
     @SubscribeEvent
     public void onRenderOverlay(RenderGameOverlayEvent.Text event) {
@@ -227,6 +186,5 @@ public class ForgeClientProxy implements AbstractModInitializer.IEventProxy
 
         F3Screen.addStringToDisplay(event.right);
     }
-
 
 }

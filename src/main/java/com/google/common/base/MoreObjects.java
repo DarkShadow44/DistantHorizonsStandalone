@@ -1,11 +1,8 @@
 /*
  * Copyright (C) 2014 The Guava Authors
- *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
- *
  * http://www.apache.org/licenses/LICENSE-2.0
- *
  * Unless required by applicable law or agreed to in writing, software distributed under the License
  * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
  * or implied. See the License for the specific language governing permissions and limitations under
@@ -16,7 +13,6 @@ package com.google.common.base;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-import com.google.common.annotations.GwtCompatible;
 import java.lang.reflect.Array;
 import java.util.Arrays;
 import java.util.Collection;
@@ -25,11 +21,14 @@ import java.util.OptionalDouble;
 import java.util.OptionalInt;
 import java.util.OptionalLong;
 
+import com.google.common.annotations.GwtCompatible;
+
 /**
  * Helper functions that operate on any {@code Object}, and are not already provided in {@link
  * java.util.Objects}.
  *
- * <p>See the Guava User Guide on <a
+ * <p>
+ * See the Guava User Guide on <a
  * href="https://github.com/google/guava/wiki/CommonObjectUtilitiesExplained">writing {@code Object}
  * methods with {@code MoreObjects}</a>.
  *
@@ -38,27 +37,31 @@ import java.util.OptionalLong;
  */
 @GwtCompatible
 public final class MoreObjects {
+
     /**
      * Returns the first of two given parameters that is not {@code null}, if either is, or otherwise
      * throws a {@link NullPointerException}.
      *
-     * <p>To find the first non-null element in an iterable, use {@code Iterables.find(iterable,
+     * <p>
+     * To find the first non-null element in an iterable, use {@code Iterables.find(iterable,
      * Predicates.notNull())}. For varargs, use {@code Iterables.find(Arrays.asList(a, b, c, ...),
      * Predicates.notNull())}, static importing as necessary.
      *
-     * <p><b>Note:</b> if {@code first} is represented as an {@link Optional}, this can be
+     * <p>
+     * <b>Note:</b> if {@code first} is represented as an {@link Optional}, this can be
      * accomplished with {@link Optional#or(Object) first.or(second)}. That approach also allows for
      * lazy evaluation of the fallback instance, using {@link Optional#or(Supplier)
      * first.or(supplier)}.
      *
-     * <p><b>Java 9 users:</b> use {@code java.util.Objects.requireNonNullElse(first, second)}
+     * <p>
+     * <b>Java 9 users:</b> use {@code java.util.Objects.requireNonNullElse(first, second)}
      * instead.
      *
      * @return {@code first} if it is non-null; otherwise {@code second} if it is non-null
      * @throws NullPointerException if both {@code first} and {@code second} are null
      * @since 18.0 (since 3.0 as {@code Objects.firstNonNull()}).
      */
-    public static <T> T firstNonNull( T first, T second) {
+    public static <T> T firstNonNull(T first, T second) {
         if (first != null) {
             return first;
         }
@@ -71,45 +74,49 @@ public final class MoreObjects {
     /**
      * Creates an instance of {@link ToStringHelper}.
      *
-     * <p>This is helpful for implementing {@link Object#toString()}. Specification by example:
+     * <p>
+     * This is helpful for implementing {@link Object#toString()}. Specification by example:
      *
      * {@snippet :
      * // Returns "ClassName{}"
      * MoreObjects.toStringHelper(this)
-     *     .toString();
+     * .toString();
      *
      * // Returns "ClassName{x=1}"
      * MoreObjects.toStringHelper(this)
-     *     .add("x", 1)
-     *     .toString();
+     * .add("x", 1)
+     * .toString();
      *
      * // Returns "MyObject{x=1}"
      * MoreObjects.toStringHelper("MyObject")
-     *     .add("x", 1)
-     *     .toString();
+     * .add("x", 1)
+     * .toString();
      *
      * // Returns "ClassName{x=1, y=foo}"
      * MoreObjects.toStringHelper(this)
-     *     .add("x", 1)
-     *     .add("y", "foo")
-     *     .toString();
+     * .add("x", 1)
+     * .add("y", "foo")
+     * .toString();
      *
      * // Returns "ClassName{x=1}"
      * MoreObjects.toStringHelper(this)
-     *     .omitNullValues()
-     *     .add("x", 1)
-     *     .add("y", null)
-     *     .toString();
+     * .omitNullValues()
+     * .add("x", 1)
+     * .add("y", null)
+     * .toString();
      * }
      *
-     * <p>Note that in GWT, class names are often obfuscated.
+     * <p>
+     * Note that in GWT, class names are often obfuscated.
      *
      * @param self the object to generate the string for (typically {@code this}), used only for its
-     *     class name
+     *             class name
      * @since 18.0 (since 2.0 as {@code Objects.toStringHelper()}).
      */
     public static ToStringHelper toStringHelper(Object self) {
-        return new ToStringHelper(self.getClass().getSimpleName());
+        return new ToStringHelper(
+            self.getClass()
+                .getSimpleName());
     }
 
     /**
@@ -117,7 +124,8 @@ public final class MoreObjects {
      * #toStringHelper(Object)}, but using the simple name of {@code clazz} instead of using an
      * instance's {@link Object#getClass()}.
      *
-     * <p>Note that in GWT, class names are often obfuscated.
+     * <p>
+     * Note that in GWT, class names are often obfuscated.
      *
      * @param clazz the {@link Class} of the instance
      * @since 18.0 (since 7.0 as {@code Objects.toStringHelper()}).
@@ -145,6 +153,7 @@ public final class MoreObjects {
      * @since 18.0 (since 2.0 as {@code Objects.ToStringHelper}).
      */
     public static final class ToStringHelper {
+
         private final String className;
         private final ValueHolder holderHead = new ValueHolder();
         private ValueHolder holderTail = holderHead;
@@ -174,7 +183,8 @@ public final class MoreObjects {
          * empty values. The order of calling this method, relative to the {@code add()}/{@code
          * addValue()} methods, is not significant.
          *
-         * <p><b>Note:</b> in general, code should assume that the string form returned by {@code
+         * <p>
+         * <b>Note:</b> in general, code should assume that the string form returned by {@code
          * ToStringHelper} for a given object may change. In particular, the list of types which are
          * checked for emptiness is subject to change. We currently check {@code CharSequence}s, {@code
          * Collection}s, {@code Map}s, optionals (including Guava's), and arrays.
@@ -260,18 +270,20 @@ public final class MoreObjects {
         /**
          * Adds an unnamed value to the formatted output.
          *
-         * <p>It is strongly encouraged to use {@link #add(String, Object)} instead and give value a
+         * <p>
+         * It is strongly encouraged to use {@link #add(String, Object)} instead and give value a
          * readable name.
          */
 
-        public ToStringHelper addValue( Object value) {
+        public ToStringHelper addValue(Object value) {
             return addHolder(value);
         }
 
         /**
          * Adds an unnamed value to the formatted output.
          *
-         * <p>It is strongly encouraged to use {@link #add(String, boolean)} instead and give value a
+         * <p>
+         * It is strongly encouraged to use {@link #add(String, boolean)} instead and give value a
          * readable name.
          *
          * @since 18.0 (since 11.0 as {@code Objects.ToStringHelper.addValue()}).
@@ -284,7 +296,8 @@ public final class MoreObjects {
         /**
          * Adds an unnamed value to the formatted output.
          *
-         * <p>It is strongly encouraged to use {@link #add(String, char)} instead and give value a
+         * <p>
+         * It is strongly encouraged to use {@link #add(String, char)} instead and give value a
          * readable name.
          *
          * @since 18.0 (since 11.0 as {@code Objects.ToStringHelper.addValue()}).
@@ -297,7 +310,8 @@ public final class MoreObjects {
         /**
          * Adds an unnamed value to the formatted output.
          *
-         * <p>It is strongly encouraged to use {@link #add(String, double)} instead and give value a
+         * <p>
+         * It is strongly encouraged to use {@link #add(String, double)} instead and give value a
          * readable name.
          *
          * @since 18.0 (since 11.0 as {@code Objects.ToStringHelper.addValue()}).
@@ -310,7 +324,8 @@ public final class MoreObjects {
         /**
          * Adds an unnamed value to the formatted output.
          *
-         * <p>It is strongly encouraged to use {@link #add(String, float)} instead and give value a
+         * <p>
+         * It is strongly encouraged to use {@link #add(String, float)} instead and give value a
          * readable name.
          *
          * @since 18.0 (since 11.0 as {@code Objects.ToStringHelper.addValue()}).
@@ -323,7 +338,8 @@ public final class MoreObjects {
         /**
          * Adds an unnamed value to the formatted output.
          *
-         * <p>It is strongly encouraged to use {@link #add(String, int)} instead and give value a
+         * <p>
+         * It is strongly encouraged to use {@link #add(String, int)} instead and give value a
          * readable name.
          *
          * @since 18.0 (since 11.0 as {@code Objects.ToStringHelper.addValue()}).
@@ -336,7 +352,8 @@ public final class MoreObjects {
         /**
          * Adds an unnamed value to the formatted output.
          *
-         * <p>It is strongly encouraged to use {@link #add(String, long)} instead and give value a
+         * <p>
+         * It is strongly encouraged to use {@link #add(String, long)} instead and give value a
          * readable name.
          *
          * @since 18.0 (since 11.0 as {@code Objects.ToStringHelper.addValue()}).
@@ -364,16 +381,18 @@ public final class MoreObjects {
                 return !((OptionalDouble) value).isPresent();
             } else if (value instanceof Optional) {
                 return !((Optional) value).isPresent();
-            } else if (value.getClass().isArray()) {
-                return Array.getLength(value) == 0;
-            }
+            } else if (value.getClass()
+                .isArray()) {
+                    return Array.getLength(value) == 0;
+                }
             return false;
         }
 
         /**
          * Returns a string in the format specified by {@link MoreObjects#toStringHelper(Object)}.
          *
-         * <p>After calling this method, you can keep adding more properties to later call toString()
+         * <p>
+         * After calling this method, you can keep adding more properties to later call toString()
          * again and get a more complete representation of the same object; but properties cannot be
          * removed, so this only allows limited reuse of the helper instance. The helper allows
          * duplication of properties (multiple name/value pairs with the same name can be added).
@@ -384,23 +403,22 @@ public final class MoreObjects {
             boolean omitNullValuesSnapshot = omitNullValues;
             boolean omitEmptyValuesSnapshot = omitEmptyValues;
             String nextSeparator = "";
-            StringBuilder builder = new StringBuilder(32).append(className).append('{');
-            for (ValueHolder valueHolder = holderHead.next;
-                 valueHolder != null;
-                 valueHolder = valueHolder.next) {
+            StringBuilder builder = new StringBuilder(32).append(className)
+                .append('{');
+            for (ValueHolder valueHolder = holderHead.next; valueHolder != null; valueHolder = valueHolder.next) {
                 Object value = valueHolder.value;
                 if (valueHolder instanceof UnconditionalValueHolder
-                    || (value == null
-                    ? !omitNullValuesSnapshot
-                    : (!omitEmptyValuesSnapshot || !isEmpty(value)))) {
+                    || (value == null ? !omitNullValuesSnapshot : (!omitEmptyValuesSnapshot || !isEmpty(value)))) {
                     builder.append(nextSeparator);
                     nextSeparator = ", ";
 
                     if (valueHolder.name != null) {
-                        builder.append(valueHolder.name).append('=');
+                        builder.append(valueHolder.name)
+                            .append('=');
                     }
-                    if (value != null && value.getClass().isArray()) {
-                        Object[] objectArray = {value};
+                    if (value != null && value.getClass()
+                        .isArray()) {
+                        Object[] objectArray = { value };
                         String arrayString = Arrays.deepToString(objectArray);
                         builder.append(arrayString, 1, arrayString.length() - 1);
                     } else {
@@ -408,7 +426,8 @@ public final class MoreObjects {
                     }
                 }
             }
-            return builder.append('}').toString();
+            return builder.append('}')
+                .toString();
         }
 
         private ValueHolder addHolder() {
@@ -417,13 +436,11 @@ public final class MoreObjects {
             return valueHolder;
         }
 
-
-        private ToStringHelper addHolder( Object value) {
+        private ToStringHelper addHolder(Object value) {
             ValueHolder valueHolder = addHolder();
             valueHolder.value = value;
             return this;
         }
-
 
         private ToStringHelper addHolder(String name, Object value) {
             ValueHolder valueHolder = addHolder();
@@ -438,13 +455,11 @@ public final class MoreObjects {
             return valueHolder;
         }
 
-
         private ToStringHelper addUnconditionalHolder(Object value) {
             UnconditionalValueHolder valueHolder = addUnconditionalHolder();
             valueHolder.value = value;
             return this;
         }
-
 
         private ToStringHelper addUnconditionalHolder(String name, Object value) {
             UnconditionalValueHolder valueHolder = addUnconditionalHolder();
@@ -455,6 +470,7 @@ public final class MoreObjects {
 
         // Holder object for values that might be null and/or empty.
         static class ValueHolder {
+
             String name;
             Object value;
             ValueHolder next;
@@ -465,7 +481,8 @@ public final class MoreObjects {
          * helps to shortcut most calls to isEmpty(), which is important because the check for emptiness
          * is relatively expensive. Use a subtype so this also doesn't need any extra storage.
          */
-        private static final class UnconditionalValueHolder extends ValueHolder {}
+        private static final class UnconditionalValueHolder extends ValueHolder {
+        }
     }
 
     private MoreObjects() {}

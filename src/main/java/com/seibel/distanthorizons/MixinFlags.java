@@ -5,5 +5,6 @@ package com.seibel.distanthorizons;
  * including the FML splash thread.
  */
 public class MixinFlags {
+
     public static volatile boolean framebufferMixinEnabled = false;
 }

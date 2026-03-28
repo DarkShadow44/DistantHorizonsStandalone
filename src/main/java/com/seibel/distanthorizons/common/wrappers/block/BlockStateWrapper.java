@@ -1,23 +1,33 @@
 /*
- *    This file is part of the Distant Horizons mod
- *    licensed under the GNU LGPL v3 License.
- *
- *    Copyright (C) 2020 James Seibel
- *
- *    This program is free software: you can redistribute it and/or modify
- *    it under the terms of the GNU Lesser General Public License as published by
- *    the Free Software Foundation, version 3.
- *
- *    This program is distributed in the hope that it will be useful,
- *    but WITHOUT ANY WARRANTY; without even the implied warranty of
- *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *    GNU Lesser General Public License for more details.
- *
- *    You should have received a copy of the GNU Lesser General Public License
- *    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * This file is part of the Distant Horizons mod
+ * licensed under the GNU LGPL v3 License.
+ * Copyright (C) 2020 James Seibel
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, version 3.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Lesser General Public License for more details.
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
 package com.seibel.distanthorizons.common.wrappers.block;
+
+import java.awt.*;
+import java.io.IOException;
+import java.util.*;
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+
+import net.minecraft.block.Block;
+import net.minecraft.block.BlockBeacon;
+import net.minecraft.block.BlockGrass;
+import net.minecraft.block.BlockLeavesBase;
+import net.minecraft.init.Blocks;
+
+import org.jetbrains.annotations.Nullable;
 
 import com.seibel.distanthorizons.api.enums.rendering.EDhApiBlockMaterial;
 import com.seibel.distanthorizons.core.config.Config;
@@ -27,41 +37,21 @@ import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.util.ColorUtil;
 import com.seibel.distanthorizons.core.util.LodUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.block.IBlockStateWrapper;
-
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
 import com.seibel.distanthorizons.forge.ForgeMain;
+
 import cpw.mods.fml.common.registry.GameData;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockBeacon;
-import net.minecraft.block.BlockGrass;
-import net.minecraft.block.BlockLeavesBase;
-import net.minecraft.init.Blocks;
-import org.apache.logging.log4j.Logger;
 
-import java.awt.*;
-import java.io.IOException;
-import java.util.*;
-import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
+public class BlockStateWrapper implements IBlockStateWrapper {
 
-import org.jetbrains.annotations.Nullable;
-
-public class BlockStateWrapper implements IBlockStateWrapper
-{
     /** example "minecraft:water" */
     public static final String RESOURCE_LOCATION_SEPARATOR = ":";
     /** example "minecraft:water_STATE_{level:0}" */
     public static final String STATE_STRING_SEPARATOR = "_STATE_";
 
-
-    static final List<String> BEACON_BASE_BLOCK_NAME_LIST = Arrays.asList(
-        "iron_block",
-        "gold_block",
-        "diamond_block",
-        "emerald_block",
-        "netherite_block"
-    );
+    static final List<String> BEACON_BASE_BLOCK_NAME_LIST = Arrays
+        .asList("iron_block", "gold_block", "diamond_block", "emerald_block", "netherite_block");
 
     // must be defined before AIR, otherwise a null pointer will be thrown
     private static final DhLogger LOGGER = new DhLoggerBuilder().build();
@@ -79,8 +69,6 @@ public class BlockStateWrapper implements IBlockStateWrapper
 
     /** keep track of broken blocks so we don't log every time */
     private static final HashSet<String> BROKEN_RESOURCE_LOCATIONS = new HashSet<>();
-
-
 
     // properties //
 
@@ -103,11 +91,9 @@ public class BlockStateWrapper implements IBlockStateWrapper
     private final Color beaconTintColor;
     private final Color mapColor;
 
-
-
-    //==============//
+    // ==============//
     // constructors //
-    //==============//
+    // ==============//
 
     public static BlockStateWrapper fromBlockAndMeta(Block block, int meta, ILevelWrapper levelWrapper) {
         if (block == null || block == Blocks.air) {
@@ -130,18 +116,21 @@ public class BlockStateWrapper implements IBlockStateWrapper
      * Can be faster than {@link BlockStateWrapper#fromBlockAndMeta(Block, int, ILevelWrapper)}
      * in cases where the same block state is expected to be referenced multiple times.
      */
-    public static BlockStateWrapper fromBlockAndMeta(Block block, int meta, ILevelWrapper levelWrapper, IBlockStateWrapper guess) {
-        final FakeBlockState guessBlockState = (guess == null || guess.isAir()) ? null : (FakeBlockState) guess.getWrappedMcObject();
+    public static BlockStateWrapper fromBlockAndMeta(Block block, int meta, ILevelWrapper levelWrapper,
+        IBlockStateWrapper guess) {
+        final FakeBlockState guessBlockState = (guess == null || guess.isAir()) ? null
+            : (FakeBlockState) guess.getWrappedMcObject();
 
-        if (guess instanceof BlockStateWrapper && guessBlockState != null && guessBlockState.block == block && guessBlockState.meta == meta) {
+        if (guess instanceof BlockStateWrapper && guessBlockState != null
+            && guessBlockState.block == block
+            && guessBlockState.meta == meta) {
             return (BlockStateWrapper) guess;
         } else {
             return fromBlockAndMeta(block, meta, levelWrapper);
         }
     }
 
-    private BlockStateWrapper(FakeBlockState blockState, ILevelWrapper levelWrapper)
-    {
+    private BlockStateWrapper(FakeBlockState blockState, ILevelWrapper levelWrapper) {
         this.blockState = blockState;
         this.serialString = this.serialize(levelWrapper);
         this.hashCode = Objects.hash(this.serialString);
@@ -150,11 +139,9 @@ public class BlockStateWrapper implements IBlockStateWrapper
         // beacon blocks
         String lowercaseSerial = this.serialString.toLowerCase();
         boolean isBeaconBaseBlock = false;
-        for (int i = 0; i < BEACON_BASE_BLOCK_NAME_LIST.size(); i++)
-        {
+        for (int i = 0; i < BEACON_BASE_BLOCK_NAME_LIST.size(); i++) {
             String baseBlockName = BEACON_BASE_BLOCK_NAME_LIST.get(i);
-            if (lowercaseSerial.contains(baseBlockName))
-            {
+            if (lowercaseSerial.contains(baseBlockName)) {
                 isBeaconBaseBlock = true;
                 break;
             }
@@ -166,11 +153,9 @@ public class BlockStateWrapper implements IBlockStateWrapper
         Color beaconTintColor = null;
         if (this.blockState != null
             // beacon blocks also show up here, but since they block the beacon beam we don't want their color
-            && !this.isBeaconBlock)
-        {
+            && !this.isBeaconBlock) {
             Block block = this.blockState.block;
-            if (block instanceof BlockBeacon)
-            {
+            if (block instanceof BlockBeacon) {
                 int colorInt;
                 colorInt = block.getBlockColor();
 
@@ -179,108 +164,107 @@ public class BlockStateWrapper implements IBlockStateWrapper
         }
         this.beaconTintColor = beaconTintColor;
 
-
         int mcColor = 0;
-        if (this.blockState != null)
-        {
+        if (this.blockState != null) {
             mcColor = this.blockState.block.blockMaterial.getMaterialMapColor().colorValue;
             this.mapColor = ColorUtil.toColorObjRGB(mcColor);
-        }
-        else
-        {
-            this.mapColor = new Color(0,0,0,0);
+        } else {
+            this.mapColor = new Color(0, 0, 0, 0);
         }
 
-        //LOGGER.trace("Created BlockStateWrapper ["+this.serialString+"] for ["+blockState+"] with material ID ["+this.EDhApiBlockMaterialId+"]");
+        // LOGGER.trace("Created BlockStateWrapper ["+this.serialString+"] for ["+blockState+"] with material ID
+        // ["+this.EDhApiBlockMaterialId+"]");
     }
 
-
-
-    //====================//
+    // ====================//
     // LodBuilder methods //
-    //====================//
+    // ====================//
 
     /**
-     * Requires a {@link ILevelWrapper} since {@link BlockStateWrapper#deserialize(String,ILevelWrapper)} also requires one.
+     * Requires a {@link ILevelWrapper} since {@link BlockStateWrapper#deserialize(String,ILevelWrapper)} also requires
+     * one.
      * This way the method won't accidentally be called before the deserialization can be completed.
      */
-    public static ObjectOpenHashSet<IBlockStateWrapper> getRendererIgnoredBlocks(ILevelWrapper levelWrapper)
-    {
+    public static ObjectOpenHashSet<IBlockStateWrapper> getRendererIgnoredBlocks(ILevelWrapper levelWrapper) {
         // use the cached version if possible
-        if (rendererIgnoredBlocks != null)
-        {
+        if (rendererIgnoredBlocks != null) {
             return rendererIgnoredBlocks;
         }
 
         HashSet<String> baseIgnoredBlock = new HashSet<>();
         baseIgnoredBlock.add(AIR_STRING);
-        rendererIgnoredBlocks = getBlockWrappers(Config.Client.Advanced.Graphics.Culling.ignoredRenderBlockCsv, baseIgnoredBlock, levelWrapper);
+        rendererIgnoredBlocks = getBlockWrappers(
+            Config.Client.Advanced.Graphics.Culling.ignoredRenderBlockCsv,
+            baseIgnoredBlock,
+            levelWrapper);
         return rendererIgnoredBlocks;
     }
+
     /**
-     * Requires a {@link ILevelWrapper} since {@link BlockStateWrapper#deserialize(String,ILevelWrapper)} also requires one.
+     * Requires a {@link ILevelWrapper} since {@link BlockStateWrapper#deserialize(String,ILevelWrapper)} also requires
+     * one.
      * This way the method won't accidentally be called before the deserialization can be completed.
      */
-    public static ObjectOpenHashSet<IBlockStateWrapper> getRendererIgnoredCaveBlocks(ILevelWrapper levelWrapper)
-    {
+    public static ObjectOpenHashSet<IBlockStateWrapper> getRendererIgnoredCaveBlocks(ILevelWrapper levelWrapper) {
         // use the cached version if possible
-        if (rendererIgnoredCaveBlocks != null)
-        {
+        if (rendererIgnoredCaveBlocks != null) {
             return rendererIgnoredCaveBlocks;
         }
 
         HashSet<String> baseIgnoredBlock = new HashSet<>();
         baseIgnoredBlock.add(AIR_STRING);
-        rendererIgnoredCaveBlocks = getBlockWrappers(Config.Client.Advanced.Graphics.Culling.ignoredRenderCaveBlockCsv, baseIgnoredBlock, levelWrapper);
+        rendererIgnoredCaveBlocks = getBlockWrappers(
+            Config.Client.Advanced.Graphics.Culling.ignoredRenderCaveBlockCsv,
+            baseIgnoredBlock,
+            levelWrapper);
         return rendererIgnoredCaveBlocks;
     }
 
-    public static void clearRendererIgnoredBlocks() { rendererIgnoredBlocks = null; }
-    public static void clearRendererIgnoredCaveBlocks() { rendererIgnoredCaveBlocks = null; }
+    public static void clearRendererIgnoredBlocks() {
+        rendererIgnoredBlocks = null;
+    }
 
-
+    public static void clearRendererIgnoredCaveBlocks() {
+        rendererIgnoredCaveBlocks = null;
+    }
 
     // lod builder helpers //
 
-    private static ObjectOpenHashSet<IBlockStateWrapper> getBlockWrappers(ConfigEntry<String> config, HashSet<String> baseResourceLocations, ILevelWrapper levelWrapper)
-    {
+    private static ObjectOpenHashSet<IBlockStateWrapper> getBlockWrappers(ConfigEntry<String> config,
+        HashSet<String> baseResourceLocations, ILevelWrapper levelWrapper) {
         // get the base blocks
         HashSet<String> blockStringList = new HashSet<>();
-        if (baseResourceLocations != null)
-        {
+        if (baseResourceLocations != null) {
             blockStringList.addAll(baseResourceLocations);
         }
 
         // get the config blocks
         String ignoreBlockCsv = config.get();
-        if (ignoreBlockCsv != null)
-        {
+        if (ignoreBlockCsv != null) {
             blockStringList.addAll(Arrays.asList(ignoreBlockCsv.split(",")));
         }
 
         return getBlockWrappers(blockStringList, levelWrapper);
     }
-    private static ObjectOpenHashSet<IBlockStateWrapper> getBlockWrappers(HashSet<String> blockResourceLocationSet, ILevelWrapper levelWrapper)
-    {
+
+    private static ObjectOpenHashSet<IBlockStateWrapper> getBlockWrappers(HashSet<String> blockResourceLocationSet,
+        ILevelWrapper levelWrapper) {
         // deserialize each of the given resource locations
         ObjectOpenHashSet<IBlockStateWrapper> blockStateWrappers = new ObjectOpenHashSet<>();
-        for (String blockResourceLocation : blockResourceLocationSet)
-        {
-            try
-            {
-                if (blockResourceLocation == null)
-                {
+        for (String blockResourceLocation : blockResourceLocationSet) {
+            try {
+                if (blockResourceLocation == null) {
                     // shouldn't happen, but just in case
                     continue;
                 }
                 String cleanedResourceLocation = blockResourceLocation.trim();
-                if (cleanedResourceLocation.length() == 0)
-                {
+                if (cleanedResourceLocation.length() == 0) {
                     continue;
                 }
 
-
-                BlockStateWrapper defaultBlockStateToIgnore = (BlockStateWrapper) deserialize(cleanedResourceLocation, levelWrapper);
+                BlockStateWrapper defaultBlockStateToIgnore = (BlockStateWrapper) deserialize(
+                    cleanedResourceLocation,
+                    levelWrapper);
                 blockStateWrappers.add(defaultBlockStateToIgnore);
 
                 if (defaultBlockStateToIgnore != AIR) {
@@ -288,82 +272,68 @@ public class BlockStateWrapper implements IBlockStateWrapper
                     final int meta = defaultBlockStateToIgnore.blockState.meta;
                     BlockStateWrapper newBlockToIgnore = BlockStateWrapper.fromBlockAndMeta(block, meta, levelWrapper);
                     blockStateWrappers.add(newBlockToIgnore);
-                }
-                else
-                {
+                } else {
                     // air is a special case so it must be handled separately
                     blockStateWrappers.add(AIR);
                 }
-            }
-            catch (IOException e)
-            {
-                LOGGER.warn("Unable to deserialize block with the resource location: ["+blockResourceLocation+"]. Error: "+e.getMessage(), e);
-            }
-            catch (Exception e)
-            {
-                LOGGER.warn("Unexpected error deserializing block with the resource location: ["+blockResourceLocation+"]. Error: "+e.getMessage(), e);
+            } catch (IOException e) {
+                LOGGER.warn(
+                    "Unable to deserialize block with the resource location: [" + blockResourceLocation
+                        + "]. Error: "
+                        + e.getMessage(),
+                    e);
+            } catch (Exception e) {
+                LOGGER.warn(
+                    "Unexpected error deserializing block with the resource location: [" + blockResourceLocation
+                        + "]. Error: "
+                        + e.getMessage(),
+                    e);
             }
         }
 
         return blockStateWrappers;
     }
 
-
-
-    //=================//
+    // =================//
     // wrapper methods //
-    //=================//
+    // =================//
 
     @Override
-    public int getOpacity()
-    {
+    public int getOpacity() {
         // use the cached opacity value if possible
-        if (this.opacity != -1)
-        {
+        if (this.opacity != -1) {
             return this.opacity;
         }
-
 
         // get block properties (default to the values used by air)
         boolean canOcclude = false;
         boolean propagatesSkyLightDown = true;
-        if (this.blockState != null)
-        {
+        if (this.blockState != null) {
             canOcclude = this.blockState.block.blockMaterial.isSolid();
 
             propagatesSkyLightDown = this.blockState.block.getLightOpacity() == 0;
         }
 
-
-
         // this method isn't perfect, but works well enough for our use case
         int opacity;
-        if (this.isAir())
-        {
+        if (this.isAir()) {
             opacity = LodUtil.BLOCK_FULLY_TRANSPARENT;
-        }
-        else if (this.isLiquid() && !canOcclude)
-        {
+        } else if (this.isLiquid() && !canOcclude) {
             // probably not a waterlogged block (which should block light entirely)
 
             // +1 to indicate that the block is translucent (in between transparent and opaque)
             opacity = LodUtil.BLOCK_FULLY_TRANSPARENT + 1;
-        }
-        else if (propagatesSkyLightDown && !canOcclude)
-        {
+        } else if (propagatesSkyLightDown && !canOcclude) {
             // probably glass or some other fully transparent block
 
             // !canOcclude is required to ignore stairs and slabs since
             // propagateSkyLightDown is true for them, but they're solid and don't actually let light through
 
             opacity = LodUtil.BLOCK_FULLY_TRANSPARENT;
-        }
-        else
-        {
+        } else {
             // default for all other blocks
             opacity = LodUtil.BLOCK_FULLY_OPAQUE;
         }
-
 
         this.opacity = opacity;
         return this.opacity;
@@ -387,18 +357,17 @@ public class BlockStateWrapper implements IBlockStateWrapper
     }
 
     @Override
-    public String getSerialString() { return this.serialString; }
+    public String getSerialString() {
+        return this.serialString;
+    }
 
     @Override
-    public boolean equals(Object obj)
-    {
-        if (this == obj)
-        {
+    public boolean equals(Object obj) {
+        if (this == obj) {
             return true;
         }
 
-        if (obj == null || this.getClass() != obj.getClass())
-        {
+        if (obj == null || this.getClass() != obj.getClass()) {
             return false;
         }
 
@@ -408,21 +377,27 @@ public class BlockStateWrapper implements IBlockStateWrapper
     }
 
     @Override
-    public int hashCode() { return this.hashCode; }
-
-
-    @Override
-    public Object getWrappedMcObject() { return this.blockState; }
+    public int hashCode() {
+        return this.hashCode;
+    }
 
     @Override
-    public boolean isAir() { return this.isAir(this.blockState); }
-    public boolean isAir(FakeBlockState blockState) { return blockState == null || blockState.block == Blocks.air; }
+    public Object getWrappedMcObject() {
+        return this.blockState;
+    }
 
     @Override
-    public boolean isSolid()
-    {
-        if (this.isAir())
-        {
+    public boolean isAir() {
+        return this.isAir(this.blockState);
+    }
+
+    public boolean isAir(FakeBlockState blockState) {
+        return blockState == null || blockState.block == Blocks.air;
+    }
+
+    @Override
+    public boolean isSolid() {
+        if (this.isAir()) {
             return false;
         }
 
@@ -430,10 +405,8 @@ public class BlockStateWrapper implements IBlockStateWrapper
     }
 
     @Override
-    public boolean isLiquid()
-    {
-        if (this.isAir())
-        {
+    public boolean isLiquid() {
+        if (this.isAir()) {
             return false;
         }
 
@@ -441,11 +414,19 @@ public class BlockStateWrapper implements IBlockStateWrapper
     }
 
     @Override
-    public boolean isBeaconBlock() { return this.isBeaconBlock; }
+    public boolean isBeaconBlock() {
+        return this.isBeaconBlock;
+    }
+
     @Override
-    public boolean isBeaconBaseBlock() { return this.isBeaconBaseBlock; }
+    public boolean isBeaconBaseBlock() {
+        return this.isBeaconBaseBlock;
+    }
+
     @Override
-    public boolean isBeaconTintBlock() { return this.beaconTintColor != null; }
+    public boolean isBeaconTintBlock() {
+        return this.beaconTintColor != null;
+    }
 
     @Override
     public boolean allowsBeaconBeamPassage() {
@@ -453,31 +434,36 @@ public class BlockStateWrapper implements IBlockStateWrapper
     }
 
     @Override
-    public Color getMapColor() { return this.mapColor; }
-    @Override
-    public Color getBeaconTintColor() { return this.beaconTintColor; }
+    public Color getMapColor() {
+        return this.mapColor;
+    }
 
     @Override
-    public byte getMaterialId() { return this.blockMaterialId; }
+    public Color getBeaconTintColor() {
+        return this.beaconTintColor;
+    }
 
     @Override
-    public String toString() { return this.getSerialString(); }
+    public byte getMaterialId() {
+        return this.blockMaterialId;
+    }
 
+    @Override
+    public String toString() {
+        return this.getSerialString();
+    }
 
-
-    //=======================//
+    // =======================//
     // serialization methods //
-    //=======================//
+    // =======================//
 
-    private String serialize(ILevelWrapper levelWrapper)
-    {
-        if (this.blockState == null)
-        {
+    private String serialize(ILevelWrapper levelWrapper) {
+        if (this.blockState == null) {
             return AIR_STRING;
         }
 
-
-        String id = GameData.getBlockRegistry().getNameForObject(this.blockState.block);
+        String id = GameData.getBlockRegistry()
+            .getNameForObject(this.blockState.block);
 
         this.serialString = id;
         if (this.blockState.meta != 0) {
@@ -487,35 +473,32 @@ public class BlockStateWrapper implements IBlockStateWrapper
         return this.serialString;
     }
 
-
     /** will only work if a level is currently loaded */
-    public static IBlockStateWrapper deserialize(String resourceStateString, ILevelWrapper levelWrapper) throws IOException
-    {
+    public static IBlockStateWrapper deserialize(String resourceStateString, ILevelWrapper levelWrapper)
+        throws IOException {
         // we need the final string for the concurrent hash map later
         final String finalResourceStateString = resourceStateString;
 
-        if (finalResourceStateString.equals(AIR_STRING) || finalResourceStateString.equals("")) // the empty string shouldn't normally happen, but just in case
+        if (finalResourceStateString.equals(AIR_STRING) || finalResourceStateString.equals("")) // the empty string
+                                                                                                // shouldn't normally
+                                                                                                // happen, but just in
+                                                                                                // case
         {
             return AIR;
         }
 
         // attempt to use the existing wrapper
-        if (WRAPPER_BY_RESOURCE_LOCATION.containsKey(finalResourceStateString))
-        {
+        if (WRAPPER_BY_RESOURCE_LOCATION.containsKey(finalResourceStateString)) {
             return WRAPPER_BY_RESOURCE_LOCATION.get(finalResourceStateString);
         }
 
-
-
         // if no wrapper is found, default to air
         BlockStateWrapper foundWrapper = AIR;
-        try
-        {
+        try {
             // try to parse out the BlockState
             String metaString = null; // will be null if no meta was included
             int stateSeparatorIndex = resourceStateString.indexOf(STATE_STRING_SEPARATOR);
-            if (stateSeparatorIndex != -1)
-            {
+            if (stateSeparatorIndex != -1) {
                 // blockstate properties found
                 metaString = resourceStateString.substring(stateSeparatorIndex + STATE_STRING_SEPARATOR.length());
                 resourceStateString = resourceStateString.substring(0, stateSeparatorIndex);
@@ -530,119 +513,79 @@ public class BlockStateWrapper implements IBlockStateWrapper
                 }
             }
 
-
             // attempt to get the BlockState from all possible BlockStates
-            try
-            {
-                Block block = GameData.getBlockRegistry().getObject(resourceStateString);
+            try {
+                Block block = GameData.getBlockRegistry()
+                    .getObject(resourceStateString);
                 int meta = 0;
-                if (metaString != null)
-                {
+                if (metaString != null) {
                     meta = Integer.parseInt(metaString);
                 }
 
-
                 foundWrapper = new BlockStateWrapper(new FakeBlockState(block, meta), levelWrapper);
                 return foundWrapper;
+            } catch (Exception e) {
+                throw new IOException(
+                    "Failed to deserialize the string [" + finalResourceStateString
+                        + "] into a BlockStateWrapper: "
+                        + e.getMessage(),
+                    e);
             }
-            catch (Exception e)
-            {
-                throw new IOException("Failed to deserialize the string [" + finalResourceStateString + "] into a BlockStateWrapper: " + e.getMessage(), e);
-            }
-        }
-        finally
-        {
+        } finally {
             // put if absent in case two threads deserialize at the same time
             // unfortunately we can't put everything in a computeIfAbsent() since we also throw exceptions
             WRAPPER_BY_RESOURCE_LOCATION.putIfAbsent(finalResourceStateString, foundWrapper);
         }
     }
 
-
-    //==============//
+    // ==============//
     // Iris methods //
-    //==============//
+    // ==============//
 
-    private EDhApiBlockMaterial calculateEDhApiBlockMaterialId()
-    {
-        if (this.blockState == null)
-        {
+    private EDhApiBlockMaterial calculateEDhApiBlockMaterialId() {
+        if (this.blockState == null) {
             return EDhApiBlockMaterial.AIR;
         }
 
-        String serialString = this.getSerialString().toLowerCase();
+        String serialString = this.getSerialString()
+            .toLowerCase();
 
-        if (this.blockState.block instanceof BlockLeavesBase
-            || serialString.contains("bamboo")
+        if (this.blockState.block instanceof BlockLeavesBase || serialString.contains("bamboo")
             || serialString.contains("cactus")
             || serialString.contains("chorus_flower")
-            || serialString.contains("mushroom")
-        )
-        {
+            || serialString.contains("mushroom")) {
             return EDhApiBlockMaterial.LEAVES;
-        }
-        else if (this.blockState.block == Blocks.lava || this.blockState.block == Blocks.flowing_lava)
-        {
+        } else if (this.blockState.block == Blocks.lava || this.blockState.block == Blocks.flowing_lava) {
             return EDhApiBlockMaterial.LAVA;
-        }
-        else if (this.isLiquid() || this.blockState.block == Blocks.water || this.blockState.block == Blocks.flowing_water)
-        {
-            return EDhApiBlockMaterial.WATER;
-        }
-        else if (this.blockState.block.stepSound == Block.soundTypeWood
-            || serialString.contains("root")
-				)
-        {
-            return EDhApiBlockMaterial.WOOD;
-        }
-		else if (this.blockState.block.stepSound == Block.soundTypeMetal
-				)
-        {
-            return EDhApiBlockMaterial.METAL;
-        }
-		else if (this.blockState.block instanceof BlockGrass)
-    {
-        return EDhApiBlockMaterial.GRASS;
-    }
-    else if (
-        serialString.contains("dirt")
-            || serialString.contains("gravel")
-            || serialString.contains("mud")
-            || serialString.contains("podzol")
-            || serialString.contains("mycelium")
-    )
-    {
-        return EDhApiBlockMaterial.DIRT;
-    }
-    else if (this.serialString.contains("snow"))
-    {
-        return EDhApiBlockMaterial.SNOW;
-    }
-    else if (serialString.contains("sand"))
-    {
-        return EDhApiBlockMaterial.SAND;
-    }
-    else if (serialString.contains("terracotta"))
-    {
-        return EDhApiBlockMaterial.TERRACOTTA;
-    }
-    else if (this.blockState.block == Blocks.netherrack || this.blockState.block == Blocks.nether_brick)
-    {
-        return EDhApiBlockMaterial.NETHER_STONE;
-    }
-    else if (serialString.contains("stone")
-        || serialString.contains("ore"))
-    {
-        return EDhApiBlockMaterial.STONE;
-    }
-    else if (this.blockState.block.getLightValue() > 0)
-    {
-        return EDhApiBlockMaterial.ILLUMINATED;
-    }
-    else
-    {
-        return EDhApiBlockMaterial.UNKNOWN;
-    }
+        } else if (this.isLiquid() || this.blockState.block == Blocks.water
+            || this.blockState.block == Blocks.flowing_water) {
+                return EDhApiBlockMaterial.WATER;
+            } else if (this.blockState.block.stepSound == Block.soundTypeWood || serialString.contains("root")) {
+                return EDhApiBlockMaterial.WOOD;
+            } else if (this.blockState.block.stepSound == Block.soundTypeMetal) {
+                return EDhApiBlockMaterial.METAL;
+            } else if (this.blockState.block instanceof BlockGrass) {
+                return EDhApiBlockMaterial.GRASS;
+            } else if (serialString.contains("dirt") || serialString.contains("gravel")
+                || serialString.contains("mud")
+                || serialString.contains("podzol")
+                || serialString.contains("mycelium")) {
+                    return EDhApiBlockMaterial.DIRT;
+                } else if (this.serialString.contains("snow")) {
+                    return EDhApiBlockMaterial.SNOW;
+                } else if (serialString.contains("sand")) {
+                    return EDhApiBlockMaterial.SAND;
+                } else if (serialString.contains("terracotta")) {
+                    return EDhApiBlockMaterial.TERRACOTTA;
+                } else if (this.blockState.block == Blocks.netherrack || this.blockState.block == Blocks.nether_brick) {
+                    return EDhApiBlockMaterial.NETHER_STONE;
+                } else if (serialString.contains("stone") || serialString.contains("ore")) {
+                    return EDhApiBlockMaterial.STONE;
+                } else if (this.blockState.block.getLightValue() > 0) {
+                    return EDhApiBlockMaterial.ILLUMINATED;
+                } else {
+                    return EDhApiBlockMaterial.UNKNOWN;
+                }
     }
 
 }

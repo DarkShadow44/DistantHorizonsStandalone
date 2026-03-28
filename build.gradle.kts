@@ -34,3 +34,16 @@ tasks.runClient { enabled = false }
 tasks.runServer { enabled = false }
 tasks.runClient17 { enabled = false }
 tasks.runServer17 { enabled = false }
+
+plugins.withType<com.diffplug.gradle.spotless.SpotlessPlugin> {
+    configure<com.diffplug.gradle.spotless.SpotlessExtension> {
+        java {
+            targetExclude(
+                "src/*/java/com/seibel/distanthorizons/core/**",
+                "src/*/java/com/seibel/distanthorizons/api/**",
+                "src/*/java/com/seibel/distanthorizons/coreapi/**",
+                "src/*/java/com/seibel/distanthorizons/common/render/**",
+            )
+        }
+    }
+}

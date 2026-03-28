@@ -4,7 +4,8 @@ import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
 
 // See if we can merge/mixin/extend ChunkCoordIntPair?
 public class ChunkPos {
-    public static long INT_MASK   = (1L << Integer.SIZE) - 1;
+
+    public static long INT_MASK = (1L << Integer.SIZE) - 1;
 
     public final int x;
     public final int z;
@@ -20,16 +21,16 @@ public class ChunkPos {
     }
 
     public ChunkPos(long pos) {
-        this.x = (int)pos;
-        this.z = (int)(pos >> 32);
+        this.x = (int) pos;
+        this.z = (int) (pos >> 32);
     }
 
     public static int getPackedX(long pos) {
-        return (int)(pos & INT_MASK);
+        return (int) (pos & INT_MASK);
     }
 
     public static int getPackedZ(long pos) {
-        return (int)(pos >>> 32 & INT_MASK);
+        return (int) (pos >>> 32 & INT_MASK);
     }
 
     public long toLong() {
@@ -37,12 +38,11 @@ public class ChunkPos {
     }
 
     public static long toLong(int x, int z) {
-        return (long)x & 4294967295L | ((long)z & 4294967295L) << 32;
+        return (long) x & 4294967295L | ((long) z & 4294967295L) << 32;
     }
 
     @Override
-    public int hashCode()
-    {
+    public int hashCode() {
         final int i = 1664525 * this.x + 1013904223;
         final int j = 1664525 * (this.z ^ -559038737) + 1013904223;
         return i ^ j;

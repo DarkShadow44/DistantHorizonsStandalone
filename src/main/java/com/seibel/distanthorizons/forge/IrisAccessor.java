@@ -1,25 +1,26 @@
 package com.seibel.distanthorizons.forge;
 
-import com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor.IIrisAccessor;
 import net.coderbot.iris.Iris;
 import net.irisshaders.iris.api.v0.IrisApi;
 
+import com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor.IIrisAccessor;
+
 public class IrisAccessor implements IIrisAccessor {
+
     @Override
-    public String getModName()
-    {
+    public String getModName() {
         return Iris.MODNAME;
     }
 
     @Override
-    public boolean isShaderPackInUse()
-    {
-        return IrisApi.getInstance().isShaderPackInUse();
+    public boolean isShaderPackInUse() {
+        return IrisApi.getInstance()
+            .isShaderPackInUse();
     }
 
     @Override
-    public boolean isRenderingShadowPass()
-    {
-        return IrisApi.getInstance().isRenderingShadowPass();
+    public boolean isRenderingShadowPass() {
+        return IrisApi.getInstance()
+            .isRenderingShadowPass();
     }
 }

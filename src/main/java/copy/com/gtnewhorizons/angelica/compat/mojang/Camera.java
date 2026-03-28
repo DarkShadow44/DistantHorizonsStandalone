@@ -1,15 +1,18 @@
 package copy.com.gtnewhorizons.angelica.compat.mojang;
 
-import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
-import com.seibel.distanthorizons.RenderHelper;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.util.MathHelper;
+
 import org.joml.Matrix4f;
 import org.joml.Vector3d;
 import org.joml.Vector4f;
 
+import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
+import com.seibel.distanthorizons.RenderHelper;
+
 public class Camera {
+
     final Vector3d pos = new Vector3d();
     final BlockPos blockPos = new BlockPos();
     float pitch;
@@ -18,15 +21,15 @@ public class Camera {
     boolean thirdPerson;
     final float partialTicks;
 
-    public Vector3d getPos()
-    {
+    public Vector3d getPos() {
         return pos;
     }
 
     public Camera(EntityLivingBase entity, float partialTicks) {
         this.partialTicks = partialTicks;
         final Vector4f offset = new Vector4f(); // third person offset
-        final Matrix4f inverseModelView = RenderHelper.getModelViewMatrixMC().invert();
+        final Matrix4f inverseModelView = RenderHelper.getModelViewMatrixMC()
+            .invert();
         inverseModelView.transform(offset);
 
         final double camX = entity.lastTickPosX + (entity.posX - entity.lastTickPosX) * partialTicks + offset.x;

@@ -1,5 +1,25 @@
 package com.seibel.distanthorizons.forge;
 
+import java.util.IdentityHashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Queue;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
+
+import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.world.ChunkCoordIntPair;
+import net.minecraft.world.World;
+import net.minecraft.world.WorldServer;
+import net.minecraft.world.chunk.Chunk;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.entity.player.PlayerInteractEvent;
+import net.minecraftforge.event.world.ChunkDataEvent;
+import net.minecraftforge.event.world.ChunkEvent;
+import net.minecraftforge.event.world.WorldEvent;
+
 import com.seibel.distanthorizons.common.AbstractModInitializer;
 import com.seibel.distanthorizons.common.util.ProxyUtil;
 import com.seibel.distanthorizons.common.wrappers.chunk.ChunkWrapper;
@@ -15,68 +35,44 @@ import com.seibel.distanthorizons.core.wrapperInterfaces.misc.IServerPlayerWrapp
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IServerLevelWrapper;
 import com.seibel.distanthorizons.coreapi.DependencyInjection.WorldGeneratorInjector;
+
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.PlayerEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.world.ChunkCoordIntPair;
-import net.minecraft.world.World;
-import net.minecraft.world.WorldServer;
-import net.minecraft.world.chunk.Chunk;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.entity.player.PlayerInteractEvent;
-import net.minecraftforge.event.world.ChunkDataEvent;
-import net.minecraftforge.event.world.ChunkEvent;
-import net.minecraftforge.event.world.WorldEvent;
-
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 
-import java.util.IdentityHashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Queue;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.function.Supplier;
+public class ForgeServerProxy implements AbstractModInitializer.IEventProxy {
 
-public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
-{
-	private static World GetEventLevel(WorldEvent e) { return e.world; }
+    private static World GetEventLevel(WorldEvent e) {
+        return e.world;
+    }
 
-	private final ServerApi serverApi = ServerApi.INSTANCE;
-	private final boolean isDedicated;
+    private final ServerApi serverApi = ServerApi.INSTANCE;
+    private final boolean isDedicated;
 
+    @Override
+    public void registerEvents() {
+        MinecraftForge.EVENT_BUS.register(this);
+        FMLCommonHandler.instance()
+            .bus()
+            .register(this);
+        if (this.isDedicated) {
+            ForgePluginPacketSender.setPacketHandler(ServerApi.INSTANCE::pluginMessageReceived);
+        }
+    }
 
+    // =============//
+    // constructor //
+    // =============//
 
-	@Override
-	public void registerEvents()
-	{
-		MinecraftForge.EVENT_BUS.register(this);
-        FMLCommonHandler.instance().bus().register(this);
-		if (this.isDedicated)
-		{
-			ForgePluginPacketSender.setPacketHandler(ServerApi.INSTANCE::pluginMessageReceived);
-		}
-	}
+    public ForgeServerProxy(boolean isDedicated) {
+        this.isDedicated = isDedicated;
+    }
 
-
-
-	//=============//
-	// constructor //
-	//=============//
-
-	public ForgeServerProxy(boolean isDedicated)
-	{
-		this.isDedicated = isDedicated;
-	}
-
-
-
-	//========//
-	// events //
-	//========//
+    // ========//
+    // events //
+    // ========//
 
     public static boolean connected = false;
 
@@ -90,8 +86,8 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
         }
     }
 
-    private class ChunkLoadEvent
-    {
+    private class ChunkLoadEvent {
+
         public final ChunkWrapper chunk;
         public final ILevelWrapper level;
         public int age;
@@ -105,11 +101,10 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
     private static final Queue<ChunkLoadEvent> chunkLoadEvents = new ConcurrentLinkedQueue<>();
     private static final Map<World, LongOpenHashSet> chunksPendingResetByWorld = new IdentityHashMap<>();
 
-	// ServerTickEvent (at end)
-	@SubscribeEvent
-	public void serverTickEvent(TickEvent.ServerTickEvent event)
-	{
-        if(event.phase == TickEvent.Phase.END) {
+    // ServerTickEvent (at end)
+    @SubscribeEvent
+    public void serverTickEvent(TickEvent.ServerTickEvent event) {
+        if (event.phase == TickEvent.Phase.END) {
             Iterator<ChunkLoadEvent> iterator = chunkLoadEvents.iterator();
             while (iterator.hasNext()) {
                 ChunkLoadEvent chunkLoadEvent = iterator.next();
@@ -128,70 +123,58 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
             // Time budget instead of count
             long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(15);
             boolean processedAtLeastOne = false;
-            while (!taskQueue.isEmpty())
-            {
+            while (!taskQueue.isEmpty()) {
                 ScheduledTask<?> scheduledTask = taskQueue.poll();
-                if (scheduledTask == null)
-                {
+                if (scheduledTask == null) {
                     continue;
                 }
                 scheduledTask.run();
-                if (scheduledTask.isLimited())
-                {
-                    if (!processedAtLeastOne)
-                    {
+                if (scheduledTask.isLimited()) {
+                    if (!processedAtLeastOne) {
                         processedAtLeastOne = true;
-                    }
-                    else if (System.nanoTime() >= deadline)
-                    {
+                    } else if (System.nanoTime() >= deadline) {
                         break;
                     }
                 }
             }
         }
-	}
+    }
 
-	// ServerLevelLoadEvent
-	@SubscribeEvent
-	public void serverLevelLoadEvent(WorldEvent.Load event)
-	{
-		if (GetEventLevel(event) instanceof WorldServer)
-		{
-			this.serverApi.serverLevelLoadEvent(getServerLevelWrapper((WorldServer) GetEventLevel(event)));
+    // ServerLevelLoadEvent
+    @SubscribeEvent
+    public void serverLevelLoadEvent(WorldEvent.Load event) {
+        if (GetEventLevel(event) instanceof WorldServer) {
+            this.serverApi.serverLevelLoadEvent(getServerLevelWrapper((WorldServer) GetEventLevel(event)));
             chunksPendingResetByWorld.put(event.world, new LongOpenHashSet());
-		}
-	}
+        }
+    }
 
-	// ServerLevelUnloadEvent
-	@SubscribeEvent
-	public void serverLevelUnloadEvent(WorldEvent.Unload event)
-	{
-		if (GetEventLevel(event) instanceof WorldServer)
-		{
-			this.serverApi.serverLevelUnloadEvent(getServerLevelWrapper((WorldServer) GetEventLevel(event)));
-		}
+    // ServerLevelUnloadEvent
+    @SubscribeEvent
+    public void serverLevelUnloadEvent(WorldEvent.Unload event) {
+        if (GetEventLevel(event) instanceof WorldServer) {
+            this.serverApi.serverLevelUnloadEvent(getServerLevelWrapper((WorldServer) GetEventLevel(event)));
+        }
         chunkLoadEvents.removeIf(x -> x.level.getWrappedMcObject() == event.world);
         chunksPendingResetByWorld.remove(event.world);
-	}
+    }
 
-	@SubscribeEvent
-	public void serverChunkLoadEvent(ChunkEvent.Load event)
-	{
+    @SubscribeEvent
+    public void serverChunkLoadEvent(ChunkEvent.Load event) {
         if (!(event.world instanceof WorldServer)) {
             return;
         }
-		ILevelWrapper levelWrapper = ProxyUtil.getLevelWrapper(GetEventLevel(event));
-		ChunkWrapper chunk = new ChunkWrapper(event.getChunk(), levelWrapper);
+        ILevelWrapper levelWrapper = ProxyUtil.getLevelWrapper(GetEventLevel(event));
+        ChunkWrapper chunk = new ChunkWrapper(event.getChunk(), levelWrapper);
         if (chunk.isChunkReady()) {
             this.serverApi.serverChunkLoadEvent(chunk, levelWrapper);
             return;
         }
         chunkLoadEvents.add(new ChunkLoadEvent(chunk, levelWrapper));
-	}
+    }
 
     @SubscribeEvent
-    public void serverChunkSaveEvent(ChunkDataEvent.Save event)
-    {
+    public void serverChunkSaveEvent(ChunkDataEvent.Save event) {
         if (!(event.world instanceof WorldServer)) {
             return;
         }
@@ -207,8 +190,10 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
             if (generator != null) {
                 BatchGenerationEnvironment batchGenerationEnvironment = (BatchGenerationEnvironment) generator.generationEnvironment;
 
-                if (batchGenerationEnvironment != null && batchGenerationEnvironment.internalServerGenerator.updateManager != null) {
-                    batchGenerationEnvironment.internalServerGenerator.updateManager.removePosToIgnore(new DhChunkPos(chunk.xPosition, chunk.zPosition));
+                if (batchGenerationEnvironment != null
+                    && batchGenerationEnvironment.internalServerGenerator.updateManager != null) {
+                    batchGenerationEnvironment.internalServerGenerator.updateManager
+                        .removePosToIgnore(new DhChunkPos(chunk.xPosition, chunk.zPosition));
                 }
             }
             if (ForgeMain.isHodgePodgeInstalled) {
@@ -218,8 +203,7 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
     }
 
     @SubscribeEvent
-    public void serverChunkUnLoadEvent(ChunkEvent.Unload event)
-    {
+    public void serverChunkUnLoadEvent(ChunkEvent.Unload event) {
         if (!(event.world instanceof WorldServer)) {
             return;
         }
@@ -232,33 +216,32 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
         }
     }
 
-	@SubscribeEvent
-	public void playerLoggedInEvent(PlayerEvent.PlayerLoggedInEvent event)
-	{ this.serverApi.serverPlayerJoinEvent(getServerPlayerWrapper(event)); }
-	@SubscribeEvent
-	public void playerLoggedOutEvent(PlayerEvent.PlayerLoggedOutEvent event)
-	{ this.serverApi.serverPlayerDisconnectEvent(getServerPlayerWrapper(event)); }
-	@SubscribeEvent
-	public void playerChangedDimensionEvent(PlayerEvent.PlayerChangedDimensionEvent event)
-	{
-		this.serverApi.serverPlayerLevelChangeEvent(
-				getServerPlayerWrapper(event),
-				getServerLevelWrapper(event.fromDim, event),
-				getServerLevelWrapper(event.toDim, event)
-		);
-	}
+    @SubscribeEvent
+    public void playerLoggedInEvent(PlayerEvent.PlayerLoggedInEvent event) {
+        this.serverApi.serverPlayerJoinEvent(getServerPlayerWrapper(event));
+    }
 
     @SubscribeEvent
-    public void clickBlockEvent(PlayerInteractEvent event)
-    {
+    public void playerLoggedOutEvent(PlayerEvent.PlayerLoggedOutEvent event) {
+        this.serverApi.serverPlayerDisconnectEvent(getServerPlayerWrapper(event));
+    }
+
+    @SubscribeEvent
+    public void playerChangedDimensionEvent(PlayerEvent.PlayerChangedDimensionEvent event) {
+        this.serverApi.serverPlayerLevelChangeEvent(
+            getServerPlayerWrapper(event),
+            getServerLevelWrapper(event.fromDim, event),
+            getServerLevelWrapper(event.toDim, event));
+    }
+
+    @SubscribeEvent
+    public void clickBlockEvent(PlayerInteractEvent event) {
         ILevelWrapper wrappedLevel = ProxyUtil.getLevelWrapper(event.world);
-        if (SharedApi.isChunkAtBlockPosAlreadyUpdating(wrappedLevel, event.x, event.z))
-        {
+        if (SharedApi.isChunkAtBlockPosAlreadyUpdating(wrappedLevel, event.x, event.z)) {
             return;
         }
 
-        schedule(false, () ->
-        {
+        schedule(false, () -> {
             Chunk chunk = event.world.getChunkFromBlockCoords(event.x, event.z);
             ChunkWrapper chunkWrapper = new ChunkWrapper(chunk, wrappedLevel);
             SharedApi.INSTANCE.applyChunkUpdate(chunkWrapper, wrappedLevel);
@@ -276,6 +259,7 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
     }
 
     private static class ScheduledTask<T> {
+
         private final Supplier<T> task;
         private final CompletableFuture<T> future;
         private final boolean limited;
@@ -299,25 +283,23 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
         }
     }
 
+    // ================//
+    // helper methods //
+    // ================//
 
-	//================//
-	// helper methods //
-	//================//
+    private static IServerLevelWrapper getServerLevelWrapper(WorldServer level) {
+        return ServerLevelWrapper.getWrapper(level);
+    }
 
-	private static IServerLevelWrapper getServerLevelWrapper(WorldServer level) { return ServerLevelWrapper.getWrapper(level); }
-
-
-	private static IServerLevelWrapper getServerLevelWrapper(int dim, PlayerEvent event)
-	{
+    private static IServerLevelWrapper getServerLevelWrapper(int dim, PlayerEvent event) {
         WorldServer world = (WorldServer) event.player.worldObj;
-        WorldServer worldDim = world.func_73046_m().worldServerForDimension(dim);
-		return getServerLevelWrapper(worldDim);
-	}
+        WorldServer worldDim = world.func_73046_m()
+            .worldServerForDimension(dim);
+        return getServerLevelWrapper(worldDim);
+    }
 
-	private static IServerPlayerWrapper getServerPlayerWrapper(PlayerEvent event) {
-		return ServerPlayerWrapper.getWrapper(
-            (EntityPlayerMP) event.player
-		);
-	}
+    private static IServerPlayerWrapper getServerPlayerWrapper(PlayerEvent event) {
+        return ServerPlayerWrapper.getWrapper((EntityPlayerMP) event.player);
+    }
 
 }

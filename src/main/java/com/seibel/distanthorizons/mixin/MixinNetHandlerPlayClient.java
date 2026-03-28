@@ -1,27 +1,27 @@
 package com.seibel.distanthorizons.mixin;
 
-import com.seibel.distanthorizons.core.api.internal.ClientApi;
-import com.seibel.distanthorizons.forge.ForgeServerProxy;
 import net.minecraft.client.network.NetHandlerPlayClient;
 import net.minecraft.network.play.server.S01PacketJoinGame;
+
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import com.seibel.distanthorizons.core.api.internal.ClientApi;
+import com.seibel.distanthorizons.forge.ForgeServerProxy;
+
 @Mixin(NetHandlerPlayClient.class)
 public class MixinNetHandlerPlayClient {
 
     @Inject(method = "handleJoinGame", at = @At("RETURN"))
-    private void connect(S01PacketJoinGame packetIn, CallbackInfo ci)
-    {
+    private void connect(S01PacketJoinGame packetIn, CallbackInfo ci) {
         ClientApi.INSTANCE.onClientOnlyConnected();
         ForgeServerProxy.connected = true;
     }
 
     @Inject(method = "cleanup", at = @At("RETURN"))
-    private void disconnect(CallbackInfo ci)
-    {
+    private void disconnect(CallbackInfo ci) {
         ForgeServerProxy.connected = false;
         ClientApi.INSTANCE.onClientOnlyDisconnected();
     }

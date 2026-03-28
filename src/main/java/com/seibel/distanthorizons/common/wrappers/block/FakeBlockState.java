@@ -1,8 +1,8 @@
 package com.seibel.distanthorizons.common.wrappers.block;
 
-import net.minecraft.block.Block;
-
 import java.util.Objects;
+
+import net.minecraft.block.Block;
 
 public class FakeBlockState {
 
