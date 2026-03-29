@@ -19,7 +19,10 @@ Make sure the latest versions of each of the dependencies are installed:
 - [GTNHLib](https://github.com/GTNewHorizons/GTNHLib)
 - [UniMixins](https://github.com/LegacyModdingMC/UniMixins)
 
+Now supports shaders when used with Angelica 2.1.12 or higher. Tested with [Complementary 5.7.1](https://modrinth.com/shader/complementary-reimagined/version/r5.7.1) with [Euphoria patches 1.8.6](https://modrinth.com/mod/euphoria-patches/version/1.8.6-r5.7.1-forge1.7.10)
+If it works with modern DH+Iris, but not with latest Angelica + DH, this should be reported as bug.
+
 # Known Issues
 
-- If you use Angelica, you might need to check "Disable Terrain Fog" to prevent rendering issues.
-- Currently no shader support — using a shader mod will break rendering.
+- Memory usage might creep up over time and crash the server
+- Server side not fully stable, use with caution
