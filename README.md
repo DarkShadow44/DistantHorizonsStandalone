@@ -15,7 +15,7 @@ Below is a video demonstrating the system:
 
 Make sure the latest versions of each of the dependencies are installed:
 
-- [lwjgl3ify](https://github.com/GTNewHorizons/lwjgl3ify)
+- [lwjgl3ify](https://github.com/GTNewHorizons/lwjgl3ify) - Use 3.0.15 or higher
 - [GTNHLib](https://github.com/GTNewHorizons/GTNHLib)
 - [UniMixins](https://github.com/LegacyModdingMC/UniMixins)
 
