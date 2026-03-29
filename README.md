@@ -26,3 +26,4 @@ If it works with modern DH+Iris, but not with latest Angelica + DH, this should 
 
 - Memory usage might creep up over time and crash the server
 - Server side not fully stable, use with caution
+- Sometimes LODs don't update properly, change rendering distance and then back to fix that (upstream issue)
