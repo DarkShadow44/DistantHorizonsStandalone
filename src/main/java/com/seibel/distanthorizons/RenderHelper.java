@@ -70,6 +70,9 @@ public class RenderHelper {
     }
 
     public static void drawDeferredLods() {
+        if (ForgeMain.angelicaCompat == null) {
+            return;
+        }
         ClientApi.RENDER_STATE.mcModelViewMatrix = getModelViewMatrix();
         ClientApi.RENDER_STATE.mcProjectionMatrix = getProjectionMatrix();
         ClientApi.RENDER_STATE.clientLevelWrapper = ClientLevelWrapper.getWrapper(Minecraft.getMinecraft().theWorld);
