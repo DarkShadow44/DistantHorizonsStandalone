@@ -3,6 +3,10 @@ package com.seibel.distanthorizons.common.wrappers.world;
 import java.awt.*;
 import java.io.File;
 import java.io.IOException;
+import java.lang.ref.WeakReference;
+import java.util.Collections;
+import java.util.Map;
+import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
@@ -35,9 +39,9 @@ import com.seibel.distanthorizons.core.wrapperInterfaces.world.IServerLevelWrapp
 public class ClientLevelWrapper implements IClientLevelWrapper {
 
     private static final DhLogger LOGGER = new DhLoggerBuilder().build();
-    private static final ConcurrentHashMap<WorldClient, ClientLevelWrapper> LEVEL_WRAPPER_BY_CLIENT_LEVEL = new ConcurrentHashMap<>(); // TODO
-                                                                                                                                       // can
-                                                                                                                                       // leak
+    private static final Map<WorldClient, WeakReference<ClientLevelWrapper>> LEVEL_WRAPPER_BY_CLIENT_LEVEL = Collections
+        .synchronizedMap(new WeakHashMap<>());
+
     private static final IKeyedClientLevelManager KEYED_CLIENT_LEVEL_MANAGER = SingletonInjector.INSTANCE
         .get(IKeyedClientLevelManager.class);
 
@@ -79,7 +83,16 @@ public class ClientLevelWrapper implements IClientLevelWrapper {
             }
         }
 
-        return LEVEL_WRAPPER_BY_CLIENT_LEVEL.computeIfAbsent(level, ClientLevelWrapper::new);
+        WeakReference<ClientLevelWrapper> wrapperRef = LEVEL_WRAPPER_BY_CLIENT_LEVEL.get(level);
+        if (wrapperRef != null) {
+            ClientLevelWrapper wrapper = wrapperRef.get();
+            if (wrapper != null) {
+                return wrapper;
+            }
+        }
+        ClientLevelWrapper wrapper = new ClientLevelWrapper(level);
+        LEVEL_WRAPPER_BY_CLIENT_LEVEL.put(level, new WeakReference<>(wrapper));
+        return wrapper;
     }
 
     @Nullable
@@ -123,8 +136,11 @@ public class ClientLevelWrapper implements IClientLevelWrapper {
 
     /** Clears biome color caches across all active ClientLevelWrappers. */
     public static void clearAllBiomeColorCaches() {
-        for (ClientLevelWrapper wrapper : LEVEL_WRAPPER_BY_CLIENT_LEVEL.values()) {
-            wrapper.clearBiomeColorCaches();
+        for (WeakReference<ClientLevelWrapper> wrapperRef : LEVEL_WRAPPER_BY_CLIENT_LEVEL.values()) {
+            ClientLevelWrapper wrapper = wrapperRef.get();
+            if (wrapper != null) {
+                wrapper.clearBiomeColorCaches();
+            }
         }
     }
 
