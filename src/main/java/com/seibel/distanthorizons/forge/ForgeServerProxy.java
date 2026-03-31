@@ -153,7 +153,8 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy {
     @SubscribeEvent
     public void serverLevelUnloadEvent(WorldEvent.Unload event) {
         if (GetEventLevel(event) instanceof WorldServer) {
-            this.serverApi.serverLevelUnloadEvent(getServerLevelWrapper((WorldServer) GetEventLevel(event)));
+            // Make new server level wrapper so it's not cached...
+            this.serverApi.serverLevelUnloadEvent(new ServerLevelWrapper((WorldServer) GetEventLevel(event)));
         }
         chunkLoadEvents.removeIf(x -> x.level.getWrappedMcObject() == event.world);
         chunksPendingResetByWorld.remove(event.world);
