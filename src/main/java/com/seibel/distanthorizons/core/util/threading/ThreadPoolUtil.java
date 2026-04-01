@@ -178,15 +178,6 @@ public class ThreadPoolUtil
 			// pause if the user is moving too fast
 			return false;
 		}
-		
-		PriorityTaskPicker.Executor executor = getRenderLoadingExecutor();
-		if (executor != null
-			&& executor.getQueueSize() > 0)
-		{
-			// pause if LODs are being loaded for rendering
-			return false;
-		}
-		
 		return true;
 	}
 	
