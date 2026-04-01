@@ -256,7 +256,7 @@ public class InternalServerGenerator {
                 }
             }
 
-            Chunk chunk = provider.provideChunk(chunkPos.x, chunkPos.z);
+            Chunk chunk = provider.loadChunk(chunkPos.x, chunkPos.z);
             return new ChunkWrapper(chunk, params.dhServerLevel.getLevelWrapper());
         });
     }
