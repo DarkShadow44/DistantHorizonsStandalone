@@ -27,3 +27,26 @@ If it works with modern DH+Iris, but not with latest Angelica + DH, this should 
 - Memory usage might creep up over time and crash the server
 - Server side not fully stable, use with caution
 - Sometimes LODs don't update properly, change rendering distance and then back to fix that (upstream issue)
+
+# GTNH 2.8.4
+
+Here detailed instructions how to get DH + latest Angelica working in GTNH 2.8.4 (you'll need to upgrade a few things) in Prism Launcher:
+
+Download the following mods:
+- Latest DH - tested with [alpha18](https://github.com/DarkShadow44/DistantHorizonsStandalone/releases/tag/alpha18) - get `distanthorizons-alpha18.jar`
+- Latest Angelica - tested with [2.1.16](https://github.com/GTNewHorizons/Angelica/releases/tag/2.1.16) - get `angelica-2.1.16.jar`
+- Latest lwjgl3ify - tested with [3.0.15](https://github.com/GTNewHorizons/lwjgl3ify/releases/tag/3.0.15) - get `lwjgl3ify-3.0.15.jar` and `lwjgl3ify-3.0.15-multimc.zip`
+- Latest GTNHLib - tested with [0.9.47](https://github.com/GTNewHorizons/GTNHLib/releases/tag/0.9.47) - get `gtnhlib-0.9.47.jar`
+
+From your mods folder delete
+- angelica-1.0.0-beta66b.jar
+- lwjgl3ify-2.1.16.jar
+- gtnhlib-0.7.10.jar
+
+Then add to your mods folder:
+- distanthorizons-alpha18.jar
+- angelica-2.1.16.jar
+- lwjgl3ify-3.0.15.jar
+- gtnhlib-0.9.47.jar
+
+Then unzip `lwjgl3ify-3.0.15-multimc.zip`, copy the contents into your Prism Launcher instance. You know you copy into the right folder when you overwrite your `mmc-pack.json`.
