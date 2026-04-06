@@ -29,6 +29,10 @@ public class MixinFramebuffer {
         method = "createFramebuffer",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/OpenGlHelper;func_153185_f()I"))
     private int createDepthTexture() {
+        if (!MixinFlags.framebufferMixinEnabled) {
+            return OpenGlHelper.func_153185_f();
+        }
+
         int depthTextureId = TextureUtil.glGenTextures();
 
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, depthTextureId);
