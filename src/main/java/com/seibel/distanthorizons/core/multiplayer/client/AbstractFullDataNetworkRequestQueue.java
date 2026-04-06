@@ -245,6 +245,7 @@ public abstract class AbstractFullDataNetworkRequestQueue implements IDebugRende
 			if (response.payload == null)
 			{
 				LodUtil.assertTrue(this.changedOnly, "Received empty data source response for not changes-only request");
+                requestTask.future.cancel(false);
 				return;
 			}
 			
