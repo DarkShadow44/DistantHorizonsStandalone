@@ -18,6 +18,7 @@ package com.seibel.distanthorizons.common.wrappers.block;
 import java.lang.reflect.Field;
 import java.util.HashSet;
 import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
 import net.minecraft.block.*;
@@ -84,7 +85,7 @@ public class ClientBlockStateColorCache {
     private int tintIndex = 0;
 
     /** Lazily initialized cache of biome ID -> tinted color result for this block state. */
-    private Int2IntOpenHashMap biomeColorCache;
+    private ConcurrentHashMap<Integer, Integer> biomeColorCache;
 
     // ===========//
     // constants //
@@ -442,8 +443,7 @@ public class ClientBlockStateColorCache {
         }
 
         if (this.biomeColorCache == null) {
-            this.biomeColorCache = new Int2IntOpenHashMap();
-            this.biomeColorCache.defaultReturnValue(Integer.MIN_VALUE);
+            this.biomeColorCache = new ConcurrentHashMap<>();
         }
         this.biomeColorCache.put(biomeId, result);
 
