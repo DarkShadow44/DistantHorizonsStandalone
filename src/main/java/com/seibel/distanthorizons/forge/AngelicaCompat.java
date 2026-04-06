@@ -30,8 +30,7 @@ public class AngelicaCompat {
         return new Color(
             Math.max(0.0f, Math.min(1.0f, (float) color.x)),
             Math.max(0.0f, Math.min(1.0f, (float) color.y)),
-            Math.max(0.0f, Math.min(1.0f, (float) color.z))
-        );
+            Math.max(0.0f, Math.min(1.0f, (float) color.z)));
     }
 
     public void verifyAngelicaVersion() {
