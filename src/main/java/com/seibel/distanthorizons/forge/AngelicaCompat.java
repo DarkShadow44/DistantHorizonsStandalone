@@ -27,7 +27,11 @@ public class AngelicaCompat {
 
     public Color getFogColor() {
         Vector3d color = GLStateManager.getFogColor();
-        return new Color((float) color.x, (float) color.y, (float) color.z);
+        return new Color(
+            Math.max(0.0f, Math.min(1.0f, (float) color.x)),
+            Math.max(0.0f, Math.min(1.0f, (float) color.y)),
+            Math.max(0.0f, Math.min(1.0f, (float) color.z))
+        );
     }
 
     public void verifyAngelicaVersion() {
