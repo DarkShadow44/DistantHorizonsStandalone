@@ -39,7 +39,6 @@ import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapp
 import com.seibel.distanthorizons.forge.ForgeMain;
 
 import cpw.mods.fml.common.FMLLog;
-import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 
 /**
  * This stores and calculates the colors

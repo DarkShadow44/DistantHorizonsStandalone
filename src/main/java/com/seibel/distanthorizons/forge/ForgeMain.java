@@ -59,6 +59,8 @@ public class ForgeMain extends AbstractModInitializer {
     @Mod.Instance
     public static Object instance;
 
+    private static final boolean DISABLE_SERVER_FOR_TESTING = false;
+
     public static boolean isHodgePodgeInstalled;
     public static GTCompat gtCompat;
     public static AngelicaCompat angelicaCompat;
@@ -89,7 +91,7 @@ public class ForgeMain extends AbstractModInitializer {
             if (Loader.isModLoaded("rple")) {
                 rpleCompat = new RPLECompat();
             }
-        } else {
+        } else if (!DISABLE_SERVER_FOR_TESTING) {
             this.onInitializeServer();
         }
         ForgeChunkManager.setForcedChunkLoadingCallback(
@@ -104,6 +106,9 @@ public class ForgeMain extends AbstractModInitializer {
     // ServerWorldLoadEvent
     @Mod.EventHandler
     public void dedicatedWorldLoadEvent(FMLServerAboutToStartEvent event) {
+        if (DISABLE_SERVER_FOR_TESTING) {
+            return;
+        }
         ServerApi.INSTANCE.serverLoadEvent(
             event.getServer()
                 .isDedicatedServer());
@@ -112,11 +117,17 @@ public class ForgeMain extends AbstractModInitializer {
     // ServerWorldUnloadEvent
     @Mod.EventHandler
     public void serverWorldUnloadEvent(FMLServerStoppingEvent event) {
+        if (DISABLE_SERVER_FOR_TESTING) {
+            return;
+        }
         ServerApi.INSTANCE.serverUnloadEvent();
     }
 
     @Mod.EventHandler
     public void serverWorldUnloadEvent(FMLServerStoppedEvent event) {
+        if (DISABLE_SERVER_FOR_TESTING) {
+            return;
+        }
         ForgeServerProxy.serverStopping();
     }
 
@@ -155,6 +166,9 @@ public class ForgeMain extends AbstractModInitializer {
 
     @Mod.EventHandler
     public void onServerAboutToStart(FMLServerAboutToStartEvent event) {
+        if (DISABLE_SERVER_FOR_TESTING) {
+            return;
+        }
         if (eventHandlerStartServer != null) eventHandlerStartServer.accept(event.getServer());
     }
 
