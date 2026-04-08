@@ -514,8 +514,7 @@ public class ChunkWrapper implements IChunkWrapper {
     }
 
     public boolean isChunkReady() {
-        boolean ret = chunk.isTerrainPopulated && chunk.isLightPopulated;
-        return ret;
+        return chunk.isTerrainPopulated && chunk.isLightPopulated;
     }
 
     // @Override
