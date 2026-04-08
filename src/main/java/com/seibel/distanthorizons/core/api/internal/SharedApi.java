@@ -202,7 +202,7 @@ public class SharedApi
 				// If the client world isn't loaded yet, keep track of which chunks were loaded so we can use them later.
 				// This may happen if the client world and client level load events happen out of order
 				IClientLevelWrapper clientLevel = (IClientLevelWrapper) levelWrapper;
-				ClientApi.INSTANCE.waitingChunkByClientLevelAndPos.replace(new Pair<>(clientLevel, chunkWrapper.getChunkPos()), chunkWrapper);
+				ClientApi.INSTANCE.waitingChunkByClientLevelAndPos.put(new Pair<>(clientLevel, chunkWrapper.getChunkPos()), chunkWrapper);
 			}
 			
 			return;
@@ -222,7 +222,7 @@ public class SharedApi
 			{
 				// the client level isn't loaded yet
 				IClientLevelWrapper clientLevel = (IClientLevelWrapper) levelWrapper;
-				ClientApi.INSTANCE.waitingChunkByClientLevelAndPos.replace(new Pair<>(clientLevel, chunkWrapper.getChunkPos()), chunkWrapper);
+				ClientApi.INSTANCE.waitingChunkByClientLevelAndPos.put(new Pair<>(clientLevel, chunkWrapper.getChunkPos()), chunkWrapper);
 			}
 			
 			return;
