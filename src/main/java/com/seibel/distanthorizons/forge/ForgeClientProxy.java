@@ -132,13 +132,24 @@ public class ForgeClientProxy implements AbstractModInitializer.IEventProxy {
         }
     }
 
-    @SubscribeEvent
-    public void clientChunkLoadEvent(ChunkEvent.Load event) {
-        if (MC.clientConnectedToDedicatedServer()) {
-            ILevelWrapper wrappedLevel = ProxyUtil.getLevelWrapper(GetEventLevel(event));
-            IChunkWrapper chunk = new ChunkWrapper(event.getChunk(), wrappedLevel);
-            SharedApi.INSTANCE.applyChunkUpdate(chunk, wrappedLevel);
+    public static void onClientChunkFilled(Chunk chunk) {
+        if (!MC.clientConnectedToDedicatedServer()) {
+            return;
         }
+
+        World level = chunk.worldObj;
+        if (level == null || !level.isRemote) {
+            return;
+        }
+
+        ILevelWrapper wrappedLevel = ProxyUtil.getLevelWrapper(level);
+        ChunkWrapper chunkWrapper = new ChunkWrapper(chunk, wrappedLevel);
+        if (!chunkWrapper.isChunkReady()) {
+            LOGGER.info("Skipping client chunk update for not-ready chunk [" + chunk.xPosition + "," + chunk.zPosition + "].");
+            return;
+        }
+
+        SharedApi.INSTANCE.applyChunkUpdate(chunkWrapper, wrappedLevel);
     }
 
     // ==============//

@@ -12,6 +12,7 @@ public enum Mixins implements IMixins {
     CLIENT_CORE(new MixinBuilder().setPhase(Phase.EARLY)
         .addClientMixins(
             "MixinActiveRenderInfo",
+            "MixinChunk",
             "MixinEntityRenderer",
             "MixinMinecraft",
             "MixinNetHandlerPlayClient",
