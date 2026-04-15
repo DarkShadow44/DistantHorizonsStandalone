@@ -86,7 +86,7 @@ public class MinecraftClientWrapper implements IMinecraftClientWrapper, IMinecra
             return ClientOnlySaveStructure.REPLAY_SERVER_FOLDER_NAME;
         } else {
             ServerData server = MINECRAFT.func_147104_D();
-            return (server != null) ? server.serverName : "NULL";
+            return (server != null && server.serverName != null) ? server.serverName : "NULL";
         }
     }
 
