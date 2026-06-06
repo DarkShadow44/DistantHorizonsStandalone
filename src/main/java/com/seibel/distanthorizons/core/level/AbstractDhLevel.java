@@ -124,10 +124,22 @@ public abstract class AbstractDhLevel implements IDhLevel
 			// only client levels can render clouds
 			if (this instanceof IDhClientLevel)
 			{
-				// only add clouds for certain dimension types
+				// only add clouds for dimensions listed in the config
 				String enabledCloudDimensions = Config.Client.Advanced.Graphics.GenericRendering.dimensionEnabledCloudRenderingCsv.get();
 				String dimName = this.getLevelWrapper().getDimensionType().getName();
-				if (enabledCloudDimensions.contains(dimName))
+				boolean cloudsEnabled = false;
+				if (enabledCloudDimensions != null && !enabledCloudDimensions.isEmpty())
+				{
+					for (String entry : enabledCloudDimensions.split(","))
+					{
+						if (entry.trim().equalsIgnoreCase(dimName))
+						{
+							cloudsEnabled = true;
+							break;
+						}
+					}
+				}
+				if (cloudsEnabled)
 				{
 					this.cloudRenderHandler = new CloudRenderHandler((IDhClientLevel)this, genericRenderer);
 				}
@@ -369,8 +381,14 @@ public abstract class AbstractDhLevel implements IDhLevel
 	//================//
 	
 	@Override
-	public void close() 
-	{ 
+	public void close()
+	{
+		if (this.cloudRenderHandler != null)
+		{
+			this.cloudRenderHandler.close();
+			this.cloudRenderHandler = null;
+		}
+
 		if (this.chunkHashRepo != null)
 		{
 			this.chunkHashRepo.close();

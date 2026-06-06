@@ -33,6 +33,7 @@ import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.util.LodUtil;
 import com.seibel.distanthorizons.core.util.math.Vec3d;
 import com.seibel.distanthorizons.core.util.math.Vec3f;
+import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass.IDhGenericRenderer;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
@@ -40,17 +41,18 @@ import com.seibel.distanthorizons.coreapi.ModInfo;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 
 import javax.imageio.ImageIO;
-import java.awt.*;
+import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.*;
+import java.util.ArrayList;
 
 public class CloudRenderHandler
 {
 	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	private static final IMinecraftRenderWrapper MC_RENDER = SingletonInjector.INSTANCE.get(IMinecraftRenderWrapper.class);
+	private static final IMinecraftClientWrapper MC_CLIENT = SingletonInjector.INSTANCE.get(IMinecraftClientWrapper.class);
 	private static final IDhApiCustomRenderObjectFactory GENERIC_OBJECT_FACTORY = SingletonInjector.INSTANCE.get(IDhApiCustomRenderObjectFactory.class);
 	
 	private static final String CLOUD_RESOURCE_TEXTURE_PATH = "assets/distanthorizons/textures/clouds.png";
@@ -313,6 +315,29 @@ public class CloudRenderHandler
 		//===================//
 		
 		boolean renderClouds = Config.Client.Advanced.Graphics.GenericRendering.enableCloudRendering.get();
+		if (renderClouds)
+		{
+			// check if clouds are enabled for the player's current dimension
+			IClientLevelWrapper currentLevel = MC_CLIENT.getWrappedClientLevel();
+			String enabledDimensions = Config.Client.Advanced.Graphics.GenericRendering.dimensionEnabledCloudRenderingCsv.get();
+			String dimName = (currentLevel != null) ? currentLevel.getDimensionType().getName() : "";
+			boolean dimAllowed = false;
+			if (!dimName.isEmpty() && enabledDimensions != null && !enabledDimensions.isEmpty())
+			{
+				for (String entry : enabledDimensions.split(","))
+				{
+					if (entry.trim().equalsIgnoreCase(dimName))
+					{
+						dimAllowed = true;
+						break;
+					}
+				}
+			}
+			if (!dimAllowed)
+			{
+				renderClouds = false;
+			}
+		}
 		boxGroup.setActive(renderClouds);
 		if(!renderClouds)
 		{
@@ -530,6 +555,30 @@ public class CloudRenderHandler
 	
 	
 	
+	//=========//
+	// cleanup //
+	//=========//
+	//region
+
+	/** Removes all cloud box groups from the global renderer. Must be called when the level is closed. */
+	public void close()
+	{
+		for (IDhApiRenderableBoxGroup[] row : this.boxGroupByOffset)
+		{
+			for (IDhApiRenderableBoxGroup boxGroup : row)
+			{
+				if (boxGroup != null)
+				{
+					this.renderer.remove(boxGroup.getId());
+				}
+			}
+		}
+	}
+
+	//endregion
+
+
+
 	//==================//
 	// texture handling //
 	//==================//

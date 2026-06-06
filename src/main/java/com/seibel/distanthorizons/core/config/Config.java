@@ -414,7 +414,7 @@ public class Config
 							.build();
 					
 					public static ConfigEntry<String> dimensionEnabledCloudRenderingCsv = new ConfigEntry.Builder<String>()
-						.set("minecraft:overworld")
+						.set("overworld")
 						.setAppearance(EConfigEntryAppearance.ALL)
 						.comment(""
 							+ "A comma separated separated list of dimension resource locations where DH clouds will render.\n"
