@@ -128,6 +128,19 @@ public class ClientApi
 	private final Queue<String> overlayMessageQueueForNextFrame = new LinkedBlockingQueue<>();
 	
 	public boolean rendererDisabledBecauseOfExceptions = false;
+	/**
+	 * Number of consecutive frames the renderer has thrown an exception.
+	 * Reset to 0 whenever a frame renders successfully.
+	 */
+	private int consecutiveRenderExceptionCount = 0;
+	/**
+	 * The renderer is only fully disabled after this many consecutive exceptions.
+	 * This lets a single transient error (IE a buffer not being ready, or a brief
+	 * state hiccup during a level/dimension change) self-heal on the next frame
+	 * instead of permanently stopping LODs from rendering until the game is restarted,
+	 * while still protecting against persistent GL state corruption.
+	 */
+	private static final int MAX_CONSECUTIVE_RENDER_EXCEPTIONS = 10;
 	
 	/** Holds any levels that were loaded before the {@link ClientApi#onClientOnlyConnected} was fired. */
 	public final HashSet<IClientLevelWrapper> waitingClientLevels = new HashSet<>();
@@ -574,16 +587,40 @@ public class ClientApi
 						}
 					}
 				}
+
+				// the frame rendered without throwing, so clear any transient error state
+				this.consecutiveRenderExceptionCount = 0;
 			}
 			catch (Exception e)
 			{
-				this.rendererDisabledBecauseOfExceptions = true;
-				LOGGER.error("Unexpected Renderer error in render pass [" + renderPass + "]. Error: " + e.getMessage(), e);
-				
-				MC_CLIENT.sendChatMessage(MinecraftTextFormat.DARK_RED + "" + MinecraftTextFormat.BOLD + "ERROR: Distant Horizons renderer has encountered an exception!" + MinecraftTextFormat.CLEAR_FORMATTING);
-				MC_CLIENT.sendChatMessage(MinecraftTextFormat.DARK_RED + "Renderer disabled to try preventing GL state corruption." + MinecraftTextFormat.CLEAR_FORMATTING);
-				MC_CLIENT.sendChatMessage(MinecraftTextFormat.DARK_RED + "Toggle DH rendering via the config UI to re-activate DH rendering." + MinecraftTextFormat.CLEAR_FORMATTING);
-				MC_CLIENT.sendChatMessage(MinecraftTextFormat.DARK_RED + "Error: " + MinecraftTextFormat.CLEAR_FORMATTING + e);
+				this.consecutiveRenderExceptionCount++;
+				// log the full stack trace on the first error of a streak (and when finally
+				// disabling) so the root cause can still be diagnosed, but rate-limit the rest
+				// so a recurring error doesn't spam the log every frame.
+				if (this.consecutiveRenderExceptionCount == 1
+					|| this.consecutiveRenderExceptionCount >= MAX_CONSECUTIVE_RENDER_EXCEPTIONS)
+				{
+					LOGGER.error("Unexpected Renderer error in render pass [" + renderPass + "] (consecutive count: ["
+						+ this.consecutiveRenderExceptionCount + "/" + MAX_CONSECUTIVE_RENDER_EXCEPTIONS + "]). Error: " + e.getMessage(), e);
+				}
+				else
+				{
+					RATE_LIMITED_LOGGER.error("Distant Horizons renderer error (consecutive count: ["
+						+ this.consecutiveRenderExceptionCount + "/" + MAX_CONSECUTIVE_RENDER_EXCEPTIONS + "]). Error: " + e.getMessage());
+				}
+
+				// only fully disable the renderer if the exceptions are persistent.
+				// a single transient exception is allowed to self-heal on the next frame
+				// so that LODs don't permanently stop rendering until the game is restarted.
+				if (this.consecutiveRenderExceptionCount >= MAX_CONSECUTIVE_RENDER_EXCEPTIONS)
+				{
+					this.rendererDisabledBecauseOfExceptions = true;
+
+					MC_CLIENT.sendChatMessage(MinecraftTextFormat.DARK_RED + "" + MinecraftTextFormat.BOLD + "ERROR: Distant Horizons renderer has encountered repeated exceptions!" + MinecraftTextFormat.CLEAR_FORMATTING);
+					MC_CLIENT.sendChatMessage(MinecraftTextFormat.DARK_RED + "Renderer disabled to try preventing GL state corruption." + MinecraftTextFormat.CLEAR_FORMATTING);
+					MC_CLIENT.sendChatMessage(MinecraftTextFormat.DARK_RED + "Toggle DH rendering via the config UI to re-activate DH rendering." + MinecraftTextFormat.CLEAR_FORMATTING);
+					MC_CLIENT.sendChatMessage(MinecraftTextFormat.DARK_RED + "Error: " + MinecraftTextFormat.CLEAR_FORMATTING + e);
+				}
 			}
 			
 			//endregion
