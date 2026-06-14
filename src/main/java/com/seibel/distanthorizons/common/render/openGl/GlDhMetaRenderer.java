@@ -287,40 +287,84 @@ public class GlDhMetaRenderer implements IDhMetaRenderer
 		int oldHeight = this.textureHeight;
 		this.textureWidth = MC_RENDER.getTargetFramebufferViewportWidth();
 		this.textureHeight = MC_RENDER.getTargetFramebufferViewportHeight();
-		
+
+		// true if DH already had textures, IE this is a resize rather than the first creation
+		boolean hadExistingTextures = (oldWidth != 0 && oldHeight != 0);
+
 		DhApiTextureCreatedParam textureCreatedParam = new DhApiTextureCreatedParam(
 			oldWidth, oldHeight,
 			this.textureWidth, this.textureHeight
 		);
-		
-		
+
+
 		// DhApiColorDepthTextureCreatedEvent needs to be kept around since old versions of Iris need it
 		ApiEventInjector.INSTANCE.fireAllEvents(DhApiColorDepthTextureCreatedEvent.class, new DhApiColorDepthTextureCreatedEvent.EventParam(textureCreatedParam));
 		ApiEventInjector.INSTANCE.fireAllEvents(DhApiBeforeColorDepthTextureCreatedEvent.class, textureCreatedParam);
-		
-		
+
+
 		// also update the framebuffer override if present
 		IDhApiFramebuffer framebufferOverride = OverrideInjector.INSTANCE.get(IDhApiFramebuffer.class);
-		
-		
-		this.depthTexture = new GlDhDepthTexture(this.textureWidth, this.textureHeight, EGlDhDepthBufferFormat.DEPTH32F);
+
+
+		// When possible, resize the existing textures in place instead of allocating new ones.
+		// This keeps the OpenGL texture ids stable across a window/resolution change, which matters
+		// because shader mods (Iris/Angelica) cache DH's texture ids. If the ids change on a resize
+		// they keep sampling the old, no-longer-updated texture, which makes the LODs appear as a
+		// frozen "shadow" after toggling fullscreen.
+		// In-place resize is skipped when using MC/Optifine's framebuffer, where it's unreliable.
+		boolean resizeInPlace = hadExistingTextures && !this.usingMcFramebuffer;
+
+
+		//===============//
+		// depth texture //
+		//===============//
+
+		if (resizeInPlace && this.depthTexture != null)
+		{
+			this.depthTexture.resize(this.textureWidth, this.textureHeight, EGlDhDepthBufferFormat.DEPTH32F);
+		}
+		else
+		{
+			if (this.depthTexture != null)
+			{
+				// don't leak the previous texture
+				this.depthTexture.destroy();
+			}
+			this.depthTexture = new GlDhDepthTexture(this.textureWidth, this.textureHeight, EGlDhDepthBufferFormat.DEPTH32F);
+		}
 		this.framebuffer.addDepthAttachment(this.depthTexture.getTextureId(), EGlDhDepthBufferFormat.DEPTH32F.isCombinedStencil());
 		if (framebufferOverride != null)
 		{
 			framebufferOverride.addDepthAttachment(this.depthTexture.getTextureId(), EGlDhDepthBufferFormat.DEPTH32F.isCombinedStencil());
 		}
-		
-		
+
+
+		//===============//
+		// color texture //
+		//===============//
+
 		// if we are using MC's frame buffer, a color texture is already present and shouldn't need to be bound
 		if (!this.usingMcFramebuffer)
 		{
-			this.nullableColorTexture = GlDhColorTexture.builder()
-				.setDimensions(this.textureWidth, this.textureHeight)
-				.setInternalFormat(EGlDhInternalTextureFormat.RGBA8)
-				.setPixelType(EGlDhPixelType.UNSIGNED_BYTE)
-				.setPixelFormat(EGlDhPixelFormat.RGBA)
-				.build();
-			
+			if (resizeInPlace && this.nullableColorTexture != null)
+			{
+				this.nullableColorTexture.resize(this.textureWidth, this.textureHeight);
+			}
+			else
+			{
+				if (this.nullableColorTexture != null)
+				{
+					// don't leak the previous texture
+					this.nullableColorTexture.destroy();
+				}
+				this.nullableColorTexture = GlDhColorTexture.builder()
+					.setDimensions(this.textureWidth, this.textureHeight)
+					.setInternalFormat(EGlDhInternalTextureFormat.RGBA8)
+					.setPixelType(EGlDhPixelType.UNSIGNED_BYTE)
+					.setPixelFormat(EGlDhPixelFormat.RGBA)
+					.build();
+			}
+
 			this.framebuffer.addColorAttachment(0, this.nullableColorTexture.getTextureId());
 			if (framebufferOverride != null)
 			{
@@ -329,10 +373,21 @@ public class GlDhMetaRenderer implements IDhMetaRenderer
 		}
 		else
 		{
+			if (this.nullableColorTexture != null)
+			{
+				this.nullableColorTexture.destroy();
+			}
 			this.nullableColorTexture = null;
 		}
-		
-		
+
+
+		// The texture resize() paths (unlike the constructors) leave the texture bound to the active
+		// texture unit. Reset the binding to 0 so we don't leak GL state into the rest of the frame;
+		// otherwise the stale binding corrupts later (vanilla/shader) chunk rendering and makes nearby
+		// chunks look transparent. This matches the cleanup the texture constructors already do.
+		GL32.glBindTexture(GL32.GL_TEXTURE_2D, 0);
+
+
 		ApiEventInjector.INSTANCE.fireAllEvents(DhApiAfterColorDepthTextureCreatedEvent.class, textureCreatedParam);
 	}
 	
