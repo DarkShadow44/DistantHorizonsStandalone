@@ -52,6 +52,7 @@ import org.jetbrains.annotations.Nullable;
 import javax.annotation.CheckForNull;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.List;
@@ -115,16 +116,40 @@ public class DhClientLevel extends AbstractDhLevel implements IDhClientLevel
 		File saveFolder = saveStructure.getSaveFolder(clientLevelWrapper);
 		File pre23Folder = saveStructure.getPre23SaveFolder(clientLevelWrapper);
 		
-		saveFolder.mkdirs();
-		
-		if (pre23Folder.exists())
+		// Note: don't create saveFolder before attempting the migration below. File.renameTo
+		// fails if the destination already exists, so pre-creating it would guarantee the
+		// migration fails on Windows.
+		if (pre23Folder.exists() && !pre23Folder.equals(saveFolder))
 		{
-			if (!pre23Folder.renameTo(saveFolder))
+			if (saveFolder.exists())
 			{
-				throw new RuntimeException("Could not move old save data folder: [" + pre23Folder.getAbsolutePath() + "] to [" + saveFolder.getAbsolutePath() + "].");
+				// Both the old (pre-2.3) and the new save folder exist. This can happen if the
+				// user switched between DH versions. Don't abort level loading: keep using the
+				// new folder and leave the old one in place so no data is lost. The old folder
+				// can be removed manually if it's no longer needed.
+				LOGGER.warn("Both the old save folder [" + pre23Folder.getAbsolutePath() + "] and the new save folder ["
+					+ saveFolder.getAbsolutePath() + "] exist. Using the new folder; the old one can be deleted if no longer needed.");
+			}
+			else if (!pre23Folder.renameTo(saveFolder))
+			{
+				// File.renameTo is unreliable on Windows (it fails if the destination exists or
+				// a file inside the source is locked). Fall back to Files.move, and if that also
+				// fails, warn and continue with the new folder instead of throwing and aborting
+				// the entire level load (which would leave LODs stuck and then disappearing).
+				try
+				{
+					Files.move(pre23Folder.toPath(), saveFolder.toPath());
+				}
+				catch (IOException e)
+				{
+					LOGGER.warn("Could not migrate old save data folder [" + pre23Folder.getAbsolutePath() + "] to ["
+						+ saveFolder.getAbsolutePath() + "], continuing with the new folder. Error: [" + e.getMessage() + "].", e);
+				}
 			}
 		}
-		
+
+		saveFolder.mkdirs();
+
 		if (!saveFolder.exists())
 		{
 			throw new IOException("unable to create save folder at ["+saveFolder.getPath()+"]. If you're on Windows you may need to enable long file paths.");
