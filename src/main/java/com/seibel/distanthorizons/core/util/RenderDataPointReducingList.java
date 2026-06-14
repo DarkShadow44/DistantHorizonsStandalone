@@ -441,6 +441,13 @@ public class RenderDataPointReducingList extends AbstractPhantomArrayList
 				this.setSortingIndex(writeIndex++, readIndex);
 			}
 		}
+
+        // If writeIndex = 0, then there's nothing to sort or re-link.
+        // This can happen when all of datas equal DEFAUlT_DATA, not just small size
+        if (writeIndex == 0)
+        {
+            return;
+        }
 		
 		this.sortBySize(writeIndex);
 		for (int index = 1; index < writeIndex; index++) 
