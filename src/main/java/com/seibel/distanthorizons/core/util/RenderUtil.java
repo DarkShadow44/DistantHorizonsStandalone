@@ -232,11 +232,18 @@ public class RenderUtil
 		}
 		
 		
-		// the player's FOV setting doesn't affect vanilla's render distance,
-		// which can cause issues for certain zoom mods.
-		// So the FOV setting should not affect DH's near clip plane;
-		// therefore, the FOV is left at a fixed value of 70 (MC's default)
-		double fov = 70;
+		// The near clip plane distance has to account for the player's FOV.
+		// At a wider FOV the edges of the screen show terrain that is geometrically
+		// closer to the camera, so the near clip plane must be pulled in; otherwise
+		// LODs at the edge of the screen fall behind the (far pushed out) near clip
+		// plane and get clipped/culled. This was previously hard coded to 70, which
+		// caused LODs to disappear at the screen edges when using a high FOV.
+		//
+		// The FOV is clamped to a minimum of 70 (MC's default) so that zoom mods,
+		// which lower the FOV, can't push the near clip plane further out (that would
+		// increase overdraw and can re-expose the vanilla render distance border).
+		// Only a wider-than-default FOV pulls the near clip plane closer.
+		double fov = Math.max(70d, getCurrentVerticalFovInDegrees());
 		
 		double aspectRatio = (double) MC_RENDER.getTargetFramebufferViewportWidth() / MC_RENDER.getTargetFramebufferViewportHeight();
 		
@@ -246,9 +253,34 @@ public class RenderUtil
 				* (MathUtil.pow2(aspectRatio) + 1d)));
 	}
 	
-	/** 
+	/**
+	 * Derives the current vertical FOV (in degrees) from Minecraft's projection matrix. <br>
+	 * For a standard perspective projection matrix {@code m11 = 1 / tan(fovY / 2)}, and
+	 * since {@code m11} is on the matrix diagonal it is unaffected by row/column-major
+	 * ordering, making this safe regardless of how the matrix was captured. <br>
+	 * Returns 70 (MC's default) if the matrix isn't available or looks invalid.
+	 */
+	private static double getCurrentVerticalFovInDegrees()
+	{
+		DhApiMat4f mcProjectionMatrix = ClientApi.RENDER_STATE.mcProjectionMatrix;
+		if (mcProjectionMatrix == null)
+		{
+			return 70d;
+		}
+
+		float m11 = mcProjectionMatrix.m11;
+		if (m11 <= 0f || Float.isNaN(m11) || Float.isInfinite(m11))
+		{
+			return 70d;
+		}
+
+		double fovYRadians = 2d * Math.atan(1d / m11);
+		return Math.toDegrees(fovYRadians);
+	}
+
+	/**
 	 * Returns a new distance if the player is sufficiently far above the world.
-	 * @return -1 if no override is necessary 
+	 * @return -1 if no override is necessary
 	 */
 	public static float getHeightBasedNearClipOverrideBlockDistance()
 	{
