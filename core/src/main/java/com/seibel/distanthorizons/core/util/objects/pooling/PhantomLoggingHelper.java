@@ -203,7 +203,7 @@ public class PhantomLoggingHelper
 						{
 							LOGGER.warn("Phantoms collected: ["+ F3Screen.NUMBER_FORMAT.format(collectedCount)+"].");
 							
-							PhantomLoggingHelper.LogAllocationStackTracePairCounts(LOGGER, parentClassNameCountPairList);
+							PhantomLoggingHelper.LogAllocationStackTracePairCounts(LOGGER, "Parent class", parentClassNameCountPairList);
 							
 							//// log stack traces if present
 							//if (LOG_PHANTOM_ALLOCATION_STACKS)
