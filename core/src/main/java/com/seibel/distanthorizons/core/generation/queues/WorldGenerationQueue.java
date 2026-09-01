@@ -91,8 +91,7 @@ public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDeb
 	private DhBlockPos2D generationTargetPos = DhBlockPos2D.ZERO;
 		
 	/** just used for rendering to the F3 menu */
-	private int estimatedRemainingTaskCount = 0;
-	private int estimatedRemainingChunkCount = 0;
+	private long estimatedRemainingChunkCount = 0;
 	
 	private final RollingAverage rollingAverageChunkGenTimeInMs = new RollingAverage(Runtime.getRuntime().availableProcessors() * 500);
 	@Override public RollingAverage getRollingAverageChunkGenTimeInMs() { return this.rollingAverageChunkGenTimeInMs; }
@@ -613,11 +612,8 @@ public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDeb
 	
 	@Override public String getRetrievalTypeName() { return "generating chunks"; }
 	
-	@Override public int getEstimatedRemainingTaskCount() { return this.estimatedRemainingTaskCount; }
-	@Override public void setEstimatedRemainingTaskCount(int newEstimate) { this.estimatedRemainingTaskCount = newEstimate; }
-	
-	@Override public int getRetrievalEstimatedRemainingChunkCount() { return this.estimatedRemainingChunkCount; }
-	@Override public void setRetrievalEstimatedRemainingChunkCount(int newEstimate) { this.estimatedRemainingChunkCount = newEstimate; }
+	@Override public long getRetrievalEstimatedRemainingChunkCount() { return this.estimatedRemainingChunkCount; }
+	@Override public void setRetrievalEstimatedRemainingChunkCount(long newEstimate) { this.estimatedRemainingChunkCount = newEstimate; }
 	
 	@Override 
 	public void addDebugMenuStringsToList(List<String> messageList) { }

@@ -22,8 +22,7 @@ public class RemoteWorldRetrievalQueue extends AbstractFullDataNetworkRequestQue
 {
 	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
-	private int estimatedRemainingTaskCount;
-	private int estimatedTotalChunkCount;
+	private long estimatedTotalChunkCount;
 	
 	private final RollingAverage rollingAverageChunkGenTimeInMs = new RollingAverage(1_000);
 	@Override public RollingAverage getRollingAverageChunkGenTimeInMs() { return this.rollingAverageChunkGenTimeInMs; }
@@ -133,14 +132,9 @@ public class RemoteWorldRetrievalQueue extends AbstractFullDataNetworkRequestQue
 	//===============//
 	
 	@Override
-	public int getEstimatedRemainingTaskCount() { return this.estimatedRemainingTaskCount; }
+	public long getRetrievalEstimatedRemainingChunkCount() { return this.estimatedTotalChunkCount; }
 	@Override
-	public void setEstimatedRemainingTaskCount(int newEstimate) { this.estimatedRemainingTaskCount = newEstimate; }
-	
-	@Override
-	public int getRetrievalEstimatedRemainingChunkCount() { return this.estimatedTotalChunkCount; }
-	@Override
-	public void setRetrievalEstimatedRemainingChunkCount(int newEstimate) { this.estimatedTotalChunkCount = newEstimate; }
+	public void setRetrievalEstimatedRemainingChunkCount(long newEstimate) { this.estimatedTotalChunkCount = newEstimate; }
 	
 	@Override 
 	public int getQueuedChunkCount() { return 0; }

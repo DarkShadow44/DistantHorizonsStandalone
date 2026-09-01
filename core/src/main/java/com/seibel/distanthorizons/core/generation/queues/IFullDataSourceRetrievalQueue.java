@@ -136,13 +136,9 @@ public interface IFullDataSourceRetrievalQueue extends Closeable
 	/** returns how many chunks are currently queued for retrieval */
 	int getQueuedChunkCount();
 	
-	/** used for rendering to the F3 menu */
-	int getEstimatedRemainingTaskCount();
-	void setEstimatedRemainingTaskCount(int newEstimate);
-	
 	/** used for displaying a progress update to the user */
-	int getRetrievalEstimatedRemainingChunkCount();
-	void setRetrievalEstimatedRemainingChunkCount(int newEstimate);
+	long getRetrievalEstimatedRemainingChunkCount();
+	void setRetrievalEstimatedRemainingChunkCount(long newEstimate);
 
 	void addDebugMenuStringsToList(List<String> messageList);
 	

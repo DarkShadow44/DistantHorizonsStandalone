@@ -137,6 +137,7 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 	private final Set<Long> queuedGenerationPosSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
 	/** cached array to prevent having to re-allocate it each tick */
 	private final ArrayList<Long> sortedMissingPosList = new ArrayList<>();
+	
 	private final ArrayList<LodRenderSection> debugNodeList = new ArrayList<>();
 	/** cached to prevent re-allocating each tick */
 	private final QuadTreeTickNodeHolder tickNodeHolder = new QuadTreeTickNodeHolder();
@@ -897,22 +898,29 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 		//==========================//
 		
 		// calculate an estimate for the max number of chunks for the queue
-		int totalWorldGenChunkCount = 0;
-		int totalWorldGenTaskCount = 0;
-		for (int i = 0; i < this.sortedMissingPosList.size(); i++)
+		long totalWorldGenChunkCount = 0;
+		
+		if (!this.sortedMissingPosList.isEmpty())
 		{
-			long missingPos = this.sortedMissingPosList.get(i);
+			// count the missing LODs
 			
-			// chunk count
-			int sectionWidthInChunks = DhSectionPos.getChunkWidth(missingPos);
-			totalWorldGenChunkCount += sectionWidthInChunks * sectionWidthInChunks;
+			for (int i = 0; i < this.sortedMissingPosList.size(); i++)
+			{
+				long missingPos = this.sortedMissingPosList.get(i);
+				
+				// chunk count
+				int sectionWidthInChunks = DhSectionPos.getChunkWidth(missingPos);
+				totalWorldGenChunkCount += sectionWidthInChunks * sectionWidthInChunks;
+			}
+		}
+		else
+		{
+			// count the LODs that need re-generating
 			
-			// task count
-			totalWorldGenTaskCount++;
+			totalWorldGenChunkCount = this.fullDataSourceProvider.repo.getRegenChunkCount();
 		}
 		
 		this.fullDataSourceProvider.setEstimatedRemainingRetrievalChunkCount(totalWorldGenChunkCount);
-		this.fullDataSourceProvider.setTotalRetrievalPositionCount(totalWorldGenTaskCount);
 	}
 	
 	@Override

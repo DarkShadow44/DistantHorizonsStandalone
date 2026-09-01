@@ -220,7 +220,7 @@ public class GeneratedFullDataSourceProvider extends FullDataSourceProviderV2 im
 	public boolean canRetrieveMissingDataSources() { return true; }
 	
 	@Override
-	public void setEstimatedRemainingRetrievalChunkCount(int newCount) 
+	public void setEstimatedRemainingRetrievalChunkCount(long newCount) 
 	{
 		IFullDataSourceRetrievalQueue worldGenQueue = this.worldGenQueueRef.get();
 		if (worldGenQueue != null)

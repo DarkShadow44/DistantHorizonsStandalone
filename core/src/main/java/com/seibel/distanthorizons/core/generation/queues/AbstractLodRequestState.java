@@ -98,7 +98,7 @@ public abstract class AbstractLodRequestState
 	private void sendRetrievalProgress()
 	{
 		// format the remaining chunks
-		int remainingChunkCount = this.retrievalQueue.getRetrievalEstimatedRemainingChunkCount();
+		long remainingChunkCount = this.retrievalQueue.getRetrievalEstimatedRemainingChunkCount();
 		remainingChunkCount += this.retrievalQueue.getQueuedChunkCount();
 		String remainingChunkCountStr = F3Screen.NUMBER_FORMAT.format(remainingChunkCount);
 		

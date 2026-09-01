@@ -418,10 +418,8 @@ public class FullDataSourceProviderV2 implements IDebugRenderable, AutoCloseable
 	
 	public void clearRetrievalQueue() { }
 	
-	/** Can be used to display how many total retrieval requests might be available. */
-	public void setTotalRetrievalPositionCount(int newCount) { }
 	/** Can be used to display how many total chunk retrieval requests should be available. */
-	public void setEstimatedRemainingRetrievalChunkCount(int newCount) { }
+	public void setEstimatedRemainingRetrievalChunkCount(long newCount) { }
 	
 	//endregion
 	

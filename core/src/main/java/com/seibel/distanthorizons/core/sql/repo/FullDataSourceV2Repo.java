@@ -22,6 +22,7 @@ package com.seibel.distanthorizons.core.sql.repo;
 import com.seibel.distanthorizons.api.enums.config.EDhApiDataCompressionMode;
 import com.seibel.distanthorizons.core.dataObjects.fullData.sources.FullDataSourceV2;
 import com.seibel.distanthorizons.core.enums.EDhDirection;
+import com.seibel.distanthorizons.core.generation.tasks.DataSourceRetrievalTask;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.util.objects.pooling.PhantomArrayList.PhantomArrayListCheckout;
@@ -589,6 +590,47 @@ public class FullDataSourceV2Repo extends AbstractDhRepo<Long, FullDataSourceV2D
 			throw new RuntimeException(e);
 		}
 	}
+	
+	/** 
+	 * Uses the same math as {@link DataSourceRetrievalTask#DataSourceRetrievalTask(long, byte)} 
+	 * to determine chunk counts.
+	 */
+	private final String getRegenChunkCountSql =
+		"select sum(power(2, DetailLevel + 6)) as ChunkCount " +
+		"from " + this.getTableName() + " where Regenerate = 1; ";
+	public long getRegenChunkCount()
+	{
+		try (PreparedStatement statement = this.createPreparedStatement(this.getRegenChunkCountSql))
+		{
+			if (statement == null)
+			{
+				return 0L;
+			}
+			
+			try (ResultSet result = this.query(statement))
+			{
+				if (result == null || !result.next())
+				{
+					return 0L;
+				}
+				
+				
+				long chunkCount = result.getLong("ChunkCount");
+				return chunkCount;
+			}
+		}
+		catch (SQLException e)
+		{
+			// done to handle resultSet.get() methods which can throw closed exceptions
+			if (DbConnectionClosedException.isClosedException(e))
+			{
+				return 0L;
+			}
+			
+			throw new RuntimeException(e);
+		}
+	}
+	
 	
 	//endregion
 	
