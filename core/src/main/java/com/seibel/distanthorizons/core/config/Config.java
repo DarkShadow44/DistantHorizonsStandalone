@@ -1462,15 +1462,15 @@ public class Config
 					//+ "different biome types (mountain, ocean, forest, etc.) \n"
 					//+ "use predetermined heights to simulate having height data. \n"
 					//+ "- Fastest \n"
-					+ "\n"
-					+ EDhApiDistantGeneratorMode.SURFACE + " \n"
-					+ "Generate the world surface, \n"
-					+ "this does NOT include trees, \n"
-					+ "or structures. \n"
+					//+ "\n"
+					//+ EDhApiDistantGeneratorMode.SURFACE + " \n"
+					//+ "Generate the world surface, \n"
+					//+ "this does NOT include trees, \n"
+					//+ "or structures. \n"
 					+ "\n"
 					+ EDhApiDistantGeneratorMode.FEATURES + " \n"
 					+ "Generate everything except structures. \n"
-					+ "WARNING: This may cause world generator bugs or instability when paired with certain world generator mods. \n"
+					+ "Note: This may cause world generator bugs or instability when paired with certain world generator mods. \n"
 					+ "\n"
 					+ EDhApiDistantGeneratorMode.INTERNAL_SERVER + " \n"
 					+ "Ask the local server to generate/load each chunk. \n"
@@ -1478,6 +1478,27 @@ public class Config
 					+ "but may cause server/simulation lag. \n"
 					+ "Note: unlike other modes this option DOES save generated chunks to \n"
 					+ "Minecraft's region files. \n"
+					+ "")
+				.build();
+			
+			public static ConfigEntry<Boolean> enableFastSurfaceGenerator = new ConfigEntry.Builder<Boolean>()
+				.setChatCommandName("generation.enableFastSurface")
+				.set(true)
+				.comment(""
+					+ "Requires a world restart to change. \n"
+					+ " \n"
+					+ "If enabled Distant Horizons will very quickly generate a \n"
+					+ "rough estimate of the terrain surface to \n"
+					+ "fill out the render distance. \n"
+					+ " \n"
+					+ "After the surface has been generated Distant Horizons \n"
+					+ "will then generate the individual chunks as defined \n"
+					+ "by your \"distantGeneratorMode\" config to get \n"
+					+ "trees and structures. \n"
+					+ " \n"
+					+ "It is recommended to disable this option \n"
+					+ "if you have a completely custom world, \n"
+					+ "to prevent seeing normal terrain. \n"
 					+ "")
 				.build();
 			

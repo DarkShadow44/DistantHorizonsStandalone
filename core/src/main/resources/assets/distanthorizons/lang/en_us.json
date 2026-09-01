@@ -668,6 +668,10 @@
     "Distance Generator Mode",
   "distanthorizons.config.common.worldGenerator.distantGeneratorMode.@tooltip":
     "How complicated the generation should be when generating LODs outside the vanilla render distance.",
+  "distanthorizons.config.common.worldGenerator.enableFastSurfaceGenerator":
+    "Enable Fast Surface Gen",
+  "distanthorizons.config.common.worldGenerator.enableFastSurfaceGenerator.@tooltip":
+    "Requires a world restart to change. \n\nIf enabled Distant Horizons will very quickly generate a \nrough estimate of the terrain surface to \nfill out the render distance. \n\nAfter the surface has been generated Distant Horizons \nwill then generate the individual chunks as defined \nby your \"distantGeneratorMode\" config to get \ntrees and structures. \n\nIt is recommended to disable this option \nif you have a completely custom world, \nto prevent seeing normal terrain.",
   "distanthorizons.config.common.worldGenerator.showGenerationProgress":
     "Show Generation Progress",
   "distanthorizons.config.common.worldGenerator.showGenerationProgress.@tooltip":

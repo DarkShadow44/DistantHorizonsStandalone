@@ -23,11 +23,13 @@ import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiWorldGeneratio
 import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiWorldGeneratorReturnType;
 import com.seibel.distanthorizons.api.interfaces.override.worldGenerator.IDhApiWorldGenerator;
 import com.seibel.distanthorizons.api.objects.data.IDhApiFullDataSource;
+import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.dataObjects.fullData.sources.FullDataSourceV2;
 import com.seibel.distanthorizons.core.dataObjects.transformers.LodDataBuilder;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.level.IDhServerLevel;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
+import com.seibel.distanthorizons.core.pos.DhSectionPos;
 import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.IChunkWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IServerLevelWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.worldGeneration.IChunkGenerator;
@@ -38,6 +40,7 @@ import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiDistantGenerat
 import com.seibel.distanthorizons.core.util.LodUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.IWrapperFactory;
 import com.seibel.distanthorizons.core.logging.DhLogger;
+import com.seibel.distanthorizons.coreapi.util.BitShiftUtil;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -60,6 +63,8 @@ public class DhWorldGenerator implements IDhApiWorldGenerator
 	public final IChunkGenerator chunkGenerator;
 	public final IRoughGenerator roughGenerator;
 	
+	public final boolean allowRoughSurfaceGen;
+	
 	
 	
 	//=============//
@@ -74,6 +79,8 @@ public class DhWorldGenerator implements IDhApiWorldGenerator
 		
 		this.chunkGenerator = WRAPPER_FACTORY.createChunkGenerator(serverLevel);
 		this.roughGenerator = WRAPPER_FACTORY.createRoughGenerator(serverLevel, this.chunkGenerator);
+		
+		this.allowRoughSurfaceGen = Config.Common.WorldGenerator.enableFastSurfaceGenerator.get();
 	}
 	
 	//endregion
@@ -102,8 +109,16 @@ public class DhWorldGenerator implements IDhApiWorldGenerator
 	@Override
 	public byte getLargestDataDetailLevel() 
 	{ 
-		//return LodUtil.BLOCK_DETAIL_LEVEL;
-		return (byte) (LodUtil.BLOCK_DETAIL_LEVEL + 12);
+		if (this.allowRoughSurfaceGen)
+		{
+			// we can generate any LOD detail level
+			return (byte) (LodUtil.BLOCK_DETAIL_LEVEL + 12);
+		}
+		else
+		{
+			// we can only generate chunks
+			return LodUtil.BLOCK_DETAIL_LEVEL;
+		}
 	}
 	
 	@Override
@@ -132,10 +147,30 @@ public class DhWorldGenerator implements IDhApiWorldGenerator
 		EDhApiDistantGeneratorMode generatorMode, ExecutorService worldGeneratorThreadPool,
 		Consumer<IDhApiFullDataSource> resultConsumer)
 	{
+		int widthInBlocks = BitShiftUtil.powerOfTwo(detailLevel + DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL);
+		int widthInChunks = widthInBlocks / LodUtil.CHUNK_WIDTH;
+		
+		
+		if (!this.allowRoughSurfaceGen)
+		{
+			// only chunk generation is allowed
+			return this.generateChunksAsync(
+				chunkPosMinX, chunkPosMinZ,
+				widthInChunks,
+				pooledFullDataSource,
+				generatorMode,
+				worldGeneratorThreadPool,
+				resultConsumer);
+		}
+		
+		
 		if (detailLevel == 0)
 		{
+			// we want a chunk, grab that from the chunk generator
+			
 			return this.generateChunksAsync(
-				chunkPosMinX, chunkPosMinZ, 
+				chunkPosMinX, chunkPosMinZ,
+				widthInChunks,
 				pooledFullDataSource, 
 				generatorMode, 
 				worldGeneratorThreadPool, 
@@ -143,6 +178,8 @@ public class DhWorldGenerator implements IDhApiWorldGenerator
 		}
 		else
 		{
+			// we want something larger than a chunk,
+			// estimate the surface
 			return CompletableFuture.runAsync(() ->
 				this.roughGenerator.generateSurface(
 					chunkPosMinX, chunkPosMinZ,
@@ -155,7 +192,8 @@ public class DhWorldGenerator implements IDhApiWorldGenerator
 		}
 	}
 	private @NotNull CompletableFuture<Void> generateChunksAsync(
-		int chunkPosMinX, int chunkPosMinZ, 
+		int chunkPosMinX, int chunkPosMinZ,
+		int widthInChunks,
 		IDhApiFullDataSource pooledApiDataSource, 
 		EDhApiDistantGeneratorMode generatorMode, 
 		ExecutorService worldGeneratorThreadPool, 
@@ -184,10 +222,7 @@ public class DhWorldGenerator implements IDhApiWorldGenerator
 		}
 		
 		
-		final int widthInChunks = 4;
 		ArrayList<IChunkWrapper> chunkList = new ArrayList<>(widthInChunks * widthInChunks);
-		
-		
 		
 		CompletableFuture<Void> genFuture = this.chunkGenerator.queueGenEvent(
 			chunkPosMinX, chunkPosMinZ, widthInChunks,

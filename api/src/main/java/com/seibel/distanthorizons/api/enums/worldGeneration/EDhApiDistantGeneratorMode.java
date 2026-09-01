@@ -19,6 +19,8 @@
 
 package com.seibel.distanthorizons.api.enums.worldGeneration;
 
+import com.seibel.distanthorizons.api.enums.config.DisallowSelectingViaConfigGui;
+
 /**
  * PRE_EXISTING_ONLY <br>
  * SURFACE <br>
@@ -62,6 +64,7 @@ public enum EDhApiDistantGeneratorMode
 	 * this does NOT include caves, trees,
 	 * or structures.
 	 */
+	@DisallowSelectingViaConfigGui
 	SURFACE((byte) 4),
 	
 	/**
