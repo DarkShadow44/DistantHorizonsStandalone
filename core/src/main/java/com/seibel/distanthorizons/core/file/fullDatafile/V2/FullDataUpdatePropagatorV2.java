@@ -9,7 +9,6 @@ import com.seibel.distanthorizons.core.generation.queues.IFullDataSourceRetrieva
 import com.seibel.distanthorizons.core.generation.tasks.DataSourceRetrievalResult;
 import com.seibel.distanthorizons.core.level.IDhClientLevel;
 import com.seibel.distanthorizons.core.level.IDhLevel;
-import com.seibel.distanthorizons.core.level.IDhServerLevel;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
@@ -22,7 +21,6 @@ import com.seibel.distanthorizons.core.util.threading.PriorityTaskPicker;
 import com.seibel.distanthorizons.core.util.threading.ThreadPoolUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftSharedWrapper;
-import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 
 import java.awt.*;
@@ -308,6 +306,17 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 				{
 					executor.execute(() ->
 					{
+						// Don't downsample extremely large LODs
+						// since they'll take a long time and take up a lot of disk space
+						// that may not be needed.
+						// If they are needed at a future time, they can be generated.
+						if (DhSectionPos.getDetailLevel(updatePos) >= DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL + 6) // LOD 1 datapoint 64 blocks wide, 4096 total blocks wide
+						{
+							this.provider.repo.setApplyToChild(updatePos, false);
+							this.updatingPosSet.remove(updatePos);
+							return;
+						}
+						
 						ReentrantLock parentReadLock = this.dataUpdater.updateLockProvider.getLock(updatePos);
 						boolean parentLocked = false;
 						try
