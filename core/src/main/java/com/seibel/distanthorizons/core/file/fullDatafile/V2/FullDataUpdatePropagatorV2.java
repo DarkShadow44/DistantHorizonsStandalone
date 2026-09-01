@@ -471,8 +471,7 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 		}
 		
 		
-		// TODO common method needed
-		int maxQueueCount = GeneratedFullDataSourceProvider.MAX_WORLD_GEN_REQUESTS_PER_THREAD * Config.Common.MultiThreading.numberOfThreads.get();
+		int maxQueueCount = GeneratedFullDataSourceProvider.getMaxWorldGenQueueCount();
 		maxQueueCount /= 2;
 		
 		GeneratedFullDataSourceProvider genProvider = ((GeneratedFullDataSourceProvider)this.provider);

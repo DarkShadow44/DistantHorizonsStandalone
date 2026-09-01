@@ -79,17 +79,21 @@ public class GeneratedFullDataSourceProvider extends FullDataSourceProviderV2 im
 	//=============//
 	// constructor //
 	//=============//
+	//region constructor
 	
 	public GeneratedFullDataSourceProvider(IDhLevel level, ISaveStructure saveStructure) throws SQLException, IOException 
 	{ this(level, saveStructure, null); }
 	public GeneratedFullDataSourceProvider(IDhLevel level, ISaveStructure saveStructure, @Nullable File saveDirOverride) throws SQLException, IOException
 	{ super(level, saveStructure, saveDirOverride); }
 	
+	//endregion constructor
+	
 	
 	
 	//=================//
 	// event listeners //
 	//=================//
+	//region event listeners
 	
 	public void addWorldGenCompleteListener(IOnWorldGenCompleteListener listener) 
 	{
@@ -106,11 +110,14 @@ public class GeneratedFullDataSourceProvider extends FullDataSourceProviderV2 im
 		}
 	}
 	
+	//endregion event listeners
+	
 	
 	
 	//========//
 	// events //
 	//========//
+	//region events
 	
 	private void onWorldGenTaskComplete(@NotNull Long genPos, @Nullable DataSourceRetrievalResult genTaskResult, @Nullable Throwable exception)
 	{
@@ -172,12 +179,16 @@ public class GeneratedFullDataSourceProvider extends FullDataSourceProviderV2 im
 		}
 	}
 	
+	//endregion events
+	
 	
 	
 	//===================================//
 	// world gen (data source retrieval) //
 	//===================================//
+	//region world gen
 	
+	/** @see IFullDataSourceRetrievalQueue#lowestDataDetail() */
 	public byte lowestDataDetailLevel()
 	{
 		IFullDataSourceRetrievalQueue fullDataSourceRetrievalQueue = this.worldGenQueueRef.get();
@@ -188,6 +199,11 @@ public class GeneratedFullDataSourceProvider extends FullDataSourceProviderV2 im
 		
 		return (byte) (DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL + fullDataSourceRetrievalQueue.lowestDataDetail());
 	}
+	
+	public static int getMaxWorldGenQueueCount() 
+	{ return MAX_WORLD_GEN_REQUESTS_PER_THREAD * Config.Common.MultiThreading.numberOfThreads.get(); }
+	
+	
 	
 	/**
 	 * Assigns the queue for handling world gen and does first time setup as well. <br> 
@@ -232,7 +248,7 @@ public class GeneratedFullDataSourceProvider extends FullDataSourceProviderV2 im
 		
 		
 		
-		int maxWorldGenQueueCount = MAX_WORLD_GEN_REQUESTS_PER_THREAD * Config.Common.MultiThreading.numberOfThreads.get();
+		int maxWorldGenQueueCount = getMaxWorldGenQueueCount();
 		int currentQueueCount = WorldChunkUpdateManager.INSTANCE.getTotalQueuedCount();
 		
 		
@@ -458,11 +474,14 @@ public class GeneratedFullDataSourceProvider extends FullDataSourceProviderV2 im
 		return generationList;
 	}
 	
+	//endregion world gen
+	
 	
 	
 	//================//
 	// base overrides //
 	//================//
+	//region base overrides
 	
 	@Override 
 	public void close()
@@ -472,6 +491,7 @@ public class GeneratedFullDataSourceProvider extends FullDataSourceProviderV2 im
 		this.delayedFullDataSourceSaveCache.close();
 	}
 	
+	//endregion base overrides
 	
 	
 	
@@ -479,11 +499,10 @@ public class GeneratedFullDataSourceProvider extends FullDataSourceProviderV2 im
 	//================//
 	// helper classes //
 	//================//
+	//region helper classes
 	
 	private CompletableFuture<Void> onDataSourceSaveAsync(FullDataSourceV2 fullDataSource) 
 	{ return this.updateDataSourceAsync(fullDataSource); }
-	
-	
 	
 	/** used by external event listeners */
 	public interface IOnWorldGenCompleteListener
@@ -496,5 +515,8 @@ public class GeneratedFullDataSourceProvider extends FullDataSourceProviderV2 im
 		void onWorldGenTaskComplete(long pos);
 		
 	}
+	 
+	//endregion helper classes
+	
 	
 }
