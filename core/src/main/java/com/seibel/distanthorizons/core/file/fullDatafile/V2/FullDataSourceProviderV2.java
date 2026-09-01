@@ -71,8 +71,13 @@ public class FullDataSourceProviderV2 implements IDebugRenderable, AutoCloseable
 	 * @see FullDataSourceProviderV2#LEAF_SECTION_DETAIL_LEVEL
 	 */
 	public static final byte ROOT_SECTION_DETAIL_LEVEL
-			= DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL
-			+ LodUtil.REGION_DETAIL_LEVEL;
+		= DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL
+		// We might be able to get away with 9,
+		// but James would like to keep a little safe buffer, just in case.
+		// At 10+ the LOD application process breaks down and
+		// we start to get weird anomolies that look bad.
+		+ 8;
+	
 	/**
 	 * The lowest numerical detail level possible. 
 	 *

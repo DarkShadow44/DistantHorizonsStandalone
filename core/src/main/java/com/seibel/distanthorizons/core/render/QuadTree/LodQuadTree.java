@@ -116,9 +116,15 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 	private CompletableFuture<Void> beaconUpdateFuture = CompletableFuture.completedFuture(null);
 	
 	
-	/** the smallest numerical detail level number that can be rendered */
+	/** 
+	 * The smallest numerical detail level number that can be rendered. <Br>
+	 * Stored as an absolute detail level (ie lowest numerical value is 0)
+	 */
 	private byte maxLeafRenderDetailLevel;
-	/** the largest numerical detail level number that can be rendered */
+	/** 
+	 * the largest numerical detail level number that can be rendered. <Br>
+	 * Stored as an absolute detail level (ie lowest numerical value is 0)
+	 */
 	private byte minRootRenderDetailLevel;
 	
 	/** used to calculate when a detail drop will occur */
@@ -1159,6 +1165,9 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 	
 	private void updateDetailLevelVariables()
 	{
+		// Note: these detail levels are all absolute, not section.
+		// Section detail levels should be subtracted by "DhSectionPos.SECTION_BLOCK_DETAIL_LEVEL".
+		
 		this.detailDropOffDistanceUnit = Config.Client.Advanced.Graphics.Quality.horizontalQuality.get().distanceUnitInBlocks * LodUtil.CHUNK_WIDTH;
 		this.detailDropOffLogBase = Math.log(Config.Client.Advanced.Graphics.Quality.horizontalQuality.get().quadraticBase);
 		
@@ -1169,6 +1178,9 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 		byte minSectionDetailLevel = this.calcDetailLevelFromDistance(this.blockRenderDistanceDiameter); // get the minimum allowed detail level
 		minSectionDetailLevel -= 1; // -1 so corners can't render lower than their adjacent neighbors. space
 		minSectionDetailLevel = (byte) Math.min(minSectionDetailLevel, this.treeRootDetailLevel); // don't allow rendering lower detail sections than what the tree contains
+		minSectionDetailLevel = (byte) Math.min(
+			minSectionDetailLevel, 
+			FullDataSourceProviderV2.ROOT_SECTION_DETAIL_LEVEL - DhSectionPos.SECTION_BLOCK_DETAIL_LEVEL); // the tree can only provide LODs as low as the provider has
 		this.minRootRenderDetailLevel = (byte) Math.max(minSectionDetailLevel, this.maxLeafRenderDetailLevel); // respect the user's selected max resolution if it is lower detail (IE they want 2x2 block, but minSectionDetailLevel is specifically for 1x1 block render resolution)
 	}
 	
