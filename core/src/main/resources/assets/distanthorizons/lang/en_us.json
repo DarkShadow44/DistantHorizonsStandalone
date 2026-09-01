@@ -1013,19 +1013,19 @@
     "Above And Below Set Height",
     
   "distanthorizons.config.enum.EDhApiDistantGeneratorMode.NONE":
-    "1. Existing Only",
+    "Existing Only",
   "distanthorizons.config.enum.EDhApiDistantGeneratorMode.PRE_EXISTING_ONLY":
-    "2. Pre-Existing Chunks only",
+    "Pre-Existing Chunks only",
   "distanthorizons.config.enum.EDhApiDistantGeneratorMode.BIOME_ONLY":
-    "3. Biome only",
+    "Biome only",
   "distanthorizons.config.enum.EDhApiDistantGeneratorMode.BIOME_ONLY_SIMULATE_HEIGHT":
-    "4. Biome only simulate height",
+    "Biome only simulate height",
   "distanthorizons.config.enum.EDhApiDistantGeneratorMode.SURFACE":
-    "5. Surface",
+    "Surface",
   "distanthorizons.config.enum.EDhApiDistantGeneratorMode.FEATURES":
-    "6. Features",
+    "Features",
   "distanthorizons.config.enum.EDhApiDistantGeneratorMode.INTERNAL_SERVER":
-    "7. Full - Save Chunks",
+    "Full - Save Chunks",
   
   "distanthorizons.config.enum.EDhApiDistantGeneratorProgressDisplayLocation.OVERLAY":
     "Overlay",
