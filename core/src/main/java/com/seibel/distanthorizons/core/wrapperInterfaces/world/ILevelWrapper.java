@@ -85,6 +85,8 @@ public interface ILevelWrapper extends IDhApiLevelWrapper, IBindable
 	@Override
 	int getMinHeight();
 	
+	int getSeaLevel();
+	
 	/** Fired when the level is being unloaded. Doesn't unload the level. */
 	void onUnload();
 	
