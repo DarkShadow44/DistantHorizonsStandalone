@@ -138,6 +138,9 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 	/** cached array to prevent having to re-allocate it each tick */
 	private final ArrayList<Long> sortedMissingPosList = new ArrayList<>();
 	
+	private long lastRegenTaskCountQueryMs = 0L;
+	private long cachedRegenTaskCount = 0L;
+	
 	private final ArrayList<LodRenderSection> debugNodeList = new ArrayList<>();
 	/** cached to prevent re-allocating each tick */
 	private final QuadTreeTickNodeHolder tickNodeHolder = new QuadTreeTickNodeHolder();
@@ -917,7 +920,21 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 		{
 			// count the LODs that need re-generating
 			
-			totalWorldGenChunkCount = this.fullDataSourceProvider.repo.getRegenChunkCount();
+			// only query the DB every few seconds
+			// to prevent constant DB reads (we only need this as an estimate
+			// and it isn't likely to change very often/quickly)
+			long timeSinceLastQuery = System.currentTimeMillis() - this.lastRegenTaskCountQueryMs;
+			if (timeSinceLastQuery > 10_000L)
+			{
+				totalWorldGenChunkCount = this.fullDataSourceProvider.repo.getRegenChunkCount();
+				this.cachedRegenTaskCount = totalWorldGenChunkCount;
+				
+				this.lastRegenTaskCountQueryMs = System.currentTimeMillis();
+			}
+			else
+			{
+				totalWorldGenChunkCount = this.cachedRegenTaskCount;
+			}
 		}
 		
 		this.fullDataSourceProvider.setEstimatedRemainingRetrievalChunkCount(totalWorldGenChunkCount);
