@@ -1872,6 +1872,14 @@ public class Config
 						+ "")
 					.build();
 				
+				public static ConfigEntry<Boolean> showDeprecatedRendererWarningOnStartup = new ConfigEntry.Builder<Boolean>()
+					.set(true)
+					.comment(""
+						+ "If enabled, a chat message will be displayed when DH is using \n"
+						+ "a deprecated renderer. \n"
+						+ "")
+					.build();
+				
 				public static ConfigEntry<Boolean> logGarbageCollectorWarning = new ConfigEntry.Builder<Boolean>()
 					.set(true)
 					.comment(""
