@@ -411,8 +411,8 @@ public class FullDataSourceV2Repo extends AbstractDhRepo<Long, FullDataSourceV2D
 			"UPDATE "+this.getTableName()+" \n" +
 			"SET Regenerate = ? \n" +
 			"WHERE DetailLevel = ? AND PosX = ? AND PosZ = ?";
-	public void setRegenerate(long pos, boolean applyToChild)
-	{ this.setApplyToFlag(pos, applyToChild, this.setRegenerateToChildrenSql); }
+	public void setRegenerate(long pos, boolean regenerate)
+	{ this.setApplyToFlag(pos, regenerate, this.setRegenerateToChildrenSql); }
 	
 	private void setApplyToFlag(long pos, boolean applyFlag, String sql)
 	{

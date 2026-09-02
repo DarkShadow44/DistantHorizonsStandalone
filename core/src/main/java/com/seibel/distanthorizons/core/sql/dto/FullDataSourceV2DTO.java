@@ -133,7 +133,7 @@ public class FullDataSourceV2DTO
 			dto.createdUnixDateTime = dataSource.createdUnixDateTime;
 			dto.applyToParent = dataSource.applyToParent;
 			dto.applyToChildren = dataSource.applyToChildren;
-			dto.regenerate = dataSource.regenerate;
+			dto.regenerate = dataSource.regenerateLeaf;
 		}
 		
 		return dto;
@@ -303,7 +303,7 @@ public class FullDataSourceV2DTO
 		}
 		if (this.regenerate != null)
 		{
-			dataSource.regenerate = this.regenerate;
+			dataSource.regenerateLeaf = this.regenerate;
 		}
 		
 		return dataSource;

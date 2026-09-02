@@ -15,6 +15,7 @@ import com.seibel.distanthorizons.core.pos.DhSectionPos;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos;
 import com.seibel.distanthorizons.core.render.renderer.AbstractDebugWireframeRenderer;
 import com.seibel.distanthorizons.core.render.renderer.IDebugRenderable;
+import com.seibel.distanthorizons.core.util.BoolUtil;
 import com.seibel.distanthorizons.core.util.ExceptionUtil;
 import com.seibel.distanthorizons.core.util.ThreadUtil;
 import com.seibel.distanthorizons.core.util.threading.PriorityTaskPicker;
@@ -235,6 +236,12 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 										if (childDataSource != null)
 										{
 											parentDataSource.updateFromDataSource(childDataSource);
+											
+											// propagating up, parent will need changes
+											parentDataSource.applyToParent =
+												(BoolUtil.falseIfNull(parentDataSource.applyToParent) || BoolUtil.falseIfNull(childDataSource.applyToParent))
+												&& (DhSectionPos.getDetailLevel(parentDataSource.getPos()) < FullDataSourceProviderV2.ROOT_SECTION_DETAIL_LEVEL);
+											
 										}
 									}
 								}
@@ -251,10 +258,13 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 								}
 							}
 							
+							
+							// only leaf nodes will ever need regenerating
+							parentDataSource.regenerateLeaf = false;
+							
 							// don't modify other update propagator flags
 							{
 								parentDataSource.applyToChildren = null;
-								parentDataSource.regenerate = null;
 							}
 							
 							this.dataUpdater.updateDataSource(parentDataSource);
@@ -380,19 +390,28 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 											
 											childDataSource.updateFromDataSource(parentDataSource);
 											
-											// don't modify other update propagator flags
+											
+											
+											// propagating down, children will need changes
+											if (DhSectionPos.getDetailLevel(childPos) > FullDataSourceProviderV2.LEAF_SECTION_DETAIL_LEVEL)
+											{
+												// downsample non-leaf nodes
+												childDataSource.applyToChildren = true;
+												childDataSource.regenerateLeaf = false;
+											}
+											else
+											{
+												// generate leaf nodes
+												childDataSource.applyToChildren = false;
+												childDataSource.regenerateLeaf = true;
+											}
+											
+											// don't modify other propagator flags
 											{
 												childDataSource.applyToParent = null;
-												childDataSource.regenerate = null;
 											}
 											
 											this.dataUpdater.updateDataSource(childDataSource);
-											
-											if (DhSectionPos.getDetailLevel(childPos) == DhSectionPos.SECTION_BLOCK_DETAIL_LEVEL)
-											{
-												this.provider.repo.setRegenerate(childPos, true);
-											}
-											
 										}
 									}
 									catch (Exception e)

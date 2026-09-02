@@ -123,7 +123,7 @@ public class FullDataSourceV2
 	public Boolean applyToChildren = null;
 	/** Will be null if we don't want to update this value in the DB */
 	@Nullable
-	public Boolean regenerate = null;
+	public Boolean regenerateLeaf = null;
 	
 	/** should only be used by methods exposed via the DH API */
 	private boolean runApiSetterValidation = false;
@@ -415,50 +415,26 @@ public class FullDataSourceV2
 			}
 			
 			// null check to prevent setting a flag we don't want to save in the DB
-			if (this.regenerate != null 
-				|| inputDataSource.regenerate != null)
+			if (this.regenerateLeaf != null 
+				|| inputDataSource.regenerateLeaf != null)
 			{
-				this.regenerate =
-						(BoolUtil.falseIfNull(this.regenerate) || BoolUtil.falseIfNull(inputDataSource.regenerate));
+				this.regenerateLeaf =
+						(BoolUtil.falseIfNull(this.regenerateLeaf) || BoolUtil.falseIfNull(inputDataSource.regenerateLeaf));
 			}
 		}
 		else if (inputDetailLevel + 1 == thisDetailLevel) // applying to parent
 		{
 			dataChanged = this.updateFromOneBelowDetailLevel(inputDataSource, remappedIds);
 			
-			// TODO can we just remove the flags, set them always to null
-			//      and let callers handle this?
-			
-			// propagating up, parent will need changes
-			this.applyToParent =
-					dataChanged
-					&& (BoolUtil.falseIfNull(this.applyToParent) || BoolUtil.falseIfNull(inputDataSource.applyToParent))
-					&& (DhSectionPos.getDetailLevel(this.pos) < FullDataSourceProviderV2.ROOT_SECTION_DETAIL_LEVEL);
-			
-			// only leaf nodes will ever need regenerating
-			this.regenerate = false;
-			
+			// apply/regen fields are set in the UpdatePropagator
+			// otherwise keep whatever the original flags are
 		}
 		else if (inputDetailLevel - 1 == thisDetailLevel) // downsampling to child
 		{
 			dataChanged = this.downsampleFromOneAboveDetailLevel(inputDataSource, remappedIds);
 			
-			// TODO can we just remove the flags, set them always to null
-			//      and let callers handle this?
-			
-			// propagating down, children will need changes
-			if ((DhSectionPos.getDetailLevel(this.pos) > FullDataSourceProviderV2.LEAF_SECTION_DETAIL_LEVEL))
-			{
-				// downsample non-leaf nodes
-				this.applyToChildren = true;
-				this.regenerate = false;
-			}
-			else
-			{
-				// generate leaf nodes
-				this.applyToChildren = false;
-				this.regenerate = true;
-			}
+			// apply/regen fields are set in the UpdatePropagator
+			// otherwise keep whatever the original flags are
 		}
 		else
 		{
