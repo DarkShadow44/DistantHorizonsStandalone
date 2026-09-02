@@ -123,7 +123,7 @@ public class FullDataSourceV2
 	public Boolean applyToChildren = null;
 	/** Will be null if we don't want to update this value in the DB */
 	@Nullable
-	public Boolean regenerate = null; // TODO rename?
+	public Boolean regenerate = null;
 	
 	/** should only be used by methods exposed via the DH API */
 	private boolean runApiSetterValidation = false;
