@@ -27,11 +27,7 @@ import java.awt.*;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.*;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseable
@@ -48,6 +44,9 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 	
 	/** how many parent update tasks can be in the queue at once */
 	public static int getMaxPropagateTaskCount() { return NUMBER_OF_PARENT_UPDATE_TASKS_PER_THREAD * Config.Common.MultiThreading.numberOfThreads.get(); }
+	
+	private final ExecutorService regenQueueingThread;
+	private boolean generationQueueRunning = false;
 	
 	
 	
@@ -88,6 +87,8 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 		// update propagation doesn't need to be run on the server since only the highest detail level is needed
 		this.updateQueueProcessor = ThreadUtil.makeSingleThreadPool("Update Propagate Queue [" + dhLevel.getLevelWrapper().getDhIdentifier() + "]");
 		this.updateQueueProcessor.execute(this::runUpdateQueue);
+		
+		this.regenQueueingThread = ThreadUtil.makeSingleThreadPool("Regen Queue [" + dhLevel.getLevelWrapper().getDhIdentifier() + "]");
 	}
 	
 	//endregion
@@ -95,7 +96,7 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 	
 	
 	//================//
-	// parent updates //
+	// queue handling //
 	//================//
 	//region
 	
@@ -127,7 +128,7 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 				
 				this.runChildUpdates(executor, targetBlockPos);
 				
-				this.queueRegeneration(executor, targetBlockPos);
+				this.tryQueueRegeneration(targetBlockPos);
 			}
 			catch (InterruptedException ignored)
 			{
@@ -139,6 +140,13 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 			}
 		}
 	}
+	
+	
+	
+	//================//
+	// parent updates //
+	//================//
+	//region
 	
 	private void runParentUpdates(PriorityTaskPicker.Executor executor, DhBlockPos targetBlockPos)
 	{
@@ -273,6 +281,15 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 			}
 		}
 	}
+	
+	//endregion
+	
+	
+	
+	//===============//
+	// child updates //
+	//===============//
+	//region
 	
 	private void runChildUpdates(PriorityTaskPicker.Executor executor, DhBlockPos targetBlockPos)
 	{
@@ -415,7 +432,17 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 		}
 	}
 	
-	private void queueRegeneration(PriorityTaskPicker.Executor executor, DhBlockPos targetBlockPos)
+	//endregion
+	
+	
+	
+	//=============//
+	// regen queue //
+	//=============//
+	//region
+	
+	/** does nothing if the queue thread is already running */
+	private void tryQueueRegeneration(DhBlockPos targetBlockPos)
 	{
 		boolean canQueueRegen = false;
 		if (MC_SHARED.isDedicatedServer())
@@ -435,74 +462,140 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 		}
 		
 		
-		
-		int maxUpdateTaskCount = getMaxPropagateTaskCount();
-		
-		// queue child updates
-		if (executor.getQueueSize() < maxUpdateTaskCount
-			&& this.updatingPosSet.size() < maxUpdateTaskCount
-			&& this.generatingPosSet.size() < maxUpdateTaskCount)
-		{
-			// get the positions that need to be regenerated
-			LongArrayList updatePosList = this.provider.repo.getChildPositionsToRegen(targetBlockPos.getX(), targetBlockPos.getZ(), maxUpdateTaskCount);
-			
-			// queue the updates
-			for (long updatePos : updatePosList)
-			{
-				this.tryQueueWorldGenTask(updatePos);
-			}
-		}
-	}
-	private void tryQueueWorldGenTask(long updatePos)
-	{
 		if (!(this.provider instanceof GeneratedFullDataSourceProvider))
 		{
+			// this provider doesn't support retrieval
 			return;
 		}
 		
-		if (!this.provider.canQueueRetrievalNow())
+		
+		// only let one queue thread run at a time
+		if (this.generationQueueRunning)
 		{
 			return;
+		}
+		this.generationQueueRunning = true;
+		
+		// queue world generation tasks on its own thread since this process is very slow and would lag the server thread
+		this.regenQueueingThread.execute(() ->
+		{
+			try
+			{
+				GeneratedFullDataSourceProvider genProvider = (GeneratedFullDataSourceProvider)this.provider;
+				
+				
+				// queue generation tasks until the generator is full, or there are no more tasks to generate
+				boolean taskStarted = true;
+				while (genProvider.canQueueRetrievalNow()
+					&& taskStarted)
+				{
+					taskStarted = this.queueRegeneration(genProvider, targetBlockPos);
+				}
+			}
+			catch (Exception e)
+			{
+				if (!ExceptionUtil.isInterruptOrReject(e))
+				{
+					LOGGER.error("Regen queueing exception: " + e.getMessage(), e);
+				}
+			}
+			finally
+			{
+				this.generationQueueRunning = false;
+			}
+		});
+	}
+	
+	/** @return true if a task was queued */
+	private boolean queueRegeneration(GeneratedFullDataSourceProvider genProvider, DhBlockPos targetBlockPos)
+	{
+		IFullDataSourceRetrievalQueue retrievalQueue = genProvider.worldGenQueueRef.get();
+		if (retrievalQueue == null)
+		{
+			// no retrieval can be done right now
+			// (generation may be disabled)
+			return false;
+		}
+		
+		
+		
+		// get the positions that need to be regenerated
+		int maxRegenTaskCount = GeneratedFullDataSourceProvider.getMaxRetrievalQueueCount();
+		LongArrayList updatePosList = this.provider.repo.getChildPositionsToRegen(targetBlockPos.getX(), targetBlockPos.getZ(), maxRegenTaskCount);
+		if (updatePosList.size() == 0)
+		{
+			// no regen needed
+			return false;
+		}
+		
+		
+		// check if any low-detail LOD tasks are already queued
+		boolean lowDetailPosQueued = retrievalQueue.requestPosExistsWhere(
+			(long queuedPos) -> (DhSectionPos.getDetailLevel(queuedPos) > DhSectionPos.SECTION_BLOCK_DETAIL_LEVEL));
+		if (lowDetailPosQueued)
+		{
+			return false;
+		}
+		
+		
+		// queue the updates
+		for (int i = 0; i < updatePosList.size(); i++)
+		{
+			long updatePos = updatePosList.getLong(i);
+			
+			boolean tasksCanBeQueued = this.tryQueueWorldGenTask(
+				genProvider, retrievalQueue, 
+				updatePos);
+			
+			if (!tasksCanBeQueued)
+			{
+				return false;
+			}
+		}
+		
+		// assume at least one task was queued
+		return true;
+	}
+	/** 
+	 * @return true if we should continue looking for tasks, 
+	 *          false if there's a critical issue and we should stop 
+	 */
+	private boolean tryQueueWorldGenTask(
+		GeneratedFullDataSourceProvider genProvider, IFullDataSourceRetrievalQueue retrievalQueue, 
+		long updatePos)
+	{
+		// also handles task count limiting
+		if (!this.provider.canQueueRetrievalNow())
+		{
+			return false;
 		}
 		
 		if (this.generatingPosSet.contains(updatePos))
 		{
-			return;
+			return false;
 		}
-		
-		
-		int maxQueueCount = GeneratedFullDataSourceProvider.getMaxWorldGenQueueCount();
-		maxQueueCount /= 2;
-		
-		GeneratedFullDataSourceProvider genProvider = ((GeneratedFullDataSourceProvider)this.provider);
-		IFullDataSourceRetrievalQueue queue = genProvider.worldGenQueueRef.get();
-		if (queue == null
-			|| queue.getQueuedChunkCount() > maxQueueCount)
-		{
-			return;
-		}
-		
 		
 		
 		// just generate highest detail
 		LongArrayList posToGen = genProvider.getPositionsToRetrieve(updatePos, (byte)DhSectionPos.SECTION_BLOCK_DETAIL_LEVEL, EDhApiWorldGenerationStep.FEATURES);
 		if (posToGen == null)
 		{
-			return;
+			return true;
 		}
 		
 		if (posToGen.size() == 0)
 		{
 			// position is already generated
 			this.provider.repo.setRegenerate(updatePos, false);
-			return;
+			return true;
 		}
 		
 		
 		
 		if (!this.generatingPosSet.add(updatePos))
 		{
-			return;
+			// position already queued
+			return true;
 		}
 		
 		CompletableFuture<DataSourceRetrievalResult>[] futureArray = new CompletableFuture[posToGen.size()];
@@ -552,8 +645,11 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 				
 				return null;
 			});
+		
+		return true;
 	}
 	
+	//endregion
 	//endregion
 	
 	
@@ -579,6 +675,11 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 		if (this.updateQueueProcessor != null)
 		{
 			this.updateQueueProcessor.shutdownNow();
+		}
+		
+		if (this.regenQueueingThread != null)
+		{
+			this.regenQueueingThread.shutdownNow();
 		}
 	}
 	

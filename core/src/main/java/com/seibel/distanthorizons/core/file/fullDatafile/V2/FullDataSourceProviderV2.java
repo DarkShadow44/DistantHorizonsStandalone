@@ -37,7 +37,6 @@ import com.seibel.distanthorizons.core.render.renderer.IDebugRenderable;
 import com.seibel.distanthorizons.core.sql.dto.FullDataSourceV2DTO;
 import com.seibel.distanthorizons.core.sql.repo.AbstractDhRepo;
 import com.seibel.distanthorizons.core.sql.repo.FullDataSourceV2Repo;
-import com.seibel.distanthorizons.core.util.LodUtil;
 import com.seibel.distanthorizons.core.util.objects.DataCorruptedException;
 import com.seibel.distanthorizons.core.util.threading.ThreadPoolUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
@@ -400,12 +399,10 @@ public class FullDataSourceProviderV2 implements IDebugRenderable, AutoCloseable
 		return !this.dataMigratorV1.migrationThreadRunning.get();
 	}
 	
-	/** 
+	/**
 	 * @return null if this provider can't generate any positions or
 	 * an empty array if all positions were generated 
 	 */
-	@Nullable
-	public LongArrayList getPositionsToRetrieve(long pos) { return null; }
 	@Nullable
 	public LongArrayList getPositionsToRetrieve(long pos, byte generatorDetailLevel, EDhApiWorldGenerationStep requiredWorldGenStep) { return null; }	
 	
@@ -414,7 +411,7 @@ public class FullDataSourceProviderV2 implements IDebugRenderable, AutoCloseable
 	public CompletableFuture<DataSourceRetrievalResult> queuePositionForRetrieval(Long genPos) { return null; }
 	
 	/** does nothing if the given position isn't present in the queue */
-	public void removeRetrievalRequestIf(DhSectionPos.ICancelablePrimitiveLongConsumer removeIf) { }
+	public void removeRetrievalRequestIf(DhSectionPos.IPrimitiveLongConsumer removeIf) { }
 	
 	public void clearRetrievalQueue() { }
 	

@@ -102,7 +102,13 @@ public interface IFullDataSourceRetrievalQueue extends Closeable
 	 * Generally the retrieval queue should be fairly small, so its faster to iterate over the existing list
 	 * and check if each one is valid vs dumbly attempting to remove every position that just went out of range.
 	 */
-	void removeRetrievalRequestIf(DhSectionPos.ICancelablePrimitiveLongConsumer removeIf);
+	void removeRetrievalRequestIf(DhSectionPos.IPrimitiveLongConsumer removeIf);
+	
+	/**
+	 * Can be used to check if any queued tasks
+	 * meet a certain positional state
+	 */
+	boolean requestPosExistsWhere(DhSectionPos.IPrimitiveLongConsumer returnTrueIf);
 	
 	CompletableFuture<DataSourceRetrievalResult> submitRetrievalTask(long pos, byte requiredDataDetail);
 	

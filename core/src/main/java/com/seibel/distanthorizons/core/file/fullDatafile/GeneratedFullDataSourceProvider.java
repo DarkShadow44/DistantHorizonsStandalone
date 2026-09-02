@@ -62,7 +62,7 @@ public class GeneratedFullDataSourceProvider extends FullDataSourceProviderV2 im
 	 * world gen requests and other jobs won't be done. <br>
 	 * IE: LODs won't update or render because world gen is hogging the CPU.
 	 */
-	public static final int MAX_WORLD_GEN_REQUESTS_PER_THREAD = 20;
+	public static final int MAX_RETRIEVAL_REQUESTS_PER_THREAD = 20;
 	
 	public static final PhantomArrayListPool ARRAY_LIST_POOL = new PhantomArrayListPool("Generated Provider");
 	
@@ -200,8 +200,8 @@ public class GeneratedFullDataSourceProvider extends FullDataSourceProviderV2 im
 		return (byte) (DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL + fullDataSourceRetrievalQueue.lowestDataDetail());
 	}
 	
-	public static int getMaxWorldGenQueueCount() 
-	{ return MAX_WORLD_GEN_REQUESTS_PER_THREAD * Config.Common.MultiThreading.numberOfThreads.get(); }
+	public static int getMaxRetrievalQueueCount() 
+	{ return MAX_RETRIEVAL_REQUESTS_PER_THREAD * Config.Common.MultiThreading.numberOfThreads.get(); }
 	
 	
 	
@@ -248,7 +248,7 @@ public class GeneratedFullDataSourceProvider extends FullDataSourceProviderV2 im
 		
 		
 		
-		int maxWorldGenQueueCount = getMaxWorldGenQueueCount();
+		int maxWorldGenQueueCount = getMaxRetrievalQueueCount();
 		int currentQueueCount = WorldChunkUpdateManager.INSTANCE.getTotalQueuedCount();
 		
 		
@@ -321,7 +321,7 @@ public class GeneratedFullDataSourceProvider extends FullDataSourceProviderV2 im
 	}
 	
 	@Override
-	public void removeRetrievalRequestIf(DhSectionPos.ICancelablePrimitiveLongConsumer removeIf)
+	public void removeRetrievalRequestIf(DhSectionPos.IPrimitiveLongConsumer removeIf)
 	{
 		IFullDataSourceRetrievalQueue worldGenQueue = this.worldGenQueueRef.get();
 		if (worldGenQueue != null)
@@ -346,21 +346,6 @@ public class GeneratedFullDataSourceProvider extends FullDataSourceProviderV2 im
 	}
 	
 	
-	@Override
-	public LongArrayList getPositionsToRetrieve(long pos) 
-	{
-		IFullDataSourceRetrievalQueue worldGenQueue = this.worldGenQueueRef.get();
-		if (worldGenQueue == null)
-		{
-			return null;
-		}
-		
-		byte lowestGeneratorDetailLevel = (byte) Math.min(
-			worldGenQueue.lowestDataDetail() + DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL,
-			DhSectionPos.getDetailLevel(pos));
-		
-		return this.getPositionsToRetrieve(pos, lowestGeneratorDetailLevel, EDhApiWorldGenerationStep.FEATURES); 
-	}
 	@Override
 	public LongArrayList getPositionsToRetrieve(long pos, byte generatorDetailLevel, EDhApiWorldGenerationStep requiredWorldGenStep)
 	{

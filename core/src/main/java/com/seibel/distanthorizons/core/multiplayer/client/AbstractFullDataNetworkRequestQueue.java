@@ -33,6 +33,7 @@ import java.awt.*;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class AbstractFullDataNetworkRequestQueue implements IDebugRenderable, AutoCloseable
@@ -57,7 +58,7 @@ public abstract class AbstractFullDataNetworkRequestQueue implements IDebugRende
 	
 	private volatile CompletableFuture<Void> closingFuture = null;
 	
-	protected final ConcurrentMap<Long, NetRequestTask> waitingTasksBySectionPos = new ConcurrentHashMap<>();
+	protected final ConcurrentHashMap<Long, NetRequestTask> waitingTasksBySectionPos = new ConcurrentHashMap<>();
 	/**
 	 * This semaphore prevents a given thread from accidentally locking on the same group
 	 * multiple times, as the semaphore is tied to the given thread. <br>
@@ -314,7 +315,7 @@ public abstract class AbstractFullDataNetworkRequestQueue implements IDebugRende
 	// IFullDataSourceRetrievalQueue overrides //
 	//=========================================//
 	
-	public void removeRetrievalRequestIf(DhSectionPos.ICancelablePrimitiveLongConsumer removeIf)
+	public void removeRetrievalRequestIf(DhSectionPos.IPrimitiveLongConsumer removeIf)
 	{
 		// remove tasks furthest
 		Iterator<Map.Entry<Long, NetRequestTask>> farestTaskIterator = this.waitingTasksBySectionPos
@@ -342,6 +343,21 @@ public abstract class AbstractFullDataNetworkRequestQueue implements IDebugRende
 				entry.future.cancel(false);
 			}
 		}
+	}
+	
+	public boolean requestPosExistsWhere(DhSectionPos.IPrimitiveLongConsumer returnTrueIf)
+	{
+		AtomicBoolean taskFound = new AtomicBoolean(false);
+		
+		this.waitingTasksBySectionPos.forEachKey(100, (genPos) ->
+		{
+			if (returnTrueIf.accept(genPos))
+			{
+				taskFound.set(true);
+			}
+		});
+		
+		return taskFound.get();
 	}
 	
 	public void addDebugMenuStringsToList(List<String> messageList)

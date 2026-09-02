@@ -57,6 +57,7 @@ import java.awt.*;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDebugRenderable
 {
@@ -174,7 +175,7 @@ public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDeb
 	}
 	
 	@Override
-	public void removeRetrievalRequestIf(DhSectionPos.ICancelablePrimitiveLongConsumer removeIf)
+	public void removeRetrievalRequestIf(DhSectionPos.IPrimitiveLongConsumer removeIf)
 	{
 		this.waitingTaskByPos.forEachKey(100, (genPos) -> 
 		{
@@ -188,6 +189,22 @@ public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDeb
 				}
 			}
 		});
+	}
+	
+	@Override
+	public boolean requestPosExistsWhere(DhSectionPos.IPrimitiveLongConsumer returnTrueIf)
+	{
+		AtomicBoolean taskFound = new AtomicBoolean(false);
+		
+		this.waitingTaskByPos.forEachKey(100, (genPos) ->
+		{
+			if (returnTrueIf.accept(genPos))
+			{
+				taskFound.set(true);
+			}
+		});
+		
+		return taskFound.get();
 	}
 	
 	//endregion task handling
