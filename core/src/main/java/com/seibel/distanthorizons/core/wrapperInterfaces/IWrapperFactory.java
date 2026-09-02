@@ -33,6 +33,7 @@ import com.seibel.distanthorizons.core.wrapperInterfaces.worldGeneration.IChunkG
 import com.seibel.distanthorizons.core.wrapperInterfaces.worldGeneration.IRoughGenerator;
 import com.seibel.distanthorizons.coreapi.interfaces.dependencyInjection.IBindable;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 
@@ -45,6 +46,8 @@ import java.io.IOException;
 public interface IWrapperFactory extends IDhApiWrapperFactory, IBindable
 {
 	IChunkGenerator createChunkGenerator(IDhLevel targetLevel);
+	/** Returns null for MC versions that don't support rough surface generation */
+	@Nullable
 	IRoughGenerator createRoughGenerator(IDhLevel targetLevel, IChunkGenerator batchChunkGenerator);
 	
 	IBiomeWrapper deserializeBiomeWrapper(String str, ILevelWrapper levelWrapper) throws IOException;

@@ -42,6 +42,7 @@ import com.seibel.distanthorizons.core.wrapperInterfaces.IWrapperFactory;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.coreapi.util.BitShiftUtil;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
@@ -49,6 +50,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.function.Consumer;
 
 /**
+ * Formerly "BatchGenerator"
+ * 
  * @author Leetom
  * @version 2022-12-10
  */
@@ -61,6 +64,7 @@ public class DhWorldGenerator implements IDhApiWorldGenerator
 	public final IDhServerLevel serverLevel;
 	
 	public final IChunkGenerator chunkGenerator;
+	@Nullable
 	public final IRoughGenerator roughGenerator;
 	
 	public final boolean allowRoughSurfaceGen;
@@ -162,6 +166,12 @@ public class DhWorldGenerator implements IDhApiWorldGenerator
 				worldGeneratorThreadPool,
 				resultConsumer);
 		}
+		
+		if (this.roughGenerator == null)
+		{
+			throw new NullPointerException("No rough generator provided, this Minecraft version probably doesn't support rough surface generation.");
+		}
+		
 		
 		
 		if (detailLevel == 0)
@@ -272,7 +282,11 @@ public class DhWorldGenerator implements IDhApiWorldGenerator
 	public void close()
 	{
 		this.chunkGenerator.close();
-		this.roughGenerator.close();
+		
+		if (this.roughGenerator != null)
+		{
+			this.roughGenerator.close();
+		}
 	}
 	
 	//endregion
