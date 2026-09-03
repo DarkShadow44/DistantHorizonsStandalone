@@ -14,13 +14,28 @@ uniform sampler2D uDhColorTexture;
 uniform float uStartFadeBlockDistance;
 uniform float uEndFadeBlockDistance;
 
+uniform bool uDepthIsZeroToPositiveOne;
 
 
-vec3 calcViewPosition(float fragmentDepth, mat4 invMvmProj) 
+
+/** 
+ * this method is shared across several shaders,
+ * if updated, make sure to update the other versions as well.
+ */
+vec3 calcViewPosition(float fragmentDepth, mat4 invMvmProj)
 {
     // normalized device coordinates
     vec4 ndc = vec4(texCoord.xy, fragmentDepth, 1.0);
-    ndc.xyz = ndc.xyz * 2.0 - 1.0;
+    if (uDepthIsZeroToPositiveOne)
+    {
+        // Z already in [0,1], don't remap
+        ndc.xy = ndc.xy * 2.0 - 1.0;
+    }
+    else
+    {
+        // UV [0,1] -> NDC [-1,+1]
+        ndc.xyz = ndc.xyz * 2.0 - 1.0;
+    }
 
     vec4 eyeCoord = invMvmProj * ndc;
     return eyeCoord.xyz / eyeCoord.w;

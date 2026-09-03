@@ -25,7 +25,7 @@ layout (std140) uniform fragUniformBlock
     float uViewWidth;
     float uViewHeight;
 
-    bool uIsReverseZDepth;
+    bool uDepthIsZeroToPositiveOne;
 };
 
 
@@ -46,7 +46,7 @@ vec4 calcNdc(float fragmentDepth, mat4 invMvmProj)
 {
     // normalized device coordinates
     vec4 ndc = vec4(texCoord.xy, fragmentDepth, 1.0);
-    if (uIsReverseZDepth)
+    if (uDepthIsZeroToPositiveOne)
     {
         // Z already in [0,1], don't remap
         ndc.xy = ndc.xy * 2.0 - 1.0;

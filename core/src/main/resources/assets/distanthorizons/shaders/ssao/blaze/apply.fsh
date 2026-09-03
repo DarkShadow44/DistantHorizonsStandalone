@@ -4,6 +4,7 @@ in vec2 texCoord;
 
 out vec4 fragColor;
 
+
 uniform sampler2D uSourceColorTexture;
 uniform sampler2D uSourceDepthTexture;
 
@@ -13,6 +14,7 @@ layout (std140) uniform applyFragUniformBlock
     int uBlurRadius;
     float uNearClipPlane; // in blocks
     float uFarClipPlane; // in blocks
+    bool uIsReverseZDepth;
 };
 
 
@@ -68,10 +70,20 @@ void main()
     fragColor = vec4(1.0);
     
     float fragmentDepth = textureLod(uSourceDepthTexture, texCoord, 0).r;
-
-    // a fragment depth of "1" means the fragment wasn't drawn to,
-    // we only want to apply SSAO to LODs, not to the sky outside the LODs
-    if (fragmentDepth < 1) 
+    
+    bool drawnTo;
+    if (uIsReverseZDepth)
+    {
+        drawnTo = (fragmentDepth > 0);
+    }
+    else
+    {
+        // a fragment depth of "1" means the fragment wasn't drawn to,
+        // we only want to apply SSAO to LODs, not to the sky outside the LODs
+        drawnTo = (fragmentDepth < 1.0);
+    }
+    
+    if (drawnTo)
     {
         if (uBlurRadius > 0) 
         {

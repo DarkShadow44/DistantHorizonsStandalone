@@ -23,6 +23,7 @@ layout (std140) uniform fragUniformBlock
     mat4 uProj;
 
     bool uIsReverseZDepth;
+    bool uDepthIsZeroToPositiveOne;
 };
 
 uniform sampler2D uDhDepthTexture;
@@ -46,11 +47,11 @@ float InterleavedGradientNoise(const in vec2 pixel)
  * this method is shared across several shaders,
  * if updated, make sure to update the other versions as well.
  */
-vec3 calcViewPosition(float fragmentDepth, mat4 invMvmProj)
+vec3 calcViewPosition(float fragmentDepth, mat4 invProj)
 {
     // normalized device coordinates
     vec4 ndc = vec4(texCoord.xy, fragmentDepth, 1.0);
-    if (uIsReverseZDepth)
+    if (uDepthIsZeroToPositiveOne)
     {
         // Z already in [0,1], don't remap
         ndc.xy = ndc.xy * 2.0 - 1.0;
@@ -61,7 +62,7 @@ vec3 calcViewPosition(float fragmentDepth, mat4 invMvmProj)
         ndc.xyz = ndc.xyz * 2.0 - 1.0;
     }
 
-    vec4 eyeCoord = invMvmProj * ndc;
+    vec4 eyeCoord = invProj * ndc;
     return eyeCoord.xyz / eyeCoord.w;
 }
 
@@ -97,7 +98,7 @@ float GetSpiralOcclusion(const in vec2 uv, const in vec3 viewPos, const in vec3 
             continue;   
         }
 
-        if (uIsReverseZDepth)
+        if (uDepthIsZeroToPositiveOne)
         {
             vec4 ndc = vec4(
                 sampleClipPos.x * 2.0 - 1.0, // UV [0,1] -> NDC [-1,+1]

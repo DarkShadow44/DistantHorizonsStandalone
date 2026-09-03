@@ -42,6 +42,7 @@ layout (std140) uniform fragUniformBlock
     mat4 uInvMvmProj;
 
     bool uIsReverseZDepth;
+    bool uDepthIsZeroToPositiveOne;
 };
 
 uniform sampler2D uDhDepthTexture;
@@ -78,9 +79,19 @@ void main()
     float fragmentDepth = texture(uDhDepthTexture, texCoord).r;
     fragColor = vec4(uFogColor.rgb, 0.0);
 
-    // a fragment depth of "1" means the fragment wasn't drawn to,
-    // we only want to apply Fog to LODs, not to the sky outside the LODs
-    if (fragmentDepth < 1.0)
+    bool drawnTo;
+    if (uIsReverseZDepth)
+    {
+        drawnTo = (fragmentDepth > 0);
+    }
+    else
+    {
+        // a fragment depth of "1" means the fragment wasn't drawn to,
+        // we only want to apply Fog to LODs, not to the sky outside the LODs
+        drawnTo = (fragmentDepth < 1.0);
+    }
+
+    if (drawnTo)
     {
         int fogDebugMode = uFogDebugMode;
         if (fogDebugMode == 0)
@@ -142,7 +153,7 @@ vec3 calcViewPosition(float fragmentDepth, mat4 invMvmProj)
 {
     // normalized device coordinates
     vec4 ndc = vec4(texCoord.xy, fragmentDepth, 1.0);
-    if (uIsReverseZDepth)
+    if (uDepthIsZeroToPositiveOne)
     {
         // Z already in [0,1], don't remap
         ndc.xy = ndc.xy * 2.0 - 1.0;

@@ -49,7 +49,7 @@ public class RenderUtil
 	private static final IMinecraftClientWrapper MC = SingletonInjector.INSTANCE.get(IMinecraftClientWrapper.class);
 	private static final IMinecraftRenderWrapper MC_RENDER = SingletonInjector.INSTANCE.get(IMinecraftRenderWrapper.class);
 	private static final IIrisAccessor IRIS_ACCESSOR = ModAccessorInjector.INSTANCE.get(IIrisAccessor.class);
-	private static final AbstractDhRenderApiDefinition RENDER_API_DEF = SingletonInjector.INSTANCE.get(AbstractDhRenderApiDefinition.class);
+	private static final AbstractDhRenderApiDefinition RENDER_DEF = SingletonInjector.INSTANCE.get(AbstractDhRenderApiDefinition.class);
 	
 	/** 
 	 * all speeds are measured in blocks per second 
@@ -99,7 +99,7 @@ public class RenderUtil
 		
 		
 		// Set new far and near clip plane values.
-		if (RENDER_API_DEF.getRenderDepth() == EDhRenderDepth.FORWARD_Z)
+		if (RENDER_DEF.getRenderDepth() == EDhRenderDepth.FORWARD_Z)
 		{
 			setClipPlanes(updateMatrix, nearClipDist, farClipDist, false);
 		}
