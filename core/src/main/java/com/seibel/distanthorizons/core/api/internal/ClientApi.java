@@ -126,7 +126,6 @@ public class ClientApi
 	private boolean isDevBuildMessagePrinted = false;
 	private boolean lowMemoryWarningPrinted = false;
 	private boolean highVanillaRenderDistanceWarningPrinted = false;
-	private boolean deprecatedRendererWarningPrinted = false;
 	
 	private long lastSlowChatMessageSentMsTime = 0L;
 	
@@ -922,42 +921,6 @@ public class ClientApi
 				MC_CLIENT.sendChatMessage(message);
 			}
 		}
-		
-		
-		
-		//==================//
-		// Rendering Engine //
-		//==================//
-		//region
-		if (this.chatMessageSentRecently()) return;
-		if (!this.deprecatedRendererWarningPrinted)
-		{
-			this.deprecatedRendererWarningPrinted = true;
-			
-			// get the currently selected rendering API
-			EDhApiRenderingEngine activeRenderingEngine = Config.Client.Advanced.Graphics.Experimental.renderingEngine.get();
-			EDhApiRenderingEngine recommendedEngine = VERSION_CONSTANTS.getDefaultRenderingEngine();
-			
-			// complain when using OpenGL on newer MC versions
-			if (activeRenderingEngine == EDhApiRenderingEngine.OPEN_GL
-				&& recommendedEngine != EDhApiRenderingEngine.OPEN_GL)
-			{
-				if (Config.Common.Logging.Warning.showDeprecatedRendererWarningOnStartup.get())
-				{
-					IMinecraftClientWrapper mc = SingletonInjector.INSTANCE.get(IMinecraftClientWrapper.class);
-					String message =
-						MinecraftTextFormat.ORANGE + "Distant Horizons: Deprecated Rendering Engine." + MinecraftTextFormat.CLEAR_FORMATTING + "\n" +
-							"DH is currently rendering via raw OpenGL. \n" +
-							"Raw OpenGL is deprecated for this Minecraft version, \n" +
-							"meaning there may be visual issues. \n" +
-							"This warning can be disabled in DH's config under Advanced -> Logging. \n";
-					mc.sendChatMessage(message);
-				}
-			}
-		}
-		
-		//endregion
-		
 	}
 	/** done to prevent sending a bunch of chat messages all at once, causing some to be missed. */
 	private boolean chatMessageSentRecently()
