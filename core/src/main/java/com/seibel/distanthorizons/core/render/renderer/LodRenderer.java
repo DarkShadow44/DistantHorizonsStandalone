@@ -275,7 +275,8 @@ public class LodRenderer
 				}
 				
 				// far plane clip fading
-				if (IRIS_ACCESSOR == null)
+				if (IRIS_ACCESSOR == null
+					|| !IRIS_ACCESSOR.isShaderPackInUse())
 				{
 					// far fading would probably break shaders
 					// but is necessary for Anti-aliasing to apply to the sky/surrounding pixels properly
@@ -286,7 +287,13 @@ public class LodRenderer
 				
 				// Anti-Aliasing
 				if (Config.Client.Advanced.Graphics.enableAntiAliasing.get()
-					&& IRIS_ACCESSOR == null) // AA should be handled by the shader
+					&&
+					(
+						// AA should be handled by the shader
+						IRIS_ACCESSOR == null
+						|| !IRIS_ACCESSOR.isShaderPackInUse()
+					)
+				)
 				{
 					profiler.popPush("Anti-Aliasing");
 					this.antiAliasRenderer.render(renderParams);
