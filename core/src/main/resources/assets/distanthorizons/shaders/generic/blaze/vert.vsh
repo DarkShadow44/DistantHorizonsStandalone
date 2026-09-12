@@ -58,8 +58,13 @@ void main()
     
     fColor = lightColor * aColor;
 
-    int vertexIndex = gl_VertexIndex % 24;
-
+    int vertexIndex;
+    #ifdef VULKAN
+    vertexIndex = gl_VertexIndex % 24;
+    #else
+    vertexIndex = gl_VertexID % 24;
+    #endif
+    
     // apply directional shading
     if (vertexIndex >= 0 && vertexIndex < 4) { fColor.rgb *= uNorthShading; }
     else if (vertexIndex >= 4 && vertexIndex < 8) { fColor.rgb *= uSouthShading; }
