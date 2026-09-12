@@ -30,6 +30,7 @@ package com.seibel.distanthorizons.api.enums.worldGeneration;
  * SURFACE, <br>
  * CARVERS, <br>
  * LIQUID_CARVERS, <br>
+ * TERRAIN, <br>
  * FEATURES, <br>
  * LIGHT, <br>
  *
@@ -52,9 +53,14 @@ public enum EDhApiWorldGenerationStep
 	STRUCTURE_REFERENCE(2, "structure_reference"),
 	BIOMES(3, "biomes"),
 	NOISE(4, "noise"),
+	
 	SURFACE(5, "surface"),
 	CARVERS(6, "carvers"),
 	LIQUID_CARVERS(7, "liquid_carvers"),
+	// replaced surface, carvers, and liquid carvers in MC 26.3+
+	/** @since API 7.1.0 */
+	TERRAIN(7, "terrain"),
+	
 	FEATURES(8, "features"),
 	LIGHT(9, "light");
 	
