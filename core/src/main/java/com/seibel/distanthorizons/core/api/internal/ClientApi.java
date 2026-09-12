@@ -394,11 +394,11 @@ public class ClientApi
 					
 					
 					
-					//======================//
-					// GL Proxy queued jobs //
-					//======================//
+					//====================//
+					// Render Thread jobs //
+					//====================//
 					//region
-					
+
 					try
 					{
 						// these tasks always need to be called, regardless of whether the renderer is enabled or not to prevent memory leaks
@@ -408,7 +408,7 @@ public class ClientApi
 					{
 						LOGGER.error("Unexpected issue running render thread tasks, error: [" + e.getMessage() + "].", e);
 					}
-					
+
 					//endregion
 					
 					
@@ -547,7 +547,14 @@ public class ClientApi
 			{
 				// store the error message so it can be seen on the F3 screen
 				this.lastRenderParamValidationMessage = validationMessage;
-				return;
+				
+				// Allow the debug triangle to render regardless of validation
+				// since the triangle just renders directly to the screen
+				// and doesn't care about any params
+				if (Config.Client.Advanced.Debugging.rendererMode.get() != EDhApiRendererMode.DEBUG_TRIANGLE)
+				{
+					return;
+				}
 			}
 			else
 			{
@@ -588,6 +595,8 @@ public class ClientApi
 				{
 					if (!renderingDeferredLayer)
 					{
+						// normal/opaque
+						
 						boolean renderingCancelled = ApiEventInjector.INSTANCE.fireAllEvents(DhApiBeforeRenderEvent.class, RENDER_PARAMS);
 						if (!renderingCancelled)
 						{
@@ -601,6 +610,8 @@ public class ClientApi
 					}
 					else
 					{
+						// deferred
+						
 						boolean renderingCancelled = ApiEventInjector.INSTANCE.fireAllEvents(DhApiBeforeDeferredRenderEvent.class, RENDER_PARAMS);
 						if (!renderingCancelled)
 						{
@@ -675,7 +686,7 @@ public class ClientApi
 		}
 		
 		// only fade when DH is rendering
-		if (Config.Client.Advanced.Debugging.rendererMode.get() != EDhApiRendererMode.DISABLED
+		if (Config.Client.Advanced.Debugging.rendererMode.get() == EDhApiRendererMode.DEFAULT
 			&&
 			(
 				// only fade when requested
@@ -703,7 +714,7 @@ public class ClientApi
 		}
 		
 		// only fade when DH is rendering
-		if (Config.Client.Advanced.Debugging.rendererMode.get() != EDhApiRendererMode.DISABLED)
+		if (Config.Client.Advanced.Debugging.rendererMode.get() == EDhApiRendererMode.DEFAULT)
 		{
 			boolean renderFade =
 				(
