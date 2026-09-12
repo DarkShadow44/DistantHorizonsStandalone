@@ -672,7 +672,7 @@ public class Config
 						.build();
 					
 					public static ConfigEntry<Integer> maxTexturedLodDetailLevel = new ConfigEntry.Builder<Integer>()
-						.setMinDefaultMax(0, 2, 4)
+						.setMinDefaultMax(0, 2, 8)
 						.comment(""
 							+ "The highest detail level number that can render with block textures. \n"
 							+ "At higher detail levels each LOD covers multiple blocks, \n"
