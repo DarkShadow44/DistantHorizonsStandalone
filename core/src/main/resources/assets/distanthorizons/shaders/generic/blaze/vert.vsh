@@ -33,11 +33,6 @@ void main()
 {
     vec3 aScale = vec3(1);
     
-    if (aMaterial == 999)
-    {
-        aScale = vec3(2);
-    }
-    
     // aTranslate - moves the vertex to the boxGroup's relative position
     // uOffset - moves the vertex to the boxGroup's world position
     // uCameraPos - moves the vertex into camera space
