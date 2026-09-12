@@ -230,6 +230,16 @@ public class GeneratedFullDataSourceProvider extends FullDataSourceProviderV2 im
 	}
 	
 	@Override
+	public void setGeneratingLowDetailLods(boolean generatingLowDetailLods) 
+	{
+		IFullDataSourceRetrievalQueue worldGenQueue = this.worldGenQueueRef.get();
+		if (worldGenQueue != null)
+		{
+			worldGenQueue.setRetrievingLowDetailLods(generatingLowDetailLods);
+		}
+	}
+	
+	@Override
 	public boolean canQueueRetrievalNow() { return this.canQueueRetrievalNow(false); }
 	public boolean canQueueRetrievalNow(boolean pruneWaitingTasksAboveLimit)
 	{

@@ -417,6 +417,7 @@ public class FullDataSourceProviderV2 implements IDebugRenderable, AutoCloseable
 	
 	/** Can be used to display how many total chunk retrieval requests should be available. */
 	public void setEstimatedRemainingRetrievalChunkCount(long newCount) { }
+	public void setGeneratingLowDetailLods(boolean generatingLowDetailLods) {}
 	
 	//endregion
 	

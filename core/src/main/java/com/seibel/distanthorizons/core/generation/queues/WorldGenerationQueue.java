@@ -79,6 +79,8 @@ public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDeb
 	public final byte highestDataDetail;
 	
 	
+	private boolean retrievingLowDetailLods;
+	
 	/** If not null this generator is in the process of shutting down */
 	private volatile CompletableFuture<Void> generatorClosingFuture = null;
 	
@@ -206,6 +208,12 @@ public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDeb
 		
 		return taskFound.get();
 	}
+	
+	@Override
+	public boolean getRetrievingLowDetailLods() { return this.retrievingLowDetailLods; }
+	@Override
+	public void setRetrievingLowDetailLods(boolean retrievingLowDetailLods)
+	{ this.retrievingLowDetailLods = retrievingLowDetailLods; }
 	
 	//endregion task handling
 	

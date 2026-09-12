@@ -906,15 +906,24 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 		if (!this.sortedMissingPosList.isEmpty())
 		{
 			// count the missing LODs
-			
+			boolean highDetailRequestPresent = true;
 			for (int i = 0; i < this.sortedMissingPosList.size(); i++)
 			{
 				long missingPos = this.sortedMissingPosList.get(i);
 				
 				// chunk count
 				int sectionWidthInChunks = DhSectionPos.getChunkWidth(missingPos);
-				totalWorldGenChunkCount += sectionWidthInChunks * sectionWidthInChunks;
+				totalWorldGenChunkCount += (sectionWidthInChunks * sectionWidthInChunks);
+				
+				// don't let any regeneration happen until
+				// all low-detail LODs have finished generating
+				if (DhSectionPos.getDetailLevel(missingPos) == DhSectionPos.SECTION_BLOCK_DETAIL_LEVEL)
+				{
+					highDetailRequestPresent = false;
+				}
 			}
+			
+			this.fullDataSourceProvider.setGeneratingLowDetailLods(highDetailRequestPresent);
 		}
 		else
 		{
@@ -935,6 +944,8 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 			{
 				totalWorldGenChunkCount = this.cachedRegenTaskCount;
 			}
+			
+			this.fullDataSourceProvider.setGeneratingLowDetailLods(false);
 		}
 		
 		this.fullDataSourceProvider.setEstimatedRemainingRetrievalChunkCount(totalWorldGenChunkCount);

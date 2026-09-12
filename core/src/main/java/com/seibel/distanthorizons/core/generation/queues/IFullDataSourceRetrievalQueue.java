@@ -98,6 +98,13 @@ public interface IFullDataSourceRetrievalQueue extends Closeable
 	//===============//
 	//region
 	
+	/**
+	 * Used to make sure the low-quality LODs
+	 * are generated first (if requested).
+	 */
+	boolean getRetrievingLowDetailLods();
+	void setRetrievingLowDetailLods(boolean retrievingLowDetailLods);
+	
 	/** 
 	 * Generally the retrieval queue should be fairly small, so its faster to iterate over the existing list
 	 * and check if each one is valid vs dumbly attempting to remove every position that just went out of range.

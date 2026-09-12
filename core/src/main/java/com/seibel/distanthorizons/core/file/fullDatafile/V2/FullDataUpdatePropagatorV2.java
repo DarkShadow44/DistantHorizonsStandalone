@@ -536,6 +536,13 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 			return false;
 		}
 		
+		if (retrievalQueue.getRetrievingLowDetailLods())
+		{
+			// low-quality LODs are being retrieved,
+			// wait till those are done before we try
+			// generating the high-quality LODs
+			return false;
+		}
 		
 		
 		// get the positions that need to be regenerated
