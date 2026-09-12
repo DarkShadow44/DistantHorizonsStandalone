@@ -1977,6 +1977,16 @@ public class Config
 				+ "")
 			.build();
 		
+		public static ConfigEntry<Boolean> enableNSizedGeneration = new ConfigEntry.Builder<Boolean>()
+			.setChatCommandName("generation.nSized")
+			.set(true)
+			.comment(""
+				+ "When enabled on the client, this allows loading lower detail levels as needed to speed up terrain generation.\n"
+				+ "This must also be enabled on the server; otherwise, it will have no effect.\n"
+				+ "For better performance when switching LOD detail levels, enabling [upsampleLowerDetailLodsToFillHoles] is recommended.\n"
+				+ "")
+			.build();
+		
 		public static ConfigEntry<Integer> generationRequestRateLimit = new ConfigEntry.Builder<Integer>()
 			.setChatCommandName("generation.requestRateLimit")
 			.setMinDefaultMax(1, 20, 100)
@@ -2066,25 +2076,6 @@ public class Config
 				+ "If false, transfer speed will remain fixed.\n"
 				+ "")
 			.build();
-		
-		
-		public static ConfigCategory experimental = new ConfigCategory.Builder().set(Experimental.class).build();
-		
-		
-		
-		public static class Experimental
-		{
-			public static ConfigEntry<Boolean> enableNSizedGeneration = new ConfigEntry.Builder<Boolean>()
-				.setChatCommandName("generation.nSized")
-				.set(false)
-				.comment(""
-					+ "When enabled on the client, this allows loading lower detail levels as needed to speed up terrain generation.\n"
-					+ "This must also be enabled on the server; otherwise, it will have no effect.\n"
-					+ "For better performance when switching LOD detail levels, enabling [upsampleLowerDetailLodsToFillHoles] is recommended.\n"
-					+ "")
-				.build();
-			
-		}
 		
 	}
 	

@@ -772,6 +772,7 @@ public class FullDataSourceV2DTO
 		
 		out.writeBoolean(BoolUtil.falseIfNull(this.applyToParent));
 		out.writeBoolean(BoolUtil.falseIfNull(this.applyToChildren));
+		out.writeBoolean(BoolUtil.falseIfNull(this.regenerate));
 		
 		out.writeLong(this.lastModifiedUnixDateTime);
 		out.writeLong(this.createdUnixDateTime);
