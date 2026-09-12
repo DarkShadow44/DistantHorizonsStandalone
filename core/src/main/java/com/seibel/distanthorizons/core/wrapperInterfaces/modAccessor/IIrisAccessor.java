@@ -27,4 +27,7 @@ public interface IIrisAccessor extends IModAccessor
 	boolean isShaderPackInUse();
 	
 	boolean isRenderingShadowPass();
+	
+	boolean isReverseZDuringShaders();
+	
 }
