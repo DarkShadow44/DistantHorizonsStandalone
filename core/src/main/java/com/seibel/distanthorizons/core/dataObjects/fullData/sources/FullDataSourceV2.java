@@ -1449,7 +1449,7 @@ public class FullDataSourceV2
 			
 			LongArrayList packedDataPoints = LodDataBuilder.convertApiDataPointListToPackedLongArray(columnDataPoints, this, 0, true);
 			
-			this.setSingleColumn(packedDataPoints, relX, relZ, EDhApiWorldGenerationStep.SURFACE, EDhApiWorldCompressionMode.MERGE_SAME_BLOCKS);
+			this.setSingleColumn(packedDataPoints, relX, relZ, worldGenStep, EDhApiWorldCompressionMode.MERGE_SAME_BLOCKS);
 			
 			return columnDataPoints;
 		}
