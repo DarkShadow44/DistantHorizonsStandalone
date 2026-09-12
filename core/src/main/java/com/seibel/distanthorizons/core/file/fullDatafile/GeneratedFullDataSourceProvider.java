@@ -134,7 +134,7 @@ public class GeneratedFullDataSourceProvider extends FullDataSourceProviderV2 im
 				// don't log shutdown exceptions
 				if (!ExceptionUtil.isInterruptOrReject(exception))
 				{
-					LOGGER.error("Uncaught Gen Task Exception at [" + genPos + "], error: [" + exception.getMessage() + "].", exception);
+					LOGGER.error("Uncaught Gen Task Exception at [" + DhSectionPos.toString(genPos) + "], error: [" + exception.getMessage() + "].", exception);
 				}
 				return;
 			}
