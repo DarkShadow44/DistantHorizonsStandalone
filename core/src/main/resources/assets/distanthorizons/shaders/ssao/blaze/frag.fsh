@@ -1,12 +1,14 @@
-#version 330 core
+#version 330
+// needed for "layout(location = 0)" required as as of MC 26.3
+#extension GL_ARB_separate_shader_objects : require
 
 #define SAMPLE_MAX 64
 
 #define saturate(x) (clamp((x), 0.0, 1.0))
 
-in vec2 texCoord;
+layout(location = 0) in vec2 texCoord;
 
-out vec4 fragColor;
+layout(location = 0) out vec4 fragColor;
 
 
 layout (std140) uniform fragUniformBlock

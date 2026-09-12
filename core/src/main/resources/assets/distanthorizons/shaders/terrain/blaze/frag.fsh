@@ -1,15 +1,17 @@
 #version 330
+// needed for "layout(location = 0)" required as as of MC 26.3
+#extension GL_ARB_separate_shader_objects : require
 
 // order matters, this must match the vertex shader's outputs
-in vec3 vPos;
-in vec4 vertexColor;
-in vec3 vertexWorldPos;
-in vec3 vBlockPos;
-flat in uint vNormalIndex;
-flat in uint vTextureTileId;
-in vec4 gl_FragCoord;
+layout(location = 0) in vec3 vPos;
+layout(location = 1) in vec4 vertexColor;
+layout(location = 2) in vec3 vertexWorldPos;
+layout(location = 3) in vec3 vBlockPos;
+layout(location = 4) flat in uint vNormalIndex;
+layout(location = 5) flat in uint vTextureTileId;
+layout(location = 6) in vec4 gl_FragCoord;
 
-out vec4 fragColor;
+layout(location = 0) out vec4 fragColor;
 
 // Each tile stores the color ratio relative to the LOD's flat 
 // color where 128 means using the base LOD color.
