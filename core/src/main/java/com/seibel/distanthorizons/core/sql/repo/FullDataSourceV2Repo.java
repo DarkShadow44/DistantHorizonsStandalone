@@ -456,7 +456,7 @@ public class FullDataSourceV2Repo extends AbstractDhRepo<Long, FullDataSourceV2D
 			// underneith is done
 			"ORDER BY Distance ASC " + // DetailLevel ASC,
 			"LIMIT ?; ";
-	public LongArrayList getPositionsToUpdate(int targetBlockPosX, int targetBlockPosZ, int returnCount)
+	public LongArrayList getParentPositionsToUpdate(int targetBlockPosX, int targetBlockPosZ, int returnCount)
 	{ return this.getPositionsToUpdate(targetBlockPosX, targetBlockPosZ, returnCount, this.getParentPositionsToUpdateSql); }
 	
 	/** should be be very similar to {@link FullDataSourceV2Repo#getParentPositionsToUpdateSql} */

@@ -149,6 +149,7 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 	//================//
 	//region
 	
+	/** apply update bottom -> up, from child to parent */
 	private void runParentUpdates(PriorityTaskPicker.Executor executor, DhBlockPos targetBlockPos)
 	{
 		int maxUpdateTaskCount = getMaxPropagateTaskCount();
@@ -162,25 +163,25 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 		
 		
 		// get the positions that need to be applied to their parents
-		LongArrayList parentUpdatePosList = this.provider.repo.getPositionsToUpdate(targetBlockPos.getX(), targetBlockPos.getZ(), maxUpdateTaskCount);
+		LongArrayList outputChildPosList = this.provider.repo.getParentPositionsToUpdate(targetBlockPos.getX(), targetBlockPos.getZ(), maxUpdateTaskCount);
 		
 		// combine updates together based on their parent
-		HashMap<Long, HashSet<Long>> updatePosByParentPos = new HashMap<>();
-		for (Long pos : parentUpdatePosList)
+		HashMap<Long, HashSet<Long>> outputChildPosByInputParentPos = new HashMap<>();
+		for (Long outputChildPos : outputChildPosList)
 		{
-			updatePosByParentPos.compute(DhSectionPos.getParentPos(pos), (parentPos, updatePosSet) ->
+			outputChildPosByInputParentPos.compute(DhSectionPos.getParentPos(outputChildPos), (parentPos, outputChildPosSet) ->
 			{
-				if (updatePosSet == null)
+				if (outputChildPosSet == null)
 				{
-					updatePosSet = new HashSet<>();
+					outputChildPosSet = new HashSet<>();
 				}
-				updatePosSet.add(pos);
-				return updatePosSet;
+				outputChildPosSet.add(outputChildPos);
+				return outputChildPosSet;
 			});
 		}
 		
 		// queue the updates
-		for (Long parentUpdatePos : updatePosByParentPos.keySet())
+		for (Long parentInputPos : outputChildPosByInputParentPos.keySet())
 		{
 			// stop if there are already a bunch of updates queued
 			if (this.updatingPosSet.size() > maxUpdateTaskCount
@@ -190,7 +191,7 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 			}
 			
 			// skip any already-queued positions
-			if (!this.updatingPosSet.add(parentUpdatePos))
+			if (!this.updatingPosSet.add(parentInputPos))
 			{
 				continue;
 			}
@@ -199,7 +200,7 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 			{
 				executor.execute(() ->
 				{
-					ReentrantLock parentWriteLock = this.dataUpdater.updateLockProvider.getLock(parentUpdatePos);
+					ReentrantLock parentWriteLock = this.dataUpdater.updateLockProvider.getLock(parentInputPos);
 					boolean parentLocked = false;
 					try
 					{
@@ -211,63 +212,70 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 						}
 						
 						parentLocked = true;
-						this.dataUpdater.lockedPosSet.add(parentUpdatePos);
+						this.dataUpdater.lockedPosSet.add(parentInputPos);
 						
-						try (FullDataSourceV2 parentDataSource = this.provider.get(parentUpdatePos))
+						try (FullDataSourceV2 parentInputDataSource = this.provider.get(parentInputPos))
 						{
 							// will return null if the file handler is shutting down
-							if (parentDataSource == null)
+							if (parentInputDataSource == null)
 							{
 								return;
 							}
 							
+							boolean parentUpdated = false;
+							
 							// apply each child pos to the parent
-							for (Long childPos : updatePosByParentPos.get(parentUpdatePos))
+							for (Long childOutputPos : outputChildPosByInputParentPos.get(parentInputPos))
 							{
-								ReentrantLock childReadLock = this.dataUpdater.updateLockProvider.getLock(childPos);
+								ReentrantLock childReadLock = this.dataUpdater.updateLockProvider.getLock(childOutputPos);
 								try
 								{
 									childReadLock.lock();
-									this.dataUpdater.lockedPosSet.add(childPos);
+									this.dataUpdater.lockedPosSet.add(childOutputPos);
 									
-									try (FullDataSourceV2 childDataSource = this.provider.get(childPos))
+									try (FullDataSourceV2 childOutputDataSource = this.provider.get(childOutputPos))
 									{
 										// can return null when the file handler is being shut down
-										if (childDataSource != null)
+										if (childOutputDataSource != null)
 										{
-											parentDataSource.updateFromDataSource(childDataSource);
-											
-											// propagating up, parent will need changes
-											parentDataSource.applyToParent =
-												(BoolUtil.falseIfNull(parentDataSource.applyToParent) || BoolUtil.falseIfNull(childDataSource.applyToParent))
-												&& (DhSectionPos.getDetailLevel(parentDataSource.getPos()) < FullDataSourceProviderV2.ROOT_SECTION_DETAIL_LEVEL);
-											
+											parentUpdated = parentInputDataSource.updateFromDataSource(childOutputDataSource) 
+												| parentUpdated;
 										}
 									}
 								}
 								catch (Exception e)
 								{
-									LOGGER.error("Unexpected in parent update propagation for parent pos: ["+DhSectionPos.toString(parentUpdatePos)+"], child pos: [" + DhSectionPos.toString(parentUpdatePos) + "], Error: [" + e.getMessage() + "].", e);
+									LOGGER.error("Unexpected in parent update propagation for parent pos: ["+DhSectionPos.toString(parentInputPos)+"], child pos: [" + DhSectionPos.toString(parentInputPos) + "], Error: [" + e.getMessage() + "].", e);
 								}
 								finally
 								{
-									this.provider.repo.setApplyToParent(childPos, false);
+									this.provider.repo.setApplyToParent(childOutputPos, false);
 									
 									childReadLock.unlock();
-									this.dataUpdater.lockedPosSet.remove(childPos);
+									this.dataUpdater.lockedPosSet.remove(childOutputPos);
 								}
 							}
 							
 							
-							// only leaf nodes will ever need regenerating
-							parentDataSource.regenerateLeaf = false;
-							
-							// don't modify other update propagator flags
+							// if nothing was changed we don't want to propagate up any further
+							// since the further up nodes won't need any changes either
+							if (parentUpdated)
 							{
-								parentDataSource.applyToChildren = null;
+								// propagating up, parent will need changes
+								parentInputDataSource.applyToParent = 
+									(DhSectionPos.getDetailLevel(parentInputDataSource.getPos()) < FullDataSourceProviderV2.ROOT_SECTION_DETAIL_LEVEL);
+								
+								
+								// only leaf nodes will ever need regenerating
+								parentInputDataSource.regenerateLeaf = false;
+								
+								// don't modify other update propagator flags
+								{
+									parentInputDataSource.applyToChildren = null;
+								}
+								
+								this.dataUpdater.updateDataSource(parentInputDataSource);
 							}
-							
-							this.dataUpdater.updateDataSource(parentDataSource);
 						}
 					}
 					finally
@@ -275,10 +283,10 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 						if (parentLocked)
 						{
 							parentWriteLock.unlock();
-							this.dataUpdater.lockedPosSet.remove(parentUpdatePos);
+							this.dataUpdater.lockedPosSet.remove(parentInputPos);
 						}
 						
-						this.updatingPosSet.remove(parentUpdatePos);
+						this.updatingPosSet.remove(parentInputPos);
 					}
 				});
 			}
@@ -286,7 +294,7 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 			{ /* the executor was shut down, it should be back up shortly and able to accept new jobs */ }
 			catch (Exception e)
 			{
-				this.updatingPosSet.remove(parentUpdatePos);
+				this.updatingPosSet.remove(parentInputPos);
 				throw e;
 			}
 		}
@@ -301,6 +309,7 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 	//===============//
 	//region
 	
+	/** apply update top -> down, from parent to child */
 	private void runChildUpdates(PriorityTaskPicker.Executor executor, DhBlockPos targetBlockPos)
 	{
 		int maxUpdateTaskCount = getMaxPropagateTaskCount();
@@ -310,10 +319,10 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 			&& this.updatingPosSet.size() < maxUpdateTaskCount)
 		{
 			// get the positions that need to be applied to their children
-			LongArrayList updatePosList = this.provider.repo.getChildPositionsToUpdate(targetBlockPos.getX(), targetBlockPos.getZ(), maxUpdateTaskCount);
+			LongArrayList outputParentPosList = this.provider.repo.getChildPositionsToUpdate(targetBlockPos.getX(), targetBlockPos.getZ(), maxUpdateTaskCount);
 			
 			// queue the updates
-			for (long updatePos : updatePosList)
+			for (long parentOutputPos : outputParentPosList)
 			{
 				// stop if there are already a bunch of updates queued
 				if (this.updatingPosSet.size() > maxUpdateTaskCount
@@ -323,7 +332,7 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 				}
 				
 				// skip already updating positions
-				if (!this.updatingPosSet.add(updatePos))
+				if (!this.updatingPosSet.add(parentOutputPos))
 				{
 					continue;
 				}
@@ -337,14 +346,14 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 						// since they'll take a long time and take up a lot of disk space
 						// that may not be needed.
 						// If they are needed at a future time, they can be generated.
-						if (DhSectionPos.getDetailLevel(updatePos) >= DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL + 6) // LOD 1 datapoint 64 blocks wide, 4096 total blocks wide
+						if (DhSectionPos.getDetailLevel(parentOutputPos) >= DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL + 6) // LOD 1 datapoint 64 blocks wide, 4096 total blocks wide
 						{
-							this.provider.repo.setApplyToChild(updatePos, false);
-							this.updatingPosSet.remove(updatePos);
+							this.provider.repo.setApplyToChild(parentOutputPos, false);
+							this.updatingPosSet.remove(parentOutputPos);
 							return;
 						}
 						
-						ReentrantLock parentReadLock = this.dataUpdater.updateLockProvider.getLock(updatePos);
+						ReentrantLock parentReadLock = this.dataUpdater.updateLockProvider.getLock(parentOutputPos);
 						boolean parentLocked = false;
 						try
 						{
@@ -357,12 +366,12 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 							
 							
 							parentLocked = true;
-							this.dataUpdater.lockedPosSet.add(updatePos);
+							this.dataUpdater.lockedPosSet.add(parentOutputPos);
 							
-							try (FullDataSourceV2 parentDataSource = this.provider.get(updatePos))
+							try (FullDataSourceV2 parentOutputDataSource = this.provider.get(parentOutputPos))
 							{
 								// will return null if the file handler is shutting down
-								if (parentDataSource == null)
+								if (parentOutputDataSource == null)
 								{
 									return;
 								}
@@ -372,58 +381,62 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 								// apply parent to each child
 								for (int i = 0; i < 4; i++)
 								{
-									long childPos = DhSectionPos.getChildByIndex(updatePos, i);
+									long childInputPos = DhSectionPos.getChildByIndex(parentOutputPos, i);
 									
-									ReentrantLock childWriteLock = this.dataUpdater.updateLockProvider.getLock(childPos);
+									ReentrantLock childWriteLock = this.dataUpdater.updateLockProvider.getLock(childInputPos);
 									try
 									{
 										childWriteLock.lock();
-										this.dataUpdater.lockedPosSet.add(childPos);
+										this.dataUpdater.lockedPosSet.add(childInputPos);
 										
-										try (FullDataSourceV2 childDataSource = this.provider.get(childPos))
+										try (FullDataSourceV2 childInputDataSource = this.provider.get(childInputPos))
 										{
 											// will return null if the file handler is shutting down
-											if (childDataSource == null)
+											if (childInputDataSource == null)
 											{
 												continue;
 											}
 											
-											childDataSource.updateFromDataSource(parentDataSource);
-											
-											
-											
-											// propagating down, children will need changes
-											if (DhSectionPos.getDetailLevel(childPos) > FullDataSourceProviderV2.LEAF_SECTION_DETAIL_LEVEL)
+											boolean childUpdated = childInputDataSource.updateFromDataSource(parentOutputDataSource);
+											// don't propagate down if the child didn't change
+											// if that happens that probably means the child was already
+											// higher detail
+											if (childUpdated)
 											{
-												// downsample non-leaf nodes
-												childDataSource.applyToChildren = true;
-												childDataSource.regenerateLeaf = false;
+												// propagating down, children will need changes
+												if (DhSectionPos.getDetailLevel(childInputPos) > FullDataSourceProviderV2.LEAF_SECTION_DETAIL_LEVEL)
+												{
+													// downsample non-leaf nodes
+													childInputDataSource.applyToChildren = true;
+													childInputDataSource.regenerateLeaf = false;
+												}
+												else
+												{
+													// generate leaf nodes
+													childInputDataSource.applyToChildren = false;
+													childInputDataSource.regenerateLeaf = true;
+												}
+												
+												// don't modify other propagator flags
+												{
+													childInputDataSource.applyToParent = null;
+												}
+												
+												
+												this.dataUpdater.updateDataSource(childInputDataSource);
 											}
-											else
-											{
-												// generate leaf nodes
-												childDataSource.applyToChildren = false;
-												childDataSource.regenerateLeaf = true;
-											}
-											
-											// don't modify other propagator flags
-											{
-												childDataSource.applyToParent = null;
-											}
-											
-											this.dataUpdater.updateDataSource(childDataSource);
 										}
 									}
 									catch (Exception e)
 									{
-										LOGGER.error("Unexpected in child update propagation for parent pos: ["+DhSectionPos.toString(updatePos)+"], child pos: [" + DhSectionPos.toString(updatePos) + "], Error: [" + e.getMessage() + "].", e);
+										LOGGER.error("Unexpected in child update propagation for parent pos: ["+DhSectionPos.toString(parentOutputPos)+"], child pos: [" + DhSectionPos.toString(childInputPos) + "], Error: [" + e.getMessage() + "].", e);
 									}
 									finally
 									{
-										this.provider.repo.setApplyToChild(updatePos, false);
+										this.provider.repo.setApplyToChild(parentOutputPos, false);
 										
 										childWriteLock.unlock();
-										this.dataUpdater.lockedPosSet.remove(childPos);
+										this.dataUpdater.lockedPosSet.remove(childInputPos);
 									}
 								}
 							}
@@ -433,10 +446,10 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 							if (parentLocked)
 							{
 								parentReadLock.unlock();
-								this.dataUpdater.lockedPosSet.remove(updatePos);
+								this.dataUpdater.lockedPosSet.remove(parentOutputPos);
 							}
 							
-							this.updatingPosSet.remove(updatePos);
+							this.updatingPosSet.remove(parentOutputPos);
 						}
 					});
 				}
@@ -444,7 +457,7 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 				{ /* the executor was shut down, it should be back up shortly and able to accept new jobs */ }
 				catch (Exception e)
 				{
-					this.updatingPosSet.remove(updatePos);
+					this.updatingPosSet.remove(parentOutputPos);
 					throw e;
 				}
 			}
