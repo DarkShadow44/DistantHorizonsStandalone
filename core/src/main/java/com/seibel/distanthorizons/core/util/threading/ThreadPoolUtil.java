@@ -119,10 +119,10 @@ public class ThreadPoolUtil
 		networkCompressionThreadPool = taskPicker.createExecutor("Network Compression");
 		networkClientHandlerThreadPool = ThreadUtil.makeSingleThreadPool("Network Client Handler");
 		fileHandlerThreadPool = taskPicker.createExecutor("IO");
-		renderSectionLoadThreadPool = taskPicker.createExecutor("Render Loader");
+		renderSectionLoadThreadPool = taskPicker.createExecutor("Render Loader", Thread.NORM_PRIORITY + 1); // higher priority since we want LODs to load in above all else to give the best impression of speed
 		chunkToLodBuilderThreadPool = taskPicker.createExecutor("LOD Builder");
-		updatePropagatorThreadPool = taskPicker.createExecutor("Update Propagator", ThreadPoolUtil::updatePropagatorThreadsCanRun); // the update propagator isn't necessary when moving through the world, so we'll pause it along with the world generator when moving fast
-		worldGenThreadPool = taskPicker.createExecutor("World Gen", ThreadPoolUtil::worldGenThreadsCanRun);
+		updatePropagatorThreadPool = taskPicker.createExecutor("Update Propagator", Thread.NORM_PRIORITY, ThreadPoolUtil::updatePropagatorThreadsCanRun); // the update propagator isn't necessary when moving through the world, so we'll pause it along with the world generator when moving fast
+		worldGenThreadPool = taskPicker.createExecutor("World Gen", Thread.NORM_PRIORITY, ThreadPoolUtil::worldGenThreadsCanRun);
 		
 		
 		

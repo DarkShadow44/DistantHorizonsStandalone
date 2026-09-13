@@ -61,10 +61,11 @@ public class PriorityTaskPicker
 	//==========//
 	///region
 	
-	public Executor createExecutor(String name) { return this.createExecutor(name, null); }
-	public Executor createExecutor(String name, @Nullable PriorityTaskPicker.IExecutorCanRunFunc canRunFunc)
+	public Executor createExecutor(String name) { return this.createExecutor(name, Thread.NORM_PRIORITY, null); }
+	public Executor createExecutor(String name, int priority) { return this.createExecutor(name, priority, null); }
+	public Executor createExecutor(String name, int priority, @Nullable PriorityTaskPicker.IExecutorCanRunFunc canRunFunc)
 	{
-		Executor executor = new Executor(this, name, canRunFunc);
+		Executor executor = new Executor(this, name, priority, canRunFunc);
 		this.executors.add(executor);
 		return executor;
 	}
@@ -176,7 +177,17 @@ public class PriorityTaskPicker
 	{
 		Stream<Executor> stream = this.executors.stream();
 		// returns smaller numbers first
-		stream = stream.sorted(Comparator.comparingLong((executor) -> executor.totalRuntimeNanos.get()));
+		//stream = stream.sorted(Comparator.comparingLong((executor) -> executor.totalRuntimeNanos.get()));
+		stream = stream.sorted((Executor a, Executor b) ->
+		{
+			int priorityCompare = Integer.compare(b.priority, a.priority); // higher number first
+			if (priorityCompare != 0)
+			{
+				return priorityCompare;
+			}
+			
+			return Long.compare(a.totalRuntimeNanos.get(), b.totalRuntimeNanos.get()); // lower number first
+		});
 		return stream.iterator();
 	}
 	
@@ -241,6 +252,12 @@ public class PriorityTaskPicker
 		private final AtomicInteger runningTasksRef = new AtomicInteger(0);
 		private final AtomicInteger completedTasksRef = new AtomicInteger(0);
 		
+		/** 
+		 * a higher number means this executor will run before others. <br> 
+		 * 0 = default
+		 */
+		private final int priority;
+		
 		private final AtomicLong totalRuntimeNanos = new AtomicLong(0);
 		/** used for performance logging */
 		private final RollingAverage runTimeInMsRollingAverage = new RollingAverage(200);
@@ -258,10 +275,11 @@ public class PriorityTaskPicker
 		//=============//
 		///region
 		
-		public Executor(PriorityTaskPicker parentTaskPicker, String name, @Nullable PriorityTaskPicker.IExecutorCanRunFunc canRunFunc)
+		public Executor(PriorityTaskPicker parentTaskPicker, String name, int priority, @Nullable PriorityTaskPicker.IExecutorCanRunFunc canRunFunc)
 		{
 			this.parentTaskPicker = parentTaskPicker;
 			this.name = name;
+			this.priority = priority;
 			this.canRunFunc = canRunFunc;
 			
 			this.threadPoolExecutor = this.createThreadPool();
