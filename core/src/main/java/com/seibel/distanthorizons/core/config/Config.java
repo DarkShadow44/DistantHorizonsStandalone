@@ -1716,14 +1716,14 @@ public class Config
 					+ "")
 				.build();
 			
-			public static final ConfigEntry<Boolean> useC2meThreadCount = new ConfigEntry.Builder<Boolean>()
-				.set(true)
-				.comment(""
-					+ "If C2ME is present, set DH's thread count to match C2ME. \n"
-					+ "\n"
-					+ "This is necessary to prevent thread starvation issues when C2ME is present. \n"
-					+ "")
-				.build();
+			//public static final ConfigEntry<Boolean> useC2meThreadCount = new ConfigEntry.Builder<Boolean>()
+			//	.set(true)
+			//	.comment(""
+			//		+ "If C2ME is present, set DH's thread count to match C2ME. \n"
+			//		+ "\n"
+			//		+ "This is necessary to prevent thread starvation issues when C2ME is present. \n"
+			//		+ "")
+			//	.build();
 			
 			
 			
