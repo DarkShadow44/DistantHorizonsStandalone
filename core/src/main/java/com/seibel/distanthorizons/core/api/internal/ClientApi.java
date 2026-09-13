@@ -735,15 +735,15 @@ public class ClientApi
 	private static boolean shouldRenderFade()
 	{
 		// don't fade when Iris shaders are active, otherwise the rendering can get weird
-		if (DhApiRenderProxy.INSTANCE.getDeferTransparentRendering())
+		if (DelayedAccessors.IRIS != null
+			&& DelayedAccessors.IRIS.isShaderPackInUse())
 		{
 			return false;
 		}
 		
 		// Don't render fade through immersive portals, this causes the fade to apply incorrectly
-		IImmersivePortalsAccessor immersivePortals = ModAccessorInjector.INSTANCE.get(IImmersivePortalsAccessor.class);
-		if (immersivePortals != null 
-			&& immersivePortals.isRenderingPortal())
+		if (DelayedAccessors.IMMERSIVE_PORTALS != null 
+			&& DelayedAccessors.IMMERSIVE_PORTALS.isRenderingPortal())
 		{
 			return false;
 		}
