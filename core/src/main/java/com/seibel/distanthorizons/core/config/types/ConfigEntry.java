@@ -32,6 +32,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * This config type allows for entering text, number, or enum values.
@@ -45,6 +46,8 @@ public class ConfigEntry<T> extends AbstractConfigBase<T>
 	private T max;
 	private final ArrayList<IConfigListener> listenerList;
 	private final String chatCommandName;
+	@Nullable
+	private final IShowEnumOptionFunc showEnumOptionFunc;
 	
 	/**
 	 * If true this config can be controlled by the API <br>
@@ -79,11 +82,12 @@ public class ConfigEntry<T> extends AbstractConfigBase<T>
 	//region
 	
 	private ConfigEntry(
-			EConfigEntryAppearance appearance, 
-			String comment, String chatCommandName, 
-			T value, T min, T max,
-			boolean allowApiOverride, 
-			ArrayList<IConfigListener> listenerList)
+		EConfigEntryAppearance appearance, 
+		String comment, String chatCommandName, 
+		@Nullable IShowEnumOptionFunc showEnumOptionFunc,
+		T value, T min, T max,
+		boolean allowApiOverride, 
+		ArrayList<IConfigListener> listenerList)
 	{
 		super(appearance, value);
 		
@@ -91,6 +95,7 @@ public class ConfigEntry<T> extends AbstractConfigBase<T>
 		this.min = min;
 		this.max = max;
 		this.chatCommandName = chatCommandName;
+		this.showEnumOptionFunc = showEnumOptionFunc;
 		this.allowApiOverride = allowApiOverride;
 		this.listenerList = listenerList;
 	}
@@ -108,6 +113,9 @@ public class ConfigEntry<T> extends AbstractConfigBase<T>
 	public String getChatCommandName() { return this.chatCommandName; }
 	
 	public String getComment() { return this.comment; }
+	
+	@Nullable
+	public IShowEnumOptionFunc getShowEnumOptionFunc() { return this.showEnumOptionFunc; }
 	
 	/**
 	 * If true this config can be controlled by the API <br>
@@ -422,6 +430,7 @@ public class ConfigEntry<T> extends AbstractConfigBase<T>
 		private T tmpMin = null;
 		private T tmpMax = null;
 		protected String tmpChatCommandName = null;
+		protected IShowEnumOptionFunc tmpShowEnumOptionFunc = null;
 		private boolean tmpUseApiOverwrite = true;
 		protected ArrayList<IConfigListener> tmpIConfigListener = new ArrayList<>();
 		
@@ -466,6 +475,12 @@ public class ConfigEntry<T> extends AbstractConfigBase<T>
 			return this;
 		}
 		
+		public Builder<T> setShowEnumOptionFunc(IShowEnumOptionFunc func)
+		{
+			this.tmpShowEnumOptionFunc = func;
+			return this;
+		}
+		
 		public Builder<T> setUseApiOverwrite(boolean newUseApiOverwrite)
 		{
 			this.tmpUseApiOverwrite = newUseApiOverwrite;
@@ -505,16 +520,31 @@ public class ConfigEntry<T> extends AbstractConfigBase<T>
 		public ConfigEntry<T> build()
 		{
 			return new ConfigEntry<>(
-					this.tmpAppearance,
-					this.tmpComment, this.tmpChatCommandName, this.tmpValue, this.tmpMin, this.tmpMax,
-					this.tmpUseApiOverwrite, 
-					this.tmpIConfigListener);
+				this.tmpAppearance,
+				this.tmpComment, this.tmpChatCommandName, 
+				this.tmpShowEnumOptionFunc,
+				this.tmpValue, this.tmpMin, this.tmpMax,
+				this.tmpUseApiOverwrite, 
+				this.tmpIConfigListener);
 		}
 		
 	}
 	
 	//endregion
 	
+	
+	//================//
+	// helper classes //
+	//================//
+	//region
+	
+	@FunctionalInterface
+	public interface IShowEnumOptionFunc
+	{
+		boolean shouldShowEnum(Enum<?> enumValue);
+	}
+	
+	//endregion
 	
 	
 }
