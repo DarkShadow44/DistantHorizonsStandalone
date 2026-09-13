@@ -973,15 +973,8 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 	/** Does nothing if the missing positions are already queued. */
 	private void tryQueuePosForRetrieval(long pos)
 	{
-		EDhApiWorldGenerationStep genStep = EDhApiWorldGenerationStep.SURFACE;
 		byte worldGenDetail = DhSectionPos.getDetailLevel(pos);
-		if (DhSectionPos.getDetailLevel(pos) == DhSectionPos.SECTION_BLOCK_DETAIL_LEVEL)
-		{
-			genStep = EDhApiWorldGenerationStep.FEATURES;
-			worldGenDetail = DhSectionPos.SECTION_BLOCK_DETAIL_LEVEL;
-		}
-		
-		LongArrayList missingPosList = this.fullDataSourceProvider.getPositionsToRetrieve(pos, worldGenDetail, genStep);
+		LongArrayList missingPosList = this.fullDataSourceProvider.getPositionsToRetrieve(pos, worldGenDetail);
 		if (missingPosList == null)
 		{
 			return;

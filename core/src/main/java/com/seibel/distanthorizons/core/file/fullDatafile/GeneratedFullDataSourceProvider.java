@@ -19,6 +19,7 @@
 
 package com.seibel.distanthorizons.core.file.fullDatafile;
 
+import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiGeneratorPlan;
 import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiWorldGenerationStep;
 import com.seibel.distanthorizons.core.api.internal.chunkUpdating.WorldChunkUpdateManager;
 import com.seibel.distanthorizons.core.config.Config;
@@ -357,13 +358,31 @@ public class GeneratedFullDataSourceProvider extends FullDataSourceProviderV2 im
 	
 	
 	@Override
-	public LongArrayList getPositionsToRetrieve(long pos, byte generatorDetailLevel, EDhApiWorldGenerationStep requiredWorldGenStep)
+	public LongArrayList getPositionsToRetrieve(long pos, byte generatorDetailLevel)
 	{
 		IFullDataSourceRetrievalQueue worldGenQueue = this.worldGenQueueRef.get();
 		if (worldGenQueue == null)
 		{
 			return null;
 		}
+		
+		
+		EDhApiWorldGenerationStep requiredWorldGenStep;
+		EDhApiGeneratorPlan genPlan = Config.Common.WorldGenerator.generatorPlan.get();
+		if (genPlan == EDhApiGeneratorPlan.SURFACE_ONLY)
+		{
+			requiredWorldGenStep = EDhApiWorldGenerationStep.SURFACE;
+		}
+		else if (genPlan.surfaceGenEnabled
+			&& DhSectionPos.getDetailLevel(pos) > DhSectionPos.SECTION_BLOCK_DETAIL_LEVEL)
+		{
+			requiredWorldGenStep = EDhApiWorldGenerationStep.SURFACE;
+		}
+		else
+		{
+			requiredWorldGenStep = EDhApiWorldGenerationStep.FEATURES;
+		}
+		
 		
 		
 		// don't check any child positions if this position is already fully generated 

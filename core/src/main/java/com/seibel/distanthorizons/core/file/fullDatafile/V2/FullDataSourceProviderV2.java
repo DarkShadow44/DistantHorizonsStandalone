@@ -404,7 +404,7 @@ public class FullDataSourceProviderV2 implements IDebugRenderable, AutoCloseable
 	 * an empty array if all positions were generated 
 	 */
 	@Nullable
-	public LongArrayList getPositionsToRetrieve(long pos, byte generatorDetailLevel, EDhApiWorldGenerationStep requiredWorldGenStep) { return null; }	
+	public LongArrayList getPositionsToRetrieve(long pos, byte generatorDetailLevel) { return null; }	
 	
 	/** @return null if the position couldn't be queued */
 	@Nullable

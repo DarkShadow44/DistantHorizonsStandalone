@@ -1,5 +1,6 @@
 package com.seibel.distanthorizons.core.file.fullDatafile.V2;
 
+import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiGeneratorPlan;
 import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiWorldGenerationStep;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.dataObjects.fullData.sources.FullDataSourceV2;
@@ -616,7 +617,7 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 		
 		
 		// just generate highest detail
-		LongArrayList posToGen = genProvider.getPositionsToRetrieve(updatePos, (byte)DhSectionPos.SECTION_BLOCK_DETAIL_LEVEL, EDhApiWorldGenerationStep.FEATURES);
+		LongArrayList posToGen = genProvider.getPositionsToRetrieve(updatePos, DhSectionPos.SECTION_BLOCK_DETAIL_LEVEL);
 		if (posToGen == null)
 		{
 			return true;
