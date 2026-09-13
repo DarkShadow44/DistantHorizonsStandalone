@@ -494,8 +494,8 @@ public class FullDataSourceV2
 		{
 			for (int z = 0; z < WIDTH; z++)
 			{
-				int index = relativePosToIndex(x, z);
-				LongArrayList inputDataArray = inputDataSource.dataPoints[index];
+				int recipientIndex = relativePosToIndex(x, z);
+				LongArrayList inputDataArray = inputDataSource.dataPoints[recipientIndex];
 				if (inputDataArray == null)
 				{
 					continue;
@@ -503,8 +503,8 @@ public class FullDataSourceV2
 				
 				
 				
-				byte thisGenState = this.columnGenerationSteps.getByte(index);
-				byte inputGenState = inputDataSource.columnGenerationSteps.getByte(index);
+				byte thisGenState = this.columnGenerationSteps.getByte(recipientIndex);
+				byte inputGenState = inputDataSource.columnGenerationSteps.getByte(recipientIndex);
 				
 				
 				// determine if this column should be updated
@@ -536,54 +536,51 @@ public class FullDataSourceV2
 				
 				
 				// check if the data changed
-				if (this.dataPoints[index] == null)
+				if (this.dataPoints[recipientIndex] == null)
 				{
 					// no data was present previously
-					this.dataPoints[index] = new LongArrayList(inputDataArray);
+					this.dataPoints[recipientIndex] = new LongArrayList(inputDataArray);
 					dataChanged = true;
 				}
-				else if (this.dataPoints[index].size() != inputDataArray.size())
+				else if (this.dataPoints[recipientIndex].size() != inputDataArray.size())
 				{
 					// data is present, but the size is different
 					dataChanged = true;
 				}
 				
-				int oldDataHash = 0;
 				if (!dataChanged)
 				{
 					// some old data existed with the same length,
-					// we'll have to compare the caches
-					oldDataHash = this.dataPoints[index].hashCode();
-				}
-				
-				
-				// copy over the new data, this is necessary to prevent remapping issues
-				this.dataPoints[index].clear();
-				this.dataPoints[index].addAll(inputDataArray);
-				this.remapDataColumn(index, remappedIds);
-				
-				if (RUN_DATA_ORDER_VALIDATION)
-				{
-					throwIfDataColumnInWrongOrder(inputDataSource.pos, this.dataPoints[index]);
-				}
-				
-				
-				
-				if (!dataChanged)
-				{
-					// check if the identical length data column hashes are the same
-					// hashes need to be compared after the ID's have been remapped otherwise the ID's won't match even if the data is the same
-					if (oldDataHash != this.dataPoints[index].hashCode())
+					// we'll have to compare each datapoint.
+					// Doing a hash check has too high a chance of showing
+					// different data as the same.
+					LongArrayList oldDataList = this.dataPoints[recipientIndex];
+					for (int i = 0; i < oldDataList.size(); i++)
 					{
-						// the hashes are different, something was changed
-						dataChanged = true;
+						long oldDatapoint = oldDataList.getLong(i);
+						long newDatapoint = inputDataArray.getLong(i);
+						if (oldDatapoint != newDatapoint)
+						{
+							dataChanged = true;
+							break;
+						}
 					}
 				}
 				
+				// copy over the new data, this is necessary to prevent remapping issues
+				this.dataPoints[recipientIndex].clear();
+				this.dataPoints[recipientIndex].addAll(inputDataArray);
+				this.remapDataColumn(recipientIndex, remappedIds);
 				
-				this.columnGenerationSteps.set(index, inputGenState);
+				if (RUN_DATA_ORDER_VALIDATION)
+				{
+					throwIfDataColumnInWrongOrder(inputDataSource.pos, this.dataPoints[recipientIndex]);
+				}
+				
+				
+				this.columnGenerationSteps.set(recipientIndex, inputGenState);
 				// always overwrite the compression mode since we're replacing this column
-				this.columnWorldCompressionMode.set(index, inputDataSource.columnWorldCompressionMode.getByte(index));
+				this.columnWorldCompressionMode.set(recipientIndex, inputDataSource.columnWorldCompressionMode.getByte(recipientIndex));
 				this.isEmpty = false;
 			}
 		}
@@ -649,14 +646,24 @@ public class FullDataSourceV2
 					dataChanged = true;
 				}
 				
-				int oldDataHash = 0;
 				if (!dataChanged)
 				{
 					// some old data existed with the same length,
-					// we'll have to compare the caches
-					oldDataHash = this.dataPoints[recipientIndex].hashCode();
+					// we'll have to compare each datapoint.
+					// Doing a hash check has too high a chance of showing
+					// different data as the same.
+					LongArrayList oldDataList = this.dataPoints[recipientIndex];
+					for (int i = 0; i < oldDataList.size(); i++)
+					{
+						long oldDatapoint = oldDataList.getLong(i);
+						long newDatapoint = mergedInputDataArray.getLong(i);
+						if (oldDatapoint != newDatapoint)
+						{
+							dataChanged = true;
+							break;
+						}
+					}
 				}
-				
 				
 				this.dataPoints[recipientIndex] = mergedInputDataArray;
 				// copy over the new data, this is necessary to prevent remapping issues
@@ -668,17 +675,6 @@ public class FullDataSourceV2
 				}
 				
 				
-				
-				if (!dataChanged)
-				{
-					// check if the identical length data column hashes are the same
-					// hashes need to be compared after the ID's have been remapped otherwise the ID's won't match even if the data is the same
-					if (oldDataHash != this.dataPoints[recipientIndex].hashCode())
-					{
-						// the hashes are different, something was changed
-						dataChanged = true;
-					}
-				}
 				
 				this.isEmpty = false;
 			}
