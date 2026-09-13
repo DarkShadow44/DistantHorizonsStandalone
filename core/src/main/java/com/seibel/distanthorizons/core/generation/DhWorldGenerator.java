@@ -67,8 +67,6 @@ public class DhWorldGenerator implements IDhApiWorldGenerator
 	@Nullable
 	public final IRoughGenerator roughGenerator;
 	
-	public final boolean allowRoughSurfaceGen;
-	
 	
 	
 	//=============//
@@ -83,8 +81,6 @@ public class DhWorldGenerator implements IDhApiWorldGenerator
 		
 		this.chunkGenerator = WRAPPER_FACTORY.createChunkGenerator(serverLevel);
 		this.roughGenerator = WRAPPER_FACTORY.createRoughGenerator(serverLevel, this.chunkGenerator);
-		
-		this.allowRoughSurfaceGen = Config.Common.WorldGenerator.enableFastSurfaceGenerator.get();
 	}
 	
 	//endregion
@@ -113,7 +109,7 @@ public class DhWorldGenerator implements IDhApiWorldGenerator
 	@Override
 	public byte getLargestDataDetailLevel() 
 	{ 
-		if (this.allowRoughSurfaceGen)
+		if (Config.Common.WorldGenerator.generatorPlan.get().surfaceGenEnabled)
 		{
 			// we can generate any LOD detail level
 			return (byte) (LodUtil.BLOCK_DETAIL_LEVEL + 12);
@@ -155,9 +151,9 @@ public class DhWorldGenerator implements IDhApiWorldGenerator
 		int widthInChunks = widthInBlocks / LodUtil.CHUNK_WIDTH;
 		
 		
-		if (!this.allowRoughSurfaceGen)
+		if (Config.Common.WorldGenerator.generatorPlan.get().chunkGenEnabled
+			&& detailLevel == 0)
 		{
-			// only chunk generation is allowed
 			return this.generateChunksAsync(
 				chunkPosMinX, chunkPosMinZ,
 				widthInChunks,
@@ -174,32 +170,17 @@ public class DhWorldGenerator implements IDhApiWorldGenerator
 		
 		
 		
-		if (detailLevel == 0)
-		{
-			// we want a chunk, grab that from the chunk generator
-			
-			return this.generateChunksAsync(
+		// we want something larger than a chunk,
+		// estimate the surface
+		return CompletableFuture.runAsync(() ->
+			this.roughGenerator.generateSurface(
 				chunkPosMinX, chunkPosMinZ,
-				widthInChunks,
-				pooledFullDataSource, 
-				generatorMode, 
-				worldGeneratorThreadPool, 
-				resultConsumer);
-		}
-		else
-		{
-			// we want something larger than a chunk,
-			// estimate the surface
-			return CompletableFuture.runAsync(() ->
-				this.roughGenerator.generateSurface(
-					chunkPosMinX, chunkPosMinZ,
-					posX, posZ, detailLevel,
-					pooledFullDataSource,
-					generatorMode,
-					resultConsumer
-				),
-			worldGeneratorThreadPool);
-		}
+				posX, posZ, detailLevel,
+				pooledFullDataSource,
+				generatorMode,
+				resultConsumer
+			),
+		worldGeneratorThreadPool);
 	}
 	private @NotNull CompletableFuture<Void> generateChunksAsync(
 		int chunkPosMinX, int chunkPosMinZ,

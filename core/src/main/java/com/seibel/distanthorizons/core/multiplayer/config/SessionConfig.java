@@ -1,5 +1,6 @@
 package com.seibel.distanthorizons.core.multiplayer.config;
 
+import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiGeneratorPlan;
 import com.seibel.distanthorizons.core.util.MoreObjects;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.config.listeners.ConfigChangeListener;
@@ -32,11 +33,11 @@ public class SessionConfig implements INetworkObject
 	{
 		// Note: config values are transmitted in the insertion order
 		
-		registerConfigEntry(Config.Common.WorldGenerator.enableDistantGeneration.getChatCommandName(), new Entry(
+		registerConfigEntry(Config.Common.WorldGenerator.generatorPlan.getChatCommandName(), new Entry(
 			Config.Server.enableServerGeneration::get,
 			runnable -> new Closeable()
 			{
-				private final ConfigChangeListener<Boolean> distantGenerationChanges = new ConfigChangeListener<>(Config.Common.WorldGenerator.enableDistantGeneration, ignored -> runnable.run());
+				private final ConfigChangeListener<EDhApiGeneratorPlan> distantGenerationChanges = new ConfigChangeListener<>(Config.Common.WorldGenerator.generatorPlan, ignored -> runnable.run());
 				private final ConfigChangeListener<Boolean> serverGenerationChanges = new ConfigChangeListener<>(Config.Server.enableServerGeneration, ignored -> runnable.run());
 				
 				@Override
@@ -46,7 +47,7 @@ public class SessionConfig implements INetworkObject
 					this.distantGenerationChanges.close();
 				}
 			},
-			(Boolean client, Boolean server) -> client && Config.Common.WorldGenerator.enableDistantGeneration.get()
+			(Boolean client, Boolean server) -> client && Config.Common.WorldGenerator.generatorPlan.get().generationEnabled
 		));
 		
 		registerConfigEntry(Config.Server.maxGenerationRequestDistance, Math::min);
@@ -83,7 +84,11 @@ public class SessionConfig implements INetworkObject
 	// public values //
 	//===============//
 	
-	public boolean isDistantGenerationEnabled() { return this.getValue(Config.Common.WorldGenerator.enableDistantGeneration); }
+	public boolean isDistantGenerationEnabled() 
+	{
+		EDhApiGeneratorPlan genPlan = this.getValue(Config.Common.WorldGenerator.generatorPlan);
+		return genPlan.generationEnabled;
+	}
 	public int getMaxGenerationRequestDistance() { return this.getValue(Config.Server.maxGenerationRequestDistance); }
 	public Integer getGenerationCenterChunkX() { return this.getValue(Config.Common.WorldGenerator.generationCenterChunkX); }
 	public Integer getGenerationCenterChunkZ() { return this.getValue(Config.Common.WorldGenerator.generationCenterChunkZ); }

@@ -21,7 +21,6 @@ package com.seibel.distanthorizons.core.render.QuadTree;
 
 import com.seibel.distanthorizons.api.enums.config.EDhApiMaxHorizontalResolution;
 import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiWorldGenerationStep;
-import com.seibel.distanthorizons.core.api.internal.ClientApi;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.config.listeners.IConfigListener;
 import com.seibel.distanthorizons.core.dataObjects.fullData.sources.FullDataSourceV2;
@@ -39,14 +38,12 @@ import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos2D;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
 import com.seibel.distanthorizons.core.render.CameraZoom;
 import com.seibel.distanthorizons.core.render.RenderBufferHandler;
-import com.seibel.distanthorizons.core.render.RenderThreadTaskHandler;
 import com.seibel.distanthorizons.core.render.renderer.AbstractDebugWireframeRenderer;
 import com.seibel.distanthorizons.core.render.renderer.BeaconRenderHandler;
 import com.seibel.distanthorizons.core.render.renderer.IDebugRenderable;
 import com.seibel.distanthorizons.core.sql.dto.BeaconBeamDTO;
 import com.seibel.distanthorizons.core.sql.repo.BeaconBeamRepo;
 import com.seibel.distanthorizons.core.util.LodUtil;
-import com.seibel.distanthorizons.core.util.RenderUtil;
 import com.seibel.distanthorizons.core.util.ThreadUtil;
 import com.seibel.distanthorizons.core.util.WorldGenUtil;
 import com.seibel.distanthorizons.core.util.objects.quadTree.QuadNode;
@@ -178,7 +175,7 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 		
 		this.beaconBeamRepo = this.level.getBeaconBeamRepo();
 		
-		Config.Common.WorldGenerator.enableDistantGeneration.addListener(this);
+		Config.Common.WorldGenerator.generatorPlan.addListener(this);
 		Config.Server.enableServerGeneration.addListener(this);
 		
 	}
@@ -955,7 +952,7 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 	public void onConfigValueSet()
 	{
 		boolean generatorEnabled = this.level instanceof DhClientServerLevel
-			? Config.Common.WorldGenerator.enableDistantGeneration.get()
+			? Config.Common.WorldGenerator.generatorPlan.get().generationEnabled
 			: Config.Server.enableServerGeneration.get();
 		if (generatorEnabled)
 		{
@@ -1364,7 +1361,7 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 		//LOGGER.info("Shutting down LodQuadTree...");
 		
 		DEBUG_RENDERER.unregister(this, Config.Client.Advanced.Debugging.DebugWireframe.showQuadTreeRenderStatus);
-		Config.Common.WorldGenerator.enableDistantGeneration.removeListener(this);
+		Config.Common.WorldGenerator.generatorPlan.removeListener(this);
 		Config.Server.enableServerGeneration.removeListener(this);
 		
 		

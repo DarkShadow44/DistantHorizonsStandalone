@@ -20,6 +20,7 @@
 package com.seibel.distanthorizons.core.generation.queues;
 
 import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiDistantGeneratorMode;
+import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiGeneratorPlan;
 import com.seibel.distanthorizons.api.interfaces.override.worldGenerator.IDhApiWorldGenerator;
 import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiWorldGeneratorReturnType;
 import com.seibel.distanthorizons.api.objects.data.DhApiChunk;
@@ -73,11 +74,6 @@ public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDeb
 	private final ConcurrentHashMap<Long, DataSourceRetrievalTask> waitingTaskByPos = new ConcurrentHashMap<>();
 	private final ConcurrentHashMap<Long, DataSourceRetrievalTask> inProgressGenTasksByLodPos = new ConcurrentHashMap<>();
 	
-	/** largest numerical detail level allowed */
-	public final byte lowestDataDetail;
-	/** smallest numerical detail level allowed */
-	public final byte highestDataDetail;
-	
 	
 	private boolean retrievingLowDetailLods;
 	
@@ -111,8 +107,6 @@ public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDeb
 		LOGGER.info("Creating world gen queue");
 		this.generator = generator;
 		this.level = level;
-		this.lowestDataDetail = generator.getLargestDataDetailLevel();
-		this.highestDataDetail = generator.getSmallestDataDetailLevel();
 		
 		DEBUG_RENDERER.register(this, Config.Client.Advanced.Debugging.DebugWireframe.showWorldGenQueue);
 		LOGGER.info("Created world gen queue");
@@ -150,13 +144,13 @@ public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDeb
 		
 		
 		// make sure the generator can provide the requested position
-		if (requiredDataDetail < this.highestDataDetail)
+		if (requiredDataDetail < this.generator.getSmallestDataDetailLevel())
 		{
 			throw new UnsupportedOperationException("Current generator does not meet requiredDataDetail level");
 		}
-		if (requiredDataDetail > this.lowestDataDetail)
+		if (requiredDataDetail > this.generator.getLargestDataDetailLevel())
 		{
-			requiredDataDetail = this.lowestDataDetail;
+			requiredDataDetail = this.generator.getLargestDataDetailLevel();
 		}
 		
 		// the request should be at least chunk-sized
@@ -374,15 +368,17 @@ public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDeb
 	private boolean canGenerateDetailLevel(byte taskDetailLevel)
 	{
 		byte requestedDetailLevel = (byte) (taskDetailLevel - DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL);
-		return (this.highestDataDetail <= requestedDetailLevel && requestedDetailLevel <= this.lowestDataDetail);
+		return (this.generator.getSmallestDataDetailLevel() <= requestedDetailLevel 
+			&& requestedDetailLevel <= this.generator.getLargestDataDetailLevel());
 	}
 	private void startWorldGenTaskGroup(DataSourceRetrievalTask worldGenTask)
 	{
 		long taskPos = worldGenTask.pos;
-		LodUtil.assertTrue(
-			worldGenTask.requestDetailLevel >= this.highestDataDetail 
-			&& worldGenTask.requestDetailLevel <= this.lowestDataDetail,
-			"World gen task started that isn't within the range that the generator can create.");
+		// commented out for the time being since detail level can change at any time
+		//LodUtil.assertTrue(
+		//	worldGenTask.requestDetailLevel >= this.highestDataDetail 
+		//	&& worldGenTask.requestDetailLevel <= this.lowestDataDetail,
+		//	"World gen task started that isn't within the range that the generator can create.");
 		
 		long generationStartMsTime = System.currentTimeMillis();
 		CompletableFuture<FullDataSourceV2> generationFuture = this.startGenerationEvent(worldGenTask);
@@ -440,7 +436,7 @@ public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDeb
 		
 		DhChunkPos chunkPosMin = new DhChunkPos(new DhBlockPos2D(DhSectionPos.getMinCornerBlockX(task.pos), DhSectionPos.getMinCornerBlockZ(task.pos)));
 		
-		EDhApiDistantGeneratorMode generatorMode = Config.Common.WorldGenerator.distantGeneratorMode.get();
+		EDhApiDistantGeneratorMode generatorMode = Config.Common.WorldGenerator.chunkGeneratorMode.get();
 		EDhApiWorldGeneratorReturnType returnType = this.generator.getReturnType();
 		switch (returnType) 
 		{
@@ -458,8 +454,8 @@ public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDeb
 			}
 			default: 
 			{
-				Config.Common.WorldGenerator.enableDistantGeneration.set(false);
-				throw new AssertFailureException("Unknown return type: " + returnType);
+				Config.Common.WorldGenerator.generatorPlan.set(EDhApiGeneratorPlan.DISABLED);
+				throw new AssertFailureException("Unknown return type: [" + returnType + "].");
 			}
 		}
 	}
@@ -486,12 +482,12 @@ public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDeb
 				catch (ClassCastException e)
 				{
 					LOGGER.error("World generator return type incorrect. Error: [" + e.getMessage() + "]. World generator disabled.", e);
-					Config.Common.WorldGenerator.enableDistantGeneration.set(false);
+					Config.Common.WorldGenerator.generatorPlan.set(EDhApiGeneratorPlan.DISABLED);
 				}
 				catch (Exception e)
 				{
 					LOGGER.error("Unexpected world generator error. Error: [" + e.getMessage() + "]. World generator disabled.", e);
-					Config.Common.WorldGenerator.enableDistantGeneration.set(false);
+					Config.Common.WorldGenerator.generatorPlan.set(EDhApiGeneratorPlan.DISABLED);
 				}
 			}
 		);
@@ -570,7 +566,7 @@ public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDeb
 				catch (DataCorruptedException | IllegalArgumentException e)
 				{
 					LOGGER.error("World generator returned a corrupt API chunk. Error: [" + e.getMessage() + "]. World generator disabled.", e);
-					Config.Common.WorldGenerator.enableDistantGeneration.set(false);
+					Config.Common.WorldGenerator.generatorPlan.set(EDhApiGeneratorPlan.DISABLED);
 				}
 			}
 			
@@ -632,8 +628,8 @@ public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDeb
 	@Override public int getWaitingTaskCount() { return this.waitingTaskByPos.size(); }
 	@Override public int getInProgressTaskCount() { return this.inProgressGenTasksByLodPos.size(); }
 	
-	@Override public byte lowestDataDetail() { return this.lowestDataDetail; }
-	@Override public byte highestDataDetail() { return this.highestDataDetail; }
+	@Override public byte lowestDataDetail() { return this.generator.getLargestDataDetailLevel(); }
+	@Override public byte highestDataDetail() { return this.generator.getSmallestDataDetailLevel(); }
 	
 	@Override public String getRetrievalTypeName() { return "generating chunks"; }
 	

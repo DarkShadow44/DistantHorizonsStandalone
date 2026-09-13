@@ -24,6 +24,7 @@ import com.seibel.distanthorizons.api.enums.config.quickOptions.*;
 import com.seibel.distanthorizons.api.enums.rendering.*;
 import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiDistantGeneratorMode;
 import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiDistantGeneratorProgressDisplayLocation;
+import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiGeneratorPlan;
 import com.seibel.distanthorizons.core.config.eventHandlers.*;
 import com.seibel.distanthorizons.core.config.eventHandlers.presets.*;
 import com.seibel.distanthorizons.core.config.types.*;
@@ -77,7 +78,7 @@ public class Config
 			.addListener(ThreadPresetConfigEventHandler.INSTANCE)
 			.build();
 		
-		public static ConfigUiLinkedEntry quickEnableWorldGenerator = new ConfigUiLinkedEntry(Common.WorldGenerator.enableDistantGeneration);
+		public static ConfigUiLinkedEntry quickWorldGeneratorPlan = new ConfigUiLinkedEntry(Common.WorldGenerator.generatorPlan);
 		public static ConfigUiLinkedEntry quickEnableServerGeneration = new ConfigUiLinkedEntry(Server.enableServerGeneration);
 		
 		public static ConfigUiLinkedEntry quickShowWorldGenProgress = new ConfigUiLinkedEntry(Common.WorldGenerator.showGenerationProgress);
@@ -1429,44 +1430,54 @@ public class Config
 		{
 			public static ConfigUIComment worldGeneratorHeader = new ConfigUIComment.Builder().setParentConfigClass(WorldGenerator.class).build();
 			
-			public static ConfigEntry<Boolean> enableDistantGeneration = new ConfigEntry.Builder<Boolean>()
-				.setChatCommandName("generation.enable")
-				.set(true)
+			public static ConfigEntry<EDhApiGeneratorPlan> generatorPlan = new ConfigEntry.Builder<EDhApiGeneratorPlan>()
+				.setChatCommandName("generation.genPlan")
+				.set(EDhApiGeneratorPlan.SURFACE_THEN_CHUNKS)
+				.setShowEnumOptionFunc(WorldGenPlanConfigEventHandler::setShowEnumOptionFunc)
+				.addListener(WorldGenPlanConfigEventHandler.INSTANCE)
 				.comment(""
-					+ " Should Distant Horizons slowly generate LODs \n"
-					+ " outside the vanilla render distance? \n"
-					+ "Depending on the generator mode, this will import existing chunks \n"
-					+ "and/or generating missing chunks."
+					+ "Defines how LODs will be generated \n"
+					+ "outside the vanilla render distance \n"
+					+ "in singleplayer. \n"
+					+ "\n"
+					+ EDhApiGeneratorPlan.SURFACE_THEN_CHUNKS + " \n"
+					+ "The rough surface will be generated first \n"
+					+ "then chunks will be generated to fill in \n"
+					+ "missing features (ie trees and villages). \n"
+					+ "\n"
+					+ "Recommended for modded or vanilla worlds. \n"
+					+ "\n"
+					+ EDhApiGeneratorPlan.SURFACE_ONLY + " \n"
+					+ "Only the rough surface will be generated. \n"
+					+ "Chunk features like trees and villages \n"
+					+ "won't be generated. \n"
+					+ "\n"
+					+ "Recommended for computers that don't have \n"
+					+ "enough CPU power or RAM space to handle \n"
+					+ "the chunk generator. \n"
+					+ "\n"
+					+ EDhApiGeneratorPlan.CHUNKS_ONLY + " \n"
+					+ "Slower than either surface options, \n"
+					+ "but provides more accurate terrain. \n"
+					+ "\n"
+					+ "Recommended for custom worlds \n"
+					+ "where the surface generator would \n"
+					+ "generate incorrect terrain. \n"
+					+ "\n"
+					+ EDhApiGeneratorPlan.DISABLED + " \n"
+					+ "No distant terrain will be generated. \n"
+					+ "\n"
 					+ "")
 				.build();
 			
-			public static ConfigEntry<EDhApiDistantGeneratorMode> distantGeneratorMode = new ConfigEntry.Builder<EDhApiDistantGeneratorMode>()
-				.setChatCommandName("generation.mode")
+			public static ConfigEntry<EDhApiDistantGeneratorMode> chunkGeneratorMode = new ConfigEntry.Builder<EDhApiDistantGeneratorMode>()
+				.setChatCommandName("generation.chunkMode")
 				.set(EDhApiDistantGeneratorMode.FEATURES)
 				.comment(""
 					+ "How detailed should LODs be generated outside the vanilla render distance? \n"
 					+ "\n"
 					+ EDhApiDistantGeneratorMode.PRE_EXISTING_ONLY + " \n"
 					+ "Only create LOD data for already generated chunks. \n"
-					+ "\n"
-					//not currently implemented
-					//+ EDhApiDistantGeneratorMode.BIOME_ONLY + " \n"
-					//+ "Only generate the biomes and use the biome's \n"
-					//+ "grass color, water color, or snow color. \n"
-					//+ "Doesn't generate height, everything is shown at sea level. \n"
-					//+ "- Fastest \n"
-					//+ "\n"
-					//+ EDhApiDistantGeneratorMode.BIOME_ONLY_SIMULATE_HEIGHT + " \n"
-					//+ "Same as " + EDhApiDistantGeneratorMode.BIOME_ONLY + ", except instead \n"
-					//+ "of always using sea level as the LOD height \n"
-					//+ "different biome types (mountain, ocean, forest, etc.) \n"
-					//+ "use predetermined heights to simulate having height data. \n"
-					//+ "- Fastest \n"
-					//+ "\n"
-					//+ EDhApiDistantGeneratorMode.SURFACE + " \n"
-					//+ "Generate the world surface, \n"
-					//+ "this does NOT include trees, \n"
-					//+ "or structures. \n"
 					+ "\n"
 					+ EDhApiDistantGeneratorMode.FEATURES + " \n"
 					+ "Generate everything except structures. \n"
@@ -1478,27 +1489,6 @@ public class Config
 					+ "but may cause server/simulation lag. \n"
 					+ "Note: unlike other modes this option DOES save generated chunks to \n"
 					+ "Minecraft's region files. \n"
-					+ "")
-				.build();
-			
-			public static ConfigEntry<Boolean> enableFastSurfaceGenerator = new ConfigEntry.Builder<Boolean>()
-				.setChatCommandName("generation.enableFastSurface")
-				.set(true)
-				.comment(""
-					+ "Requires a world restart to change. \n"
-					+ " \n"
-					+ "If enabled Distant Horizons will very quickly generate a \n"
-					+ "rough estimate of the terrain surface to \n"
-					+ "fill out the render distance. \n"
-					+ " \n"
-					+ "After the surface has been generated Distant Horizons \n"
-					+ "will then generate the individual chunks as defined \n"
-					+ "by your \"distantGeneratorMode\" config to get \n"
-					+ "trees and structures. \n"
-					+ " \n"
-					+ "It is recommended to disable this option \n"
-					+ "if you have a completely custom world, \n"
-					+ "to prevent seeing normal terrain. \n"
 					+ "")
 				.build();
 			

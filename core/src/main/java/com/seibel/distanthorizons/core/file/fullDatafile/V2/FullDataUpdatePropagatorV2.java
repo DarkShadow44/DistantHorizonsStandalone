@@ -15,7 +15,6 @@ import com.seibel.distanthorizons.core.pos.DhSectionPos;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos;
 import com.seibel.distanthorizons.core.render.renderer.AbstractDebugWireframeRenderer;
 import com.seibel.distanthorizons.core.render.renderer.IDebugRenderable;
-import com.seibel.distanthorizons.core.util.BoolUtil;
 import com.seibel.distanthorizons.core.util.ExceptionUtil;
 import com.seibel.distanthorizons.core.util.ThreadUtil;
 import com.seibel.distanthorizons.core.util.threading.PriorityTaskPicker;
@@ -488,6 +487,12 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 			canQueueRegen = ((IDhClientLevel)this.dhLevel).isRendering();
 		}
 		
+		if (!Config.Common.WorldGenerator.generatorPlan.get().chunkGenEnabled)
+		{
+			// chunk gen isn't allowed right now
+			return;
+		}
+		
 		if (!canQueueRegen)
 		{
 			return;
@@ -557,6 +562,15 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 			return false;
 		}
 		
+		// check if any low-detail LOD tasks are already queued
+		boolean lowDetailPosQueued = retrievalQueue.requestPosExistsWhere(
+			(long queuedPos) -> (DhSectionPos.getDetailLevel(queuedPos) > DhSectionPos.SECTION_BLOCK_DETAIL_LEVEL));
+		if (lowDetailPosQueued)
+		{
+			return false;
+		}
+		
+		
 		
 		// get the positions that need to be regenerated
 		int maxRegenTaskCount = GeneratedFullDataSourceProvider.getMaxRetrievalQueueCount();
@@ -567,24 +581,12 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 			return false;
 		}
 		
-		
-		// check if any low-detail LOD tasks are already queued
-		boolean lowDetailPosQueued = retrievalQueue.requestPosExistsWhere(
-			(long queuedPos) -> (DhSectionPos.getDetailLevel(queuedPos) > DhSectionPos.SECTION_BLOCK_DETAIL_LEVEL));
-		if (lowDetailPosQueued)
-		{
-			return false;
-		}
-		
-		
 		// queue the updates
 		for (int i = 0; i < updatePosList.size(); i++)
 		{
 			long updatePos = updatePosList.getLong(i);
 			
-			boolean tasksCanBeQueued = this.tryQueueWorldGenTask(
-				genProvider, retrievalQueue, 
-				updatePos);
+			boolean tasksCanBeQueued = this.tryQueueWorldGenTask(genProvider, updatePos);
 			
 			if (!tasksCanBeQueued)
 			{
@@ -599,9 +601,7 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 	 * @return true if we should continue looking for tasks, 
 	 *          false if there's a critical issue and we should stop 
 	 */
-	private boolean tryQueueWorldGenTask(
-		GeneratedFullDataSourceProvider genProvider, IFullDataSourceRetrievalQueue retrievalQueue, 
-		long updatePos)
+	private boolean tryQueueWorldGenTask(GeneratedFullDataSourceProvider genProvider, long updatePos)
 	{
 		// also handles task count limiting
 		if (!this.provider.canQueueRetrievalNow())

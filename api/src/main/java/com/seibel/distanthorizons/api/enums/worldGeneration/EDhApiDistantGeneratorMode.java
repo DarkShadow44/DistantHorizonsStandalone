@@ -39,26 +39,6 @@ public enum EDhApiDistantGeneratorMode
 	/** Don't generate any new terrain, just generate LODs for already generated chunks. */
 	PRE_EXISTING_ONLY((byte) 1),
 	
-	/*
-	 * Not currently implemented <br><br>
-	 * 
-	 * Only generate the biomes and use biome
-	 * grass/foliage color, water color, or ice color
-	 * to generate the color. <br>
-	 * Doesn't generate height, everything is shown at sea level.
-	 */
-	//BIOME_ONLY((byte) 2),
-	
-	/*
-	 * Not currently implemented <br><br>
-	 * 
-	 * Same as BIOME_ONLY, except instead
-	 * of always using sea level as the LOD height
-	 * different biome types (mountain, ocean, forest, etc.)
-	 * use predetermined heights to simulate having height data.
-	 */
-	//BIOME_ONLY_SIMULATE_HEIGHT((byte) 3),
-	
 	/**
 	 * Generate the world surface,
 	 * this does NOT include caves, trees,

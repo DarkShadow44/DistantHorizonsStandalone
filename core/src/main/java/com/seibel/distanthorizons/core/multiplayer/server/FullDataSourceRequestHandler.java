@@ -252,7 +252,7 @@ public class FullDataSourceRequestHandler implements AutoCloseable
 			
 			fullDataSource.close();
 			
-			if (DhSectionPos.getDetailLevel(pos) > (Config.Common.WorldGenerator.distantGeneratorMode.get() == EDhApiDistantGeneratorMode.INTERNAL_SERVER
+			if (DhSectionPos.getDetailLevel(pos) > (Config.Common.WorldGenerator.chunkGeneratorMode.get() == EDhApiDistantGeneratorMode.INTERNAL_SERVER
 					? DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL
 					: this.serverLevel.serverside.fullDataFileHandler.lowestDataDetailLevel()))
 			{
