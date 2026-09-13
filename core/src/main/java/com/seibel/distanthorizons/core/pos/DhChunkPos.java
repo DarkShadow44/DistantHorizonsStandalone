@@ -109,6 +109,17 @@ public class DhChunkPos
 				&& minBlockZ <= pos.getZ() && pos.getZ() < maxBlockZ;
 	}
 	
+	public boolean contains(DhBlockPos2D pos)
+	{
+		int minBlockX = this.getMinBlockX();
+		int minBlockZ = this.getMinBlockZ();
+		int maxBlockX = minBlockX + LodUtil.CHUNK_WIDTH;
+		int maxBlockZ = minBlockZ + LodUtil.CHUNK_WIDTH;
+		
+		return minBlockX <= pos.x && pos.x < maxBlockX
+				&& minBlockZ <= pos.z && pos.z < maxBlockZ;
+	}
+	
 	public double distance(DhChunkPos other)
 	{ return Math.sqrt(Math.pow(this.x - other.x, 2) + Math.pow(this.z - other.z, 2)); }
 	public double squaredDistance(DhChunkPos other)
