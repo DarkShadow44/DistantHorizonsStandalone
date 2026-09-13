@@ -1512,6 +1512,15 @@ public class Config
 					+ "")
 				.build();
 			
+			public static final ConfigEntry<Boolean> pauseIfMovingQuickly = new ConfigEntry.Builder<Boolean>()
+				.set(true)
+				.comment(""
+					+ "If true and the player/camera is moving quickly \n"
+					+ "Distant Horizons will pause world gen to improve loading speed \n"
+					+ "and reduce CPU load. \n"
+					+ "")
+				.build();
+			
 			public static ConfigUISpacer genProgressSpacer = new ConfigUISpacer.Builder().build();
 			
 			public static ConfigEntry<EDhApiDistantGeneratorProgressDisplayLocation> showGenerationProgress = new ConfigEntry.Builder<EDhApiDistantGeneratorProgressDisplayLocation>()

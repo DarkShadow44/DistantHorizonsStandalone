@@ -227,6 +227,11 @@ public class ThreadPoolUtil
 	
 	private static boolean cameraMovingFast()
 	{
+		if (!Config.Common.WorldGenerator.pauseIfMovingQuickly.get())
+		{
+			return false;
+		}
+		
 		double cameraSpeed = ClientApi.INSTANCE.getAvgCameraSpeed();
 		// stop these threads if moving a little bit slower than max elytra speed
 		double maxAllowedSpeed = (LodUtil.ROCKET_ELYTRA_SPEED_IN_BLOCKS_PER_SEC - 10.0);

@@ -692,6 +692,10 @@
     "Limit if Server Unhealthy",
   "distanthorizons.config.common.worldGenerator.limitIfServerUnhealthy.@tooltip":
     "If the Minecraft server thread is taking too long \nDistant Horizons will pause world gen to reduce server stuttering/lag.",
+  "distanthorizons.config.common.worldGenerator.pauseIfMovingQuickly":
+    "Pause If Moving Quickly",
+  "distanthorizons.config.common.worldGenerator.pauseIfMovingQuickly.@tooltip":
+    "If the player/camera are moving quickly \nDistant Horizons will pause world gen to improve loading speed \nand reduce lag.",
     
 
   "distanthorizons.config.common.lodBuilding":
