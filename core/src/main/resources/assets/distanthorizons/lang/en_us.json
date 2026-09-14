@@ -665,11 +665,11 @@
   "distanthorizons.config.common.worldGenerator.enableDistantGeneration.@tooltip":
     "§6True:§r in single player LODs will be created outside the vanilla render distance.\nDepending on the Generator Mode pre-existing chunks will be important and/o\nmissing chunks will be generated.\nNote: this can use a large amount of CPU.\n\n§6False:§r LODs will only generate within the vanilla render distance.",
   "distanthorizons.config.common.worldGenerator.generatorPlan":
-    "Distant Generator Mode",
+    "Distant Generator Plan",
   "distanthorizons.config.common.worldGenerator.generatorPlan.@tooltip":
    "Defines how LODs will be generated \noutside the vanilla render distance \nin singleplayer. \n\nSome options may be unavailable depending on MC version. \n\n§6SURFACE_THEN_CHUNKS§r \nRecommended for modded or vanilla worlds. \n\n§6SURFACE_ONLY§r \nRecommended for computers that don't have \nenough CPU power or RAM space to handle \nchunk generation. \n\n§6CHUNKS_ONLY§r \nRecommended for custom worlds \nwhere the surface generator would \ngenerate incorrect terrain. \n\n§6DISABLED§r\nRecommended if you experience lag.",
   "distanthorizons.config.common.worldGenerator.chunkGeneratorMode":
-    "Distance Generator Mode",
+    "Chunk Generator Mode",
   "distanthorizons.config.common.worldGenerator.chunkGeneratorMode.@tooltip":
     "How complicated the generation should be when generating LODs outside the vanilla render distance.",
   "distanthorizons.config.common.worldGenerator.enableFastSurfaceGenerator":
@@ -1035,13 +1035,13 @@
     "Full - Save Chunks",
     
   "distanthorizons.config.enum.EDhApiGeneratorPlan.SURFACE_THEN_CHUNKS":
-    "Surface Then Chunks",
+    "§aSurface Then Chunks§r",
   "distanthorizons.config.enum.EDhApiGeneratorPlan.SURFACE_ONLY":
-    "Surface Only",
+    "§aSurface Only§r",
   "distanthorizons.config.enum.EDhApiGeneratorPlan.CHUNKS_ONLY":
-    "Chunks Only",
+    "§aChunks Only§r",
   "distanthorizons.config.enum.EDhApiGeneratorPlan.DISABLED":
-    "Disabled",
+    "§cDisabled§r",
   
   "distanthorizons.config.enum.EDhApiDistantGeneratorProgressDisplayLocation.OVERLAY":
     "Overlay",
