@@ -158,11 +158,11 @@ public abstract class AbstractDhServerLevel extends AbstractDhLevel implements I
 					return;
 				}
 				
-				if (!Config.Server.enableNSizedGeneration.get() && DhSectionPos.getDetailLevel(message.sectionPos) != DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL)
-				{
-					message.sendResponse(new SectionRequiresSplittingException("Only highest-detail sections are allowed"));
-					return;
-				}
+				//if (!Config.Server.enableNSizedGeneration.get() && DhSectionPos.getDetailLevel(message.sectionPos) != DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL)
+				//{
+				//	message.sendResponse(new SectionRequiresSplittingException("Only highest-detail sections are allowed"));
+				//	return;
+				//}
 				
 				this.requestHandler.queueWorldGenForRequestMessage(serverPlayerState, message, rateLimiterSet);
 			}

@@ -119,13 +119,13 @@ public class RemoteWorldRetrievalQueue extends AbstractFullDataNetworkRequestQue
 	@Override
 	protected boolean onBeforeRequest(long sectionPos, CompletableFuture<DataSourceRetrievalResult> future)
 	{
-		// split up large requests if N-sized gen isn't enabled
-		if (!Config.Server.enableNSizedGeneration.get()
-			&& DhSectionPos.getDetailLevel(sectionPos) > DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL)
-		{
-			future.complete(DataSourceRetrievalResult.CreateSplit());
-			return false;
-		}
+		//// split up large requests if N-sized gen isn't enabled
+		//if (!Config.Server.enableNSizedGeneration.get()
+		//	&& DhSectionPos.getDetailLevel(sectionPos) > DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL)
+		//{
+		//	future.complete(DataSourceRetrievalResult.CreateSplit());
+		//	return false;
+		//}
 		
 		return true;
 	}
