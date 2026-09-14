@@ -1985,6 +1985,7 @@ public class Config
 		
 		// Generation
 		public static ConfigEntry<Boolean> enableServerGeneration = new ConfigEntry.Builder<Boolean>()
+			.setChatCommandName("generation.enableServerGen")
 			.set(true)
 			.comment(""
 				+ "When enabled, Distant Horizons will attempt to download missing LODs from the server.\n"

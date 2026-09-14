@@ -6,7 +6,9 @@ import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.config.listeners.ConfigChangeListener;
 import com.seibel.distanthorizons.core.config.types.ConfigEntry;
 import com.seibel.distanthorizons.core.network.INetworkObject;
+import com.seibel.distanthorizons.coreapi.util.StringUtil;
 import io.netty.buffer.ByteBuf;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.Closeable;
 import java.util.*;
@@ -33,27 +35,14 @@ public class SessionConfig implements INetworkObject
 	{
 		// Note: config values are transmitted in the insertion order
 		
-		registerConfigEntry(Config.Common.WorldGenerator.generatorPlan.getChatCommandName(), new Entry(
-			Config.Server.enableServerGeneration::get,
-			runnable -> new Closeable()
-			{
-				private final ConfigChangeListener<EDhApiGeneratorPlan> distantGenerationChanges = new ConfigChangeListener<>(Config.Common.WorldGenerator.generatorPlan, ignored -> runnable.run());
-				private final ConfigChangeListener<Boolean> serverGenerationChanges = new ConfigChangeListener<>(Config.Server.enableServerGeneration, ignored -> runnable.run());
-				
-				@Override
-				public void close()
-				{
-					this.serverGenerationChanges.close();
-					this.distantGenerationChanges.close();
-				}
-			},
-			(Boolean client, Boolean server) -> client && Config.Common.WorldGenerator.generatorPlan.get().generationEnabled
-		));
+		registerConfigEntry(Config.Server.enableServerGeneration, Boolean::logicalAnd);
+		
+		registerConfigEntry(Config.Common.WorldGenerator.generatorPlan, (clientVal, serverVal) -> serverVal);
 		
 		registerConfigEntry(Config.Server.maxGenerationRequestDistance, Math::min);
-		registerConfigEntry(Config.Common.WorldGenerator.generationCenterChunkX, (x, y) -> y);
-		registerConfigEntry(Config.Common.WorldGenerator.generationCenterChunkZ, (x, y) -> y);
-		registerConfigEntry(Config.Common.WorldGenerator.generationMaxChunkRadius, (x, y) -> y);
+		registerConfigEntry(Config.Common.WorldGenerator.generationCenterChunkX, (clientVal, serverVal) -> serverVal);
+		registerConfigEntry(Config.Common.WorldGenerator.generationCenterChunkZ, (clientVal, serverVal) -> serverVal);
+		registerConfigEntry(Config.Common.WorldGenerator.generationMaxChunkRadius, (clientVal, serverVal) -> serverVal);
 		registerConfigEntry(Config.Server.generationRequestRateLimit, Math::min);
 		
 		registerConfigEntry(Config.Server.enableRealTimeUpdates, Boolean::logicalAnd);
@@ -63,15 +52,15 @@ public class SessionConfig implements INetworkObject
 		registerConfigEntry(Config.Server.maxSyncOnLoadRequestDistance, Math::min);
 		registerConfigEntry(Config.Server.syncOnLoadRateLimit, Math::min);
 		
-		registerConfigEntry(Config.Server.playerBandwidthLimit, (x, y) -> {
-			if (x == 0 && y == 0)
+		registerConfigEntry(Config.Server.playerBandwidthLimit, (clientVal, serverVal) -> {
+			if (clientVal == 0 && serverVal == 0)
 			{
 				return 0;
 			}
 			
 			return Math.min(
-					x > 0 ? x : Integer.MAX_VALUE,
-					y > 0 ? y : Integer.MAX_VALUE
+				(clientVal > 0) ? clientVal : Integer.MAX_VALUE,
+				(serverVal > 0) ? serverVal : Integer.MAX_VALUE
 			);
 		});
 	}
@@ -112,8 +101,14 @@ public class SessionConfig implements INetworkObject
 	
 	private static <T> void registerConfigEntry(ConfigEntry<T> configEntry, BinaryOperator<T> valueConstrainer)
 	{
+		String commandName = configEntry.getChatCommandName();
+		if (commandName == null)
+		{
+			throw new NullPointerException("Config ["+configEntry.name+"] doesn't have a chat command defined.");
+		}
+		
 		registerConfigEntry(
-			Objects.requireNonNull(configEntry.getChatCommandName()),
+			commandName,
 			new Entry(
 				configEntry::get,
 				runnable -> new ConfigChangeListener<>(configEntry, ignored -> runnable.run()),
@@ -122,7 +117,7 @@ public class SessionConfig implements INetworkObject
 		);
 	}
 	
-	private static void registerConfigEntry(String key, Entry entry)
+	private static void registerConfigEntry(@NotNull String key, Entry entry)
 	{
 		if (CONFIG_ENTRIES.containsKey(key))
 		{
@@ -263,10 +258,18 @@ public class SessionConfig implements INetworkObject
 		
 		public AnyChangeListener(Runnable runnable)
 		{
-			this.changeListeners = new ArrayList<>(CONFIG_ENTRIES.size());
-			for (Entry entry : CONFIG_ENTRIES.values())
+			try
 			{
-				this.changeListeners.add(entry.changeListenerFactory.apply(runnable));
+				int size = CONFIG_ENTRIES.size();
+				this.changeListeners = new ArrayList<>(size);
+				for (Entry entry : CONFIG_ENTRIES.values())
+				{
+					this.changeListeners.add(entry.changeListenerFactory.apply(runnable));
+				}
+			}
+			catch (Throwable e)
+			{
+				throw e;
 			}
 		}
 		

@@ -491,17 +491,16 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 			canQueueRegen = ((IDhClientLevel)this.dhLevel).isRendering();
 		}
 		
-		if (!Config.Common.WorldGenerator.generatorPlan.get().chunkGenEnabled)
-		{
-			// chunk gen isn't allowed right now
-			return;
-		}
-		
 		if (!canQueueRegen)
 		{
 			return;
 		}
 		
+		if (!Config.Common.WorldGenerator.generatorPlan.get().chunkGenEnabled)
+		{
+			// chunk gen isn't allowed right now
+			return;
+		}
 		
 		if (!(this.provider instanceof GeneratedFullDataSourceProvider))
 		{
