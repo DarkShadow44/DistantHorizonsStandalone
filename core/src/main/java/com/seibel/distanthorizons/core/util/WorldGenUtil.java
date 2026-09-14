@@ -27,6 +27,21 @@ public class WorldGenUtil
 		return requestInRadius;
 	}
 	
+	/** @return -1 for infinity */
+	public static int getMaxRegenDistanceInBlocks()
+	{
+		int lodChunkDist = Config.Client.Advanced.Graphics.Quality.lodChunkRenderDistanceRadius.get();
+		int lodBlockDist = lodChunkDist * LodUtil.CHUNK_WIDTH;
+		
+		double percent = Config.Common.WorldGenerator.surfaceRegenMaxDistancePercent.get();
+		if (percent < 0.0f)
+		{
+			return -1;
+		}
+		
+		return (int)(lodBlockDist * percent);
+	}
+	
 	
 	
 }

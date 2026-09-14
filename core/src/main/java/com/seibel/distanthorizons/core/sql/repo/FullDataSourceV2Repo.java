@@ -470,17 +470,6 @@ public class FullDataSourceV2Repo extends AbstractDhRepo<Long, FullDataSourceV2D
 	public LongArrayList getChildPositionsToUpdate(int targetBlockPosX, int targetBlockPosZ, int returnCount)
 	{ return this.getPositionsToUpdate(targetBlockPosX, targetBlockPosZ, returnCount, this.getChildPositionsToUpdateSql); }
 	
-	/** should be be very similar to {@link FullDataSourceV2Repo#getParentPositionsToUpdateSql} */
-	private final String getRegenPositionsToUpdateSql =
-		"SELECT DetailLevel, PosX, PosZ, " +
-			"   abs((PosX << (6 + DetailLevel)) - ?) + abs((PosZ << (6 + DetailLevel)) - ?) AS Distance " +
-			"FROM " + this.getTableName() + " " +
-			"WHERE Regenerate = 1 " +
-			"ORDER BY Distance ASC " + // DetailLevel ASC, 
-			"LIMIT ?; ";
-	public LongArrayList getChildPositionsToRegen(int targetBlockPosX, int targetBlockPosZ, int returnCount)
-	{ return this.getPositionsToUpdate(targetBlockPosX, targetBlockPosZ, returnCount, this.getRegenPositionsToUpdateSql); }
-	
 	private LongArrayList getPositionsToUpdate(int targetBlockPosX, int targetBlockPosZ, int returnCount, String sql)
 	{
 		LongArrayList list = new LongArrayList();
@@ -521,6 +510,64 @@ public class FullDataSourceV2Repo extends AbstractDhRepo<Long, FullDataSourceV2D
 		}
 	}
 	
+	
+	/** should be be very similar to {@link FullDataSourceV2Repo#getParentPositionsToUpdateSql} */
+	private final String getRegenPositionsToUpdateSql =
+		"SELECT DetailLevel, PosX, PosZ, " +
+		"   abs((PosX << (6 + DetailLevel)) - ?) + abs((PosZ << (6 + DetailLevel)) - ?) AS Distance " +
+		"FROM " + this.getTableName() + " " +
+		"WHERE Regenerate = 1 " +
+		"   AND Distance <= ? " +
+		"ORDER BY Distance ASC " +
+		"LIMIT ?; ";
+	public LongArrayList getChildPositionsToRegen(int targetBlockPosX, int targetBlockPosZ, int maxBlockDistanceFromTarget, int returnCount)
+	{
+		LongArrayList list = new LongArrayList();
+		
+		try (PreparedStatement statement = this.createPreparedStatement(this.getRegenPositionsToUpdateSql))
+		{
+			if (statement == null)
+			{
+				return list;
+			}
+			
+			
+			int i = 1;
+			statement.setInt(i++, targetBlockPosX);
+			statement.setInt(i++, targetBlockPosZ);
+			
+			if (maxBlockDistanceFromTarget < 0)
+			{
+				statement.setLong(i++, Long.MAX_VALUE); // get everything
+			}
+			else
+			{
+				statement.setInt(i++, maxBlockDistanceFromTarget);
+			}
+			
+			statement.setInt(i++, returnCount);
+			
+			try (ResultSet result = this.query(statement))
+			{
+				while (result != null && result.next())
+				{
+					byte detailLevel = result.getByte("DetailLevel");
+					byte sectionDetailLevel = (byte) (detailLevel + DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL);
+					int posX = result.getInt("PosX");
+					int posZ = result.getInt("PosZ");
+					
+					long pos = DhSectionPos.encode(sectionDetailLevel, posX, posZ);
+					list.add(pos);
+				}
+			}
+			
+			return list;
+		}
+		catch (SQLException e)
+		{
+			throw new RuntimeException(e);
+		}
+	}
 	
 	
 	private final String getColumnGenerationStepSql =
@@ -595,16 +642,36 @@ public class FullDataSourceV2Repo extends AbstractDhRepo<Long, FullDataSourceV2D
 	 * Uses the same math as {@link DataSourceRetrievalTask#DataSourceRetrievalTask(long, byte)} 
 	 * to determine chunk counts.
 	 */
-	private final String getRegenChunkCountSql =
-		"select sum(power(2, DetailLevel + 6)) as ChunkCount " +
-		"from " + this.getTableName() + " where Regenerate = 1; ";
-	public long getRegenChunkCount()
+	private final String getRegenChunkCountLimitedSql =
+		"SELECT SUM(power(2, RegenList.SectionDetailLevel + 6)) as ChunkCount \n" +
+		"FROM \n" +
+		"( \n" +
+		"   select DetailLevel as SectionDetailLevel, \n" +
+		"       abs((PosX << (6 + DetailLevel)) - ?) + abs((PosZ << (6 + DetailLevel)) - ?) AS Distance \n" +
+		"   FROM "+this.getTableName()+" \n" +
+		"   WHERE Regenerate = 1 \n" +
+		"       AND Distance <= ? \n" +
+		") as RegenList;";
+	public long getRegenChunkCount(int targetBlockPosX, int targetBlockPosZ, int maxBlockDistanceFromTarget)
 	{
-		try (PreparedStatement statement = this.createPreparedStatement(this.getRegenChunkCountSql))
+		try (PreparedStatement statement = this.createPreparedStatement(this.getRegenChunkCountLimitedSql))
 		{
 			if (statement == null)
 			{
 				return 0L;
+			}
+			
+			int i = 1;
+			statement.setInt(i++, targetBlockPosX);
+			statement.setInt(i++, targetBlockPosZ);
+			
+			if (maxBlockDistanceFromTarget < 0)
+			{
+				statement.setLong(i++, Long.MAX_VALUE); // get everything
+			}
+			else
+			{
+				statement.setInt(i++, maxBlockDistanceFromTarget);
 			}
 			
 			try (ResultSet result = this.query(statement))

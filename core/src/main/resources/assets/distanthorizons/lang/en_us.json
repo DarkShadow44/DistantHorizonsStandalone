@@ -700,6 +700,10 @@
     "Pause If Moving Quickly",
   "distanthorizons.config.common.worldGenerator.pauseIfMovingQuickly.@tooltip":
     "If the player/camera are moving quickly \nDistant Horizons will pause world gen to improve loading speed \nand reduce lag.",
+  "distanthorizons.config.common.worldGenerator.surfaceRegenMaxDistancePercent":
+    "Surface Regen Max Distance Percent",
+  "distanthorizons.config.common.worldGenerator.surfaceRegenMaxDistancePercent.@tooltip":
+    "If the player/camera are moving quickly \nDistant Horizons will pause world gen to improve loading speed \nand reduce lag.",
     
 
   "distanthorizons.config.common.lodBuilding":

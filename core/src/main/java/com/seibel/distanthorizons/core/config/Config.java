@@ -1511,6 +1511,23 @@ public class Config
 					+ "")
 				.build();
 			
+			public static final ConfigEntry<Double> surfaceRegenMaxDistancePercent = new ConfigEntry.Builder<Double>()
+				.setMinDefaultMax(-1.0, -1.0, 1_000.0)
+				.comment(""
+					+ "If the "+EDhApiGeneratorPlan.SURFACE_THEN_CHUNKS+" generator plan is \n"
+					+ "in use, this percentage can be defined to reduce how far the \n"
+					+ "second high-quality generation pass will go \n"
+					+ "as a percentage of your total render distance: \n"
+					+ "-1.0 = Infinity\n"
+					+ "0.0 = 0%\n"
+					+ "0.5 = 50%\n"
+					+ "1.0 = 100%\n"
+					+ "2.0 = 200%\n"
+					+ "\n"
+					+ "Does nothing on a dedicated server. \n"
+					+ "")
+				.build();
+			
 			public static ConfigUISpacer genProgressSpacer = new ConfigUISpacer.Builder().build();
 			
 			public static ConfigEntry<EDhApiDistantGeneratorProgressDisplayLocation> showGenerationProgress = new ConfigEntry.Builder<EDhApiDistantGeneratorProgressDisplayLocation>()

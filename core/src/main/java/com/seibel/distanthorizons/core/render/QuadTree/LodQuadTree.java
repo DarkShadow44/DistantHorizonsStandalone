@@ -26,6 +26,7 @@ import com.seibel.distanthorizons.core.config.listeners.IConfigListener;
 import com.seibel.distanthorizons.core.dataObjects.fullData.sources.FullDataSourceV2;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.enums.EDhDirection;
+import com.seibel.distanthorizons.core.file.fullDatafile.GeneratedFullDataSourceProvider;
 import com.seibel.distanthorizons.core.file.fullDatafile.V2.FullDataSourceProviderV2;
 import com.seibel.distanthorizons.core.file.fullDatafile.V2.FullDataUpdatePropagatorV2;
 import com.seibel.distanthorizons.core.generation.tasks.DataSourceRetrievalResult;
@@ -187,7 +188,7 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 	//==================//
 	// property getters //
 	//==================//
-	//region
+	//region property getters
 	
 	public void populateListWithEnabledRenderSections(ArrayList<LodRenderSection> tempProcessNodeList)
 	{
@@ -211,7 +212,7 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 		}
 	}
 	
-	//endregion
+	//endregion property getters
 	
 	
 	
@@ -932,7 +933,8 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 			long timeSinceLastQuery = System.currentTimeMillis() - this.lastRegenTaskCountQueryMs;
 			if (timeSinceLastQuery > 10_000L)
 			{
-				totalWorldGenChunkCount = this.fullDataSourceProvider.repo.getRegenChunkCount();
+				int maxRegenDistanceInBlocks = WorldGenUtil.getMaxRegenDistanceInBlocks();
+				totalWorldGenChunkCount = this.fullDataSourceProvider.repo.getRegenChunkCount(playerPos.x, playerPos.z, maxRegenDistanceInBlocks);
 				this.cachedRegenTaskCount = totalWorldGenChunkCount;
 				
 				this.lastRegenTaskCountQueryMs = System.currentTimeMillis();

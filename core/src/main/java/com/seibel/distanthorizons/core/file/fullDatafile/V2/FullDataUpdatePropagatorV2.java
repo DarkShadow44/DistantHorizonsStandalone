@@ -14,10 +14,13 @@ import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos;
+import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos2D;
 import com.seibel.distanthorizons.core.render.renderer.AbstractDebugWireframeRenderer;
 import com.seibel.distanthorizons.core.render.renderer.IDebugRenderable;
 import com.seibel.distanthorizons.core.util.ExceptionUtil;
+import com.seibel.distanthorizons.core.util.RenderUtil;
 import com.seibel.distanthorizons.core.util.ThreadUtil;
+import com.seibel.distanthorizons.core.util.WorldGenUtil;
 import com.seibel.distanthorizons.core.util.threading.PriorityTaskPicker;
 import com.seibel.distanthorizons.core.util.threading.ThreadPoolUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
@@ -574,8 +577,19 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 		
 		
 		// get the positions that need to be regenerated
+		int maxRegenBlockDistance = WorldGenUtil.getMaxRegenDistanceInBlocks();
+		if (MC_CLIENT == null
+			|| !MC_CLIENT.playerExists())
+		{
+			// dedicated server should get regen tasks from everywhere
+			// since we don't have a specific player we're targeting
+			maxRegenBlockDistance = -1;
+		}
 		int maxRegenTaskCount = GeneratedFullDataSourceProvider.getMaxRetrievalQueueCount();
-		LongArrayList updatePosList = this.provider.repo.getChildPositionsToRegen(targetBlockPos.getX(), targetBlockPos.getZ(), maxRegenTaskCount);
+		
+		LongArrayList updatePosList = this.provider.repo.getChildPositionsToRegen(
+			targetBlockPos.getX(), targetBlockPos.getZ(), 
+			maxRegenBlockDistance, maxRegenTaskCount);
 		if (updatePosList.size() == 0)
 		{
 			// no regen needed
