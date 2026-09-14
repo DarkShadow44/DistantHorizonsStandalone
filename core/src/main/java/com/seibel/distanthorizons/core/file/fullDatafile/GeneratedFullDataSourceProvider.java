@@ -59,9 +59,9 @@ public class GeneratedFullDataSourceProvider extends FullDataSourceProviderV2 im
 	private static final DhLogger LOGGER = new DhLoggerBuilder().build();;
 	
 	/** 
-	 * Having this number too high causes the system to become overwhelmed by
-	 * world gen requests and other jobs won't be done. <br>
-	 * IE: LODs won't update or render because world gen is hogging the CPU.
+	 * Having this number too high means we may end up
+	 * queueing tasks in the wrong location if the
+	 * player is constantly teleporting/moving.
 	 */
 	public static final int MAX_RETRIEVAL_REQUESTS_PER_THREAD = 20;
 	
@@ -281,8 +281,6 @@ public class GeneratedFullDataSourceProvider extends FullDataSourceProviderV2 im
 			// clear out the data sources that are in memory so
 			// we can start queuing new world gen tasks
 			this.delayedFullDataSourceSaveCache.flush();
-			
-			return false;
 		}
 		
 		

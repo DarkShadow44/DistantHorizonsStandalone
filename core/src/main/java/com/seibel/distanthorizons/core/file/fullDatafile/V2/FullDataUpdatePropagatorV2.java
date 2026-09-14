@@ -602,7 +602,6 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 			long updatePos = updatePosList.getLong(i);
 			
 			boolean tasksCanBeQueued = this.tryQueueWorldGenTask(genProvider, updatePos);
-			
 			if (!tasksCanBeQueued)
 			{
 				return false;
@@ -626,7 +625,11 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 		
 		if (this.generatingPosSet.contains(updatePos))
 		{
-			return false;
+			// just because this position is queued doesn't mean 
+			// the next one will also be,
+			// keep looking.
+			// (Returning true here significantly improves queuing speed)
+			return true;
 		}
 		
 		

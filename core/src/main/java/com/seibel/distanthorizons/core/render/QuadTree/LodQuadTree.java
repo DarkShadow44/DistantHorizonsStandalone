@@ -20,13 +20,11 @@
 package com.seibel.distanthorizons.core.render.QuadTree;
 
 import com.seibel.distanthorizons.api.enums.config.EDhApiMaxHorizontalResolution;
-import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiWorldGenerationStep;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.config.listeners.IConfigListener;
 import com.seibel.distanthorizons.core.dataObjects.fullData.sources.FullDataSourceV2;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.enums.EDhDirection;
-import com.seibel.distanthorizons.core.file.fullDatafile.GeneratedFullDataSourceProvider;
 import com.seibel.distanthorizons.core.file.fullDatafile.V2.FullDataSourceProviderV2;
 import com.seibel.distanthorizons.core.file.fullDatafile.V2.FullDataUpdatePropagatorV2;
 import com.seibel.distanthorizons.core.generation.tasks.DataSourceRetrievalResult;
@@ -75,13 +73,19 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 	
 	private static final AbstractDebugWireframeRenderer DEBUG_RENDERER = SingletonInjector.INSTANCE.get(AbstractDebugWireframeRenderer.class);
 	
-	/** there should only ever be one {@link LodQuadTree} so having the thread static should be fine */
-	private static final ThreadPoolExecutor FULL_DATA_RETRIEVAL_QUEUE_THREAD = ThreadUtil.makeSingleDaemonThreadPool("LodQuadTree Data Retrieval Queue");
+	/**
+	 * How long the retrieval queue thread will sleep once it runs out of work 
+	 * before checking again for new tasks.
+	 */
+	private static final long QUEUE_THREAD_IDLE_WAIT_MS = 100L;
 	
 	
 	public final int blockRenderDistanceDiameter;
 	@WillNotClose
 	private final FullDataSourceProviderV2 fullDataSourceProvider;
+	
+	/** there should only ever be one {@link LodQuadTree} so having the thread static should be fine */
+	private final ThreadPoolExecutor fullDataRetrievalQueueThread;
 	
 	/**
 	 * This holds every {@link DhSectionPos} that should be reloaded next tick. <br>
@@ -170,6 +174,8 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 		this.level = level;
 		this.fullDataSourceProvider = fullDataSourceProvider;
 		this.blockRenderDistanceDiameter = viewDiameterInBlocks;
+		
+		this.fullDataRetrievalQueueThread = ThreadUtil.makeSingleDaemonThreadPool("["+this.level.getLevelWrapper().getDimensionName()+"] LodQuadTree Data Retrieval Queue");
 		
 		IDhGenericRenderer genericObjectRenderer = this.level.getGenericRenderer();
 		this.beaconRenderHandler = (genericObjectRenderer != null) ? new BeaconRenderHandler(genericObjectRenderer) : null;
@@ -481,7 +487,7 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 			
 			// running on a separate thread allows for faster loading
 			// of finished LODs
-			FULL_DATA_RETRIEVAL_QUEUE_THREAD.execute(() ->
+			this.fullDataRetrievalQueueThread.execute(() ->
 			{
 				try
 				{
@@ -503,7 +509,36 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 						}
 					}
 					
-					this.startQueuedRetrievalTasks(playerPos);
+					// Keep looping as long as there's something to queue.
+					// This allows really fast generators to remain fed.
+					while (!Thread.interrupted())
+					{
+						int missingPosCountBeforeQueuing = this.missingGenerationPosSet.size();
+						
+						this.startQueuedRetrievalTasks(playerPos);
+						
+						
+						boolean workRemaining = !this.missingGenerationPosSet.isEmpty();
+						if (!workRemaining)
+						{
+							// Nothing left to queue, the queuing thread can stop looking.
+							// The next tree tick will restart it when new work shows up.
+							break;
+						}
+						
+						boolean somethingQueued = this.missingGenerationPosSet.size() != missingPosCountBeforeQueuing;
+						if (!somethingQueued)
+						{
+							// there's work in the queue, but we weren't able to
+							// queue any of it this loop (generator queue is probably full)
+							// wait a moment then try again
+							try
+							{
+								Thread.sleep(QUEUE_THREAD_IDLE_WAIT_MS);
+							}
+							catch (InterruptedException e) { break; }
+						}
+					}
 				}
 				catch (Exception e)
 				{
@@ -927,21 +962,24 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 		{
 			// count the LODs that need re-generating
 			
-			// only query the DB every few seconds
-			// to prevent constant DB reads (we only need this as an estimate
-			// and it isn't likely to change very often/quickly)
-			long timeSinceLastQuery = System.currentTimeMillis() - this.lastRegenTaskCountQueryMs;
-			if (timeSinceLastQuery > 10_000L)
+			if (Config.Common.WorldGenerator.generatorPlan.get().chunkGenEnabled)
 			{
-				int maxRegenDistanceInBlocks = WorldGenUtil.getMaxRegenDistanceInBlocks();
-				totalWorldGenChunkCount = this.fullDataSourceProvider.repo.getRegenChunkCount(playerPos.x, playerPos.z, maxRegenDistanceInBlocks);
-				this.cachedRegenTaskCount = totalWorldGenChunkCount;
-				
-				this.lastRegenTaskCountQueryMs = System.currentTimeMillis();
-			}
-			else
-			{
-				totalWorldGenChunkCount = this.cachedRegenTaskCount;
+				// only query the DB every few seconds
+				// to prevent constant DB reads (we only need this as an estimate
+				// and it isn't likely to change very often/quickly)
+				long timeSinceLastQuery = System.currentTimeMillis() - this.lastRegenTaskCountQueryMs;
+				if (timeSinceLastQuery > 10_000L)
+				{
+					int maxRegenDistanceInBlocks = WorldGenUtil.getMaxRegenDistanceInBlocks();
+					totalWorldGenChunkCount = this.fullDataSourceProvider.repo.getRegenChunkCount(playerPos.x, playerPos.z, maxRegenDistanceInBlocks);
+					this.cachedRegenTaskCount = totalWorldGenChunkCount;
+					
+					this.lastRegenTaskCountQueryMs = System.currentTimeMillis();
+				}
+				else
+				{
+					totalWorldGenChunkCount = this.cachedRegenTaskCount;
+				}
 			}
 			
 			this.fullDataSourceProvider.setGeneratingLowDetailLods(false);
@@ -1358,6 +1396,8 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 		DEBUG_RENDERER.unregister(this, Config.Client.Advanced.Debugging.DebugWireframe.showQuadTreeRenderStatus);
 		Config.Common.WorldGenerator.generatorPlan.removeListener(this);
 		Config.Server.enableServerGeneration.removeListener(this);
+		
+		this.fullDataRetrievalQueueThread.shutdownNow();
 		
 		
 		ThreadPoolExecutor mainCleanupExecutor = ThreadPoolUtil.getCleanupExecutor();
