@@ -35,8 +35,6 @@ public class SessionConfig implements INetworkObject
 	{
 		// Note: config values are transmitted in the insertion order
 		
-		registerConfigEntry(Config.Server.enableServerGeneration, Boolean::logicalAnd);
-		
 		registerConfigEntry(Config.Common.WorldGenerator.generatorPlan, (clientVal, serverVal) -> serverVal);
 		
 		registerConfigEntry(Config.Server.maxGenerationRequestDistance, Math::min);
