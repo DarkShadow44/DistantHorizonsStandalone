@@ -57,8 +57,10 @@ public enum EDhApiWorldGenerationStep
 	SURFACE(5, "surface"),
 	CARVERS(6, "carvers"),
 	LIQUID_CARVERS(7, "liquid_carvers"),
-	// replaced surface, carvers, and liquid carvers in MC 26.3+
-	/** @since API 7.1.0 */
+	/**
+	 * replaced surface, carvers, and liquid carvers in MC 26.3+ 
+	 * @since API 7.1.0 
+	 */
 	TERRAIN(7, "terrain"),
 	
 	FEATURES(8, "features"),
