@@ -24,7 +24,7 @@ public class RemoteWorldRetrievalQueue extends AbstractFullDataNetworkRequestQue
 	
 	private long estimatedTotalChunkCount;
 	
-	private boolean retrievingLowDetailLods;
+	private boolean canRegenerate = false;
 	
 	private final RollingAverage rollingAverageChunkGenTimeInMs = new RollingAverage(1_000);
 	@Override public RollingAverage getRollingAverageChunkGenTimeInMs() { return this.rollingAverageChunkGenTimeInMs; }
@@ -81,10 +81,10 @@ public class RemoteWorldRetrievalQueue extends AbstractFullDataNetworkRequestQue
 	}
 	
 	@Override
-	public boolean getRetrievingLowDetailLods() { return this.retrievingLowDetailLods; }
+	public boolean getCanRegenerate() { return this.canRegenerate; }
 	@Override
-	public void setRetrievingLowDetailLods(boolean retrievingLowDetailLods)
-	{ this.retrievingLowDetailLods = retrievingLowDetailLods; }
+	public void setCanRegenerate(boolean canRegen)
+	{ this.canRegenerate = canRegen; }
 	
 	@Override
 	public CompletableFuture<Void> startClosingAsync(boolean cancelCurrentGeneration, boolean alsoInterruptRunning)

@@ -75,7 +75,7 @@ public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDeb
 	private final ConcurrentHashMap<Long, DataSourceRetrievalTask> inProgressGenTasksByLodPos = new ConcurrentHashMap<>();
 	
 	
-	private boolean retrievingLowDetailLods;
+	private boolean canRegenerate = false;
 	
 	/** If not null this generator is in the process of shutting down */
 	private volatile CompletableFuture<Void> generatorClosingFuture = null;
@@ -204,10 +204,10 @@ public class WorldGenerationQueue implements IFullDataSourceRetrievalQueue, IDeb
 	}
 	
 	@Override
-	public boolean getRetrievingLowDetailLods() { return this.retrievingLowDetailLods; }
+	public boolean getCanRegenerate() { return this.canRegenerate; }
 	@Override
-	public void setRetrievingLowDetailLods(boolean retrievingLowDetailLods)
-	{ this.retrievingLowDetailLods = retrievingLowDetailLods; }
+	public void setCanRegenerate(boolean canRegen)
+	{ this.canRegenerate = canRegen; }
 	
 	//endregion task handling
 	

@@ -20,7 +20,6 @@
 package com.seibel.distanthorizons.core.render.QuadTree;
 
 import com.seibel.distanthorizons.api.enums.config.EDhApiMaxHorizontalResolution;
-import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiGeneratorPlan;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.config.listeners.IConfigListener;
 import com.seibel.distanthorizons.core.dataObjects.fullData.sources.FullDataSourceV2;
@@ -957,7 +956,7 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 				}
 			}
 			
-			this.fullDataSourceProvider.setGeneratingLowDetailLods(highDetailRequestPresent);
+			this.fullDataSourceProvider.setCanRegenerate(!highDetailRequestPresent);
 		}
 		else
 		{
@@ -983,7 +982,7 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 				}
 			}
 			
-			this.fullDataSourceProvider.setGeneratingLowDetailLods(false);
+			this.fullDataSourceProvider.setCanRegenerate(true);
 		}
 		
 		this.fullDataSourceProvider.setEstimatedRemainingRetrievalChunkCount(totalWorldGenChunkCount);
@@ -997,6 +996,12 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 		// correct sized generator tasks
 		this.missingGenerationPosSet.clear();
 		this.queuedGenerationPosSet.clear();
+		
+		// don't allow regeneration until the next world gen tick
+		// this is done to prevent queuing chunks if there are still
+		// lower-detail LODs that need generating
+		this.fullDataSourceProvider.setCanRegenerate(false);
+		
 		
 		boolean generatorEnabled = this.level instanceof DhClientServerLevel
 			? Config.Common.WorldGenerator.generatorPlan.get().generationEnabled

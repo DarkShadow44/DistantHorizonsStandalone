@@ -231,12 +231,12 @@ public class GeneratedFullDataSourceProvider extends FullDataSourceProviderV2 im
 	}
 	
 	@Override
-	public void setGeneratingLowDetailLods(boolean generatingLowDetailLods) 
+	public void setCanRegenerate(boolean canRegen) 
 	{
 		IFullDataSourceRetrievalQueue worldGenQueue = this.worldGenQueueRef.get();
 		if (worldGenQueue != null)
 		{
-			worldGenQueue.setRetrievingLowDetailLods(generatingLowDetailLods);
+			worldGenQueue.setCanRegenerate(canRegen);
 		}
 	}
 	
