@@ -6,7 +6,6 @@ import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.config.listeners.ConfigChangeListener;
 import com.seibel.distanthorizons.core.config.types.ConfigEntry;
 import com.seibel.distanthorizons.core.network.INetworkObject;
-import com.seibel.distanthorizons.coreapi.util.StringUtil;
 import io.netty.buffer.ByteBuf;
 import org.jetbrains.annotations.NotNull;
 
@@ -35,7 +34,27 @@ public class SessionConfig implements INetworkObject
 	{
 		// Note: config values are transmitted in the insertion order
 		
-		registerConfigEntry(Config.Common.WorldGenerator.generatorPlan, SessionConfig::constrainGeneratorPlan);
+		registerConfigEntry(Config.Common.WorldGenerator.generatorPlan, (clientPlan, serverPlan) -> {
+			if (clientPlan == EDhApiGeneratorPlan.DISABLED || serverPlan == EDhApiGeneratorPlan.DISABLED)
+			{
+				return EDhApiGeneratorPlan.DISABLED;
+			}
+			
+			// Find a plan that both client and server accept; if nothing found, server overrides the client.
+			boolean surfaceGenEnabled = clientPlan.surfaceGenEnabled && serverPlan.surfaceGenEnabled;
+			boolean chunkGenEnabled = clientPlan.chunkGenEnabled && serverPlan.chunkGenEnabled;
+			for (EDhApiGeneratorPlan plan : EDhApiGeneratorPlan.values())
+			{
+				if (plan.generationEnabled
+					&& plan.surfaceGenEnabled == surfaceGenEnabled
+					&& plan.chunkGenEnabled == chunkGenEnabled)
+				{
+					return plan;
+				}
+			}
+			
+			return serverPlan;
+		});
 		
 		registerConfigEntry(Config.Server.maxGenerationRequestDistance, Math::min);
 		registerConfigEntry(Config.Common.WorldGenerator.generationCenterChunkX, (clientVal, serverVal) -> serverVal);
@@ -71,36 +90,7 @@ public class SessionConfig implements INetworkObject
 	// public values //
 	//===============//
 	
-	public boolean isDistantGenerationEnabled() 
-	{
-		EDhApiGeneratorPlan genPlan = this.getValue(Config.Common.WorldGenerator.generatorPlan);
-		return genPlan.generationEnabled;
-	}
-
-	static EDhApiGeneratorPlan constrainGeneratorPlan(EDhApiGeneratorPlan clientPlan, EDhApiGeneratorPlan serverPlan)
-	{
-		if (clientPlan == EDhApiGeneratorPlan.DISABLED || serverPlan == EDhApiGeneratorPlan.DISABLED)
-		{
-			return EDhApiGeneratorPlan.DISABLED;
-		}
-
-		boolean surfaceGenEnabled = clientPlan.surfaceGenEnabled && serverPlan.surfaceGenEnabled;
-		boolean chunkGenEnabled = clientPlan.chunkGenEnabled && serverPlan.chunkGenEnabled;
-
-		for (EDhApiGeneratorPlan plan : EDhApiGeneratorPlan.values())
-		{
-			if (plan.generationEnabled
-				&& plan.surfaceGenEnabled == surfaceGenEnabled
-				&& plan.chunkGenEnabled == chunkGenEnabled)
-			{
-				return plan;
-			}
-		}
-
-		// The client and server support mutually exclusive generation methods.
-		return serverPlan;
-	}
-
+	public EDhApiGeneratorPlan getGeneratorPlan() { return this.getValue(Config.Common.WorldGenerator.generatorPlan); }
 	public int getMaxGenerationRequestDistance() { return this.getValue(Config.Server.maxGenerationRequestDistance); }
 	public Integer getGenerationCenterChunkX() { return this.getValue(Config.Common.WorldGenerator.generationCenterChunkX); }
 	public Integer getGenerationCenterChunkZ() { return this.getValue(Config.Common.WorldGenerator.generationCenterChunkZ); }

@@ -41,7 +41,7 @@ package com.seibel.distanthorizons.api.enums.worldGeneration;
 public enum EDhApiWorldGenerationStep
 {
 	/** 
-	 * Only used when using N-sized world generators or server-side retrieval.
+	 * Only used for server-side retrieval or other non-native data sources.
 	 * This denotes that the given datasource was created using lower quality LOD data from above it in the quad tree. <br>
 	 * 
 	 * This isn't a valid option for queuing world generation.

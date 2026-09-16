@@ -960,7 +960,7 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 		{
 			// count the LODs that need re-generating
 			
-			if (Config.Common.WorldGenerator.generatorPlan.get().chunkGenEnabled)
+			if (this.fullDataSourceProvider.getGeneratorPlan().chunkGenEnabled)
 			{
 				// only query the DB every few seconds
 				// to prevent constant DB reads (we only need this as an estimate
@@ -1001,7 +1001,7 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 		this.fullDataSourceProvider.setCanRegenerate(false);
 		
 		
-		boolean generatorEnabled = Config.Common.WorldGenerator.generatorPlan.get().generationEnabled;
+		boolean generatorEnabled = this.fullDataSourceProvider.getGeneratorPlan().generationEnabled;
 		if (generatorEnabled)
 		{
 			// world gen tasks will need to be re-queued

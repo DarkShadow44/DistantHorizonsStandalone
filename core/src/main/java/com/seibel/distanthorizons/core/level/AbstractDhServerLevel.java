@@ -157,13 +157,13 @@ public abstract class AbstractDhServerLevel extends AbstractDhLevel implements I
 					message.sendResponse(new RequestOutOfRangeException("Section out of allowed bounds"));
 					return;
 				}
-				
-				//if (!Config.Server.enableNSizedGeneration.get() && DhSectionPos.getDetailLevel(message.sectionPos) != DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL)
-				//{
-				//	message.sendResponse(new SectionRequiresSplittingException("Only highest-detail sections are allowed"));
-				//	return;
-				//}
-				
+
+				if (!Config.Common.WorldGenerator.generatorPlan.get().surfaceGenEnabled
+					&& DhSectionPos.getDetailLevel(message.sectionPos) > DhSectionPos.SECTION_BLOCK_DETAIL_LEVEL)
+				{
+					message.sendResponse(new SectionRequiresSplittingException("Only full chunks are supported by the server generator plan"));
+					return;
+				}
 				this.requestHandler.queueWorldGenForRequestMessage(serverPlayerState, message, rateLimiterSet);
 			}
 			else

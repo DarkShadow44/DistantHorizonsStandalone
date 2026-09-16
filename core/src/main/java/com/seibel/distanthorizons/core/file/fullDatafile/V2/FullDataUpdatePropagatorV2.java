@@ -492,7 +492,7 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 			return;
 		}
 		
-		if (!Config.Common.WorldGenerator.generatorPlan.get().chunkGenEnabled)
+		if (!this.provider.getGeneratorPlan().chunkGenEnabled)
 		{
 			// chunk gen isn't allowed right now
 			return;

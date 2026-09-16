@@ -366,7 +366,7 @@ public class GeneratedFullDataSourceProvider extends FullDataSourceProviderV2 im
 		
 		
 		EDhApiWorldGenerationStep requiredWorldGenStep;
-		EDhApiGeneratorPlan genPlan = Config.Common.WorldGenerator.generatorPlan.get();
+		EDhApiGeneratorPlan genPlan = this.getGeneratorPlan();
 		if (genPlan == EDhApiGeneratorPlan.SURFACE_ONLY)
 		{
 			requiredWorldGenStep = EDhApiWorldGenerationStep.SURFACE;

@@ -356,8 +356,6 @@
   "distanthorizons.config.server.enableAdaptiveTransferSpeed": "Enable Adaptive Transfer Speed",
   "distanthorizons.config.server.enableAdaptiveTransferSpeed.@tooltip": "Enables adaptive transfer speed based on client performance.\nIf true, DH will automatically adjust transfer rate to minimize connection lag.\nIf false, transfer speed will remain fixed.",
   "distanthorizons.config.server.experimental": "Experimental",
-  "distanthorizons.config.server.experimental.enableNSizedGeneration": "Enable N-sized generation",
-  "distanthorizons.config.server.experimental.enableNSizedGeneration.@tooltip": "When enabled on the client, this allows loading lower detail levels as needed to speed up terrain generation.\nThis must also be enabled on the server; otherwise, it will have no effect.\nFor better performance when switching LOD detail levels, enabling [upsampleLowerDetailLodsToFillHoles] is recommended.",
   "distanthorizons.config.enum.EDhApiQualityPreset.CUSTOM": "Custom",
   "distanthorizons.config.enum.EDhApiQualityPreset.MINIMUM": "1. Minimum",
   "distanthorizons.config.enum.EDhApiQualityPreset.LOW": "2. Low",

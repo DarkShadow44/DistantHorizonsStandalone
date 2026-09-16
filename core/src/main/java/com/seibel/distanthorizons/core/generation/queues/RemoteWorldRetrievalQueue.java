@@ -117,20 +117,6 @@ public class RemoteWorldRetrievalQueue extends AbstractFullDataNetworkRequestQue
 		return DhSectionPos.getChebyshevSignedBlockDistance(sectionPos, targetPos) <= this.networkState.sessionConfig.getMaxGenerationRequestDistance() * 16;
 	}
 	@Override
-	protected boolean onBeforeRequest(long sectionPos, CompletableFuture<DataSourceRetrievalResult> future)
-	{
-		//// split up large requests if N-sized gen isn't enabled
-		//if (!Config.Server.enableNSizedGeneration.get()
-		//	&& DhSectionPos.getDetailLevel(sectionPos) > DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL)
-		//{
-		//	future.complete(DataSourceRetrievalResult.CreateSplit());
-		//	return false;
-		//}
-		
-		return true;
-	}
-	
-	@Override
 	protected String getQueueName() { return "World Remote Generation Queue"; }
 	
 	
