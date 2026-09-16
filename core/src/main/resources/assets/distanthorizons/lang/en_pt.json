@@ -335,8 +335,6 @@
   "distanthorizons.config.server.sendLevelKeys.@tooltip": "Makes the server send level keys for each world.\nDisable this if you use alternative ways to send level keys.",
   "distanthorizons.config.server.levelKeyPrefix": "Level Key Prefix",
   "distanthorizons.config.server.levelKeyPrefix.@tooltip": "Prefix of the level keys sent to the clients.\nIf the mod is running behind a proxy, each backend should use a unique value.\nIf this value is empty, level key will be based on the server's seed hash.",
-  "distanthorizons.config.server.enableServerGeneration": "Enable Server Generation",
-  "distanthorizons.config.server.enableServerGeneration.@tooltip": "When enabled, Distant Horizons will attempt to download missing LODs from the server.\n\nNote: the server must have Distant Generation enabled for it to work.",
   "distanthorizons.config.server.generationRequestRateLimit": "Rate Limit for Generation Requests",
   "distanthorizons.config.server.generationRequestRateLimit.@tooltip": "How many LOD generation requests per second should a client send?\nAlso limits the number of client requests allowed to stay in the server's queue.",
   "distanthorizons.config.server.maxGenerationRequestDistance": "Max Generation Request Distance",

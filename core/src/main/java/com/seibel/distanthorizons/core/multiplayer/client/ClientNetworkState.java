@@ -145,10 +145,10 @@ public class ClientNetworkState implements Closeable
 		{
 			this.networkSession.registerHandler(SessionConfigMessage.class, message ->
 			{
-				this.serverSupportStatus = EServerSupportStatus.FULL;
-				
-				String configChanges = this.sessionConfig.getDifferencesAsString(message.config);
+				String configChanges = this.sessionConfig.getDifferencesAsString(message.config, this.serverSupportStatus != EServerSupportStatus.FULL);
 				CONFIG_CHANGE_LOGGER.info("Connection config has been changed: [" + configChanges + "].");
+				
+				this.serverSupportStatus = EServerSupportStatus.FULL;
 				
 				this.sessionConfig = message.config;
 				this.configReceived = true;

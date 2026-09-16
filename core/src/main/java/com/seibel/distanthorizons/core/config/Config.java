@@ -79,7 +79,6 @@ public class Config
 			.build();
 		
 		public static ConfigUiLinkedEntry quickWorldGeneratorPlan = new ConfigUiLinkedEntry(Common.WorldGenerator.generatorPlan);
-		public static ConfigUiLinkedEntry quickEnableServerGeneration = new ConfigUiLinkedEntry(Server.enableServerGeneration);
 		
 		public static ConfigUiLinkedEntry quickShowWorldGenProgress = new ConfigUiLinkedEntry(Common.WorldGenerator.showGenerationProgress);
 		
@@ -1431,7 +1430,7 @@ public class Config
 			public static ConfigUIComment worldGeneratorHeader = new ConfigUIComment.Builder().setParentConfigClass(WorldGenerator.class).build();
 			
 			public static ConfigEntry<EDhApiGeneratorPlan> generatorPlan = new ConfigEntry.Builder<EDhApiGeneratorPlan>()
-				.setChatCommandName("generation.genPlan")
+				.setChatCommandName("generation.plan")
 				.set(EDhApiGeneratorPlan.SURFACE_THEN_CHUNKS)
 				.setShowEnumOptionFunc(WorldGenPlanConfigEventHandler::setShowEnumOptionFunc)
 				.addListener(WorldGenPlanConfigEventHandler.INSTANCE)
@@ -1982,17 +1981,6 @@ public class Config
 				+ "")
 			.build();
 		
-		
-		// Generation
-		public static ConfigEntry<Boolean> enableServerGeneration = new ConfigEntry.Builder<Boolean>()
-			.setChatCommandName("generation.enableServerGen")
-			.set(true)
-			.comment(""
-				+ "When enabled, Distant Horizons will attempt to download missing LODs from the server.\n"
-				+ "\n"
-				+ "Note: the server must have Distant Generation enabled for it to work."
-				+ "")
-			.build();
 		
 		//public static ConfigEntry<Boolean> enableNSizedGeneration = new ConfigEntry.Builder<Boolean>()
 		//	.setChatCommandName("generation.nSized")

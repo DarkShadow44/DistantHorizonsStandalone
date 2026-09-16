@@ -35,7 +35,7 @@ public class SessionConfig implements INetworkObject
 	{
 		// Note: config values are transmitted in the insertion order
 		
-		registerConfigEntry(Config.Common.WorldGenerator.generatorPlan, (clientVal, serverVal) -> serverVal);
+		registerConfigEntry(Config.Common.WorldGenerator.generatorPlan, SessionConfig::constrainGeneratorPlan);
 		
 		registerConfigEntry(Config.Server.maxGenerationRequestDistance, Math::min);
 		registerConfigEntry(Config.Common.WorldGenerator.generationCenterChunkX, (clientVal, serverVal) -> serverVal);
@@ -76,6 +76,31 @@ public class SessionConfig implements INetworkObject
 		EDhApiGeneratorPlan genPlan = this.getValue(Config.Common.WorldGenerator.generatorPlan);
 		return genPlan.generationEnabled;
 	}
+
+	static EDhApiGeneratorPlan constrainGeneratorPlan(EDhApiGeneratorPlan clientPlan, EDhApiGeneratorPlan serverPlan)
+	{
+		if (clientPlan == EDhApiGeneratorPlan.DISABLED || serverPlan == EDhApiGeneratorPlan.DISABLED)
+		{
+			return EDhApiGeneratorPlan.DISABLED;
+		}
+
+		boolean surfaceGenEnabled = clientPlan.surfaceGenEnabled && serverPlan.surfaceGenEnabled;
+		boolean chunkGenEnabled = clientPlan.chunkGenEnabled && serverPlan.chunkGenEnabled;
+
+		for (EDhApiGeneratorPlan plan : EDhApiGeneratorPlan.values())
+		{
+			if (plan.generationEnabled
+				&& plan.surfaceGenEnabled == surfaceGenEnabled
+				&& plan.chunkGenEnabled == chunkGenEnabled)
+			{
+				return plan;
+			}
+		}
+
+		// The client and server support mutually exclusive generation methods.
+		return serverPlan;
+	}
+
 	public int getMaxGenerationRequestDistance() { return this.getValue(Config.Server.maxGenerationRequestDistance); }
 	public Integer getGenerationCenterChunkX() { return this.getValue(Config.Common.WorldGenerator.generationCenterChunkX); }
 	public Integer getGenerationCenterChunkZ() { return this.getValue(Config.Common.WorldGenerator.generationCenterChunkZ); }
@@ -194,19 +219,21 @@ public class SessionConfig implements INetworkObject
 	/** 
 	 * example: "common.playerBandwidthLimit:[497], " <br>
 	 * Useful to see what was changed when receiving a new config from the server.
+	 *
+	 * @param includeAllValues whether all values should be included, even unchanged values
 	 */
-	public String getDifferencesAsString(SessionConfig that)
+	public String getDifferencesAsString(SessionConfig that, boolean includeAllValues)
 	{
 		StringBuilder stringBuilder = new StringBuilder();
 		
-		for (String key : this.values.keySet())
+		for (String key : CONFIG_ENTRIES.keySet())
 		{
-			String thisFieldString = this.values.get(key) + "";
-			String thatFieldString = that.values.get(key) + "";
+			Object thisValue = this.getValue(key);
+			Object thatValue = that.getValue(key);
 			
-			if (!thisFieldString.equals(thatFieldString))
+			if (includeAllValues || !Objects.equals(thisValue, thatValue))
 			{
-				stringBuilder.append(key+":["+thisFieldString+"], ");
+				stringBuilder.append(key+":["+thatValue+"], ");
 			}
 		}
 		

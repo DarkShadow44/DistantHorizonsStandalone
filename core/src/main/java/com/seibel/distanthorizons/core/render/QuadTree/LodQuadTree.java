@@ -29,7 +29,6 @@ import com.seibel.distanthorizons.core.file.fullDatafile.V2.FullDataSourceProvid
 import com.seibel.distanthorizons.core.file.fullDatafile.V2.FullDataUpdatePropagatorV2;
 import com.seibel.distanthorizons.core.generation.tasks.DataSourceRetrievalResult;
 import com.seibel.distanthorizons.core.generation.tasks.ERetrievalResultState;
-import com.seibel.distanthorizons.core.level.DhClientServerLevel;
 import com.seibel.distanthorizons.core.level.IDhClientLevel;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
@@ -183,7 +182,6 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 		this.beaconBeamRepo = this.level.getBeaconBeamRepo();
 		
 		Config.Common.WorldGenerator.generatorPlan.addListener(this);
-		Config.Server.enableServerGeneration.addListener(this);
 		
 	}
 	
@@ -1003,9 +1001,7 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 		this.fullDataSourceProvider.setCanRegenerate(false);
 		
 		
-		boolean generatorEnabled = this.level instanceof DhClientServerLevel
-			? Config.Common.WorldGenerator.generatorPlan.get().generationEnabled
-			: Config.Server.enableServerGeneration.get();
+		boolean generatorEnabled = Config.Common.WorldGenerator.generatorPlan.get().generationEnabled;
 		if (generatorEnabled)
 		{
 			// world gen tasks will need to be re-queued
@@ -1403,7 +1399,6 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 		
 		DEBUG_RENDERER.unregister(this, Config.Client.Advanced.Debugging.DebugWireframe.showQuadTreeRenderStatus);
 		Config.Common.WorldGenerator.generatorPlan.removeListener(this);
-		Config.Server.enableServerGeneration.removeListener(this);
 		
 		this.fullDataRetrievalQueueThread.shutdownNow();
 		

@@ -830,11 +830,6 @@
   "distanthorizons.config.server.levelKeyPrefix.@tooltip":
     "Prefix of the level keys sent to the clients.\nIf the mod is running behind a proxy, each backend should use a unique value.\nIf this value is empty, level key will be based on the server's seed hash.",
 
-  "distanthorizons.config.server.enableServerGeneration":
-    "Enable Server Generation",
-  "distanthorizons.config.server.enableServerGeneration.@tooltip":
-    "When enabled, Distant Horizons will attempt to download missing LODs from the server.\n\nNote: the server must have Distant Generation enabled for it to work.",
-    
   "distanthorizons.config.server.generationRequestRateLimit":
     "Rate Limit for Generation Requests",
   "distanthorizons.config.server.generationRequestRateLimit.@tooltip":
