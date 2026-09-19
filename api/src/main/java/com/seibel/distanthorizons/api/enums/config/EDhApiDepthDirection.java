@@ -1,10 +1,13 @@
-package com.seibel.distanthorizons.core.render;
+package com.seibel.distanthorizons.api.enums.config;
 
 /**
  * FORWARD_Z, <br>
  * REVERSE_Z, <br>
+ *
+ * @since API 7.2.0
+ * @version 2026-09-19
  */
-public enum EDhRenderDepth
+public enum EDhApiDepthDirection
 {
 	/**
 	 * AKA Zero to One <br>
@@ -21,7 +24,7 @@ public enum EDhRenderDepth
 	public final float nearDepth;
 	public final float farDepth;
 	
-	EDhRenderDepth(float nearDepth, float farDepth)
+	EDhApiDepthDirection(float nearDepth, float farDepth)
 	{
 		this.nearDepth = nearDepth;
 		this.farDepth = farDepth;

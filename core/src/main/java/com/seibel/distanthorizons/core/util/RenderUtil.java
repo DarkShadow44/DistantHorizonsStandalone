@@ -20,6 +20,7 @@
 package com.seibel.distanthorizons.core.util;
 
 import com.seibel.distanthorizons.api.DhApi;
+import com.seibel.distanthorizons.api.enums.config.EDhApiDepthDirection;
 import com.seibel.distanthorizons.api.objects.math.DhApiMat4f;
 import com.seibel.distanthorizons.core.api.internal.ClientApi;
 import com.seibel.distanthorizons.core.config.Config;
@@ -27,10 +28,6 @@ import com.seibel.distanthorizons.core.dependencyInjection.ModAccessorInjector;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
-import com.seibel.distanthorizons.core.render.CameraZoom;
-import com.seibel.distanthorizons.core.render.EDhRenderDepth;
-import com.seibel.distanthorizons.core.util.math.DhMat4f;
-import com.seibel.distanthorizons.core.util.math.DhVec3f;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor.IIrisAccessor;
@@ -99,7 +96,7 @@ public class RenderUtil
 		
 		
 		// Set new far and near clip plane values.
-		if (RENDER_DEF.getRenderDepth() == EDhRenderDepth.FORWARD_Z)
+		if (RENDER_DEF.getDepthDirection() == EDhApiDepthDirection.FORWARD_Z)
 		{
 			setClipPlanes(updateMatrix, nearClipDist, farClipDist, false);
 		}
