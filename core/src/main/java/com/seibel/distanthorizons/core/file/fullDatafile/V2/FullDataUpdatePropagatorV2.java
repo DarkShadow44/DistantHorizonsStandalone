@@ -42,6 +42,14 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 	
 	public static final int NUMBER_OF_PARENT_UPDATE_TASKS_PER_THREAD = 10;
 	
+	/**
+	 * Don't downsample extremely large LODs
+	 * since they'll take a long time and take up a lot of disk space
+	 * that may not be needed.
+	 * If they are needed at a future time, they can be generated.
+	 */
+	public static final byte HIGHEST_DOWNSAMPLE_DETAIL_LEVEL = DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL + 6;
+	
 	/** how many parent update tasks can be in the queue at once */
 	public static int getMaxPropagateTaskCount() { return NUMBER_OF_PARENT_UPDATE_TASKS_PER_THREAD * Config.Common.MultiThreading.numberOfThreads.get(); }
 	
@@ -345,7 +353,7 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 						// since they'll take a long time and take up a lot of disk space
 						// that may not be needed.
 						// If they are needed at a future time, they can be generated.
-						if (DhSectionPos.getDetailLevel(parentOutputPos) >= DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL + 6) // LOD 1 datapoint 64 blocks wide, 4096 total blocks wide
+						if (DhSectionPos.getDetailLevel(parentOutputPos) >= HIGHEST_DOWNSAMPLE_DETAIL_LEVEL)
 						{
 							this.provider.repo.setApplyToChild(parentOutputPos, false);
 							this.updatingPosSet.remove(parentOutputPos);

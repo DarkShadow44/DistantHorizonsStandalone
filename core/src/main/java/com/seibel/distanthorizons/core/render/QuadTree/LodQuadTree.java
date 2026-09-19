@@ -32,6 +32,7 @@ import com.seibel.distanthorizons.core.generation.tasks.ERetrievalResultState;
 import com.seibel.distanthorizons.core.level.IDhClientLevel;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
+import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos2D;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
 import com.seibel.distanthorizons.core.render.CameraZoom;
@@ -1209,25 +1210,31 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 		// the radius (half diagonal) is needed so the zoom cone check doesn't
 		// miss sections that only partially overlap the camera's view
 		double sectionBlockRadius = DhSectionPos.getBlockWidth(sectionPos) * (Math.sqrt(2.0) / 2.0);
-		return this.calcExpectedDetailLevel(playerPos, DhSectionPos.getCenterBlockPosX(sectionPos), DhSectionPos.getCenterBlockPosZ(sectionPos), sectionBlockRadius);
+		return this.calcExpectedDetailLevel(playerPos, sectionPos, DhSectionPos.getCenterBlockPosX(sectionPos), DhSectionPos.getCenterBlockPosZ(sectionPos), sectionBlockRadius);
 	}
 	
 	public byte calcExpectedDetailLevel(DhBlockPos2D playerPos, int targetBlockPosX, int targetBlockPosZ)
-	{ return this.calcExpectedDetailLevel(playerPos, targetBlockPosX, targetBlockPosZ, 0.0); }
+	{ return this.calcExpectedDetailLevel(playerPos, DhSectionPos.encodeContaining(DhSectionPos.SECTION_BLOCK_DETAIL_LEVEL, new DhBlockPos(targetBlockPosX, 0, targetBlockPosZ)), targetBlockPosX, targetBlockPosZ, 0.0); }
 	
-	private byte calcExpectedDetailLevel(DhBlockPos2D playerPos, int targetBlockPosX, int targetBlockPosZ, double targetBlockRadius)
+	private byte calcExpectedDetailLevel(DhBlockPos2D playerPos, long targetSectionPos, int targetBlockPosX, int targetBlockPosZ, double targetBlockRadius)
 	{
 		double blockDistance = playerPos.dist(targetBlockPosX, targetBlockPosZ);
 		
-		// LODs visible through a zoomed in camera appear closer than they actually are,
-		// using the magnified distance gives them the detail they'd have if the player walked up to them
-		if (CameraZoom.INSTANCE.magnification > CameraZoom.NOT_ZOOMED_MAGNIFICATION
-			&& CameraZoom.INSTANCE.coneIntersectsCircle(playerPos.x, playerPos.z, targetBlockPosX, targetBlockPosZ, targetBlockRadius))
+		// Don't allow zooming for LODs that will be missing child nodes.
+		// Doing so will cause holes/missing LODs.
+		boolean allowZooming = DhSectionPos.getDetailLevel(targetSectionPos) < FullDataUpdatePropagatorV2.HIGHEST_DOWNSAMPLE_DETAIL_LEVEL;
+		if (allowZooming)
 		{
-			blockDistance /= CameraZoom.INSTANCE.magnification;
-			
-			EDhApiMaxHorizontalResolution maxHorizontalResolution = Config.Client.Advanced.Graphics.Quality.maxHorizontalResolution.get();
-			return this.calcDetailLevelFromDistance(blockDistance, maxHorizontalResolution.detailLevel);
+			// LODs visible through a zoomed in camera appear closer than they actually are,
+			// using the magnified distance gives them the detail they'd have if the player walked up to them
+			if (CameraZoom.INSTANCE.magnification > CameraZoom.NOT_ZOOMED_MAGNIFICATION
+				&& CameraZoom.INSTANCE.coneIntersectsCircle(playerPos.x, playerPos.z, targetBlockPosX, targetBlockPosZ, targetBlockRadius))
+			{
+				blockDistance /= CameraZoom.INSTANCE.magnification;
+				
+				EDhApiMaxHorizontalResolution maxHorizontalResolution = Config.Client.Advanced.Graphics.Quality.maxHorizontalResolution.get();
+				return this.calcDetailLevelFromDistance(blockDistance, maxHorizontalResolution.detailLevel);
+			}
 		}
 		
 		return this.calcDetailLevelFromDistance(blockDistance);
