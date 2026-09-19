@@ -50,7 +50,7 @@ public final class ModInfo
 	/** This version should only be updated when breaking changes are introduced to the DH API */
 	public static final int API_MAJOR_VERSION = 7;
 	/** This version should be updated whenever new methods are added to the DH API */
-	public static final int API_MINOR_VERSION = 1;
+	public static final int API_MINOR_VERSION = 2;
 	/** This version should be updated whenever non-breaking fixes are added to the DH API */
 	public static final int API_PATCH_VERSION = 0;
 	
