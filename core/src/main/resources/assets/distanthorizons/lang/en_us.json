@@ -27,7 +27,7 @@
   "distanthorizons.general.apiOverride":
     "API LOCK",
   "distanthorizons.general.disabledByApi.@tooltip":
-    "This option is controlled by another mod via DH's API \nso it cannot be changed via the UI or config file.",
+    "This option is controlled by another mod via DH's API \nso it cannot be changed via the UI or config file. \nCurrently controlled by:\n",
   "distanthorizons.general.unsupportedMcVersion":
     "VER LOCK",
   "distanthorizons.general.unsupportedMcVersion.@tooltip":

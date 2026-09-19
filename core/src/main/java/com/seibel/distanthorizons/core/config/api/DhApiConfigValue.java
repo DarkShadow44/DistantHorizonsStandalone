@@ -97,12 +97,15 @@ public class DhApiConfigValue<coreType, apiType> implements IDhApiConfigValue<ap
 		return this.configConverter.convertToApiType(this.configBase.getApiValue()); 
 	}
 	
+	@Deprecated
 	@Override
-	public boolean setValue(apiType newValue)
+	public boolean setValue(apiType newValue) { return this.setValue(newValue, "UNKNOWN"); }
+	@Override
+	public boolean setValue(apiType newValue, String apiUserDisplayName)
 	{
 		if (this.configBase.getAllowApiOverride())
 		{
-			this.configBase.setApiValue(this.configConverter.convertToCoreType(newValue));
+			this.configBase.setApiValue(this.configConverter.convertToCoreType(newValue), apiUserDisplayName);
 			return true;
 		}
 		else
@@ -117,7 +120,7 @@ public class DhApiConfigValue<coreType, apiType> implements IDhApiConfigValue<ap
 		if (this.configBase.getAllowApiOverride())
 		{
 			// no converter should be used here since null objects may need to be handled differently
-			this.configBase.setApiValue(null);
+			this.configBase.setApiValue(null, null);
 			return true;
 		}
 		else

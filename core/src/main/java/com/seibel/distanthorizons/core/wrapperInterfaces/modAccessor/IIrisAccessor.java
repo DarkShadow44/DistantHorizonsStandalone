@@ -22,6 +22,7 @@ package com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor;
 public interface IIrisAccessor extends IModAccessor
 {
 	String FRAMEBUFFER_MIXIN_CLASS = "net.irisshaders.iris.gl.framebuffer.GlFramebuffer";
+	String READABLE_NAME = "Iris";
 	
 	
 	boolean isShaderPackInUse();
