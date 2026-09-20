@@ -21,9 +21,14 @@ package com.seibel.distanthorizons.core.config.api;
 
 import com.seibel.distanthorizons.api.interfaces.config.IDhApiConfigValue;
 import com.seibel.distanthorizons.core.config.types.ConfigEntry;
+import com.seibel.distanthorizons.core.logging.DhLogger;
+import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.coreapi.interfaces.config.IConverter;
 import com.seibel.distanthorizons.core.config.api.converters.DefaultConverter;
 
+import java.util.Collections;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 /**
@@ -41,6 +46,11 @@ import java.util.function.Consumer;
  */
 public class DhApiConfigValue<coreType, apiType> implements IDhApiConfigValue<apiType>
 {
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
+	
+	private static final Set<String> CONFIG_NAME_CALLED_DEPRECATED_API = Collections.newSetFromMap(new ConcurrentHashMap<>());
+	
+	
 	private final ConfigEntry<coreType> configBase;
 	
 	private final IConverter<coreType, apiType> configConverter;
@@ -99,7 +109,42 @@ public class DhApiConfigValue<coreType, apiType> implements IDhApiConfigValue<ap
 	
 	@Deprecated
 	@Override
-	public boolean setValue(apiType newValue) { return this.setValue(newValue, "UNKNOWN"); }
+	public boolean setValue(apiType newValue)
+	{ 
+		if (CONFIG_NAME_CALLED_DEPRECATED_API.add(this.configBase.name))
+		{
+			// alternate method to show a stack trace snippet
+			//StackTraceElement[] stackTraceElements = Thread.currentThread().getStackTrace();
+			//StackTraceElement[] trimmedElements = Arrays.copyOfRange(stackTraceElements, 
+			//	// cut out this method and the getStackTrace()
+			//	2, 
+			//	// only go up an additional 3 stacks, that should be far enough
+			//	Math.min(5, stackTraceElements.length));
+			//String stackTraceString = StringUtil.join("\n", trimmedElements);
+			
+			String callerClass = this.getCallerClassName();
+			LOGGER.warn("Config ["+this.configBase.name+"] was set by ["+callerClass+"] via the deprecated API method that doesn't define the API caller. \n" +
+				"If you are a player this can be ignored. \n" +
+				"If you are a developer please make sure your mod passes in a display name so users can know what your mod controls."
+			);
+		}
+		
+		return this.setValue(newValue, "UNKNOWN"); 
+	}
+	private String getCallerClassName()
+	{
+		StackTraceElement[] stack = new Throwable().getStackTrace();
+		String myClass = this.getClass().getName();
+		for (StackTraceElement element : stack)
+		{
+			if (!element.getClassName().equals(myClass))
+			{
+				return element.getClassName();
+			}
+		}
+		return "UNKNOWN";
+	}
+	
 	@Override
 	public boolean setValue(apiType newValue, String apiUserDisplayName)
 	{
