@@ -134,14 +134,17 @@ public class DhApiConfigValue<coreType, apiType> implements IDhApiConfigValue<ap
 	private String getCallerClassName()
 	{
 		StackTraceElement[] stack = new Throwable().getStackTrace();
-		String myClass = this.getClass().getName();
+		
+		// find the first stack element that isn't part of this class
+		String thisClass = this.getClass().getName();
 		for (StackTraceElement element : stack)
 		{
-			if (!element.getClassName().equals(myClass))
+			if (!element.getClassName().equals(thisClass))
 			{
 				return element.getClassName();
 			}
 		}
+		
 		return "UNKNOWN";
 	}
 	
