@@ -1,5 +1,6 @@
 package com.seibel.distanthorizons.core.file.fullDatafile.V2;
 
+import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiDistantGeneratorMode;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.dataObjects.fullData.sources.FullDataSourceV2;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
@@ -500,15 +501,8 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 			return;
 		}
 		
-		if (!this.provider.getGeneratorPlan().chunkGenEnabled)
+		if (!WorldGenUtil.regenAllowed(this.provider))
 		{
-			// chunk gen isn't allowed right now
-			return;
-		}
-		
-		if (!(this.provider instanceof GeneratedFullDataSourceProvider))
-		{
-			// this provider doesn't support retrieval
 			return;
 		}
 		
