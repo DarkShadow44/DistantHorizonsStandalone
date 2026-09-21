@@ -1,0 +1,45 @@
+// This project has no sources of its own. It exists so that GTNH Actions can run
+// `./gradlew build` at the repo root and find the mod jars in build/libs afterwards.
+
+def dhBuild = gradle.includedBuild('dh')
+
+// The loader subprojects to build, matching `builds_for` in
+// dh/versionProperties/<mcVer>.properties (1.7.10 -> forge17).
+// A task on the DH *root* project would only build the root, so name them here.
+def dhLoaders = (findProperty('dhLoaders') ?: 'forge17').toString().split(',').collect { it.trim() }
+
+def collectJars = tasks.register('collectJars', Copy) {
+    description = 'Builds DH and copies the resulting jars into build/libs.'
+    group = 'build'
+
+    dhLoaders.each { loader -> dependsOn dhBuild.task(":${loader}:build") }
+
+    // DH writes its artifacts per loader subproject (dh/forge17/build/libs for 1.7.10).
+    from(fileTree(file('dh')) {
+        dhLoaders.each { loader -> include "${loader}/build/libs/*.jar" }
+        exclude '**/*-sources.jar'
+        exclude '**/*-dev.jar'
+    })
+    eachFile { it.relativePath = new RelativePath(true, it.sourceName) }
+    includeEmptyDirs = false
+
+    into layout.buildDirectory.dir('libs')
+}
+
+tasks.register('build') {
+    description = 'Builds DH and collects the resulting jars.'
+    group = 'build'
+    dependsOn collectJars
+}
+
+// GTNH Actions runs these on every repo; keep them meaningful but cheap.
+tasks.register('check') {
+    group = 'verification'
+    dhLoaders.each { loader -> dependsOn dhBuild.task(":${loader}:check") }
+}
+
+tasks.register('clean', Delete) {
+    group = 'build'
+    delete layout.buildDirectory
+    dependsOn dhBuild.task(':clean')
+}

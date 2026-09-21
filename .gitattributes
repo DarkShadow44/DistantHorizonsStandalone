@@ -42,3 +42,6 @@
 *.[pP][sS]1             text eol=crlf
 
 *[aA][uU][tT][oO][gG][eE][nN][eE][rR][aA][tT][eE][dD]* binary
+
+# The dh/ subtree is imported verbatim from upstream; never normalize it.
+dh/**                   -text

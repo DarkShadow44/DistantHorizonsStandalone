@@ -1,0 +1,15 @@
+// GTNH Distant Horizons wrapper.
+//
+// The real build lives in dh/ and is imported unmodified as a composite build.
+// dh/coreSubProjects is a subtree, so DH's own build finds core exactly where
+// it expects it -- no `git submodule` step, no build script patching.
+
+rootProject.name = 'gtnh-dh'
+
+// DH selects its Minecraft target from -PmcVer and defaults to a modern version.
+// This wrapper only ever ships the GTNH target, so pin it unless asked otherwise.
+if (!startParameter.projectProperties.containsKey('mcVer')) {
+    startParameter.projectProperties.put('mcVer', '1.7.10')
+}
+
+includeBuild('dh')
