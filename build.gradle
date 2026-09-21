@@ -1,13 +1,35 @@
 // This project has no sources of its own. It exists so that GTNH Actions can run its
 // usual task names at the repo root, have them drive the DH build in dh/, and find the
 // mod jars in build/libs afterwards.
+//
+// The GTNH buildscript is applied in its modular form (`gtnhgradle`, not `gtnhconvention`)
+// so we get the real GTNH git-versioning and publishing logic without the modules that
+// would fight DH's own toolchain -- see the comment block in gradle.properties.
+plugins {
+    id 'com.gtnewhorizons.gtnhgradle' version '2.0.31'
+}
 
 def dhBuild = gradle.includedBuild('dh')
 
-// The loader subprojects to build, matching `builds_for` in
-// dh/versionProperties/<mcVer>.properties (1.7.10 -> forge17).
-// A task on the DH *root* project would only build the root, so name them here.
-def dhLoaders = (findProperty('dhLoaders') ?: 'forge17').toString().split(',').collect { it.trim() }
+// Select one loader from the target's DH version properties. A task on the DH *root*
+// project would only build the root, so the wrapper has to name the loader explicitly.
+def mcVersion = (findProperty('mcVer') ?: '1.7.10').toString()
+def dhVersionPropsFile = file("dh/versionProperties/${mcVersion}.properties")
+if (!dhVersionPropsFile.isFile()) {
+    throw new GradleException("No DH version properties found for Minecraft ${mcVersion}")
+}
+def dhVersionProps = new Properties()
+dhVersionPropsFile.withInputStream { dhVersionProps.load(it) }
+
+def dhLoaders = (findProperty('dhLoaders') ?: dhVersionProps.builds_for).toString().split(',').collect { it.trim() }
+if (dhLoaders.size() != 1 || dhLoaders[0].isEmpty()) {
+    throw new GradleException("The GTNH wrapper requires exactly one DH loader, got: ${dhLoaders}")
+}
+def dhLoader = dhLoaders[0]
+def supportedLoaders = dhVersionProps.builds_for.toString().split(',').collect { it.trim() }
+if (!supportedLoaders.contains(dhLoader)) {
+    throw new GradleException("DH does not build loader ${dhLoader} for Minecraft ${mcVersion}")
+}
 
 // DH names its artifacts "<name>-<loader>-<version>-<mcVersion>.jar"; GTNH expects
 // "<ModName>-<version>.jar", where the version is this repo's tag -- what GTNH Actions
@@ -15,85 +37,126 @@ def dhLoaders = (findProperty('dhLoaders') ?: 'forge17').toString().split(',').c
 def dhProps = new Properties()
 file('dh/gradle.properties').withInputStream { dhProps.load(it) }
 
-def gitOutput = { String... args ->
-    try {
-        def out = providers.exec {
-            commandLine(['git'] + (args as List))
-            workingDir = rootDir
-        }.standardOutput.asText.get().trim()
-        return out.isEmpty() ? null : out
-    } catch (Exception ignored) {
-        return null  // no git, or no repo (source zip, jitpack, ...)
+// ==================== Version ====================
+
+// GitVersionModule is GTNH's own logic: VERSION env override, else the git tag plus
+// branch/distance/hash, and it publishes the result as project.ext.modVersion.
+gtnhGradle.applyModuleByName(project, 'GitVersionModule')
+
+group = dhProps.maven_group
+if (findProperty('jarVersion')) {
+    version = findProperty('jarVersion')
+}
+// Our tags are v-prefixed; jar names and the Maven version must not be.
+version = version.toString().replaceFirst(/^v/, '')
+ext.modVersion = version.toString()
+
+def jarBaseName = (findProperty('jarBaseName') ?: dhProps.mod_name).toString()
+def jarVersion = version.toString()
+
+// ==================== Collecting DH's jars ====================
+
+// DH writes its artifacts per loader subproject (dh/forge17/build/libs for 1.7.10).
+// The classifier-less jar is the distributable one, "-dev" the un-downgraded one that
+// other mods compile against.
+def dhArtifactName = { String classifier ->
+    "${dhProps.mod_name}-${dhLoader}-${dhProps.mod_version}-${dhVersionProps.minecraft_version}${classifier}.jar"
+}
+def dhReleaseJar = file("dh/${dhLoader}/build/libs/${dhArtifactName('')}")
+def dhDevJar = file("dh/${dhLoader}/build/libs/${dhArtifactName('-dev')}")
+
+// GTNHGradle's external publishers require TaskProvider<Jar> values and read their
+// archiveFile properties. These adapter tasks copy DH's already-built jars byte-for-byte;
+// clearing Jar's normal archive action prevents the wrapper from repackaging them.
+def registerCollectedJar = { String taskName, File sourceJar, String targetName, String description ->
+    tasks.register(taskName, Jar) {
+        it.description = description
+        group = 'build'
+        dependsOn dhBuild.task(":${dhLoader}:assemble")
+
+        archiveFileName.set(targetName)
+        destinationDirectory.set(layout.buildDirectory.dir('libs'))
+        inputs.file(sourceJar)
+
+        actions.clear()
+        doLast {
+            if (!sourceJar.isFile()) {
+                throw new GradleException("DH did not produce the expected artifact: ${sourceJar}")
+            }
+            copy {
+                from sourceJar
+                into destinationDirectory.get().asFile
+                rename { targetName }
+            }
+        }
     }
 }
 
-def resolveVersion = {
-    // On a tag build GTNH Actions hands us the tag directly.
-    def ref = System.getenv('GITHUB_REF')
-    if (ref?.startsWith('refs/tags/')) return ref.substring('refs/tags/'.length())
+def releaseFileName = "${jarBaseName}-${jarVersion}.jar"
+def devFileName = "${jarBaseName}-${jarVersion}-dev.jar"
 
-    // Otherwise describe the checkout: "<tag>" on a tag, "<tag>-<n>-g<sha>[-dirty]" past it.
-    def described = gitOutput('describe', '--tags', '--dirty', '--always')
-    if (described != null) return described
+def collectJars = registerCollectedJar(
+    'collectJars', dhReleaseJar, releaseFileName, 'Builds DH and copies the release jar into build/libs.')
 
-    return "${dhProps.mod_version}-unknown"
+// GTNH mods compile against the "dev" (un-obfuscated) jar, so it has to be published
+// alongside the release one; DH builds it already, we only rename it.
+def collectDevJars = registerCollectedJar(
+    'collectDevJars', dhDevJar, devFileName, 'Builds DH and copies the dev jar into build/libs.')
+
+def releaseJar = collectJars.flatMap { it.archiveFile }
+def devJar = collectDevJars.flatMap { it.archiveFile }
+
+// ==================== Publishing ====================
+
+// PublishingModule builds its Maven publication from the `java` component, so point
+// that component at DH's jars instead of the empty one this project would produce.
+tasks.named('jar') { enabled = false }
+['apiElements', 'runtimeElements'].each { cfg ->
+    configurations.named(cfg) {
+        outgoing.artifacts.clear()
+        outgoing.artifact(releaseJar) { builtBy collectJars }
+    }
 }
 
-def jarBaseName = (findProperty('jarBaseName') ?: dhProps.mod_name).toString()
-def jarVersion = (findProperty('jarVersion') ?: resolveVersion()).toString().replaceFirst(/^v/, '')
+// Modrinth/CurseForge uploads in PublishingModule read these.
+ext.publishableObfJar = collectJars
+ext.publishableDevJar = collectDevJars
 
-version = jarVersion
+gtnhGradle.applyModuleByName(project, 'PublishingModule')
 
-def collectJars = tasks.register('collectJars', Copy) {
-    description = 'Builds DH and copies the resulting jars into build/libs.'
-    group = 'build'
-
-    dhLoaders.each { loader -> dependsOn dhBuild.task(":${loader}:assemble") }
-
-    // DH writes its artifacts per loader subproject (dh/forge17/build/libs for 1.7.10).
-    // Only the classifier-less jar is the distributable one: "-all" is the intermediate
-    // shadow jar, "-dev" the un-downgraded one, "-sources" the sources.
-    from(fileTree(file('dh')) {
-        dhLoaders.each { loader -> include "${loader}/build/libs/*.jar" }
-        exclude '**/*-all.jar'
-        exclude '**/*-dev.jar'
-        exclude '**/*-sources.jar'
-    })
-    // Keep the loader in the name only when a build produces more than one, so the
-    // jars cannot collide.
-    rename { "${jarBaseName}-${dhLoaders.size() > 1 ? it.split('-')[1] + '-' : ''}${jarVersion}.jar" }
-    eachFile { it.relativePath = new RelativePath(true, it.name) }
-    includeEmptyDirs = false
-
-    into layout.buildDirectory.dir('libs')
+publishing.publications.named('maven') {
+    artifactId = System.getenv('ARTIFACT_ID') ?: jarBaseName
+    pom.packaging = 'jar'
+    artifact(devJar) {
+        classifier = 'dev'
+        builtBy collectDevJars
+    }
 }
 
-tasks.register('assemble') {
-    description = 'Builds DH and collects the resulting jars.'
-    group = 'build'
-    dependsOn collectJars
+// ==================== Lifecycle ====================
+
+// The java plugin (pulled in by gtnhgradle) already defines assemble/check/build/clean;
+// wire DH's build into them rather than redefining them.
+tasks.named('assemble') { dependsOn collectJars, collectDevJars }
+tasks.named('check') { dhLoaders.each { loader -> dependsOn dhBuild.task(":${loader}:check") } }
+tasks.named('clean') { dependsOn dhBuild.task(':clean') }
+
+// gtnhgradle always applies RetroFuturaGradle. This project has no sources for it to
+// compile, so cut its Minecraft setup out of the task graph -- otherwise `build` would
+// decompile Minecraft for a project that never compiles a line.
+['compileClasspath', 'testCompileClasspath', 'runtimeClasspath', 'testRuntimeClasspath'].each { cfg ->
+    configurations.named(cfg) { setExtendsFrom([]) }
+}
+['setupCIWorkspace', 'setupDecompWorkspace'].each { name ->
+    tasks.named(name) {
+        setDependsOn([])
+        description = "No-op; ${name} has no meaning for the DH wrapper."
+    }
 }
 
-tasks.register('check') {
-    group = 'verification'
-    dhLoaders.each { loader -> dependsOn dhBuild.task(":${loader}:check") }
-}
-
-tasks.register('build') {
-    group = 'build'
-    dependsOn tasks.named('assemble'), tasks.named('check')
-}
-
-tasks.register('clean', Delete) {
-    group = 'build'
-    delete layout.buildDirectory
-    dependsOn dhBuild.task(':clean')
-}
-
-// Task names the GTNH workflows always invoke. DH's build (unimined) has no
-// equivalent of RFG's workspace setup, and the wrapper publishes nothing itself,
-// so these exist purely so the workflow steps resolve.
-['setupCIWorkspace', 'setupDecompWorkspace', 'test', 'publish', 'spotlessCheck', 'spotlessApply'].each { name ->
+// Task names the GTNH workflows invoke that no enabled module provides. Spotless stays
+// off on purpose: dh/ is upstream code and must not be reformatted.
+['spotlessCheck', 'spotlessApply'].each { name ->
     tasks.register(name) {
         group = 'gtnh'
         description = "No-op; ${name} has no meaning for the DH wrapper."

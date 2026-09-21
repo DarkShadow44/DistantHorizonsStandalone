@@ -1,3 +1,5 @@
+# This is my backport of Distant Horizons to 1.7.10 - see the [official Distant Horizons](https://gitlab.com/distant-horizons-team/distant-horizons).
+
 # GTNH Distant Horizons wrapper
 
 Staging repo for quick fixes to [Distant Horizons][dh] and [DH core][core] until they land
@@ -5,6 +7,61 @@ upstream. It carries no code of its own: DH sits in `dh/` as a git subtree, DH c
 `dh/coreSubProjects/` as a second subtree — exactly where DH's own build expects its submodule —
 and a thin Gradle wrapper drives that build so GTNH Actions can build it like any other repo.
 
+# What is Distant Horizons?
+
+Distant Horizons is a mod which implements a [Level of Detail](https://en.wikipedia.org/wiki/Level_of_detail_(computer_graphics)) system to Minecraft.\
+This allows for far greater render distances without harming performance by gradually lowering the quality of distant terrain.
+
+Below is a video demonstrating the system:
+
+<a href="https://youtu.be/SxQdbtjGEsc" target="_blank">![Distant Horizons - Alpha 2.0](https://i.ytimg.com/vi/SxQdbtjGEsc/hqdefault.jpg)</a>
+
+# Installation
+
+- Download the latest version from [DistantHorizonsStandalone Releases](https://github.com/DarkShadow44/DistantHorizonsStandalone/releases) and put it into the mods folder
+
+Make sure the latest versions of each of the dependencies are installed:
+
+- [lwjgl3ify](https://github.com/GTNewHorizons/lwjgl3ify) - Use 3.0.15 or higher
+- [GTNHLib](https://github.com/GTNewHorizons/GTNHLib)
+- [UniMixins](https://github.com/LegacyModdingMC/UniMixins)
+
+Now supports shaders when used with Angelica 2.1.12 or higher. Tested with [Complementary 5.7.1](https://modrinth.com/shader/complementary-reimagined/version/r5.7.1) with [Euphoria patches 1.8.6](https://modrinth.com/mod/euphoria-patches/version/1.8.6-r5.7.1-forge1.7.10)
+If it works with modern DH+Iris, but not with latest Angelica + DH, this should be reported as bug.
+
+# Known Issues
+
+- Memory usage might creep up over time and crash the server
+- Server side not fully stable, use with caution
+- Sometimes LODs don't update properly, change rendering distance and then back to fix that (upstream issue)
+
+# GTNH 2.8.4
+
+Here detailed instructions how to get DH + latest Angelica working in GTNH 2.8.4 (you'll need to upgrade a few things) in Prism Launcher:
+
+Download the following mods:
+- Latest DH - tested with [alpha18](https://github.com/DarkShadow44/DistantHorizonsStandalone/releases/tag/alpha18) - get `distanthorizons-alpha18.jar`
+- Latest Angelica - tested with [2.1.16](https://github.com/GTNewHorizons/Angelica/releases/tag/2.1.16) - get `angelica-2.1.16.jar`
+- Latest lwjgl3ify - tested with [3.0.15](https://github.com/GTNewHorizons/lwjgl3ify/releases/tag/3.0.15) - get `lwjgl3ify-3.0.15.jar` and `lwjgl3ify-3.0.15-multimc.zip`
+- Latest GTNHLib - tested with [0.9.47](https://github.com/GTNewHorizons/GTNHLib/releases/tag/0.9.47) - get `gtnhlib-0.9.47.jar`
+
+From your mods folder delete
+- angelica-1.0.0-beta66b.jar
+- lwjgl3ify-2.1.16.jar
+- gtnhlib-0.7.10.jar
+
+Then add to your mods folder:
+- distanthorizons-alpha18.jar
+- angelica-2.1.16.jar
+- lwjgl3ify-3.0.15.jar
+- gtnhlib-0.9.47.jar
+
+Then unzip `lwjgl3ify-3.0.15-multimc.zip`, copy the contents into your Prism Launcher instance. You know you copy into the right folder when you overwrite your `mmc-pack.json`.
+
+
+# Development
+
+## Structure
 ```
 gtnh-dh/
 ├── settings.gradle      # includeBuild('dh'), pins -PmcVer=1.7.10
@@ -18,34 +75,6 @@ gtnh-dh/
 
 ```bash
 ./gradlew build          # jars land in build/libs
-```
-
-Everything else is DH's normal build (`./gradlew -PmcVer=1.7.10 :forge17:build` under the hood).
-To build another Minecraft version, pass `-PmcVer=<ver> -PdhLoaders=<loader>` — see
-`dh/versionProperties/<ver>.properties` for the loaders a version builds for.
-
-GTNH Actions drives the same tasks it drives everywhere (`setupCIWorkspace`, `assemble`,
-`build`, `publish`). DH's build has no equivalent for some of them, so the wrapper registers
-them as no-ops — see the bottom of `build.gradle`. `runServer` and the spotless auto-PR are
-switched off in `.github/workflows/build-and-test.yml`: `dh/` is upstream code and must not be
-reformatted. Jars are collected into `build/libs`, which is what the workflows upload.
-
-Never run `git submodule` here. The core submodule is deliberately gone; the subtree replaces it.
-
-## Remotes
-
-| name        | points to           | use               |
-|-------------|---------------------|-------------------|
-| `dh`        | upstream DH         | pull              |
-| `dh-core`   | upstream DH core    | pull              |
-| `dh-fork`   | our fork of DH      | push fix branches |
-| `core-fork` | our fork of DH core | push fix branches |
-
-The two upstream remotes are configured. Add the forks once they exist:
-
-```bash
-git remote add dh-fork   <url>
-git remote add core-fork <url>
 ```
 
 ## Working on a fix
@@ -70,26 +99,6 @@ git update-index --force-remove dh/coreSubProjects  # drop their gitlink, keep o
 git commit
 git subtree pull --prefix=dh/coreSubProjects dh-core <that sha>
 ```
-
-## Upstreaming
-
-Core, straight from the subtree:
-
-```bash
-git subtree push --prefix=dh/coreSubProjects core-fork fix/<name>
-```
-
-then open a PR from `core-fork`.
-
-DH itself — `subtree push` would drag core along, so send patches instead:
-
-```bash
-git format-patch --relative=dh <base>..HEAD -o p/ -- dh ':!dh/coreSubProjects'
-# in a clone of dh-fork:
-git am p/*.patch && git push origin fix/<name>
-```
-
-Once upstream merges, the next `subtree pull` absorbs the fix and the local commit drops out.
 
 ## Licensing
 

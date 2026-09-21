@@ -4,6 +4,17 @@
 // dh/coreSubProjects is a subtree, so DH's own build finds core exactly where
 // it expects it -- no `git submodule` step, no build script patching.
 
+pluginManagement {
+    repositories {
+        maven {
+            name = 'GTNH Maven'
+            url = uri('https://nexus.gtnewhorizons.com/repository/public/')
+        }
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
 rootProject.name = 'gtnh-dh'
 
 // DH selects its Minecraft target from -PmcVer and defaults to a modern version.
