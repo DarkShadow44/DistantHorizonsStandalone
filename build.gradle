@@ -9,6 +9,41 @@ def dhBuild = gradle.includedBuild('dh')
 // A task on the DH *root* project would only build the root, so name them here.
 def dhLoaders = (findProperty('dhLoaders') ?: 'forge17').toString().split(',').collect { it.trim() }
 
+// DH names its artifacts "<name>-<loader>-<version>-<mcVersion>.jar"; GTNH expects
+// "<ModName>-<version>.jar", where the version is this repo's tag -- what GTNH Actions
+// releases is the wrapper's tag, not DH's internal mod_version.
+def dhProps = new Properties()
+file('dh/gradle.properties').withInputStream { dhProps.load(it) }
+
+def gitOutput = { String... args ->
+    try {
+        def out = providers.exec {
+            commandLine(['git'] + (args as List))
+            workingDir = rootDir
+        }.standardOutput.asText.get().trim()
+        return out.isEmpty() ? null : out
+    } catch (Exception ignored) {
+        return null  // no git, or no repo (source zip, jitpack, ...)
+    }
+}
+
+def resolveVersion = {
+    // On a tag build GTNH Actions hands us the tag directly.
+    def ref = System.getenv('GITHUB_REF')
+    if (ref?.startsWith('refs/tags/')) return ref.substring('refs/tags/'.length())
+
+    // Otherwise describe the checkout: "<tag>" on a tag, "<tag>-<n>-g<sha>[-dirty]" past it.
+    def described = gitOutput('describe', '--tags', '--dirty', '--always')
+    if (described != null) return described
+
+    return "${dhProps.mod_version}-unknown"
+}
+
+def jarBaseName = (findProperty('jarBaseName') ?: dhProps.mod_name).toString()
+def jarVersion = (findProperty('jarVersion') ?: resolveVersion()).toString().replaceFirst(/^v/, '')
+
+version = jarVersion
+
 def collectJars = tasks.register('collectJars', Copy) {
     description = 'Builds DH and copies the resulting jars into build/libs.'
     group = 'build'
@@ -16,12 +51,18 @@ def collectJars = tasks.register('collectJars', Copy) {
     dhLoaders.each { loader -> dependsOn dhBuild.task(":${loader}:assemble") }
 
     // DH writes its artifacts per loader subproject (dh/forge17/build/libs for 1.7.10).
+    // Only the classifier-less jar is the distributable one: "-all" is the intermediate
+    // shadow jar, "-dev" the un-downgraded one, "-sources" the sources.
     from(fileTree(file('dh')) {
         dhLoaders.each { loader -> include "${loader}/build/libs/*.jar" }
-        exclude '**/*-sources.jar'
+        exclude '**/*-all.jar'
         exclude '**/*-dev.jar'
+        exclude '**/*-sources.jar'
     })
-    eachFile { it.relativePath = new RelativePath(true, it.sourceName) }
+    // Keep the loader in the name only when a build produces more than one, so the
+    // jars cannot collide.
+    rename { "${jarBaseName}-${dhLoaders.size() > 1 ? it.split('-')[1] + '-' : ''}${jarVersion}.jar" }
+    eachFile { it.relativePath = new RelativePath(true, it.name) }
     includeEmptyDirs = false
 
     into layout.buildDirectory.dir('libs')
