@@ -24,6 +24,12 @@ Everything else is DH's normal build (`./gradlew -PmcVer=1.7.10 :forge17:build` 
 To build another Minecraft version, pass `-PmcVer=<ver> -PdhLoaders=<loader>` — see
 `dh/versionProperties/<ver>.properties` for the loaders a version builds for.
 
+GTNH Actions drives the same tasks it drives everywhere (`setupCIWorkspace`, `assemble`,
+`build`, `publish`). DH's build has no equivalent for some of them, so the wrapper registers
+them as no-ops — see the bottom of `build.gradle`. `runServer` and the spotless auto-PR are
+switched off in `.github/workflows/build-and-test.yml`: `dh/` is upstream code and must not be
+reformatted. Jars are collected into `build/libs`, which is what the workflows upload.
+
 Never run `git submodule` here. The core submodule is deliberately gone; the subtree replaces it.
 
 ## Remotes
