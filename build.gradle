@@ -1,5 +1,6 @@
-// This project has no sources of its own. It exists so that GTNH Actions can run
-// `./gradlew build` at the repo root and find the mod jars in build/libs afterwards.
+// This project has no sources of its own. It exists so that GTNH Actions can run its
+// usual task names at the repo root, have them drive the DH build in dh/, and find the
+// mod jars in build/libs afterwards.
 
 def dhBuild = gradle.includedBuild('dh')
 
@@ -12,7 +13,7 @@ def collectJars = tasks.register('collectJars', Copy) {
     description = 'Builds DH and copies the resulting jars into build/libs.'
     group = 'build'
 
-    dhLoaders.each { loader -> dependsOn dhBuild.task(":${loader}:build") }
+    dhLoaders.each { loader -> dependsOn dhBuild.task(":${loader}:assemble") }
 
     // DH writes its artifacts per loader subproject (dh/forge17/build/libs for 1.7.10).
     from(fileTree(file('dh')) {
@@ -26,20 +27,34 @@ def collectJars = tasks.register('collectJars', Copy) {
     into layout.buildDirectory.dir('libs')
 }
 
-tasks.register('build') {
+tasks.register('assemble') {
     description = 'Builds DH and collects the resulting jars.'
     group = 'build'
     dependsOn collectJars
 }
 
-// GTNH Actions runs these on every repo; keep them meaningful but cheap.
 tasks.register('check') {
     group = 'verification'
     dhLoaders.each { loader -> dependsOn dhBuild.task(":${loader}:check") }
+}
+
+tasks.register('build') {
+    group = 'build'
+    dependsOn tasks.named('assemble'), tasks.named('check')
 }
 
 tasks.register('clean', Delete) {
     group = 'build'
     delete layout.buildDirectory
     dependsOn dhBuild.task(':clean')
+}
+
+// Task names the GTNH workflows always invoke. DH's build (unimined) has no
+// equivalent of RFG's workspace setup, and the wrapper publishes nothing itself,
+// so these exist purely so the workflow steps resolve.
+['setupCIWorkspace', 'setupDecompWorkspace', 'test', 'publish', 'spotlessCheck', 'spotlessApply'].each { name ->
+    tasks.register(name) {
+        group = 'gtnh'
+        description = "No-op; ${name} has no meaning for the DH wrapper."
+    }
 }

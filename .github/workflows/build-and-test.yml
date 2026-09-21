@@ -10,4 +10,10 @@ on:
 jobs:
   build-and-test:
     uses: GTNewHorizons/GTNH-Actions-Workflows/.github/workflows/build-and-test.yml@master
+    with:
+      # DH's runServer lives on the loader subprojects and needs a full MC install;
+      # the wrapper only verifies that the mod compiles and jars.
+      client-only: true
+      # No spotless in the wrapper, and dh/ is upstream code we must not reformat.
+      disable-spotless-pr: true
     secrets: inherit
