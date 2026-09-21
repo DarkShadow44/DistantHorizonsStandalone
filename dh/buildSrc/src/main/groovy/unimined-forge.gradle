@@ -1,0 +1,22 @@
+plugins {
+    id 'dh-loader'
+}
+
+def awFile = project(":common").file("src/main/resources/${gradle.ext.accessWidenerVersion}.distanthorizons.accesswidener")
+
+unimined.minecraft {
+    forge {
+        loader gradle.ext.forge_version
+        useToolchains = false
+        mixinConfig("DistantHorizons.forge.mixins.json")
+        accessTransformer aw2at(awFile)
+    }
+}
+
+// set the java version for running is necessary for older MC versions
+// that don't support the latest java version
+def launcher = javaToolchains.launcherFor {
+    languageVersion.set(JavaLanguageVersion.of(rootProject.java_version as Integer))
+}
+runClient.javaLauncher.set(launcher)
+runServer.javaLauncher.set(launcher)

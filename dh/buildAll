@@ -1,0 +1,25 @@
+#!/bin/sh
+
+echo "==================== Note: All build jars will be in the folder called 'buildAllJars' ===================="
+mkdir -p buildAllJars
+rm -rf buildAllJars/*
+rm -rf build/forgix/*
+
+# Loop trough everything in the version properties folder
+for d in versionProperties/*; do
+  # Get the name of the version that is going to be compiled
+  version=$(echo "$d" | sed "s/versionProperties\///" | sed "s/.properties//")
+
+  # Clean out the folders, build it, and merge it
+  # (We could use "./" to run gradlew, but as it is a shell script im going to be running it with the "sh" command)
+  echo "==================== Cleaning workspace to build $version ===================="
+  sh gradlew clean -PmcVer=$version
+  if [ $? != 0 ]; then continue; fi
+
+  echo "====================Building $version ===================="
+  sh gradlew build -PmcVer=$version
+  if [ $? != 0 ]; then continue; fi
+
+  echo "==================== Moving jar ===================="
+  mv build/forgix/*.jar buildAllJars/
+done

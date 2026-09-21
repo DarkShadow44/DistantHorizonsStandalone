@@ -1,0 +1,21 @@
+plugins {
+    id 'dh-loader'
+}
+
+def awFile = project(":common").file("src/main/resources/${gradle.ext.accessWidenerVersion}.distanthorizons.accesswidener")
+
+unimined.minecraft {
+    neoForged {
+        loader gradle.ext.neoforge_version
+        useToolchains = false
+        accessTransformer aw2at(awFile)
+    }
+}
+
+// set the java version for running is necessary for older MC versions
+// that don't support the latest java version
+def launcher = javaToolchains.launcherFor {
+    languageVersion.set(JavaLanguageVersion.of(rootProject.java_version as Integer))
+}
+runClient.javaLauncher.set(launcher)
+runServer.javaLauncher.set(launcher)

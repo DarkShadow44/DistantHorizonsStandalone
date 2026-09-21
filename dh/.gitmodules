@@ -1,0 +1,3 @@
+[submodule "coreSubProjects"]
+	path = coreSubProjects
+	url = https://gitlab.com/jeseibel/distant-horizons-core.git

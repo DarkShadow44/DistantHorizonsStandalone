@@ -1,0 +1,63 @@
+{
+    "schemaVersion": 1,
+    "id": "distanthorizons",
+    "version": "${version}",
+
+    "provides": [ "lod" ],
+    
+    
+    "name": "${mod_name}",
+    "description": "${description}",
+    "authors": $authors,
+    
+    "contact": {
+        "homepage": "${homepage}",
+        "sources": "${source}",
+        "issues": "${issues}"
+    },
+    
+    "license": "LGPL-3",
+    "icon": "assets/distanthorizons/icon.png",
+    
+    "accessWidener": "${accessWidenerVersion}.distanthorizons.accesswidener",
+    
+    "environment": "*",
+    "entrypoints": {
+        "client": [
+            "com.seibel.distanthorizons.fabric.FabricMain"
+        ],
+        "server": [
+            "com.seibel.distanthorizons.fabric.FabricMain"
+        ],
+        "modmenu": [
+            "com.seibel.distanthorizons.fabric.wrappers.config.ModMenuIntegration"
+        ]
+    },
+    
+    "mixins": [
+        "DistantHorizons.fabric.mixins.json"
+    ],
+    
+    "depends": {
+        "fabricloader": "*",
+        "fabric-api-base": "*",
+        "fabric-lifecycle-events-v1": "*",
+        "fabric-resource-loader-v0": "*",
+        "minecraft": $compatible_minecraft_versions,
+        "java": ">=${java_version}"
+    },
+    
+    "custom": {
+        "modmenu": {
+            "links": {
+                "modmenu.discord": "${discord}"
+            }
+        }
+    },
+    
+    "suggests": {
+    },
+    
+    "breaks": $fabric_incompatibility_list,
+    "recommends": $fabric_recommend_list
+}

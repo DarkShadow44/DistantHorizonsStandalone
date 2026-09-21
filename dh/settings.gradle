@@ -1,0 +1,74 @@
+plugins {
+    // foojay automatically downloads the appropriate JDK if the required
+    // one is missing
+    // https://docs.gradle.org/current/userguide/toolchains.html#sub:download_repositories
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+}
+
+// Throw an error if the core sub-project wasn't cloned
+if (!file("./coreSubProjects/LICENSE.txt").exists()) {
+    println('''
+It seems that the core sub project was not included...
+ please make sure that when you were cloning the repo, you were using the `--recurse-submodules` flag on git.
+ and if its too late now to re-clone the project, please grab the core sub project in whatever way you can from https://gitlab.com/jeseibel/distant-horizons-core.git
+
+If you still need help with compiling, please read the Readme.md
+    ''')
+    throw new GradleException("coreSubProject not found")
+}
+
+
+def loadVersionProperties() {
+    def mcVers = fileTree("versionProperties").files.collect { it.name.replaceAll("\\.properties", "") }
+        .sort { a, b ->
+            def aParts = a.tokenize('.'); def bParts = b.tokenize('.')
+            for (int i = 0; i < Math.min(aParts.size(), bParts.size()); i++) {
+                def aNum = aParts[i].isInteger() ? aParts[i].toInteger() : aParts[i]
+                def bNum = bParts[i].isInteger() ? bParts[i].toInteger() : bParts[i]
+                def compare = aNum <=> bNum
+                if (compare != 0) return compare
+            }
+            return aParts.size() <=> bParts.size()
+        }
+
+    def mcVersion = hasProperty("mcVer") ? mcVer : ""
+    def mcIndex = mcVers.indexOf(mcVersion)
+
+    if (mcIndex == -1) {
+        def defaultVersion = "1.20.1"
+        println "No mcVer set or invalid. Defaulting to ${defaultVersion}."
+        println "Tip: Use -PmcVer=\"${defaultVersion}\" to set the MC version."
+        mcVersion = defaultVersion
+        mcIndex = mcVers.indexOf(defaultVersion)
+        assert mcIndex != -1 : "Default MC version ${defaultVersion} not found in ${mcVers}"
+    }
+
+    println "Available MC versions: ${mcVers}"
+    println "Loading properties file: ${mcVersion}.properties"
+
+    def props = new Properties()
+    props.load(new FileInputStream("$rootDir/versionProperties/${mcVersion}.properties"))
+
+    props.each { key, value -> gradle.ext.set(key, value) }
+    gradle.ext.mcVers = mcVers
+    gradle.ext.mcIndex = mcIndex
+}
+loadVersionProperties()
+
+
+// Minecraft-independent sub-projects
+include("core")
+project(":core").projectDir = file('coreSubProjects/core')
+include("api")
+project(":api").projectDir = file('coreSubProjects/api')
+
+// Minecraft-dependent sub-projects
+include("common")
+((String) gradle.builds_for).split(",").each { loader ->
+    def loaderName = loader.trim()
+    println "Adding loader: ${loaderName}"
+    include(loaderName)
+}
+
+
+rootProject.name = "DistantHorizons"

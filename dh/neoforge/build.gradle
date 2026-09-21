@@ -1,0 +1,45 @@
+plugins {
+    id 'unimined-neoforge'
+}
+
+
+// ==================== Mod Dependency Helper ====================
+
+def addMod(path, enabled) {
+    if (enabled == "2")
+        dependencies { modImplementation(path) }
+    else if (enabled == "1")
+        dependencies { compileOnly(path) }
+}
+
+
+// ==================== Dependencies ====================
+
+dependencies {
+    // Iris
+    addMod("maven.modrinth:iris:${rootProject.neo_iris_version}", rootProject.neo_enable_iris)
+}
+
+
+// ==================== Tasks ====================
+
+task deleteResources(type: Delete) {
+    delete file("build/resources/main")
+}
+
+processResources {
+    dependsOn(copyCoreResources)
+    // dependsOn(copyCommonLoaderResources)
+}
+
+tasks.named('runClient') {
+    dependsOn(copyCoreResources)
+    // dependsOn(copyCommonLoaderResources)
+    finalizedBy(deleteResources)
+}
+
+sourcesJar {
+    def commonSources = project(":common").sourcesJar
+    dependsOn commonSources
+    from commonSources.archiveFile.map { zipTree(it) }
+}

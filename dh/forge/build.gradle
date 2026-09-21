@@ -1,0 +1,55 @@
+plugins {
+    id 'unimined-forge'
+}
+
+
+// ==================== Mod Dependency Helper ====================
+
+def addMod(path, enabled) {
+    if (enabled == "2")
+        dependencies { modImplementation(path) }
+    else if (enabled == "1")
+        dependencies { compileOnly(path) }
+}
+
+
+// ==================== Dependencies ====================
+
+dependencies {
+    // TerraForged
+    addMod("curse.maven:TerraForged-363820:${rootProject.terraforged_version}", rootProject.enable_terraforged)
+    
+    // TerraFirmaCraft
+    addMod("curse.maven:TerraFirmaCraft-302973:4616004", rootProject.enable_terrafirmacraft)
+    
+    // Oculus (Iris port)
+    addMod("maven.modrinth:oculus:${rootProject.oculus_version}", rootProject.enable_oculus)
+    
+    // TODO: Check if this is still needed and if so ensure this code works for MC 26.1+
+    // (potential) hack fix for MC 1.20.6 and later, force jopt-simple to be exactly 5.0.4 because Mojang ships that version, but some transitive dependencies request 6.0+
+    def mcParts = rootProject.minecraft_version.split("\\.")
+    if (mcParts[1].toInteger() >= 20 && (mcParts.length > 2 && mcParts[2].toInteger() >= 6)) {
+        implementation('net.sf.jopt-simple:jopt-simple:5.0.4')
+    }
+}
+
+
+// ==================== Tasks ====================
+
+task deleteResources(type: Delete) {
+    delete file("build/resources/main")
+}
+
+tasks.register('copyAllResources') {
+    dependsOn(copyCoreResources)
+    // dependsOn(copyCommonLoaderResources)
+}
+
+processResources {
+    dependsOn(tasks.named('copyAllResources'))
+}
+
+tasks.named('runClient') {
+    dependsOn(tasks.named('copyAllResources'))
+    finalizedBy(deleteResources)
+}

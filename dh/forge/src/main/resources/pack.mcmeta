@@ -1,0 +1,12 @@
+{
+    "pack": {
+        "pack_format": 64,
+        "supported_formats": {
+            "min_inclusive": 64,
+            "max_inclusive": 90000
+        },
+        "description": "Distant Horizons",
+        "min_format": 64,
+        "max_format": 90000
+    }
+}

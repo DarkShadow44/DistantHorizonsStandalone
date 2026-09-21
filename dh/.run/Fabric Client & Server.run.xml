@@ -1,0 +1,7 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Fabric Client &amp; Server" type="CompoundRunConfigurationType">
+    <toRun name="distant-horizons [fabric:runClient]" type="GradleRunConfiguration" />
+    <toRun name="distant-horizons [fabric:runServer]" type="GradleRunConfiguration" />
+    <method v="2" />
+  </configuration>
+</component>

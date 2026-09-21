@@ -1,0 +1,50 @@
+research/
+.specstory/
+build/
+*.ipr
+run/
+*.iws
+out/
+*.iml
+.gradle/
+.gradle-cache/
+output/
+bin/
+libs/
+.architectury-transformer/
+
+.classpath
+.project
+.idea/
+classes/
+.metadata
+.vscode
+.settings
+*.launch
+hs_err_pid*
+
+**/src/generated/
+Merged/
+# Folder created by the buildAll scripts
+buildAllJars/
+_buildAllJars/
+_buildWorkers/
+
+relocate_natives/.venv/
+relocate_natives/__pycache__/
+relocate_natives/apple-codesign/
+
+# file from notepad++
+*.bak
+
+# file genearated via MC version switching using preprocessor
+build.properties
+
+# Sqlite databases
+*.sqlite
+*.sqlite-journal
+*.sqlite-shm
+*.sqlite-wal
+
+# Don't add access transformers to git as they're dynamically generated
+accesstransformer.cfg

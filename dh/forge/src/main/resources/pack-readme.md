@@ -1,0 +1,1 @@
+pack.mcmeta appears to be necessary for Forge to load texture and language files for MC 1.20.1.

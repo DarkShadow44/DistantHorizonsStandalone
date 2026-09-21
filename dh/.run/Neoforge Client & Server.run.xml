@@ -1,0 +1,7 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Neoforge Client &amp; Server" type="CompoundRunConfigurationType">
+    <toRun name="Neoforge Client (gradle)" type="GradleRunConfiguration" />
+    <toRun name="Neoforge Server (gradle)" type="GradleRunConfiguration" />
+    <method v="2" />
+  </configuration>
+</component>

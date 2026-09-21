@@ -1,0 +1,7 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Forge Client &amp; Server" type="CompoundRunConfigurationType">
+    <toRun name="Forge Client (gradle)" type="GradleRunConfiguration" />
+    <toRun name="Forge Server (gradle)" type="GradleRunConfiguration" />
+    <method v="2" />
+  </configuration>
+</component>

@@ -1,0 +1,16 @@
+# See mailmap docs: https://git-scm.com/docs/gitmailmap
+# Test with git shortlog --summary --email
+# Keep sorted for easier editing and smaller diffs
+
+Ada Aster <an.ada.poirier@gmail.com>
+CodeF53 <fseusb@gmail.com> <37855219+CodeF53@users.noreply.github.com>
+coolGi <me@coolgi.dev> <sasanaps@hotmail.com>
+James Seibel <jeseibel@gondtc.com> <jseibel@vertsys.com>
+Morippi <leoleo97@libero.it> <leoloe97@libero.it>
+Morippi <leoleo97@libero.it> <Morippi>
+Ran <43445785+Ran-Mewo@users.noreply.github.com> <10044908-_Ran@users.noreply.gitlab.com>
+Ran <43445785+Ran-Mewo@users.noreply.github.com> <43445785+Ran-Mewo@users.noreply.github.com>
+Ran <43445785+Ran-Mewo@users.noreply.github.com> <43445785+RanCraftPlayz@users.noreply.github.com>
+TomTheFurry <tomlee92502@yahoo.com>
+TomTheFurry <tomlee92502@yahoo.com> <46843632+TomTheFurry@users.noreply.github.com>
+Yeshi <yeshi@newengine.org>

@@ -1,0 +1,74 @@
+plugins {
+    id 'unimined-fabric'
+}
+
+
+// ==================== Dependencies ====================
+
+def addMod(path, enabled) {
+    if (enabled == "2")
+        dependencies { modImplementation(path) }
+    else if (enabled == "1")
+        dependencies { compileOnly(path) }
+}
+
+dependencies {
+    // Fabric loader
+    modImplementation "net.fabricmc:fabric-loader:${rootProject.fabric_loader_version}"
+
+    // Fabric API (bundled as jar-in-jar so users don't need to install it separately)
+    modImplementation ("net.fabricmc.fabric-api:fabric-api:${rootProject.fabric_api_version}")
+    include ("net.fabricmc.fabric-api:fabric-api:${rootProject.fabric_api_version}") {
+        // including the gametest API can cause issues for other mods if included in our jar
+        exclude module: "fabric-gametest-api-v1"
+    }
+
+    // Mod Menu
+    addMod("maven.modrinth:modmenu:${rootProject.modmenu_version}", rootProject.enable_mod_menu)
+
+    // Starlight
+    addMod("curse.maven:starlight-521783:${rootProject.starlight_version_fabric}", rootProject.enable_starlight)
+
+    // Phosphor
+    addMod("curse.maven:phosphor-372124:${rootProject.phosphor_version_fabric}", rootProject.enable_phosphor)
+
+    // Sodium
+    addMod("maven.modrinth:sodium:${rootProject.sodium_version}", rootProject.enable_sodium)
+    if (rootProject.enable_sodium == "2") implementation "org.joml:joml:1.10.2"
+    
+	// Lithium
+    addMod("maven.modrinth:lithium:${rootProject.lithium_version}", rootProject.enable_lithium)
+    
+    // Iris
+    dependencies { compileOnly(files('../run/client/mods/26.2 iris fabric/iris-fabric-1.11.4-snapshot+mc26.2-local.jar')) }
+    
+    // BCLib
+    addMod("com.github.quiqueck:BCLib:${rootProject.bclib_version}", rootProject.enable_bclib)
+    
+    // Canvas
+    addMod("io.vram:canvas-fabric-${project.canvas_version}", rootProject.enable_canvas)
+}
+
+
+// ==================== Tasks ====================
+
+task deleteResources(type: Delete) {
+    delete file("build/resources/main")
+}
+
+processResources {
+    dependsOn(copyCoreResources)
+    // dependsOn(copyCommonLoaderResources)
+}
+
+tasks.named('runClient') {
+    dependsOn(copyCoreResources)
+    // dependsOn(copyCommonLoaderResources)
+    finalizedBy(deleteResources)
+}
+
+sourcesJar {
+    def commonSources = project(":common").sourcesJar
+    dependsOn commonSources
+    from commonSources.archiveFile.map { zipTree(it) }
+}
