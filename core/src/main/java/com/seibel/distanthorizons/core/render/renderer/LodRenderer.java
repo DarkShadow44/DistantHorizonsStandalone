@@ -220,6 +220,7 @@ public class LodRenderer
 				boolean clearTextures = !ApiEventInjector.INSTANCE.fireAllEvents(DhApiBeforeTextureClearEvent.class, renderParams.apiCopy);
 				if (clearTextures)
 				{
+					profiler.popPush("LOD Clear");
 					this.metaRenderer.clearDhDepthAndColorTextures(renderParams);
 				}
 				
