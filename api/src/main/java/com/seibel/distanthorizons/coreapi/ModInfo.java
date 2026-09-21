@@ -43,7 +43,7 @@ public final class ModInfo
 	public static final String NAME = "DistantHorizons";
 	/** Human-readable version of NAME */
 	public static final String READABLE_NAME = "Distant Horizons";
-	public static final String VERSION = "3.3.2";
+	public static final String VERSION = "3.3.3-dev";
 	/** Returns true if the current build is an unstable developer build, false otherwise. */
 	public static final boolean IS_DEV_BUILD = VERSION.toLowerCase().contains("dev");
 	
