@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "dh-api",
+  "version": "1.0",
+  
+  "name": "DhApi",
+  "description": "This is just a placeholder to make uploading to Modrinth happy. Don't try running this jar in Minecraft. \nNote: while the API mod appears in mod menu lists when running DH via gradle, it won't appear when DH has been built and run in retail MC.",
+
+  "custom": {
+    "modmenu": {
+      "badges": ["library"],
+      "parent": {
+        "id": "distanthorizons"
+      }
+    }
+  }
+}
+

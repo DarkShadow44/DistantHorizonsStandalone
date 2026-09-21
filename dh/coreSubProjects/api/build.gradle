@@ -1,0 +1,125 @@
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+
+plugins {
+    id "java"
+    id "com.gradleup.shadow"
+}
+
+repositories {
+    mavenCentral()
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = rootProject.dh_core_java_version as Integer
+    options.encoding = "UTF-8"
+}
+
+configurations {
+    testImplementation.extendsFrom compileOnly
+}
+
+dependencies {
+    compileOnly "org.apache.logging.log4j:log4j-api:${rootProject.log4j_version}"
+    testImplementation "junit:junit:4.13.2"
+}
+
+java {
+    withSourcesJar()
+}
+
+task createReleaseApiJar(type: ShadowJar) {
+
+    mustRunAfter sourcesJar
+    dependsOn jar
+
+    // shadeDowngradedApi downgrades the shadow jar to our desired Java version
+    // we package its output to ensure we can run on the oldest supported MC version.
+    def compiledJarFile = tasks.jar.archiveFile
+
+    // doFirst is so these only run when the task is actually executed
+    doFirst {
+        System.out.println("Adding class files from: \n" +
+                "[" + compiledJarFile.get().asFile + "] to source API jar: \n" +
+                "[" + shadowJar.archiveFile.get().asFile + "]")
+
+        // Validate the input JAR file
+        if (!compiledJarFile.get().asFile.exists()) {
+            throw new GradleException("Compiled JAR file not found: [${compiledJarFile.get().asFile}]")
+        }
+    }
+
+    archiveFileName.set("DistantHorizonsApi-${rootProject.api_version}-combined.jar") // jar name
+    destinationDirectory = file('build/libs/') // jar location
+
+    // Set the input JAR files to be combined
+    from sourceSets.main.allJava
+    from {
+        project.configurations.shadow.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+
+    // add the class files
+    from zipTree(provider { compiledJarFile.get().asFile })
+    
+    // alternative method to Include the source files in the combined JAR
+    // and/or see which files are being included
+    eachFile { file ->
+        // can be set to true for debugging
+        def useAlternateEmbedMethod = false
+        def showFileEmbedding = false
+        
+        if (showFileEmbedding || useAlternateEmbedMethod) {
+            System.out.println("attempting to add file: " + file)
+            
+            def relativePath = file.relativePath.pathString
+            if (relativePath.endsWith('.class')) {
+                System.out.println("class file: " + relativePath)
+                def sourceFile = file.file.parentFile.resolveSibling('src/main/java/' + relativePath.replace('.class', '.java'))
+                if (sourceFile.exists()) {
+                    System.out.println("adding source file: " + sourceFile)
+                    if (useAlternateEmbedMethod) {
+                        file.withInputStream { inputStream ->
+                            copy {
+                                from(inputStream)
+                                into(relativePath.replace('.class', '.java'))
+                            }
+                        }
+                    }
+                } else {
+                    System.out.println('missing source file: ' + sourceFile)
+                }
+            }
+        }
+    }
+    
+}
+// always create a combined jar for easy deployment
+assemble.dependsOn(createReleaseApiJar)
+
+shadowJar {
+    // required for basic shadowJar setup
+    configurations = [project.configurations.shadow]
+}
+
+javadoc {
+    options {
+        // Don't log warnings.
+        // There are a lot of warnings related to missing @param and @return javadocs
+        // that aren't necessary and would clutter up said javadocs.
+        // For more info see: https://docs.oracle.com/javase/8/docs/technotes/tools/windows/javadoc.html
+        addStringOption('Xdoclint:all,-missing', '-quiet')
+    }
+}
+
+// set the jar name
+def configureJar = { task ->
+    // outputs in the format:
+    // "DistantHorizonsApi-6.0.0.jar"
+    // "DistantHorizonsApi-6.0.0-sources.jar"
+    task.archiveBaseName = rootProject.api_name
+    task.archiveVersion = rootProject.api_version
+}
+configureJar(tasks.named("jar").get())
+configureJar(tasks.named("sourcesJar").get())
+configureJar(tasks.named("shadowJar").get())
+
+

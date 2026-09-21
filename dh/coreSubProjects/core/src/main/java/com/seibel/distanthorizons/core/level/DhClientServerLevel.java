@@ -1,0 +1,202 @@
+/*
+ *    This file is part of the Distant Horizons mod
+ *    licensed under the GNU LGPL v3 License.
+ *
+ *    Copyright (C) 2020 James Seibel
+ *
+ *    This program is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU Lesser General Public License as published by
+ *    the Free Software Foundation, version 3.
+ *
+ *    This program is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Lesser General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Lesser General Public License
+ *    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+package com.seibel.distanthorizons.core.level;
+
+import com.seibel.distanthorizons.core.config.eventHandlers.IgnoredDimensionCsvHandler;
+import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
+import com.seibel.distanthorizons.core.enums.MinecraftTextFormat;
+import com.seibel.distanthorizons.core.file.structure.ISaveStructure;
+import com.seibel.distanthorizons.core.multiplayer.server.ServerPlayerStateManager;
+import com.seibel.distanthorizons.core.render.RenderBufferHandler;
+import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
+import com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass.IDhGenericRenderer;
+import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
+import com.seibel.distanthorizons.core.wrapperInterfaces.world.IServerLevelWrapper;
+import org.jetbrains.annotations.Nullable;
+
+import java.io.IOException;
+import java.sql.SQLException;
+import java.util.List;
+
+/** The level used for a singleplayer world */
+public class DhClientServerLevel extends AbstractDhServerLevel implements IDhClientLevel
+{
+	private static final IMinecraftClientWrapper MC_CLIENT = SingletonInjector.INSTANCE.get(IMinecraftClientWrapper.class);
+	
+	public final ClientLevelModule clientside;
+	
+	
+	
+	//=============//
+	// constructor //
+	//=============//
+	//region
+	
+	public DhClientServerLevel(
+		ISaveStructure saveStructure, 
+		IServerLevelWrapper serverLevelWrapper, 
+		ServerPlayerStateManager serverPlayerStateManager
+		) throws SQLException, IOException
+	{
+		super(saveStructure, serverLevelWrapper, serverPlayerStateManager, false);
+		
+		this.serverLevelWrapper.setDhLevel(this);
+		this.clientside = new ClientLevelModule(this);
+		this.runRepoReliantSetup();
+	}
+	
+	//endregion
+	
+	
+	
+	//==============//
+	// tick methods //
+	//==============//
+	//region
+	
+	@Override
+	public void clientTick()
+	{
+		// only tick the level the player is currently in
+		// (done to prevent ticking LodQuadTree's for levels that aren't rendering)
+		IClientLevelWrapper clientLevelWrapper = MC_CLIENT.getWrappedClientLevel();
+		if (clientLevelWrapper == null
+			|| clientLevelWrapper.getDhLevel() != this)
+		{
+			return;
+		}
+		
+		this.clientside.clientTick();
+	}
+	
+	//endregion
+	
+	
+	
+	//========//
+	// render //
+	//========//
+	//region
+	
+	public void startRenderer() { this.clientside.startRenderer(); }
+	
+	public void stopRenderer() { this.clientside.stopRenderer(); }
+	
+	@Override
+	public boolean isRendering() { return this.clientside.isRendering(); }
+	
+	//endregion
+	
+	
+	
+	//================//
+	// level handling //
+	//================//
+	//region
+	
+	@Nullable
+	@Override
+	public IClientLevelWrapper getClientLevelWrapper() { return MC_CLIENT.getWrappedClientLevel(); }
+	
+	@Override
+	public void clearRenderCache() { this.clientside.clearRenderCache(); }
+	
+	//endregion
+	
+	
+	
+	//===========//
+	// debugging //
+	//===========//
+	//region
+	
+	@Override
+	public void addDebugMenuStringsToList(List<String> messageList)
+	{
+		// header
+		String o = MinecraftTextFormat.ORANGE;
+		String y = MinecraftTextFormat.YELLOW;
+		String g = MinecraftTextFormat.GREEN;
+		String r = MinecraftTextFormat.RED;
+		String cf = MinecraftTextFormat.CLEAR_FORMATTING;
+		
+		
+		String dimName = this.serverLevelWrapper.getDhIdentifier();
+		boolean rendering = 
+			this.clientside.isRendering() 
+			&& !IgnoredDimensionCsvHandler.INSTANCE.dimensionNameShouldBeIgnored(dimName);
+		String renderingString = rendering ? (g+"yes"+cf) : (r+"no"+cf);
+		messageList.add("["+y+dimName+cf+"] rendering: "+renderingString);
+		
+		super.addDebugMenuStringsToList(messageList);
+	}
+	
+	
+	@Override
+	public IDhGenericRenderer getGenericRenderer() { return this.clientside.genericRenderer; }
+	@Override
+	public RenderBufferHandler getRenderBufferHandler()
+	{
+		ClientLevelModule.ClientRenderState renderState = this.clientside.ClientRenderStateRef.get();
+		return (renderState != null) ? renderState.renderBufferHandler : null;
+	}
+	
+	//endregion
+	
+	
+	
+	//===============//
+	// data handling //
+	//===============//
+	//region
+	
+	@Override
+	public void onWorldGenTaskComplete(long pos)
+	{
+		super.onWorldGenTaskComplete(pos);
+		this.clientside.reloadPos(pos);
+	}
+	
+	//endregion
+	
+	
+	
+	//================//
+	// base overrides //
+	//================//
+	//region
+	
+	@Override
+	public String toString() { return "DhClientServerLevel{"+this.serverLevelWrapper.getKeyedLevelDimensionName()+"}"; }
+	
+	@Override
+	public void close()
+	{
+		this.clientside.close();
+		super.close();
+		this.serverside.close();
+		LOGGER.info("Closed " + this.getClass().getSimpleName() + " for " + this.getServerLevelWrapper());
+	}
+	
+	//endregion
+	
+	
+	
+}

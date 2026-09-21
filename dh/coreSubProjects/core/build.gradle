@@ -1,0 +1,70 @@
+plugins {
+    id "java"
+    id "com.gradleup.shadow"
+}
+
+repositories {
+    mavenCentral()
+    maven { url "https://repo.enonic.com/public/" }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = rootProject.dh_core_java_version as Integer
+    options.encoding = "UTF-8"
+}
+
+configurations {
+    shadowedArtifact // Used by DH to specify that we want to implement the shadowed core JAR file instead of the regular JAR file
+    shade
+    implementation.extendsFrom shade
+    testImplementation.extendsFrom compileOnly
+}
+
+OperatingSystem os = org.gradle.nativeplatform.platform.internal.DefaultNativePlatform.currentOperatingSystem;
+
+// Set the OS lwjgl is using to the current os
+project.ext.lwjglNatives = "natives-" + os.toFamilyName()
+
+dependencies {
+    // API project dependency
+    implementation project(":api")
+    
+    compileOnly("org.apache.logging.log4j:log4j-api:${rootProject.log4j_version}")
+    compileOnly("org.apache.logging.log4j:log4j-core:${rootProject.log4j_version}")
+    compileOnly("it.unimi.dsi:fastutil:${rootProject.fastutil_version}")
+    compileOnly("org.joml:joml:${rootProject.joml_version}")
+    compileOnly("io.netty:netty-buffer:${rootProject.netty_version}")
+    compileOnly("org.jetbrains:annotations:26.1.0")
+    compileOnly("com.google.code.findbugs:jsr305:3.0.2")
+    compileOnly("com.google.guava:guava:31.1-jre") // TODO we should remove/shade this library since we're pulling it from vanilla MC
+
+    // DH's bundled libraries (shadowed + relocated in loader jars)
+    implementation("com.github.luben:zstd-jni:${rootProject.zstd_version}")
+    implementation("org.lz4:lz4-java:${rootProject.lz4_version}")
+    implementation("org.tukaani:xz:${rootProject.xz_version}")
+    implementation("org.xerial:sqlite-jdbc:${rootProject.sqlite_jdbc_version}")
+    implementation("com.electronwill.night-config:toml:${rootProject.nightconfig_version}")
+    implementation("com.electronwill.night-config:json:${rootProject.nightconfig_version}")
+
+    // JUnit (core tests only)
+    compileOnly("junit:junit:4.13.2")
+    compileOnly("org.junit.jupiter:junit-jupiter:5.8.2")
+    compileOnly("org.junit.jupiter:junit-jupiter-engine:5.8.2")
+}
+
+artifacts {
+    shadowedArtifact shadowJar // Setup the configuration shadowedArtifact to be the shadowJar
+}
+
+shadowJar {
+    def librariesLocation = "DistantHorizons.libraries"
+//    relocate "it.unimi.dsi.fastutil", "${librariesLocation}.unimi.dsi.fastutil"
+    mergeServiceFiles()
+}
+
+test {
+    // this is necessary specifically for the Compression tests since those
+    // need more than the default 512 MB of RAM
+    jvmArgs '-Xmx4096m'
+}
+
