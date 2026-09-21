@@ -703,8 +703,8 @@
   "distanthorizons.config.common.worldGenerator.surfaceRegenMaxDistancePercent":
     "Surface Regen Max Distance Percent",
   "distanthorizons.config.common.worldGenerator.surfaceRegenMaxDistancePercent.@tooltip":
-    "If the player/camera are moving quickly \nDistant Horizons will pause world gen to improve loading speed \nand reduce lag.",
-    
+    "The percentage of the full LOD render distance\nthat the second pass of the fast surface generator will\nfill with chunks generated as defined by your\n\"distantGeneratorMode\".",
+
 
   "distanthorizons.config.common.lodBuilding":
     "Lod Building",
