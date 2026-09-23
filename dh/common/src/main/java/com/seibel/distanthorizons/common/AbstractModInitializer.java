@@ -164,6 +164,7 @@ public abstract class AbstractModInitializer
 			MinecraftServerWrapper.INSTANCE.dedicatedServer = (DedicatedServer)server;
 			
 			this.initConfig();
+			setUnsupportedConfigsBasedOnMcVersion();
 			Initializer.postConfigInit();
 			this.postInit();
 			this.postServerInit();
@@ -440,8 +441,8 @@ public abstract class AbstractModInitializer
 			LOGGER.warn(startingString + "[Chunky] "+ chunkyWarning);
 			
 			// don't allow for the possibility of DH and chunky to generate chunks at the same time
-			Config.Common.WorldGenerator.generatorPlan.setApiValue(EDhApiGeneratorPlan.DISABLED);
-			Config.Common.LodBuilding.disableUnchangedChunkCheck.setApiValue(true);
+			Config.Common.WorldGenerator.generatorPlan.setApiValue(EDhApiGeneratorPlan.DISABLED, ModInfo.READABLE_NAME + " / Chunky");
+			Config.Common.LodBuilding.disableUnchangedChunkCheck.setApiValue(true, ModInfo.READABLE_NAME + " / Chunky");
 		}
 		
 		//endregion
@@ -473,7 +474,7 @@ public abstract class AbstractModInitializer
 			}
 			else if (renderEngine == EDhApiRenderingEngine.AUTO)
 			{
-				Config.Client.Advanced.Graphics.Experimental.renderingEngine.setApiValue(EDhApiRenderingEngine.OPEN_GL);
+				Config.Client.Advanced.Graphics.Experimental.renderingEngine.setApiValue(EDhApiRenderingEngine.OPEN_GL, ModInfo.READABLE_NAME + " / " + IIrisAccessor.READABLE_NAME);
 				
 				EDhApiRenderingEngine recommendedEngine = versionConstants.getDefaultRenderingEngine();
 				if (recommendedEngine != EDhApiRenderingEngine.OPEN_GL)
@@ -531,9 +532,9 @@ public abstract class AbstractModInitializer
 			
 			if (chunkyPresent)
 			{
-				Config.Common.MultiThreading.numberOfThreads.setApiValue(numberOfC2meThreads);
-				Config.Common.MultiThreading.threadRunTimeRatio.setApiValue(1.0); // C2ME threads have 100% uptime, so should we
-				Config.Client.threadPresetSetting.setApiValue(EDhApiThreadPreset.CUSTOM);
+				Config.Common.MultiThreading.numberOfThreads.setApiValue(numberOfC2meThreads, "Chunky");
+				Config.Common.MultiThreading.threadRunTimeRatio.setApiValue(1.0, "Chunky"); // C2ME threads have 100% uptime, so should we
+				Config.Client.threadPresetSetting.setApiValue(EDhApiThreadPreset.CUSTOM, "Chunky");
 				
 				LOGGER.info("Set DH thread count to: ["+newDhThreadCount+"] to match C2ME.");
 			}
@@ -566,6 +567,11 @@ public abstract class AbstractModInitializer
 		// worldgen
 		#if MC_VER <= MC_1_18_2
 		AbstractMinecraftSharedWrapper.supportsSurfaceGeneration = false;
+		EDhApiGeneratorPlan genPlan = Config.Common.WorldGenerator.generatorPlan.getTrueValue();
+		if (genPlan.surfaceGenEnabled)
+		{
+			Config.Common.WorldGenerator.generatorPlan.set(EDhApiGeneratorPlan.CHUNKS_ONLY);
+		}
 		#else
 		AbstractMinecraftSharedWrapper.supportsSurfaceGeneration = true;
 		#endif
@@ -584,7 +590,7 @@ public abstract class AbstractModInitializer
 			// rendering will not work properly.
 			// Note: this fix doesn't prevent disabling transparency
 			// due to a lack of vertical LOD slices, so that may still cause issues.
-			Config.Client.Advanced.Graphics.Quality.transparency.setApiValue(EDhApiTransparency.COMPLETE);
+			Config.Client.Advanced.Graphics.Quality.transparency.setApiValue(EDhApiTransparency.COMPLETE, ModInfo.READABLE_NAME + " / " + IIrisAccessor.READABLE_NAME);
 		}
 	}
 	

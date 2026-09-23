@@ -19,6 +19,7 @@
 
 package com.seibel.distanthorizons.common.render.openGl.postProcessing.apply;
 
+import com.seibel.distanthorizons.api.enums.config.EDhApiDepthDirection;
 import com.seibel.distanthorizons.common.render.openGl.GlDhMetaRenderer;
 import com.seibel.distanthorizons.common.render.openGl.glObject.GLState;
 import com.seibel.distanthorizons.common.render.openGl.glObject.shader.GlShaderProgram;
@@ -28,7 +29,6 @@ import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.common.render.openGl.util.GlAbstractShaderRenderer;
 import com.seibel.distanthorizons.core.logging.DhLogger;
-import com.seibel.distanthorizons.core.render.EDhRenderDepth;
 import com.seibel.distanthorizons.core.wrapperInterfaces.render.AbstractDhRenderApiDefinition;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL30;
@@ -132,7 +132,7 @@ public class GlDhApplyShader extends GlAbstractShaderRenderer
 			GLMC.glBindTexture(GlDhMetaRenderer.INSTANCE.getActiveDepthTextureId());
 			LWJGL.glUniform1i(this.uSourceDepthTexture, 1);
 			
-			LWJGL.glUniform1i(this.uIsReverseZDepth, (RENDER_DEF.getRenderDepth() == EDhRenderDepth.REVERSE_Z) ? 1 : 0);
+			LWJGL.glUniform1i(this.uIsReverseZDepth, (RENDER_DEF.getDepthDirection() == EDhApiDepthDirection.REVERSE_Z) ? 1 : 0);
 			
 			// Copy to MC's framebuffer
 			GLMC.glBindFramebuffer(GL30.GL_FRAMEBUFFER, targetFrameBuffer);
@@ -182,7 +182,7 @@ public class GlDhApplyShader extends GlAbstractShaderRenderer
 			GLMC.glBindTexture(GlDhMetaRenderer.INSTANCE.getActiveDepthTextureId());
 			LWJGL.glUniform1i(this.uSourceDepthTexture, 1);
 			
-			LWJGL.glUniform1i(this.uIsReverseZDepth, (RENDER_DEF.getRenderDepth() == EDhRenderDepth.REVERSE_Z) ? 1 : 0);
+			LWJGL.glUniform1i(this.uIsReverseZDepth, (RENDER_DEF.getDepthDirection() == EDhApiDepthDirection.REVERSE_Z) ? 1 : 0);
 			
 			
 			

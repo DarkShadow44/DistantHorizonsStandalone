@@ -2,8 +2,6 @@ package com.seibel.distanthorizons.neoforge.mixins.client;
 
 #if MC_VER <= MC_1_20_4
 import net.coderbot.iris.gl.IrisRenderSystem;
-#elif MC_VER == MC_1_21_9
-// Iris doesn't support Neoforge for this MC version
 #else
 import net.irisshaders.iris.gl.IrisRenderSystem;
 #endif
@@ -18,9 +16,6 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 @Mixin(targets = IIrisAccessor.FRAMEBUFFER_MIXIN_CLASS, remap = false)
 public abstract class MixinIrisFrameBuffer
 {
-	#if MC_VER == MC_1_21_9
-	// Iris doesn't support Neoforge for this MC version
-	#else
 	@Redirect(
 		method = "addDepthAttachment",
 		at = @At(
@@ -34,5 +29,4 @@ public abstract class MixinIrisFrameBuffer
 		IrisRenderSystem.framebufferTexture2D(framebuffer, framebufferTarget, GL30C.GL_STENCIL_ATTACHMENT, textureTarget, 0, 0);
 		IrisRenderSystem.framebufferTexture2D(framebuffer, framebufferTarget, attachment, textureTarget, texture, levels);
 	}
-	#endif
 }

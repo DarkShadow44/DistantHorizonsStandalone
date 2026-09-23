@@ -95,7 +95,7 @@ repositories {
 // ==================== Java Config ====================
 
 tasks.withType(JavaCompile).configureEach {
-    options.release = 17
+    options.release = 17 // LWJGL Service needs java 17, we will downgrade it with JVMDowngrader
     options.encoding = "UTF-8"
 }
 
@@ -154,6 +154,7 @@ if (isNotCommonProject) {
             )
             if (project.name == "forge112") {
                 attributes(
+                    'MixinConnector': 'com.seibel.distanthorizons.forge112.DistantHorizonsMixinConnector',
                     'FMLCorePlugin': 'com.seibel.distanthorizons.forge112.DistantHorizonsLoadingPlugin',
                     'FMLCorePluginContainsFMLMod': true,
                     'FMLAT': "${gradle.ext.accessWidenerVersion}.distanthorizons_at.cfg",
@@ -262,7 +263,7 @@ if (isNotCommonProject) {
 
 // ==================== LWJGL 2/3 Abstraction (common only) ====================
 // LWJGL is only resolved in :common via unimined; :core never touches it directly.
-// So the abstraction sourceSets/generation task live here, then get exposed to
+// So the abstraction sourceSets/generation task live here, then gets exposed to
 // loader subprojects through common's outgoing variants (they already consume
 // `common(project(":common"))` further down in this file).
 
@@ -542,9 +543,9 @@ if (isNotCommonProject) {
             runTask.workingDir = rootProject.file("run/${isClient ? 'client' : 'server'}")
 
             boolean useZgc = (gradle.ext.java_version as Integer) >= 21;
-            boolean useZGenerational = (gradle.ext.java_version as Integer) >= 25;
-
-            if (useZgc)
+            boolean useZGenerational = (gradle.ext.java_version as Integer) >= 21 && (gradle.ext.java_version as Integer) <= 22;
+            
+            if (useZgc) 
             {
                 // Minecraft automatically has G1GC args present,
                 // remove them so we can use ZGC instead
@@ -567,7 +568,8 @@ if (isNotCommonProject) {
 
                     // Remove any stale DH jars before copying the fresh one
                     modsDir.listFiles()?.each({ file ->
-                        if (file.name.startsWith(rootProject.mod_name)) {
+                        if (file.name.startsWith(rootProject.mod_name)) 
+                        {
                             file.delete()
                         }
                     });
@@ -599,13 +601,13 @@ if (isNotCommonProject) {
                 runTask.jvmArgs(
                     "-XX:+UseZGC"
                 )
-
-                if (useZGenerational)
-                {
-                    runTask.jvmArgs(
-                        "-XX:+ZGenerational"
-                    )
-                }
+            }
+            
+            if (useZGenerational)
+            {
+                runTask.jvmArgs(
+                    "-XX:+ZGenerational"
+                )    
             }
 
             if (isClient) {
@@ -623,7 +625,8 @@ if (isNotCommonProject) {
                 )
 
                 // enabling tracy causes constant memory growth so it isn't always desired
-                if (rootProject.minecraftEnableTracy == "true") {
+                if (rootProject.minecraftEnableTracy == "true") 
+                {
                     // "--tracy" is a Mojang command to allow individual frames to be debugged using Tracy https://github.com/wolfpld/tracy/releases/tag/v0.13.1
                     runTask.args("--tracy")
                 }
@@ -691,13 +694,19 @@ if (isNotCommonProject) {
             compatible_forgemc_versions  : compatible_forgemc_versions,
             java_version                 : rootProject.java_version,
             quilt_contributors           : "{" + quilt_contributors.join(", ") + "}",
-            info_git_commit              : rootProject.infoGitBranch,
-            info_git_branch              : rootProject.infoGitCommit,
+
+            info_git_commit              : rootProject.infoGitCommit,
+            info_git_branch              : rootProject.infoGitBranch,
             info_build_source            : rootProject.infoBuildSource,
+            
             fabric_incompatibility_list  : rootProject.fabric_incompatibility_list,
             fabric_recommend_list        : rootProject.fabric_recommend_list,
+            fabric_loader_version        : rootProject.fabric_loader_version,
+            
             neoforge_version_range       : rootProject.neoforge_version_range,
-            logo_path                    : "assets/distanthorizons/icon.png"
+            neoforge_dependencies        : rootProject.neoforge_dependencies,
+            
+            logo_path                    : "assets/distanthorizons/icon.png",
         ]
 
         inputs.properties replaceProperties

@@ -81,4 +81,10 @@ public class OculusAccessor implements IIrisAccessor
 		return false;
 	}
 	
+	@Override
+	public int getFramebufferDepthTextureId(Object framebuffer)
+	{
+		return -1;
+	}
+	
 }

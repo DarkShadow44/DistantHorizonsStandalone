@@ -40,6 +40,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.renderpearl.api.vertex.VertexFormat;
 #endif
 
+import com.seibel.distanthorizons.api.enums.config.EDhApiDepthDirection;
 import com.seibel.distanthorizons.api.enums.rendering.EDhApiBlockMaterial;
 import com.seibel.distanthorizons.api.interfaces.render.IDhApiCustomRenderRegister;
 import com.seibel.distanthorizons.api.interfaces.render.IDhApiRenderableBoxGroup;
@@ -61,7 +62,6 @@ import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.logging.f3.F3Screen;
-import com.seibel.distanthorizons.core.render.EDhRenderDepth;
 import com.seibel.distanthorizons.core.render.RenderParams;
 import com.seibel.distanthorizons.core.render.RenderThreadTaskHandler;
 import com.seibel.distanthorizons.core.render.renderer.GenericRenderObjectFactory;
@@ -150,7 +150,7 @@ public class BlazeDhGenericObjectRenderer implements IDhGenericRenderer
 		{
 			pipelineBuilder.withFaceCulling(true);
 			pipelineBuilder.withDepthWrite(true);
-			if (RENDER_DEF.getRenderDepth() == EDhRenderDepth.FORWARD_Z)
+			if (RENDER_DEF.getDepthDirection() == EDhApiDepthDirection.FORWARD_Z)
 			{
 				pipelineBuilder.withDepthTest(RenderPipelineBuilderWrapper.EDhDepthTest.LESS);
 			}

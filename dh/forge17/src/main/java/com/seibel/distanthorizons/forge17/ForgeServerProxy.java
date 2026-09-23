@@ -1,7 +1,5 @@
 package com.seibel.distanthorizons.forge17;
 
-import java.util.concurrent.TimeUnit;
-
 import com.seibel.distanthorizons.common.commonMixins.MixinChunkMapCommon;
 import com.seibel.distanthorizons.common.util.threading.ServerThreadTaskHandler;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -78,10 +76,14 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
     // ServerTickEvent (at end)
     @SubscribeEvent
 	public void serverTickEvent(TickEvent.ServerTickEvent event)
-    {
-		if (event.phase == TickEvent.Phase.END)
-	    {
-		    ServerThreadTaskHandler.INSTANCE.runTasks(TimeUnit.MILLISECONDS.toNanos(15));
+	{
+		if (event.phase == TickEvent.Phase.START)
+		{
+			ServerThreadTaskHandler.INSTANCE.onTickStart();
+		}
+		else
+		{
+			ServerThreadTaskHandler.INSTANCE.runTasks();
 		}
 	}
 

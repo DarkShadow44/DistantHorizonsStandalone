@@ -1106,6 +1106,11 @@ public class BlockStateWrapper implements IBlockStateWrapper
 		for (int i = 0; i < blockNameList.size(); i++)
 		{
 			String baseBlockName = blockNameList.get(i);
+			if (baseBlockName.trim().isEmpty())
+			{
+				continue;
+			}
+			
 			if (lowerCaseSerial.contains(baseBlockName))
 			{
 				blockMatches = true;
