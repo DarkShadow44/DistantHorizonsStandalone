@@ -57,6 +57,8 @@ public class ConfigEntry<T> extends AbstractConfigBase<T>
 	/** Will be null if un-set */
 	@Nullable
 	private T apiValue;
+	@Nullable
+	private String apiUser;
 	/** 
 	 * When this option was last modified by the API.
 	 * This is present to prevent aliasing if the option is
@@ -137,9 +139,14 @@ public class ConfigEntry<T> extends AbstractConfigBase<T>
 	//===============//
 	//region
 	
-	public void setApiValue(T newApiValue)
+	public void setApiValue(T newApiValue, String apiUser)
 	{
 		this.apiValue = newApiValue;
+		if (apiUser != null)
+		{
+			// don't ever pass in a null value so we can see who the last set API user was
+			this.apiUser = apiUser;
+		}
 		
 		if (newApiValue != null)
 		{
@@ -270,6 +277,8 @@ public class ConfigEntry<T> extends AbstractConfigBase<T>
 	
 	@Nullable
 	public T getApiValue() { return this.apiValue; }
+	@Nullable
+	public String getApiUser() { return this.apiUser; }
 	
 	//endregion
 	

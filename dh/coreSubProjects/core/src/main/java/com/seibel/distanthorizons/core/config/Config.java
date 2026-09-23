@@ -79,7 +79,6 @@ public class Config
 			.build();
 		
 		public static ConfigUiLinkedEntry quickWorldGeneratorPlan = new ConfigUiLinkedEntry(Common.WorldGenerator.generatorPlan);
-		public static ConfigUiLinkedEntry quickEnableServerGeneration = new ConfigUiLinkedEntry(Server.enableServerGeneration);
 		
 		public static ConfigUiLinkedEntry quickShowWorldGenProgress = new ConfigUiLinkedEntry(Common.WorldGenerator.showGenerationProgress);
 		
@@ -1431,14 +1430,14 @@ public class Config
 			public static ConfigUIComment worldGeneratorHeader = new ConfigUIComment.Builder().setParentConfigClass(WorldGenerator.class).build();
 			
 			public static ConfigEntry<EDhApiGeneratorPlan> generatorPlan = new ConfigEntry.Builder<EDhApiGeneratorPlan>()
-				.setChatCommandName("generation.genPlan")
+				.setChatCommandName("generation.plan")
 				.set(EDhApiGeneratorPlan.SURFACE_THEN_CHUNKS)
 				.setShowEnumOptionFunc(WorldGenPlanConfigEventHandler::setShowEnumOptionFunc)
 				.addListener(WorldGenPlanConfigEventHandler.INSTANCE)
 				.comment(""
 					+ "Defines how LODs will be generated \n"
-					+ "outside the vanilla render distance \n"
-					+ "in singleplayer. \n"
+					+ "outside the vanilla render distance. \n"
+					+ "In multiplayer, this may be overridden by the server. \n"
 					+ "\n"
 					+ EDhApiGeneratorPlan.SURFACE_THEN_CHUNKS + " \n"
 					+ "The rough surface will be generated first \n"
@@ -1979,27 +1978,6 @@ public class Config
 				+ "Prefix of the level keys sent to the clients.\n"
 				+ "If the mod is running behind a proxy, each backend should use a unique value.\n"
 				+ "If this value is empty, level key will be based on the server's seed hash.\n"
-				+ "")
-			.build();
-		
-		
-		// Generation
-		public static ConfigEntry<Boolean> enableServerGeneration = new ConfigEntry.Builder<Boolean>()
-			.set(true)
-			.comment(""
-				+ "When enabled, Distant Horizons will attempt to download missing LODs from the server.\n"
-				+ "\n"
-				+ "Note: the server must have Distant Generation enabled for it to work."
-				+ "")
-			.build();
-		
-		public static ConfigEntry<Boolean> enableNSizedGeneration = new ConfigEntry.Builder<Boolean>()
-			.setChatCommandName("generation.nSized")
-			.set(true)
-			.comment(""
-				+ "When enabled on the client, this allows loading lower detail levels as needed to speed up terrain generation.\n"
-				+ "This must also be enabled on the server; otherwise, it will have no effect.\n"
-				+ "For better performance when switching LOD detail levels, enabling [upsampleLowerDetailLodsToFillHoles] is recommended.\n"
 				+ "")
 			.build();
 		

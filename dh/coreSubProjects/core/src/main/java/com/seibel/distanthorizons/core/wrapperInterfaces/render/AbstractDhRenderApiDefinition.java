@@ -1,11 +1,11 @@
 package com.seibel.distanthorizons.core.wrapperInterfaces.render;
 
+import com.seibel.distanthorizons.api.enums.config.EDhApiDepthDirection;
+import com.seibel.distanthorizons.api.enums.config.EDhApiDepthRange;
 import com.seibel.distanthorizons.api.enums.config.EDhApiRenderingApi;
 import com.seibel.distanthorizons.api.enums.config.EDhApiRenderingEngine;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.jar.EPlatform;
-import com.seibel.distanthorizons.core.render.EDhDepthRange;
-import com.seibel.distanthorizons.core.render.EDhRenderDepth;
 import com.seibel.distanthorizons.core.render.renderer.AbstractDebugWireframeRenderer;
 import com.seibel.distanthorizons.core.wrapperInterfaces.render.objects.IDhGenericObjectVertexBufferContainer;
 import com.seibel.distanthorizons.core.wrapperInterfaces.render.objects.ILodContainerUniformBufferWrapper;
@@ -33,8 +33,8 @@ public abstract class AbstractDhRenderApiDefinition implements IBindable
 	 */
 	public boolean useSingleIbo() { return this.useSingleIbo; }
 	
-	public abstract EDhRenderDepth getRenderDepth();
-	public abstract EDhDepthRange getDepthRange();
+	public abstract EDhApiDepthDirection getDepthDirection();
+	public abstract EDhApiDepthRange getDepthRange();
 	public abstract EDhApiRenderingApi getRenderApi();
 	public abstract EDhApiRenderingEngine getRenderingEngine();
 	/** 
