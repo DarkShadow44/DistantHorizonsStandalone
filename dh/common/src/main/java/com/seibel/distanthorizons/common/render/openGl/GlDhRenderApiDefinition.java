@@ -1,7 +1,9 @@
 package com.seibel.distanthorizons.common.render.openGl;
 
+import com.seibel.distanthorizons.api.enums.config.EDhApiDepthDirection;
 import com.seibel.distanthorizons.api.enums.config.EDhApiRenderingApi;
 import com.seibel.distanthorizons.api.enums.config.EDhApiRenderingEngine;
+import com.seibel.distanthorizons.api.enums.config.EDhApiDepthRange;
 import com.seibel.distanthorizons.common.render.openGl.generic.GlGenericObjectRenderer;
 import com.seibel.distanthorizons.common.render.openGl.generic.GlGenericObjectVertexContainer;
 import com.seibel.distanthorizons.common.render.openGl.glObject.GlDummyUniformData;
@@ -13,8 +15,6 @@ import com.seibel.distanthorizons.common.render.openGl.postProcessing.fog.GlDhFo
 import com.seibel.distanthorizons.common.render.openGl.postProcessing.ssao.GlDhSSAORenderer;
 import com.seibel.distanthorizons.common.render.openGl.test.GlTestTriangleRenderer;
 import com.seibel.distanthorizons.core.dependencyInjection.ModAccessorInjector;
-import com.seibel.distanthorizons.core.render.EDhDepthRange;
-import com.seibel.distanthorizons.core.render.EDhRenderDepth;
 import com.seibel.distanthorizons.core.render.renderer.AbstractDebugWireframeRenderer;
 import com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor.IIrisAccessor;
 import com.seibel.distanthorizons.core.wrapperInterfaces.render.AbstractDhRenderApiDefinition;
@@ -36,7 +36,7 @@ public class GlDhRenderApiDefinition extends AbstractDhRenderApiDefinition
 	
 	public String getEngineName() { return "OpenGL"; }
 	
-	public EDhRenderDepth getRenderDepth() 
+	public EDhApiDepthDirection getDepthDirection() 
 	{
 		if (IRIS_ACCESSOR != null
 			&& IRIS_ACCESSOR.isShaderPackInUse()
@@ -44,21 +44,21 @@ public class GlDhRenderApiDefinition extends AbstractDhRenderApiDefinition
 		{
 			// reversed Z shouldn't be used when shaders are active
 			// in order to maintain legacy behavior
-			return EDhRenderDepth.FORWARD_Z; 
+			return EDhApiDepthDirection.FORWARD_Z; 
 		}
 		
 		// reverse Z is better behavior going forward because it prevents
 		// issues with clouds and other extremely far objects
-		return EDhRenderDepth.REVERSE_Z;
+		return EDhApiDepthDirection.REVERSE_Z;
 	}
 	
-	public EDhDepthRange getDepthRange()
+	public EDhApiDepthRange getDepthRange()
 	{
 		#if MC_VER <= MC_26_1_2
-		return EDhDepthRange.NEG_ONE_TO_POS_ONE;
+		return EDhApiDepthRange.NEG_ONE_TO_POS_ONE;
 		#else
 		// probably caused due to the starting changes to Vulkan
-		return EDhDepthRange.ZERO_TO_POS_ONE;
+		return EDhApiDepthRange.ZERO_TO_POS_ONE;
 		#endif
 	}
 	

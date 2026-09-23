@@ -1,6 +1,10 @@
 package com.seibel.distanthorizons.core.util;
 
+import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiDistantGeneratorMode;
 import com.seibel.distanthorizons.core.config.Config;
+import com.seibel.distanthorizons.core.file.fullDatafile.GeneratedFullDataSourceProvider;
+import com.seibel.distanthorizons.core.file.fullDatafile.V2.FullDataSourceProviderV2;
+import com.seibel.distanthorizons.core.file.fullDatafile.V2.FullDataUpdatePropagatorV2;
 import com.seibel.distanthorizons.core.pos.DhChunkPos;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos;
@@ -40,6 +44,36 @@ public class WorldGenUtil
 		}
 		
 		return (int)(lodBlockDist * percent);
+	}
+	
+	/** @see FullDataUpdatePropagatorV2 */
+	public static boolean regenAllowed(FullDataSourceProviderV2 provider)
+	{
+		if (!(provider instanceof GeneratedFullDataSourceProvider))
+		{
+			// this provider doesn't allow generation
+			return false;
+		}
+		
+		if (!provider.getGeneratorPlan().chunkGenEnabled)
+		{
+			// chunk gen isn't allowed right now
+			return false;
+		}
+		
+		if (Config.Common.WorldGenerator.generatorPlan.get().surfaceGenEnabled
+			&& Config.Common.WorldGenerator.chunkGeneratorMode.get() == EDhApiDistantGeneratorMode.PRE_EXISTING_ONLY)
+		{
+			// Don't try re-generating pre-existing chunks
+			// since this will cause holes for missing/empty chunks.
+			
+			// In the future we may want to change this so it ignores empty chunks instead,
+			// but that may cause weird/un-intended behavior for worlds that have intentionally
+			// empty chunks.
+			return false;
+		}
+		
+		return true;
 	}
 	
 	

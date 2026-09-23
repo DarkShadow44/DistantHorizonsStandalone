@@ -46,8 +46,8 @@ public class HelpCommand extends AbstractDhCommand
 		
 		help.append("\n");
 		help.append("Examples:\n");
-		help.append("  /dh config generation.enable\n");
-		help.append("  /dh config generation.enable false\n");
+		help.append("  /dh config generation.plan\n");
+		help.append("  /dh config generation.plan SURFACE_THEN_CHUNKS\n");
 		help.append("  /dh config generation.bounds.radiusInChunks 512\n");
 		help.append("  /dh pregen status\n");
 		#if MC_VER <= MC_1_12_2

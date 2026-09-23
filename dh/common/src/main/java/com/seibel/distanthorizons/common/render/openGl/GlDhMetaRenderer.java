@@ -1,5 +1,6 @@
 package com.seibel.distanthorizons.common.render.openGl;
 
+import com.seibel.distanthorizons.api.enums.config.EDhApiDepthDirection;
 import com.seibel.distanthorizons.api.enums.rendering.EDhApiRenderPass;
 import com.seibel.distanthorizons.api.interfaces.override.rendering.IDhApiFramebuffer;
 import com.seibel.distanthorizons.api.interfaces.override.rendering.IDhApiShaderProgram;
@@ -19,7 +20,6 @@ import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.render.DhApiRenderProxy;
-import com.seibel.distanthorizons.core.render.EDhRenderDepth;
 import com.seibel.distanthorizons.core.render.RenderParams;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.misc.ILightMapWrapper;
@@ -32,6 +32,7 @@ import com.seibel.distanthorizons.coreapi.DependencyInjection.OverrideInjector;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
+import org.lwjgl.opengl.GL14;
 import org.lwjgl.opengl.GL30;
 
 import static com.seibel.distanthorizons.lwjgl.LWJGLServiceProvider.LWJGL;
@@ -86,6 +87,12 @@ public class GlDhMetaRenderer implements IDhMetaRenderer
 	private int previousBoundTextureId;
 	private int previousDepthFunc;
 	private final float[] previousClearDepth = new float[1];
+	private boolean previousBlend;
+	private int previousBlendSrcRgb;
+	private int previousBlendDstRgb;
+	private int previousBlendSrcAlpha;
+	private int previousBlendDstAlpha;
+	private boolean previousDepthMask;
 	#endif
 	
 	
@@ -145,6 +152,12 @@ public class GlDhMetaRenderer implements IDhMetaRenderer
 		this.previousBoundTextureId = GLMC.getActiveTexture();
 		this.previousDepthFunc = GLMC.getActiveDepthFunc();
 		LWJGL.glGetFloatv(GL11.GL_DEPTH_CLEAR_VALUE, this.previousClearDepth);
+		this.previousBlend = LWJGL.glGetBoolean(GL11.GL_BLEND);
+		this.previousBlendSrcRgb = LWJGL.glGetInteger(GL14.GL_BLEND_SRC_RGB);
+		this.previousBlendDstRgb = LWJGL.glGetInteger(GL14.GL_BLEND_DST_RGB);
+		this.previousBlendSrcAlpha = LWJGL.glGetInteger(GL14.GL_BLEND_SRC_ALPHA);
+		this.previousBlendDstAlpha = LWJGL.glGetInteger(GL14.GL_BLEND_DST_ALPHA);
+		this.previousDepthMask = LWJGL.glGetBoolean(GL11.GL_DEPTH_WRITEMASK);
 		#endif
 		
 		// view sizes are used in a few places and
@@ -186,7 +199,7 @@ public class GlDhMetaRenderer implements IDhMetaRenderer
 		
 		// Enable depth test and depth mask
 		GLMC.enableDepthTest();
-		if (RENDER_DEF.getRenderDepth() == EDhRenderDepth.FORWARD_Z)
+		if (RENDER_DEF.getDepthDirection() == EDhApiDepthDirection.FORWARD_Z)
 		{
 			GLMC.glDepthFunc(GL11.GL_LESS);
 		}
@@ -261,7 +274,7 @@ public class GlDhMetaRenderer implements IDhMetaRenderer
 		boolean clearTextures = !ApiEventInjector.INSTANCE.fireAllEvents(DhApiBeforeTextureClearEvent.class, renderEventParam);
 		if (clearTextures)
 		{
-			float clearDepth = RENDER_DEF.getRenderDepth().farDepth;
+			float clearDepth = RENDER_DEF.getDepthDirection().farDepth;
 			LWJGL.glClearDepth(clearDepth);
 			
 			float[] clearColorValues = new float[4];
@@ -433,7 +446,23 @@ public class GlDhMetaRenderer implements IDhMetaRenderer
 		#if MC_VER <= MC_1_12_2
 		GLMC.glDepthFunc(previousDepthFunc);
 		LWJGL.glClearDepth(this.previousClearDepth[0]);
-		GLMC.glBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ONE, GL11.GL_ZERO);
+		GLMC.glBlendFuncSeparate(this.previousBlendSrcRgb, this.previousBlendDstRgb, this.previousBlendSrcAlpha, this.previousBlendDstAlpha);
+		if (this.previousBlend)
+		{
+			GLMC.enableBlend();
+		}
+		else
+		{
+			GLMC.disableBlend();
+		}
+		if (this.previousDepthMask)
+		{
+			GLMC.enableDepthMask();
+		}
+		else
+		{
+			GLMC.disableDepthMask();
+		}
 		#endif
 		this.unbindLightmap();
 		if (Config.Client.Advanced.Graphics.Texture.enableTexturedLods.get())
@@ -466,7 +495,7 @@ public class GlDhMetaRenderer implements IDhMetaRenderer
 		
 		
 		
-		float clearDepth = RENDER_DEF.getRenderDepth().farDepth;
+		float clearDepth = RENDER_DEF.getDepthDirection().farDepth;
 		LWJGL.glClearDepth(clearDepth);
 		
 		float[] clearColorValues = new float[4];

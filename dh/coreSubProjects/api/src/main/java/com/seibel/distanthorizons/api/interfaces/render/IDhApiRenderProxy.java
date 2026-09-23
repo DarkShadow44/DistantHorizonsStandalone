@@ -19,6 +19,8 @@
 
 package com.seibel.distanthorizons.api.interfaces.render;
 
+import com.seibel.distanthorizons.api.enums.config.EDhApiDepthRange;
+import com.seibel.distanthorizons.api.enums.config.EDhApiDepthDirection;
 import com.seibel.distanthorizons.api.enums.config.EDhApiRenderingApi;
 import com.seibel.distanthorizons.api.enums.config.EDhApiRenderingEngine;
 import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiAfterDhInitEvent;
@@ -84,6 +86,27 @@ public interface IDhApiRenderProxy
 	 * @since API 7.0.0
 	 */
 	boolean isNativeRenderer() throws IllegalStateException;
+	
+	/**
+	 * Returns the currently active {@link EDhApiDepthRange} DH is rendering with this frame. <Br>
+	 * This value may change from frame to frame based on config and other active mods.
+	 *
+	 * @throws IllegalStateException if no renderer has been bound yet, 
+	 *      wait till after {@link DhApiAfterDhInitEvent} has been fired
+	 *
+	 * @since API 7.2.0
+	 */
+	EDhApiDepthRange getDepthRange() throws IllegalStateException;
+	/**
+	 * Returns the currently active {@link EDhApiDepthDirection} DH is rendering with this frame. <Br>
+	 * This value may change from frame to frame based on config and other active mods.
+	 *
+	 * @throws IllegalStateException if no renderer has been bound yet, 
+	 *      wait till after {@link DhApiAfterDhInitEvent} has been fired
+	 *
+	 * @since API 7.2.0
+	 */
+	EDhApiDepthDirection getDepthDirection() throws IllegalStateException;
 	
 	
 	

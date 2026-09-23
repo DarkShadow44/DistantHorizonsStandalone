@@ -231,12 +231,12 @@ public class GeneratedFullDataSourceProvider extends FullDataSourceProviderV2 im
 	}
 	
 	@Override
-	public void setGeneratingLowDetailLods(boolean generatingLowDetailLods) 
+	public void setCanRegenerate(boolean canRegen) 
 	{
 		IFullDataSourceRetrievalQueue worldGenQueue = this.worldGenQueueRef.get();
 		if (worldGenQueue != null)
 		{
-			worldGenQueue.setRetrievingLowDetailLods(generatingLowDetailLods);
+			worldGenQueue.setCanRegenerate(canRegen);
 		}
 	}
 	
@@ -366,7 +366,7 @@ public class GeneratedFullDataSourceProvider extends FullDataSourceProviderV2 im
 		
 		
 		EDhApiWorldGenerationStep requiredWorldGenStep;
-		EDhApiGeneratorPlan genPlan = Config.Common.WorldGenerator.generatorPlan.get();
+		EDhApiGeneratorPlan genPlan = this.getGeneratorPlan();
 		if (genPlan == EDhApiGeneratorPlan.SURFACE_ONLY)
 		{
 			requiredWorldGenStep = EDhApiWorldGenerationStep.SURFACE;

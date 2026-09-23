@@ -20,21 +20,20 @@
 package com.seibel.distanthorizons.forge112;
 
 import com.seibel.distanthorizons.common.AbstractModInitializer;
+import com.seibel.distanthorizons.common.commonMixins.MixinChunkMapCommon;
 import com.seibel.distanthorizons.common.util.ProxyUtil;
 import com.seibel.distanthorizons.common.wrappers.chunk.ChunkWrapper;
-import com.seibel.distanthorizons.common.wrappers.minecraft.MinecraftRenderWrapper;
-import com.seibel.distanthorizons.common.wrappers.world.ClientLevelWrapper;
 import com.seibel.distanthorizons.core.api.internal.ClientApi;
 import com.seibel.distanthorizons.core.api.internal.ServerApi;
 import com.seibel.distanthorizons.core.api.internal.SharedApi;
+import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
+import com.seibel.distanthorizons.core.enums.MinecraftTextFormat;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.logging.f3.F3Screen;
 import com.seibel.distanthorizons.core.network.messages.AbstractNetworkMessage;
 import com.seibel.distanthorizons.core.util.threading.ThreadPoolUtil;
-import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.IChunkWrapper;
-
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.misc.IPluginPacketSender;
 import com.seibel.distanthorizons.core.wrapperInterfaces.misc.IServerPlayerWrapper;
@@ -42,6 +41,7 @@ import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.shader.Framebuffer;
 import net.minecraft.world.World;
+import net.minecraft.world.WorldServer;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.common.MinecraftForge;
@@ -57,6 +57,7 @@ import org.lwjgl.opengl.GL30;
 
 import static com.seibel.distanthorizons.lwjgl.LWJGLServiceProvider.LWJGL;
 
+import java.util.Arrays;
 import java.util.concurrent.AbstractExecutorService;
 
 public class ForgeClientProxy implements AbstractModInitializer.IEventProxy
@@ -83,6 +84,21 @@ public class ForgeClientProxy implements AbstractModInitializer.IEventProxy
 	}
 	
 	
+	@SubscribeEvent
+	public void onWorldLoad(WorldEvent.Load event)
+	{
+		if (event.getWorld().isRemote)
+		{
+			if (!Arrays.asList(Config.Client.Advanced.Graphics.Texture.blocksDontUseSideTextureCsv.get().split(",")).contains("grass"))
+			{
+				String message = "\n" + MinecraftTextFormat.ORANGE + "Distant Horizons: `grass` entry in `blocksDontUseSideTextureCsv` not found." + MinecraftTextFormat.CLEAR_FORMATTING + "\n" +
+					"This will cause grass blocks with LOD textures enabled render incorrectly." + "\n" +
+					"It is recommended to add `grass` into the blocksDontUseSideTextureCsv entry. \n(Graphics->LOD Textures->Blocks Don't Use Side Textures) or delete your config file to let it regenerate";
+				ClientApi.INSTANCE.queueFastChatMessage(message);
+			}
+		}
+	}
+	
 	//==============//
 	// chunk events //
 	//==============//
@@ -108,7 +124,7 @@ public class ForgeClientProxy implements AbstractModInitializer.IEventProxy
 				{
 					Chunk chunk = level.getChunk(event.getPos());
 					SharedApi.INSTANCE.applyChunkUpdate(
-						new ChunkWrapper(chunk, wrappedLevel), 
+						new ChunkWrapper(chunk, wrappedLevel),
 						wrappedLevel,
 						true
 					);
@@ -136,7 +152,7 @@ public class ForgeClientProxy implements AbstractModInitializer.IEventProxy
 				{
 					Chunk chunk = level.getChunk(event.getPos());
 					SharedApi.INSTANCE.applyChunkUpdate(
-						new ChunkWrapper(chunk, wrappedLevel), 
+						new ChunkWrapper(chunk, wrappedLevel),
 						wrappedLevel,
 						true
 					);
@@ -144,15 +160,16 @@ public class ForgeClientProxy implements AbstractModInitializer.IEventProxy
 			}
 		}
 	}
-
+	
 	@SubscribeEvent
 	public void clientChunkLoadEvent(ChunkEvent.Load event)
 	{
 		if (MC.clientConnectedToDedicatedServer())
 		{
-			ILevelWrapper wrappedLevel = ProxyUtil.getLevelWrapper(GetEventLevel(event));
-			IChunkWrapper chunkWrapper = new ChunkWrapper(event.getChunk(), wrappedLevel);
-			SharedApi.INSTANCE.applyChunkUpdate(chunkWrapper, wrappedLevel, true);
+			if (event.getWorld() instanceof WorldServer worldServer)
+			{
+				MixinChunkMapCommon.onChunkSave(worldServer, event.getChunk());
+			}
 		}
 	}
 	
@@ -211,16 +228,16 @@ public class ForgeClientProxy implements AbstractModInitializer.IEventProxy
 			}
 			catch (Exception | Error e)
 			{
-				LOGGER.error("Unexpected error in afterLevelRenderEvent: "+e.getMessage(), e);
+				LOGGER.error("Unexpected error in afterLevelRenderEvent: " + e.getMessage(), e);
 			}
 		}
 	}
 	
 	@SubscribeEvent
-	public void onRenderOverlay(RenderGameOverlayEvent.Text event) 
+	public void onRenderOverlay(RenderGameOverlayEvent.Text event)
 	{
 		Minecraft mc = Minecraft.getMinecraft();
-		if (event.isCanceled() 
+		if (event.isCanceled()
 			|| !mc.gameSettings.showDebugInfo)
 		{
 			return;
@@ -230,7 +247,4 @@ public class ForgeClientProxy implements AbstractModInitializer.IEventProxy
 	}
 	
 	//endregion
-	
-	
-	
 }

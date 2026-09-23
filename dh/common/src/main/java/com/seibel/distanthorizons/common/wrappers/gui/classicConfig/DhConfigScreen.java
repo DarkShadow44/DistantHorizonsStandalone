@@ -22,6 +22,7 @@ import com.seibel.distanthorizons.common.wrappers.gui.updater.ChangelogScreen;
 import com.seibel.distanthorizons.core.config.types.enums.EConfigCommentTextPosition;
 import com.seibel.distanthorizons.core.config.types.enums.EConfigValidity;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
+import com.seibel.distanthorizons.core.enums.MinecraftTextFormat;
 import com.seibel.distanthorizons.core.jar.updater.SelfUpdater;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.util.AnnotationUtil;
@@ -1046,10 +1047,17 @@ class DhConfigScreen extends DhScreen
 		
 		boolean apiOverrideActive = false;
 		boolean unsupportedMcVersion = false;
+		String apiUser = null;
 		if (configBase instanceof ConfigEntry)
 		{
 			apiOverrideActive = ((ConfigEntry<?>) configBase).apiIsOverriding();
 			unsupportedMcVersion = ((ConfigEntry<?>) configBase).mcVersionOverridePresent();
+			apiUser = ((ConfigEntry<?>) configBase).getApiUser();
+		}
+		if (apiUser == null
+			|| apiUser.isEmpty())
+		{
+			apiUser = "UNKNOWN";
 		}
 		
 		String key = TRANSLATION_PREFIX + (configBase.category.isEmpty() ? "" : configBase.category + ".") + configBase.getName() + ".@tooltip";
@@ -1089,6 +1097,13 @@ class DhConfigScreen extends DhScreen
 			for (String langLine : lang.split("\n"))
 			{
 				list.add(TextOrTranslatable(langLine));
+			}
+			
+			if (apiOverrideActive)
+			{
+				// raw text is used here since we don't want to force
+				// API users to translate their name
+				list.add(TextOrLiteral(MinecraftTextFormat.ORANGE + apiUser + MinecraftTextFormat.CLEAR_FORMATTING));
 			}
 			
 			#if MC_VER <= MC_1_12_2

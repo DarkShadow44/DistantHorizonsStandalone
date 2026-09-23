@@ -70,6 +70,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 #elif MC_VER <= MC_26_3_0
+import com.seibel.distanthorizons.core.dependencyInjection.ModAccessorInjector;
+import com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor.IIrisAccessor;
 import net.minecraft.client.renderer.chunk.ChunkSectionsToRender;
 import net.minecraft.client.renderer.feature.FeatureRenderDispatcher;
 #endif
@@ -264,12 +266,34 @@ public class MixinLevelRenderer
 	// handled in game renderer
 	#else
 	
+	@Unique
+	private static boolean firstTimeSetupComplete = false;
+	@Unique
+	private static IIrisAccessor irisAccessor;
+	
+	
 	@Inject(at = @At("HEAD"), method = "prepareTranslucents")
-	private void executeOutline(
+	private void prepareTranslucents(
 		CallbackInfo callback)
 	
 	{
+		if (!firstTimeSetupComplete)
+		{
+			irisAccessor = ModAccessorInjector.INSTANCE.get(IIrisAccessor.class);
+			firstTimeSetupComplete = true;
+		}
+		
+		
+		
 		ClientApi.RENDER_STATE.mcModelViewMatrix = McObjectConverter.convert(RenderSystem.getModelViewStack());
+		
+		// if shaders are active then we need to render in Sodium's render pass
+		// if blaze3D is active we need to render here
+		if (irisAccessor != null
+			&& irisAccessor.isShaderPackInUse())
+		{
+			return;
+		}
 		
 		ClientApi.RENDER_STATE.canRenderOrThrow();
 		ClientApi.INSTANCE.renderLods();
@@ -279,7 +303,16 @@ public class MixinLevelRenderer
 	private void executeOutline(
 		final FeatureRenderDispatcher.PreparedFrame featureFrame,
 		CallbackInfo callback)
-	{ ClientApi.INSTANCE.renderFadeOpaque(); }
+	{
+		if (irisAccessor != null
+			&& irisAccessor.isShaderPackInUse())
+		{
+			return;
+		}
+		
+		ClientApi.INSTANCE.renderDeferredLodsForShaders();
+		ClientApi.INSTANCE.renderFadeOpaque(); 
+	}
 	
 	// improved transparency is necessary since the normal transparent pass is in the same renderPass
 	// preventing us from adding our own render pass inbetween

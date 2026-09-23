@@ -1,5 +1,5 @@
 plugins {
-    id 'unimined-legacyforge'
+    id 'unimined-forge17'
 }
 
 repositories {

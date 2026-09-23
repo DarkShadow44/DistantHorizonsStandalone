@@ -38,20 +38,20 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import com.mojang.blaze3d.platform.NativeImage;
 #elif MC_VER < MC_1_21_5
 import com.mojang.blaze3d.pipeline.TextureTarget;
-#elif MC_VER < MC_1_21_9
+#elif MC_VER <= MC_26_2_0
 import com.mojang.blaze3d.opengl.GlTexture;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.textures.GpuTexture;
 #else
-import com.mojang.blaze3d.opengl.GlTexture;
-import com.mojang.blaze3d.textures.GpuTexture;
+import com.mojang.renderpearl.api.textures.GpuTexture;
+import com.mojang.renderpearl.backend.opengl.GlTexture;
 #endif
 
 #if MC_VER <= MC_1_21_11
 import net.minecraft.client.renderer.LightTexture;
 #else
-import net.minecraft.client.renderer.Lightmap;
 import net.minecraft.client.renderer.state.LightmapRenderState;
+import net.minecraft.client.renderer.Lightmap;
 #endif
 
 
@@ -62,6 +62,7 @@ import net.minecraft.client.renderer.state.LightmapRenderState;
 #endif
 public class MixinLightTexture
 {
+	
 	#if MC_VER < MC_1_21_3
 	@Shadow 
 	@Final
@@ -100,25 +101,31 @@ public class MixinLightTexture
 		
 		
 		#if MC_VER < MC_1_21_3
-		renderWrapper.updateLightmap(this.lightPixels);
+		this.renderWrapper.updateLightmap(this.lightPixels);
 		#elif MC_VER < MC_1_21_5
-		renderWrapper.setLightmapId(this.target.getColorTextureId());
-		#elif MC_VER < MC_1_21_9
-		GlTexture glTexture = (GlTexture) this.texture;
-		renderWrapper.setLightmapId(glTexture.glId());
+		this.renderWrapper.setLightmapId(this.target.getColorTextureId());
 		#elif MC_VER <= MC_1_21_10
 		GlTexture glTexture = (GlTexture) this.texture;
-		renderWrapper.setLightmapId(glTexture.glId());
+		this.renderWrapper.setLightmapId(glTexture.glId());
+		#elif MC_VER <= MC_26_1_2
+		// both options are available since the renderer can be changed to either Blaze3D or OpenGL
+		GlTexture glTexture = (GlTexture) this.texture;
+		this.renderWrapper.setLightmapId(glTexture.glId());
+		
+		this.renderWrapper.setLightmapGpuTexture(this.texture);
 		#else
 		
 		if (this.renderDef.getRenderApi() == EDhApiRenderingApi.OPEN_GL)
 		{
-			int id = NeoforgeTextureUnwrapper.getGlTextureIdFromGpuTexture(this.texture);
-			renderWrapper.setLightmapId(id);
+			GlTexture glTexture = (GlTexture) this.texture;
+			this.renderWrapper.setLightmapId(glTexture.glId());
 		}
 		
-		renderWrapper.setLightmapGpuTexture(this.texture);
+		// this will be used for Blaze3D OpenGL and Vulkan
+		this.renderWrapper.setLightmapGpuTexture(this.texture);
 		#endif
 	}
+	
+	
 	
 }

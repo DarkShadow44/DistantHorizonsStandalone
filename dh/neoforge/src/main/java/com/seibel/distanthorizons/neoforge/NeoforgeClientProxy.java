@@ -19,6 +19,7 @@
 
 package com.seibel.distanthorizons.neoforge;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import com.seibel.distanthorizons.api.enums.config.EDhApiRenderingApi;
 import com.seibel.distanthorizons.common.AbstractModInitializer;
 import com.seibel.distanthorizons.common.util.ProxyUtil;
@@ -43,7 +44,6 @@ import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.minecraft.world.level.chunk.ChunkAccess;
 
 import com.seibel.distanthorizons.core.logging.DhLogger;
-import org.lwjgl.glfw.GLFW;
 
 import com.seibel.distanthorizons.common.wrappers.chunk.ChunkWrapper;
 
@@ -54,6 +54,10 @@ import org.lwjgl.opengl.GL33;
 
 import java.util.concurrent.AbstractExecutorService;
 
+#if MC_VER <= MC_26_2_0
+import org.lwjgl.glfw.GLFW;
+#else
+#endif
 
 public class NeoforgeClientProxy implements AbstractModInitializer.IEventProxy
 {
@@ -168,10 +172,18 @@ public class NeoforgeClientProxy implements AbstractModInitializer.IEventProxy
 		{
 			return;
 		}
+		
+		#if MC_VER <= MC_26_2_0
 		if (event.getAction() != GLFW.GLFW_PRESS)
 		{
 			return;
 		}
+		#else
+		if (event.getAction() != InputConstants.PRESS)
+		{
+			return;
+		}
+		#endif
 		
 		ClientApi.INSTANCE.keyPressedEvent(event.getKey());
 	}
@@ -223,7 +235,12 @@ public class NeoforgeClientProxy implements AbstractModInitializer.IEventProxy
 		// handled via the same mixin as fabric for consistency
 		#endif
 		
+		#if MC_VER <= MC_26_2_0
 		ClientApi.INSTANCE.renderFadeOpaque();
+		#else
+		// needs to be handled via a mixin to allow for Blaze3D render passes to function correctly
+		// handled in MixinLevelRenderer
+		#endif
 	}
 	
 	
@@ -266,7 +283,13 @@ public class NeoforgeClientProxy implements AbstractModInitializer.IEventProxy
 		}
 		
 		
+		
+		#if MC_VER <= MC_26_2_0
 		ClientApi.INSTANCE.renderFadeTransparent();
+		#else
+		// needs to be handled via a mixin to allow for Blaze3D render passes to function correctly
+		// handled in MixinLevelRenderer
+		#endif
 	}
 	
 	#endif

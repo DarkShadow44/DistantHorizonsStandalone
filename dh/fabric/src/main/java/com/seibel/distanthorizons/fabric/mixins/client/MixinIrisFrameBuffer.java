@@ -1,6 +1,6 @@
 package com.seibel.distanthorizons.fabric.mixins.client;
 
-#if MC_VER <= MC_1_18_2
+#if MC_VER <= MC_1_19_4
 
 import net.minecraft.world.entity.Entity;
 import org.spongepowered.asm.mixin.Mixin;
@@ -9,13 +9,9 @@ import org.spongepowered.asm.mixin.Mixin;
 public class MixinIrisFrameBuffer
 { /* Iris isn't supported before MC 1.20.4 */ }
 
-#else
+#else // MC_1_20_1 and newer
 
-#if MC_VER <= MC_1_20_2
-import net.coderbot.iris.gl.IrisRenderSystem;
-#else
 import net.irisshaders.iris.gl.IrisRenderSystem;
-#endif
 
 import org.lwjgl.opengl.GL30C;
 

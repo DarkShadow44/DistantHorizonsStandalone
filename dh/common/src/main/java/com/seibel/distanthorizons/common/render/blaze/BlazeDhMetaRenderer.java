@@ -45,7 +45,7 @@ public class BlazeDhMetaRenderer implements IDhMetaRenderer
 	private BlazeDhMetaRenderer()
 	{
 		AbstractDhRenderApiDefinition renderApiDefinition = SingletonInjector.INSTANCE.get(AbstractDhRenderApiDefinition.class);
-		this.clearDepth = renderApiDefinition.getRenderDepth().farDepth;
+		this.clearDepth = renderApiDefinition.getDepthDirection().farDepth;
 	}
 	
 	//endregion

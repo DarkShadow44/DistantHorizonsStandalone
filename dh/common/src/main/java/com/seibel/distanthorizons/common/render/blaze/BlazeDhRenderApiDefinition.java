@@ -5,6 +5,8 @@ public class BlazeDhRenderApiDefinition {}
 
 #else
 
+import com.seibel.distanthorizons.api.enums.config.EDhApiDepthDirection;
+import com.seibel.distanthorizons.api.enums.config.EDhApiDepthRange;
 import com.seibel.distanthorizons.api.enums.config.EDhApiRenderingApi;
 import com.seibel.distanthorizons.api.enums.config.EDhApiRenderingEngine;
 import com.seibel.distanthorizons.common.render.blaze.objects.BlazeGenericObjectVertexContainer;
@@ -13,8 +15,6 @@ import com.seibel.distanthorizons.common.render.blaze.test.BlazeDhTestTriangleRe
 import com.seibel.distanthorizons.common.render.blaze.wrappers.buffer.BlazeVertexBufferWrapper;
 import com.seibel.distanthorizons.common.render.blaze.wrappers.uniform.BlazeLodUniformBufferWrapper;
 import com.seibel.distanthorizons.common.wrappers.minecraft.MinecraftRenderWrapper;
-import com.seibel.distanthorizons.core.render.EDhDepthRange;
-import com.seibel.distanthorizons.core.render.EDhRenderDepth;
 import com.seibel.distanthorizons.core.render.renderer.AbstractDebugWireframeRenderer;
 import com.seibel.distanthorizons.core.wrapperInterfaces.render.AbstractDhRenderApiDefinition;
 import com.seibel.distanthorizons.core.wrapperInterfaces.render.objects.IDhGenericObjectVertexBufferContainer;
@@ -32,22 +32,24 @@ public class BlazeDhRenderApiDefinition extends AbstractDhRenderApiDefinition
 	private final String engineName;
 	public String getEngineName() { return this.engineName; }
 	
-	public EDhRenderDepth getRenderDepth()
+	@Override
+	public EDhApiDepthDirection getDepthDirection()
 	{
 		#if MC_VER <= MC_26_1_2
-		return EDhRenderDepth.FORWARD_Z;
+		return EDhApiDepthDirection.FORWARD_Z;
 		#else
-		return EDhRenderDepth.REVERSE_Z;
+		return EDhApiDepthDirection.REVERSE_Z;
 		#endif
 	}
 	
-	public EDhDepthRange getDepthRange()
+	@Override
+	public EDhApiDepthRange getDepthRange()
 	{
 		#if MC_VER <= MC_26_1_2
-		return EDhDepthRange.NEG_ONE_TO_POS_ONE;
+		return EDhApiDepthRange.NEG_ONE_TO_POS_ONE;
 		#else
 		// probably caused due to the starting changes to Vulkan
-		return EDhDepthRange.ZERO_TO_POS_ONE;
+		return EDhApiDepthRange.ZERO_TO_POS_ONE;
 		#endif
 	}
 	

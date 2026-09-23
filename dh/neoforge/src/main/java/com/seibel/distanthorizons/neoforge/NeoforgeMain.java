@@ -144,7 +144,7 @@ public class NeoforgeMain extends AbstractModInitializer
 		this.tryCreateModCompatAccessor("c2me", IC2meAccessor.class, C2meAccessor::new);
 		this.tryCreateModCompatAccessor(IImmersivePortalsAccessor.MOD_ID_ARRAY, IImmersivePortalsAccessor.class, ImmersivePortalsAccessorNeoForge::new);
 		
-		#if MC_VER >= MC_1_20_6 && MC_VER != MC_1_21_9
+		#if MC_VER >= MC_1_20_6
 		// 1.20.6 is the lowest version Iris supports Neoforge
 		this.tryCreateModCompatAccessor("iris", IIrisAccessor.class, IrisAccessor::new);
 		#endif

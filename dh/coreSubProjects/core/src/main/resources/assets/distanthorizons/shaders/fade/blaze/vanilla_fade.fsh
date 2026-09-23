@@ -24,7 +24,7 @@ layout (std140) uniform fragUniformBlock
     mat4 uDhInvMvmProj;
     mat4 uMcInvMvmProj;
 
-    bool uIsReverseZDepth;
+    bool uIsMcReverseZDepth;
     bool uDepthIsZeroToPositiveOne;
 };
 
@@ -87,7 +87,7 @@ void main()
 
     // we only want to fade vanilla rendered objects, not to the sky or LODs
     bool isGround;
-    if (uIsReverseZDepth)
+    if (uIsMcReverseZDepth)
     {
         isGround = (mcFragmentDepth > 0);
     }

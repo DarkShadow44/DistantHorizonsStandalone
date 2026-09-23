@@ -39,7 +39,7 @@ public interface IDhApiWorldGenerationConfig extends IDhApiConfigGroup
 	/**
 	 * Defines whether LOD chunks will be generated
 	 * outside Minecraft's vanilla render distance.
-	 * @deprecated use {@link}
+	 * @deprecated use {@link IDhApiWorldGenerationConfig#GeneratorPlan()}
 	 */
 	@Deprecated
 	IDhApiConfigValue<Boolean> enableDistantWorldGeneration();

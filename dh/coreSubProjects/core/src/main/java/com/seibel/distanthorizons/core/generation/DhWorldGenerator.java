@@ -19,6 +19,7 @@
 
 package com.seibel.distanthorizons.core.generation;
 
+import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiGeneratorPlan;
 import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiWorldGenerationStep;
 import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiWorldGeneratorReturnType;
 import com.seibel.distanthorizons.api.interfaces.override.worldGenerator.IDhApiWorldGenerator;
@@ -27,9 +28,11 @@ import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.dataObjects.fullData.sources.FullDataSourceV2;
 import com.seibel.distanthorizons.core.dataObjects.transformers.LodDataBuilder;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
+import com.seibel.distanthorizons.core.file.fullDatafile.V2.FullDataSourceProviderV2;
 import com.seibel.distanthorizons.core.level.IDhServerLevel;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
+import com.seibel.distanthorizons.core.util.WorldGenUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.IChunkWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IServerLevelWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.worldGeneration.IChunkGenerator;
@@ -150,9 +153,7 @@ public class DhWorldGenerator implements IDhApiWorldGenerator
 		int widthInBlocks = BitShiftUtil.powerOfTwo(detailLevel + DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL);
 		int widthInChunks = widthInBlocks / LodUtil.CHUNK_WIDTH;
 		
-		
-		if (Config.Common.WorldGenerator.generatorPlan.get().chunkGenEnabled
-			&& detailLevel == 0)
+		if (chunkGenAllowedForDetailLevel(detailLevel))
 		{
 			return this.generateChunksAsync(
 				chunkPosMinX, chunkPosMinZ,
@@ -182,6 +183,36 @@ public class DhWorldGenerator implements IDhApiWorldGenerator
 			),
 		worldGeneratorThreadPool);
 	}
+	
+	/** @see WorldGenUtil#regenAllowed(FullDataSourceProviderV2)  */
+	private static boolean chunkGenAllowedForDetailLevel(byte detailLevel)
+	{
+		EDhApiGeneratorPlan genPlan = Config.Common.WorldGenerator.generatorPlan.get();
+		EDhApiDistantGeneratorMode chunkGenMode = Config.Common.WorldGenerator.chunkGeneratorMode.get();
+		
+		if (!genPlan.chunkGenEnabled)
+		{
+			return false;
+		}
+		
+		if (detailLevel > 0)
+		{
+			// chunks can only be generated at detail level 0
+			return false;
+		}
+		
+		if (genPlan.surfaceGenEnabled
+			&& chunkGenMode == EDhApiDistantGeneratorMode.PRE_EXISTING_ONLY)
+		{
+			// If surface gen is enabled, ignore any
+			// pre-existing chunks since empty/missing chunks will replace the surface
+			// generated terrain.
+			return false;
+		}
+		
+		return true;
+	}
+	
 	private @NotNull CompletableFuture<Void> generateChunksAsync(
 		int chunkPosMinX, int chunkPosMinZ,
 		int widthInChunks,

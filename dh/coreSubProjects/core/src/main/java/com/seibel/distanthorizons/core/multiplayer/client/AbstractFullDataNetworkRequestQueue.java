@@ -99,7 +99,6 @@ public abstract class AbstractFullDataNetworkRequestQueue implements IDebugRende
 	
 	protected abstract int getRequestRateLimit();
 	protected abstract boolean sectionInAllowedGenerationRadius(long sectionPos, DhBlockPos2D targetPos);
-	protected abstract boolean onBeforeRequest(long sectionPos, CompletableFuture<DataSourceRetrievalResult> future);
 	
 	protected abstract String getQueueName();
 	
@@ -199,12 +198,6 @@ public abstract class AbstractFullDataNetworkRequestQueue implements IDebugRende
 		if (!this.sectionInAllowedGenerationRadius(requestPos, targetPos))
 		{
 			requestTask.future.cancel(false);
-			this.pendingTasksSemaphore.release();
-			return;
-		}
-		
-		if (!this.onBeforeRequest(requestPos, requestTask.future))
-		{
 			this.pendingTasksSemaphore.release();
 			return;
 		}

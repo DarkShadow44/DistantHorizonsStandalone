@@ -1,101 +1,82 @@
-// This project has no sources of its own. It exists so that GTNH Actions can run its
-// usual task names at the repo root, have them drive the DH build in dh/, and find the
-// mod jars in build/libs afterwards.
+plugins {
+    id 'com.gtnewhorizons.gtnhgradle' version '2.0.31'
+}
 
 def dhBuild = gradle.includedBuild('dh')
-
-// The loader subprojects to build, matching `builds_for` in
-// dh/versionProperties/<mcVer>.properties (1.7.10 -> forge17).
-// A task on the DH *root* project would only build the root, so name them here.
-def dhLoaders = (findProperty('dhLoaders') ?: 'forge17').toString().split(',').collect { it.trim() }
-
-// DH names its artifacts "<name>-<loader>-<version>-<mcVersion>.jar"; GTNH expects
-// "<ModName>-<version>.jar", where the version is this repo's tag -- what GTNH Actions
-// releases is the wrapper's tag, not DH's internal mod_version.
 def dhProps = new Properties()
 file('dh/gradle.properties').withInputStream { dhProps.load(it) }
 
-def gitOutput = { String... args ->
-    try {
-        def out = providers.exec {
-            commandLine(['git'] + (args as List))
-            workingDir = rootDir
-        }.standardOutput.asText.get().trim()
-        return out.isEmpty() ? null : out
-    } catch (Exception ignored) {
-        return null  // no git, or no repo (source zip, jitpack, ...)
+gtnhGradle.applyModuleByName(project, 'GitVersionModule')
+
+group = modGroup
+version = version.toString().replaceFirst(/^v/, '')
+ext.modVersion = version.toString()
+
+def sourceName = "${modName}-${dhLoader}-${dhProps.mod_version}-${minecraftVersion}"
+
+// The publishers want TaskProvider<Jar>, but the jars are DH's -- clear Jar's own
+// packaging action and copy them byte-for-byte instead.
+def registerJarCopy = { String taskName, FileCollection source, String classifier ->
+    tasks.register(taskName, Jar) {
+        archiveFileName.set("${modName}-${version}${classifier}.jar")
+        inputs.files(source)
+
+        actions.clear()
+        doLast {
+            copy {
+                from source.singleFile
+                into destinationDirectory
+                rename { archiveFileName.get() }
+            }
+        }
     }
 }
 
-def resolveVersion = {
-    // On a tag build GTNH Actions hands us the tag directly.
-    def ref = System.getenv('GITHUB_REF')
-    if (ref?.startsWith('refs/tags/')) return ref.substring('refs/tags/'.length())
+def dhReleaseJar = files("dh/${dhLoader}/build/libs/${sourceName}.jar")
+        .builtBy(dhBuild.task(":${dhLoader}:assemble"))
+def collectJars = registerJarCopy('collectJars', dhReleaseJar, '')
+def releaseJar = collectJars.flatMap { it.archiveFile }
 
-    // Otherwise describe the checkout: "<tag>" on a tag, "<tag>-<n>-g<sha>[-dirty]" past it.
-    def described = gitOutput('describe', '--tags', '--dirty', '--always')
-    if (described != null) return described
-
-    return "${dhProps.mod_version}-unknown"
+// Deobfuscate DH's release jar for use as the published compile-time dev jar.
+def deobfJar = configurations.detachedConfiguration(dependencies.create(modUtils.deobfuscate(files(releaseJar))))
+configurations.runtimeClasspath.attributes.keySet().each { attribute ->
+    deobfJar.attributes.attribute(attribute, configurations.runtimeClasspath.attributes.getAttribute(attribute))
 }
 
-def jarBaseName = (findProperty('jarBaseName') ?: dhProps.mod_name).toString()
-def jarVersion = (findProperty('jarVersion') ?: resolveVersion()).toString().replaceFirst(/^v/, '')
+def collectDevJars = registerJarCopy('collectDevJars', deobfJar, '-dev')
+def devJar = collectDevJars.flatMap { it.archiveFile }
 
-version = jarVersion
-
-def collectJars = tasks.register('collectJars', Copy) {
-    description = 'Builds DH and copies the resulting jars into build/libs.'
-    group = 'build'
-
-    dhLoaders.each { loader -> dependsOn dhBuild.task(":${loader}:assemble") }
-
-    // DH writes its artifacts per loader subproject (dh/forge17/build/libs for 1.7.10).
-    // Only the classifier-less jar is the distributable one: "-all" is the intermediate
-    // shadow jar, "-dev" the un-downgraded one, "-sources" the sources.
-    from(fileTree(file('dh')) {
-        dhLoaders.each { loader -> include "${loader}/build/libs/*.jar" }
-        exclude '**/*-all.jar'
-        exclude '**/*-dev.jar'
-        exclude '**/*-sources.jar'
-    })
-    // Keep the loader in the name only when a build produces more than one, so the
-    // jars cannot collide.
-    rename { "${jarBaseName}-${dhLoaders.size() > 1 ? it.split('-')[1] + '-' : ''}${jarVersion}.jar" }
-    eachFile { it.relativePath = new RelativePath(true, it.name) }
-    includeEmptyDirs = false
-
-    into layout.buildDirectory.dir('libs')
-}
-
-tasks.register('assemble') {
-    description = 'Builds DH and collects the resulting jars.'
-    group = 'build'
-    dependsOn collectJars
-}
-
-tasks.register('check') {
-    group = 'verification'
-    dhLoaders.each { loader -> dependsOn dhBuild.task(":${loader}:check") }
-}
-
-tasks.register('build') {
-    group = 'build'
-    dependsOn tasks.named('assemble'), tasks.named('check')
-}
-
-tasks.register('clean', Delete) {
-    group = 'build'
-    delete layout.buildDirectory
-    dependsOn dhBuild.task(':clean')
-}
-
-// Task names the GTNH workflows always invoke. DH's build (unimined) has no
-// equivalent of RFG's workspace setup, and the wrapper publishes nothing itself,
-// so these exist purely so the workflow steps resolve.
-['setupCIWorkspace', 'setupDecompWorkspace', 'test', 'publish', 'spotlessCheck', 'spotlessApply'].each { name ->
-    tasks.register(name) {
-        group = 'gtnh'
-        description = "No-op; ${name} has no meaning for the DH wrapper."
+tasks.named('jar') { enabled = false }
+['apiElements', 'runtimeElements'].each { name ->
+    configurations.named(name) {
+        outgoing.artifacts.clear()
+        outgoing.artifact(releaseJar) { builtBy collectJars }
     }
 }
+
+gtnhGradle.applyModuleByName(project, 'PublishingModule')
+
+publishing.publications.named('maven') {
+    artifactId = System.getenv('ARTIFACT_ID') ?: modName
+    artifact(devJar) {
+        classifier = 'dev'
+        builtBy collectDevJars
+    }
+}
+
+afterEvaluate {
+    publishing.publications.named('maven') { version = project.version }
+}
+
+tasks.named('assemble') {
+    setDependsOn([])
+    dependsOn collectJars, collectDevJars
+}
+tasks.named('check') { dependsOn dhBuild.task(":${dhLoader}:check") }
+tasks.named('clean') { dependsOn dhBuild.task(':clean') }
+
+// Keep RFG from preparing Minecraft for this source-less wrapper project.
+['compileClasspath', 'testCompileClasspath', 'runtimeClasspath', 'testRuntimeClasspath'].each { name ->
+    configurations.named(name) { setExtendsFrom([]) }
+}
+tasks.named('setupCIWorkspace') { setDependsOn([]) }

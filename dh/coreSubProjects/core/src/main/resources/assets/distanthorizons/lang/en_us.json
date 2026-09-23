@@ -27,7 +27,7 @@
   "distanthorizons.general.apiOverride":
     "API LOCK",
   "distanthorizons.general.disabledByApi.@tooltip":
-    "This option is controlled by another mod via DH's API \nso it cannot be changed via the UI or config file.",
+    "This option is controlled by another mod via DH's API \nso it cannot be changed via the UI or config file. \nCurrently controlled by:\n",
   "distanthorizons.general.unsupportedMcVersion":
     "VER LOCK",
   "distanthorizons.general.unsupportedMcVersion.@tooltip":
@@ -703,8 +703,8 @@
   "distanthorizons.config.common.worldGenerator.surfaceRegenMaxDistancePercent":
     "Surface Regen Max Distance Percent",
   "distanthorizons.config.common.worldGenerator.surfaceRegenMaxDistancePercent.@tooltip":
-    "If the player/camera are moving quickly \nDistant Horizons will pause world gen to improve loading speed \nand reduce lag.",
-    
+    "The percentage of the full LOD render distance\nthat the second pass of the fast surface generator will\nfill with chunks generated as defined by your\n\"distantGeneratorMode\".",
+
 
   "distanthorizons.config.common.lodBuilding":
     "Lod Building",
@@ -830,11 +830,6 @@
   "distanthorizons.config.server.levelKeyPrefix.@tooltip":
     "Prefix of the level keys sent to the clients.\nIf the mod is running behind a proxy, each backend should use a unique value.\nIf this value is empty, level key will be based on the server's seed hash.",
 
-  "distanthorizons.config.server.enableServerGeneration":
-    "Enable Server Generation",
-  "distanthorizons.config.server.enableServerGeneration.@tooltip":
-    "When enabled, Distant Horizons will attempt to download missing LODs from the server.\n\nNote: the server must have Distant Generation enabled for it to work.",
-    
   "distanthorizons.config.server.generationRequestRateLimit":
     "Rate Limit for Generation Requests",
   "distanthorizons.config.server.generationRequestRateLimit.@tooltip":
@@ -882,12 +877,6 @@
     "Enable Adaptive Transfer Speed",
   "distanthorizons.config.server.enableAdaptiveTransferSpeed.@tooltip":
     "Enables adaptive transfer speed based on client performance.\nIf true, DH will automatically adjust transfer rate to minimize connection lag.\nIf false, transfer speed will remain fixed.",
-  "distanthorizons.config.server.enableNSizedGeneration":
-    "Enable N-sized generation",
-  "distanthorizons.config.server.enableNSizedGeneration.@tooltip":
-    "When enabled on the client, this allows loading lower detail levels as needed to speed up terrain generation.\nThis must also be enabled on the server; otherwise, it will have no effect.\nFor better performance when switching LOD detail levels, enabling [upsampleLowerDetailLodsToFillHoles] is recommended.",
-
-
   
   
     

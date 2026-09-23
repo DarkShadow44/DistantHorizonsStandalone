@@ -1,7 +1,6 @@
 package com.seibel.distanthorizons.core.file.fullDatafile.V2;
 
-import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiGeneratorPlan;
-import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiWorldGenerationStep;
+import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiDistantGeneratorMode;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.dataObjects.fullData.sources.FullDataSourceV2;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
@@ -14,11 +13,9 @@ import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos;
-import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos2D;
 import com.seibel.distanthorizons.core.render.renderer.AbstractDebugWireframeRenderer;
 import com.seibel.distanthorizons.core.render.renderer.IDebugRenderable;
 import com.seibel.distanthorizons.core.util.ExceptionUtil;
-import com.seibel.distanthorizons.core.util.RenderUtil;
 import com.seibel.distanthorizons.core.util.ThreadUtil;
 import com.seibel.distanthorizons.core.util.WorldGenUtil;
 import com.seibel.distanthorizons.core.util.threading.PriorityTaskPicker;
@@ -45,6 +42,14 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 	protected static final int PROPAGATE_QUEUE_THREAD_DELAY_IN_MS = 250;
 	
 	public static final int NUMBER_OF_PARENT_UPDATE_TASKS_PER_THREAD = 10;
+	
+	/**
+	 * Don't downsample extremely large LODs
+	 * since they'll take a long time and take up a lot of disk space
+	 * that may not be needed.
+	 * If they are needed at a future time, they can be generated.
+	 */
+	public static final byte HIGHEST_DOWNSAMPLE_DETAIL_LEVEL = DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL + 6;
 	
 	/** how many parent update tasks can be in the queue at once */
 	public static int getMaxPropagateTaskCount() { return NUMBER_OF_PARENT_UPDATE_TASKS_PER_THREAD * Config.Common.MultiThreading.numberOfThreads.get(); }
@@ -349,7 +354,7 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 						// since they'll take a long time and take up a lot of disk space
 						// that may not be needed.
 						// If they are needed at a future time, they can be generated.
-						if (DhSectionPos.getDetailLevel(parentOutputPos) >= DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL + 6) // LOD 1 datapoint 64 blocks wide, 4096 total blocks wide
+						if (DhSectionPos.getDetailLevel(parentOutputPos) >= HIGHEST_DOWNSAMPLE_DETAIL_LEVEL)
 						{
 							this.provider.repo.setApplyToChild(parentOutputPos, false);
 							this.updatingPosSet.remove(parentOutputPos);
@@ -491,21 +496,13 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 			canQueueRegen = ((IDhClientLevel)this.dhLevel).isRendering();
 		}
 		
-		if (!Config.Common.WorldGenerator.generatorPlan.get().chunkGenEnabled)
-		{
-			// chunk gen isn't allowed right now
-			return;
-		}
-		
 		if (!canQueueRegen)
 		{
 			return;
 		}
 		
-		
-		if (!(this.provider instanceof GeneratedFullDataSourceProvider))
+		if (!WorldGenUtil.regenAllowed(this.provider))
 		{
-			// this provider doesn't support retrieval
 			return;
 		}
 		
@@ -558,7 +555,7 @@ public class FullDataUpdatePropagatorV2 implements IDebugRenderable, AutoCloseab
 			return false;
 		}
 		
-		if (retrievalQueue.getRetrievingLowDetailLods())
+		if (!retrievalQueue.getCanRegenerate())
 		{
 			// low-quality LODs are being retrieved,
 			// wait till those are done before we try

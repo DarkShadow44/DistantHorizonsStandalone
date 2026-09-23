@@ -20,7 +20,7 @@
 package com.seibel.distanthorizons.core.file.fullDatafile.V2;
 
 import com.seibel.distanthorizons.api.enums.config.EDhApiDataCompressionMode;
-import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiWorldGenerationStep;
+import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiGeneratorPlan;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.dataObjects.fullData.sources.FullDataSourceV2;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
@@ -364,6 +364,9 @@ public class FullDataSourceProviderV2 implements IDebugRenderable, AutoCloseable
 	// retrieval (world gen) //
 	//=======================//
 	//region
+
+	/** Returns the generation plan applicable to this provider. */
+	public EDhApiGeneratorPlan getGeneratorPlan() { return Config.Common.WorldGenerator.generatorPlan.get(); }
 	
 	/**
 	 * Returns true if this provider can generate or retrieve
@@ -417,7 +420,7 @@ public class FullDataSourceProviderV2 implements IDebugRenderable, AutoCloseable
 	
 	/** Can be used to display how many total chunk retrieval requests should be available. */
 	public void setEstimatedRemainingRetrievalChunkCount(long newCount) { }
-	public void setGeneratingLowDetailLods(boolean generatingLowDetailLods) {}
+	public void setCanRegenerate(boolean canRegen) {}
 	
 	//endregion
 	
