@@ -80,24 +80,28 @@ gtnh-dh/
 ## Working on a fix
 
 One commit touches exactly one area — the wrapper, `dh/` (excluding core), or
-`dh/coreSubProjects/`. Never mix them, and never `--squash`: subtree push and `format-patch`
-both depend on the split being clean.
+`dh/coreSubProjects/`. Don't mix them - it makes generating patches for upstreaming easier.
 
 ## Sync from upstream
 
+Always sync DH first:
+
 ```bash
 git subtree pull --prefix=dh dh <branch>
-git subtree pull --prefix=dh/coreSubProjects dh-core <sha>
 ```
 
-If upstream DH bumped its core submodule, the DH pull conflicts at `dh/coreSubProjects`
-(their gitlink vs. our tree):
+A DH update may also require a core update. A core update is never standalone: DH pins the
+compatible core commit, so first update DH and use the core SHA from that update.
+
+If the DH update bumped its core submodule, the DH pull conflicts at `dh/coreSubProjects`
+(their gitlink vs. our tree). Resolve it, then pull the pinned core commit:
 
 ```bash
-git ls-files -s dh/coreSubProjects                  # note the new core SHA
-git update-index --force-remove dh/coreSubProjects  # drop their gitlink, keep our tree
+git ls-files -u -- 'dh/coreSubProjects*' | awk '$3 == 3 { print $2 }' # note the new core SHA
+git update-index --force-remove dh/coreSubProjects~*                  # drop their gitlink
+rmdir dh/coreSubProjects~*                                            # remove the empty conflict directory
 git commit
-git subtree pull --prefix=dh/coreSubProjects dh-core <that sha>
+git subtree pull --prefix=dh/coreSubProjects dh-core <core sha>
 ```
 
 ## Licensing
