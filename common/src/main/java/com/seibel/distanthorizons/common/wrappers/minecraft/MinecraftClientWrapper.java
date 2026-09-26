@@ -246,16 +246,14 @@ public class MinecraftClientWrapper extends AbstractMinecraftSharedWrapper imple
 	//=================//
 	//region
 	
-	#if MC_VER <= MC_1_12_2
-	public EntityPlayerSP getPlayer()
-	{
-		#if MC_VER <= MC_1_7_10
-		return MINECRAFT.thePlayer;
-		#else
-		return MINECRAFT.player;
-		#endif
-	}
+	#if MC_VER <= MC_1_7_10
+	@Nullable
+	public EntityPlayerSP getPlayer() { return MINECRAFT.thePlayer; }
+	#elif MC_VER <= MC_1_12_2
+	@Nullable
+	public EntityPlayerSP getPlayer() { return MINECRAFT.player; }
 	#else
+	@Nullable
 	public LocalPlayer getPlayer() { return MINECRAFT.player; }
 	#endif
 	

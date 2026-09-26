@@ -19,10 +19,11 @@
 
 package com.seibel.distanthorizons.forge112.mixins.client;
 
+import com.seibel.distanthorizons.common.wrappers.minecraft.MinecraftRenderWrapper;
 import com.seibel.distanthorizons.common.wrappers.world.ClientLevelWrapper;
 import com.seibel.distanthorizons.core.api.internal.ClientApi;
 import com.seibel.distanthorizons.core.config.Config;
-import com.seibel.distanthorizons.core.util.math.DhMat4f;
+import com.seibel.distanthorizons.forge112.ForgeMain;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.RenderGlobal;
@@ -36,13 +37,17 @@ import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.Arrays;
 import java.util.Objects;
 
+import static com.seibel.distanthorizons.forge112.RenderHelper.getModelViewMatrix;
+import static com.seibel.distanthorizons.forge112.RenderHelper.getProjectionMatrix;
 import static com.seibel.distanthorizons.lwjgl.LWJGLServiceProvider.LWJGL;
 
 @Mixin(value = RenderGlobal.class, priority = 900)
@@ -50,7 +55,7 @@ public class MixinRenderGlobal
 {
 	@Shadow private WorldClient world;
 	
-	private static final boolean DEBUG_GL_STATE = false;
+	@Unique private static final boolean DEBUG_GL_STATE = false;
 	
 	@Inject(method = "renderBlockLayer(Lnet/minecraft/util/BlockRenderLayer;DILnet/minecraft/entity/Entity;)I", at = @At("HEAD"), cancellable = true)
 	private void renderChunkLayerHead(BlockRenderLayer blockLayerIn, double partialTicks, int pass, Entity entityIn, CallbackInfoReturnable<Integer> cir)
@@ -63,11 +68,12 @@ public class MixinRenderGlobal
 		
 		if (blockLayerIn == BlockRenderLayer.SOLID)
 		{
-			captureRenderState((float) partialTicks);
-			
+			distantHorizons$captureRenderState((float) partialTicks);
 			GLStateSnapshot before = DEBUG_GL_STATE ? GLStateSnapshot.capture() : null;
+			
 			ClientApi.INSTANCE.renderLods();
-			unbindBuffers();
+			distantHorizons$unbindBuffers();
+			
 			if (DEBUG_GL_STATE)
 			{
 				GLStateSnapshot after = GLStateSnapshot.capture();
@@ -76,16 +82,7 @@ public class MixinRenderGlobal
 		}
 		else if (blockLayerIn == BlockRenderLayer.TRANSLUCENT)
 		{
-			captureRenderState((float) partialTicks);
-			GLStateSnapshot before = DEBUG_GL_STATE ? GLStateSnapshot.capture() : null;
 			GlStateManager.depthMask(true); // Water will be rendered black otherwise
-			ClientApi.INSTANCE.renderDeferredLodsForShaders();
-			unbindBuffers();
-			if (DEBUG_GL_STATE)
-			{
-				GLStateSnapshot after = GLStateSnapshot.capture();
-				GLStateSnapshot.diffAndPrint("renderDeferredLodsForShaders() [TRANSLUCENT]", before, after);
-			}
 		}
 	}
 	
@@ -94,14 +91,22 @@ public class MixinRenderGlobal
 	{
 		if (blockLayerIn == BlockRenderLayer.SOLID)
 		{
-			captureRenderState((float) partialTicks);
-			
+			distantHorizons$captureRenderState((float) partialTicks);
 			GLStateSnapshot before = DEBUG_GL_STATE ? GLStateSnapshot.capture() : null;
 			
-			LWJGL.glDisable(GL11.GL_ALPHA_TEST);
+			if (ForgeMain.IRIS_ACCESSOR == null)
+			{
+				GlStateManager.disableAlpha();
+			}
+			
 			ClientApi.INSTANCE.renderFadeOpaque();
-			LWJGL.glEnable(GL11.GL_ALPHA_TEST);
-			LWJGL.glDepthFunc(GL11.GL_LEQUAL);
+			
+			if (ForgeMain.IRIS_ACCESSOR == null)
+			{
+				GlStateManager.enableAlpha();
+			}
+			
+			GlStateManager.depthFunc(GL11.GL_LEQUAL);
 			
 			if (DEBUG_GL_STATE)
 			{
@@ -111,14 +116,23 @@ public class MixinRenderGlobal
 		}
 		else if (blockLayerIn == BlockRenderLayer.TRANSLUCENT)
 		{
-			captureRenderState((float) partialTicks);
+			distantHorizons$captureRenderState((float) partialTicks);
 			GLStateSnapshot before = DEBUG_GL_STATE ? GLStateSnapshot.capture() : null;
 			
-			GlStateManager.disableAlpha();
+			if (ForgeMain.IRIS_ACCESSOR == null)
+			{
+				GlStateManager.disableAlpha();
+			}
+			
 			ClientApi.INSTANCE.renderFadeTransparent();
-			GlStateManager.enableAlpha();
+			
+			if (ForgeMain.IRIS_ACCESSOR == null)
+			{
+				GlStateManager.enableAlpha();
+			}
+			
 			GlStateManager.depthFunc(GL11.GL_LEQUAL);
-			GlStateManager.depthMask(false);
+			
 			if (DEBUG_GL_STATE)
 			{
 				GLStateSnapshot after = GLStateSnapshot.capture();
@@ -127,23 +141,41 @@ public class MixinRenderGlobal
 		}
 	}
 	
-	private void captureRenderState(float partialTicks)
+	@Inject(method = "renderBlockLayer(Lnet/minecraft/util/BlockRenderLayer;)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/EntityRenderer;enableLightmap()V", shift = At.Shift.AFTER))
+	void renderDeferredLodsDuringTranslucentSetup(BlockRenderLayer blockLayerIn, CallbackInfo ci)
 	{
-		float[] mcProjMatrixRaw = new float[16];
-		LWJGL.glGetFloatv(GL11.GL_PROJECTION_MATRIX, mcProjMatrixRaw);
-		ClientApi.RENDER_STATE.mcProjectionMatrix = new DhMat4f(mcProjMatrixRaw);
-		ClientApi.RENDER_STATE.mcProjectionMatrix.transpose();
+		if (ForgeMain.IRIS_ACCESSOR == null)
+		{
+			return;
+		}
 		
-		float[] mcModelViewRaw = new float[16];
-		LWJGL.glGetFloatv(GL11.GL_MODELVIEW_MATRIX, mcModelViewRaw);
-		ClientApi.RENDER_STATE.mcModelViewMatrix = new DhMat4f(mcModelViewRaw);
-		ClientApi.RENDER_STATE.mcModelViewMatrix.transpose();
+		if (blockLayerIn == BlockRenderLayer.TRANSLUCENT)
+		{
+			distantHorizons$captureRenderState(MinecraftRenderWrapper.INSTANCE.getPartialTickTime());
+			GLStateSnapshot before = DEBUG_GL_STATE ? GLStateSnapshot.capture() : null;
+			
+			ClientApi.INSTANCE.renderDeferredLodsForShaders();
+			
+			if (DEBUG_GL_STATE)
+			{
+				GLStateSnapshot after = GLStateSnapshot.capture();
+				GLStateSnapshot.diffAndPrint("renderDeferredLodsForShaders() [TRANSLUCENT]", before, after);
+			}
+		}
+	}
+	
+	@Unique
+	private void distantHorizons$captureRenderState(float partialTicks)
+	{
+		ClientApi.RENDER_STATE.mcModelViewMatrix = getModelViewMatrix();
+		ClientApi.RENDER_STATE.mcProjectionMatrix = getProjectionMatrix();
 		
 		ClientApi.RENDER_STATE.partialTickTime = partialTicks;
 		ClientApi.RENDER_STATE.clientLevelWrapper = ClientLevelWrapper.getWrapperIfDifferent(ClientApi.RENDER_STATE.clientLevelWrapper, this.world);
 	}
 	
-	private static void unbindBuffers()
+	@Unique
+	private static void distantHorizons$unbindBuffers()
 	{
 		//Some 1.12.2 rendering mods breaks if we don't unbind buffers
 		LWJGL.glBindVertexArray(0);
@@ -203,43 +235,43 @@ public class MixinRenderGlobal
 		{
 			GLStateSnapshot s = new GLStateSnapshot();
 			
-			s.depthTest = GL11.glGetBoolean(GL11.GL_DEPTH_TEST);
-			s.depthMask = GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK);
-			s.depthFunc = GL11.glGetInteger(GL11.GL_DEPTH_FUNC);
+			s.depthTest = LWJGL.glGetBoolean(GL11.GL_DEPTH_TEST);
+			s.depthMask = LWJGL.glGetBoolean(GL11.GL_DEPTH_WRITEMASK);
+			s.depthFunc = LWJGL.glGetInteger(GL11.GL_DEPTH_FUNC);
 			
-			s.blend = GL11.glGetBoolean(GL11.GL_BLEND);
-			s.blendSrcRgb = GL11.glGetInteger(GL14.GL_BLEND_SRC_RGB);
-			s.blendDstRgb = GL11.glGetInteger(GL14.GL_BLEND_DST_RGB);
-			s.blendSrcAlpha = GL11.glGetInteger(GL14.GL_BLEND_SRC_ALPHA);
-			s.blendDstAlpha = GL11.glGetInteger(GL14.GL_BLEND_DST_ALPHA);
-			s.blendEquationRgb = GL11.glGetInteger(GL20.GL_BLEND_EQUATION_RGB);
-			s.blendEquationAlpha = GL11.glGetInteger(GL20.GL_BLEND_EQUATION_ALPHA);
+			s.blend = LWJGL.glGetBoolean(GL11.GL_BLEND);
+			s.blendSrcRgb = LWJGL.glGetInteger(GL14.GL_BLEND_SRC_RGB);
+			s.blendDstRgb = LWJGL.glGetInteger(GL14.GL_BLEND_DST_RGB);
+			s.blendSrcAlpha = LWJGL.glGetInteger(GL14.GL_BLEND_SRC_ALPHA);
+			s.blendDstAlpha = LWJGL.glGetInteger(GL14.GL_BLEND_DST_ALPHA);
+			s.blendEquationRgb = LWJGL.glGetInteger(GL20.GL_BLEND_EQUATION_RGB);
+			s.blendEquationAlpha = LWJGL.glGetInteger(GL20.GL_BLEND_EQUATION_ALPHA);
 			
-			s.stencilTest = GL11.glGetBoolean(GL11.GL_STENCIL_TEST);
-			s.stencilFunc = GL11.glGetInteger(GL11.GL_STENCIL_FUNC);
-			s.stencilValueMask = GL11.glGetInteger(GL11.GL_STENCIL_VALUE_MASK);
-			s.stencilRef = GL11.glGetInteger(GL11.GL_STENCIL_REF);
-			s.stencilWriteMask = GL11.glGetInteger(GL11.GL_STENCIL_WRITEMASK);
-			s.stencilFail = GL11.glGetInteger(GL11.GL_STENCIL_FAIL);
-			s.stencilPassDepthFail = GL11.glGetInteger(GL11.GL_STENCIL_PASS_DEPTH_FAIL);
-			s.stencilPassDepthPass = GL11.glGetInteger(GL11.GL_STENCIL_PASS_DEPTH_PASS);
+			s.stencilTest = LWJGL.glGetBoolean(GL11.GL_STENCIL_TEST);
+			s.stencilFunc = LWJGL.glGetInteger(GL11.GL_STENCIL_FUNC);
+			s.stencilValueMask = LWJGL.glGetInteger(GL11.GL_STENCIL_VALUE_MASK);
+			s.stencilRef = LWJGL.glGetInteger(GL11.GL_STENCIL_REF);
+			s.stencilWriteMask = LWJGL.glGetInteger(GL11.GL_STENCIL_WRITEMASK);
+			s.stencilFail = LWJGL.glGetInteger(GL11.GL_STENCIL_FAIL);
+			s.stencilPassDepthFail = LWJGL.glGetInteger(GL11.GL_STENCIL_PASS_DEPTH_FAIL);
+			s.stencilPassDepthPass = LWJGL.glGetInteger(GL11.GL_STENCIL_PASS_DEPTH_PASS);
 			
-			s.cullFace = GL11.glGetBoolean(GL11.GL_CULL_FACE);
-			s.cullFaceMode = GL11.glGetInteger(GL11.GL_CULL_FACE_MODE);
-			s.frontFace = GL11.glGetInteger(GL11.GL_FRONT_FACE);
+			s.cullFace = LWJGL.glGetBoolean(GL11.GL_CULL_FACE);
+			s.cullFaceMode = LWJGL.glGetInteger(GL11.GL_CULL_FACE_MODE);
+			s.frontFace = LWJGL.glGetInteger(GL11.GL_FRONT_FACE);
 			
-			s.scissorTest = GL11.glGetBoolean(GL11.GL_SCISSOR_TEST);
+			s.scissorTest = LWJGL.glGetBoolean(GL11.GL_SCISSOR_TEST);
 			LWJGL.glGetIntegerv(GL11.GL_SCISSOR_BOX, s.scissorBox);
 			
 			LWJGL.glGetIntegerv(GL11.GL_VIEWPORT, s.viewport);
 			
-			s.activeTexture = GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE);
-			s.textureBinding2D = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
-			s.currentProgram = GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM);
+			s.activeTexture = LWJGL.glGetInteger(GL13.GL_ACTIVE_TEXTURE);
+			s.textureBinding2D = LWJGL.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
+			s.currentProgram = LWJGL.glGetInteger(GL20.GL_CURRENT_PROGRAM);
 			
-			s.arrayBufferBinding = GL11.glGetInteger(GL15.GL_ARRAY_BUFFER_BINDING);
-			s.elementArrayBufferBinding = GL11.glGetInteger(GL15.GL_ELEMENT_ARRAY_BUFFER_BINDING);
-			s.vertexArrayBinding = GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
+			s.arrayBufferBinding = LWJGL.glGetInteger(GL15.GL_ARRAY_BUFFER_BINDING);
+			s.elementArrayBufferBinding = LWJGL.glGetInteger(GL15.GL_ELEMENT_ARRAY_BUFFER_BINDING);
+			s.vertexArrayBinding = LWJGL.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
 			
 			int[] polyMode = new int[2];
 			LWJGL.glGetIntegerv(GL11.GL_POLYGON_MODE, polyMode);

@@ -9,18 +9,48 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Supplier;
 
+// TODO move to core
+//  Although only currently called in MC 1.7.10.
+//  Maybe move into Forge17 instead?
 /**
  * Queues work that must run on the Minecraft server thread. The platform's
- * server-tick callback is responsible for calling {@link #runTasks(long)}.
+ * server-tick callback is responsible for calling {@link #onTickStart()} at the
+ * start of each server tick and {@link #runTasks()} at the end of it.
  */
 public class ServerThreadTaskHandler
 {
 	public static final ServerThreadTaskHandler INSTANCE = new ServerThreadTaskHandler();
 
+	/** How long a server tick is allowed to take before the server falls below 20 TPS. */
+	private static final long TICK_TARGET_NANO = 50_000_000L;
+	/**
+	 * Never claimed, even on a completely empty tick. Covers work that happens outside
+	 * the window we can measure: whatever the server did before the tick-start event
+	 * fired, and whatever runs after we hand the tick back (other mods' end-of-tick
+	 * handlers, world saving, the next tick's network drain).
+	 */
+	private static final long TICK_RESERVE_NANO = 25_000_000L;
+	/**
+	 * Upper bound on a single tick's budget.
+	 */
+	private static final long MAX_BUDGET_NANO = 35_000_000L;
+	/**
+	 * Budget used when the platform doesn't report tick starts.
+	 */
+	private static final long FALLBACK_BUDGET_NANO = 15_000_000L;
+
+	private static final long TICK_START_NOT_SET = Long.MIN_VALUE;
+
 	private final ConcurrentLinkedQueue<QueuedTask<?>> deferrableTaskQueue = new ConcurrentLinkedQueue<>();
 	private final ConcurrentLinkedQueue<QueuedTask<?>> essentialTaskQueue = new ConcurrentLinkedQueue<>();
 	private IMinecraftSharedWrapper mcSharedWrapper = null;
 	private volatile boolean isShutdown;
+	/**
+	 * When the current server tick started, or {@link #TICK_START_NOT_SET}. <br>
+	 * Written by {@link #onTickStart()} and consumed by {@link #runTasks()}, both of which
+	 * only run on the server thread; volatile so {@link #reset()} can clear it from elsewhere.
+	 */
+	private volatile long tickStartNano = TICK_START_NOT_SET;
 
 
 
@@ -66,16 +96,19 @@ public class ServerThreadTaskHandler
 		return future;
 	}
 
-	/**
-	 * Runs queued tasks on the server thread. <br>
-	 * Essential tasks run first and are never gated on server health, deferrable
-	 * tasks only run once the server thread is healthy. Both draw from the same
-	 * time budget, and at least one task is run even when that task alone
-	 * exceeds the supplied budget.
-	 */
-	public void runTasks(long maxRunTimeNano)
+	/** Records the start of a server tick so {@link #runTasks()} can tell how much of it is left. */
+	public void onTickStart()
 	{
-		long deadlineNano = System.nanoTime() + maxRunTimeNano;
+		this.tickStartNano = System.nanoTime();
+	}
+
+	/**
+	 * Runs queued tasks on the server thread using whatever time is left in the current tick.
+	 */
+	public void runTasks()
+	{
+		long deadlineNano = this.deadlineForTickNano(this.tickStartNano);
+		this.tickStartNano = TICK_START_NOT_SET;
 
 		// note: if essential tasks keep using up the whole budget then deferrable
 		// tasks will starve. That's acceptable, since essential tasks only exist
@@ -96,6 +129,20 @@ public class ServerThreadTaskHandler
 		}
 
 		runQueueUntilDeadline(this.deferrableTaskQueue, deadlineNano);
+	}
+
+	/** @return the deadline for this tick's queued work. */
+	private long deadlineForTickNano(long currentTickStartNano)
+	{
+		long nowNano = System.nanoTime();
+		if (currentTickStartNano == TICK_START_NOT_SET)
+		{
+			return nowNano + FALLBACK_BUDGET_NANO;
+		}
+
+		long tickDeadlineNano = currentTickStartNano + TICK_TARGET_NANO - TICK_RESERVE_NANO;
+		long maxBudgetDeadlineNano = nowNano + MAX_BUDGET_NANO;
+		return Math.min(tickDeadlineNano, maxBudgetDeadlineNano);
 	}
 	
 	private boolean deferrableTasksCanRun()
@@ -138,6 +185,7 @@ public class ServerThreadTaskHandler
 	public void reset()
 	{
 		this.isShutdown = false;
+		this.tickStartNano = TICK_START_NOT_SET;
 		if (mcSharedWrapper == null) {
 			mcSharedWrapper = SingletonInjector.INSTANCE.get(IMinecraftSharedWrapper.class);
 		}

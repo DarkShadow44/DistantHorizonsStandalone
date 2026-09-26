@@ -20,10 +20,7 @@
 package com.seibel.distanthorizons.forge112;
 
 import com.seibel.distanthorizons.common.AbstractModInitializer;
-import com.seibel.distanthorizons.common.commands.CommandInitializer;
 import com.seibel.distanthorizons.common.commonMixins.MixinChunkMapCommon;
-import com.seibel.distanthorizons.common.util.ProxyUtil;
-import com.seibel.distanthorizons.common.wrappers.chunk.ChunkWrapper;
 import com.seibel.distanthorizons.common.wrappers.misc.ServerPlayerWrapper;
 import com.seibel.distanthorizons.common.util.threading.ServerThreadTaskHandler;
 import com.seibel.distanthorizons.common.wrappers.world.ServerLevelWrapper;
@@ -31,9 +28,7 @@ import com.seibel.distanthorizons.core.api.internal.ServerApi;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
-import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.IChunkWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.misc.IPluginPacketSender;
-import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.World;
@@ -47,7 +42,6 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.PlayerEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 
-import java.util.concurrent.TimeUnit;
 
 public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
 {
@@ -58,7 +52,7 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
 	private final ServerApi serverApi = ServerApi.INSTANCE;
 	private final boolean isDedicated;
 	
-	
+
 	
 	@Override
 	public void registerEvents()
@@ -92,9 +86,13 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
 	@SubscribeEvent
 	public void serverTickEvent(TickEvent.ServerTickEvent event)
 	{
-		if (event.phase == TickEvent.Phase.END)
+		if (event.phase == TickEvent.Phase.START)
 		{
-			ServerThreadTaskHandler.INSTANCE.runTasks(TimeUnit.MILLISECONDS.toNanos(15));
+			ServerThreadTaskHandler.INSTANCE.onTickStart();
+		}
+		else
+		{
+			ServerThreadTaskHandler.INSTANCE.runTasks();
 		}
 	}
 	
@@ -121,16 +119,20 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
 	@SubscribeEvent
 	public void serverChunkLoadEvent(ChunkEvent.Load event)
 	{
-		ILevelWrapper levelWrapper = ProxyUtil.getLevelWrapper(GetEventLevel(event));
-		IChunkWrapper chunk = new ChunkWrapper(event.getChunk(), levelWrapper);
-		this.serverApi.serverChunkLoadEvent(chunk, levelWrapper);
+		if (event.getWorld() instanceof WorldServer)
+		{
+			WorldServer worldServer = (WorldServer) event.getWorld();
+			MixinChunkMapCommon.onChunkSave(worldServer, event.getChunk());
+		}
 	}
 	
 	@SubscribeEvent
 	public void serverChunkSaveEvent(ChunkDataEvent.Save event)
 	{
-		if (event.getWorld() instanceof WorldServer worldServer && event.getChunk().dirty)
+		if (event.getWorld() instanceof WorldServer 
+			&& event.getChunk().dirty)
 		{
+			WorldServer worldServer = (WorldServer) event.getWorld();
 			MixinChunkMapCommon.onChunkSave(worldServer, event.getChunk());
 		}
 	}

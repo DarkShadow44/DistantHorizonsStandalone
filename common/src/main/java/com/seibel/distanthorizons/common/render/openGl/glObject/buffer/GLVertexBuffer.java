@@ -51,6 +51,7 @@ public class GLVertexBuffer extends GLBuffer implements IVertexBufferWrapper
 	 * bigger than the upload payload
 	 */
 	protected int vertexCount = 0;
+	@Override
 	public int getVertexCount() { return this.vertexCount; }
 	
 	

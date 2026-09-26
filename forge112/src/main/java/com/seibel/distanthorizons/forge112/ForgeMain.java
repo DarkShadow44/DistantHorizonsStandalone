@@ -23,26 +23,31 @@ import cofh.thermaldynamics.block.BlockDuct;
 import com.seibel.distanthorizons.api.DhApi;
 import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiBlockColorOverrideEvent;
 import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiBlockStateWrapperCreatedEvent;
+import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiBlockTextureOverrideEvent;
 import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiEventParam;
 import com.seibel.distanthorizons.core.wrapperInterfaces.modLoader.IForgeMain;
+import com.seibel.distanthorizons.forge112.modAccessor.IrisAccessor;
 import com.seibel.distanthorizons.forge112.modAccessor.ModChecker;
 import com.seibel.distanthorizons.forge112.modCompat.quark.Quark;
 import com.seibel.distanthorizons.forge112.modCompat.sereneseasons.SereneSeasons;
 import com.seibel.distanthorizons.forge112.modCompat.thermaldynamics.ThermalDynamics;
 import com.seibel.distanthorizons.common.AbstractModInitializer;
 import com.seibel.distanthorizons.common.commands.CommandInitializer;
+import com.seibel.distanthorizons.common.wrappers.block.ClientBlockStateColorCache;
 import com.seibel.distanthorizons.core.api.internal.ServerApi;
 import com.seibel.distanthorizons.common.util.threading.ServerThreadTaskHandler;
+import com.seibel.distanthorizons.core.dependencyInjection.ModAccessorInjector;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.wrapperInterfaces.misc.IPluginPacketSender;
+import com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor.IIrisAccessor;
 import com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor.IModChecker;
 import com.seibel.distanthorizons.coreapi.ModInfo;
 import com.seibel.distanthorizons.coreapi.util.ColorUtil;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockBush;
-import net.minecraft.block.BlockGrass;
-import net.minecraft.block.BlockLeaves;
+import net.minecraft.block.*;
 import net.minecraft.block.state.IBlockState;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.init.Blocks;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.Biome;
@@ -60,14 +65,18 @@ import vazkii.quark.client.feature.GreenerGrass;
 import java.util.List;
 import java.util.function.Consumer;
 
+import static com.seibel.distanthorizons.common.wrappers.block.ClientBlockStateColorCache.calculateColorFromTexture;
+
 /**
  * Initialize and setup the Mod. <br>
  * If you are looking for the real start of the mod
  * check out the ClientProxy.
  */
-@Mod(modid = ModInfo.ID, name = ModInfo.NAME, version = ModInfo.VERSION, acceptableRemoteVersions = "*")
+@Mod(modid = ModInfo.ID, name = ModInfo.NAME, version = ModInfo.VERSION, acceptableRemoteVersions = "*", dependencies = "required-after:mixinbooter@[11.8,);")
 public class ForgeMain extends AbstractModInitializer implements IForgeMain
 {
+	public static IIrisAccessor IRIS_ACCESSOR;
+	
 	public static final boolean IS_QUARK_LOADED = Loader.isModLoaded("quark");
 	public static final boolean IS_FURENIKUSROADS_LOADED = Loader.isModLoaded("furenikusroads");
 	public static final boolean IS_IMMERSIVERAILRAODING_LOADED = Loader.isModLoaded("immersiverailroading");
@@ -105,6 +114,7 @@ public class ForgeMain extends AbstractModInitializer implements IForgeMain
 		
 		DhApi.events.bind(DhApiBlockStateWrapperCreatedEvent.class, new BlockWrapperCreated());
 		DhApi.events.bind(DhApiBlockColorOverrideEvent.class, new BlockColorOverrider());
+		DhApi.events.bind(DhApiBlockTextureOverrideEvent.class, new BlockTextureOverrider());
 		
 		ForgeChunkManager.setForcedChunkLoadingCallback(
 			instance,
@@ -131,7 +141,8 @@ public class ForgeMain extends AbstractModInitializer implements IForgeMain
 	@Override
 	protected void initializeModCompat()
 	{
-		
+		this.tryCreateModCompatAccessor("actinium", IIrisAccessor.class, IrisAccessor::new);
+		IRIS_ACCESSOR = ModAccessorInjector.INSTANCE.get(IIrisAccessor.class);
 	}
 	
 /*	@Override
@@ -226,7 +237,13 @@ public class ForgeMain extends AbstractModInitializer implements IForgeMain
 			}
 			else if (IS_THERMAL_DYNAMICS_LOADED && block instanceof BlockDuct)
 			{
-				int finalReturnColor = ThermalDynamics.getThermalDynamicDuctColor(blockState);
+				int finalReturnColor = calculateColorFromTexture(ThermalDynamics.getThermalDynamicDuctTexture(blockState), ClientBlockStateColorCache.EColorMode.Default);
+				event.value.setColor(ColorUtil.getRed(finalReturnColor), ColorUtil.getGreen(finalReturnColor), ColorUtil.getBlue(finalReturnColor));
+			}
+			else if (IS_IMMERSIVERAILRAODING_LOADED && (blockState.toString().equals("immersiverailroading:block_rail") || blockState.toString().equals("immersiverailroading:block_rail_gag")))
+			{
+				IBlockState plankState = Blocks.PLANKS.getDefaultState().withProperty(BlockPlanks.VARIANT, BlockPlanks.EnumType.DARK_OAK);
+				int finalReturnColor = calculateColorFromTexture(Minecraft.getMinecraft().getBlockRendererDispatcher().getBlockModelShapes().getTexture(plankState), ClientBlockStateColorCache.EColorMode.Default);
 				event.value.setColor(ColorUtil.getRed(finalReturnColor), ColorUtil.getGreen(finalReturnColor), ColorUtil.getBlue(finalReturnColor));
 			}
 			
@@ -260,6 +277,62 @@ public class ForgeMain extends AbstractModInitializer implements IForgeMain
 				event.value.setAllowApiColorOverride(true);
 			}
 			
+		}
+		
+	}
+	
+	public static class BlockTextureOverrider extends DhApiBlockTextureOverrideEvent
+	{
+		@Override
+		public void onBlockTextureOverridden(DhApiEventParam<EventParam> event)
+		{
+			EventParam param = event.value;
+			IBlockState blockState = (IBlockState) param.getBlockStateWrapper().getWrappedMcObject();
+			Block block = blockState.getBlock();
+			
+			if (IS_THERMAL_DYNAMICS_LOADED && block instanceof BlockDuct)
+			{
+				TextureAtlasSprite sprite = ThermalDynamics.getThermalDynamicDuctTexture(blockState);
+				copySpriteIntoEventParam(sprite, param);
+			}
+		}
+		
+		private static void copySpriteIntoEventParam(TextureAtlasSprite sprite, EventParam param)
+		{
+			if (sprite == null)
+			{
+				return;
+			}
+			
+			int destWidth = param.getWidth();
+			int destHeight = param.getHeight();
+			int spriteWidth = sprite.getIconWidth();
+			int spriteHeight = sprite.getIconHeight();
+			if (spriteWidth <= 0 || spriteHeight <= 0)
+			{
+				return;
+			}
+			
+			int[][] frameData = sprite.getFrameTextureData(0);
+			int[] pixels = frameData[0];
+			
+			for (int u = 0; u < destWidth; u++)
+			{
+				for (int v = 0; v < destHeight; v++)
+				{
+					int texelX = (u * spriteWidth) / destWidth;
+					int texelY = (v * spriteHeight) / destHeight;
+					
+					int packed = pixels[(texelY * spriteWidth) + texelX];
+					
+					int a = (packed >>> 24) & 0xFF;
+					int r = packed & 0xFF;
+					int g = (packed >>> 8) & 0xFF;
+					int b = (packed >>> 16) & 0xFF;
+					
+					param.setColor(u, v, a, r, g, b);
+				}
+			}
 		}
 		
 	}

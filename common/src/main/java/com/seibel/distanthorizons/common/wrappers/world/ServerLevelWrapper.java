@@ -76,8 +76,13 @@ public class ServerLevelWrapper implements IServerLevelWrapper
 	 * weak references are to prevent rare issues
 	 * where, upon world closure, some levels aren't shutdown/removed properly
 	 */
-	private static final Map<#if MC_VER <= MC_1_12_2 WorldServer #else ServerLevel #endif, WeakReference<ServerLevelWrapper>> 
+	#if MC_VER <= MC_1_12_2
+	private static final Map<WorldServer, WeakReference<ServerLevelWrapper>>
+	#else 
+	private static final Map<ServerLevel, WeakReference<ServerLevelWrapper>> 
+	#endif
 		LEVEL_WRAPPER_REF_BY_SERVER_LEVEL = Collections.synchronizedMap(new WeakHashMap<>());
+	
 	
 	private final #if MC_VER <= MC_1_12_2 WorldServer #else ServerLevel #endif level;
 	private IDhLevel dhLevel;
@@ -296,16 +301,6 @@ public class ServerLevelWrapper implements IServerLevelWrapper
         #else
 		return this.level.getMinY();
         #endif
-	}
-	
-	@Override
-	public int getSeaLevel()
-	{
-		#if MC_VER <= MC_1_7_10
-		return 63;
-		#else
-		return this.level.getSeaLevel();
-		#endif
 	}
 	
 	@Override

@@ -3,7 +3,8 @@ package com.seibel.distanthorizons.lwjgl;
 /**
  * OpenGL extensions that can be queried via {@link ILWJGLService#isExtensionSupported(EGLExtension)}.
  */
-public enum EGLExtension {
+public enum EGLExtension 
+{
     ARB_buffer_storage,
     ARB_multi_draw_indirect,
     ARB_draw_elements_base_vertex,

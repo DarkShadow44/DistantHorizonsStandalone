@@ -1051,13 +1051,22 @@ public class DhRoughSurfaceGenerator implements IRoughGenerator
 			this.chunkGenerator = this.serverLevel.getChunkSource().getGenerator();
 			this.biomeSource = this.chunkGenerator.getBiomeSource();
 			
-			this.relativeSeaLevel = serverLevelWrapper.getSeaLevel() - serverLevelWrapper.getMinHeight();
+			// ServerLevel has an incorrect seaLevel getter for MC 1.21.1, so we need to get it from the
+			// chunk generator
+			this.relativeSeaLevel = this.chunkGenerator.getSeaLevel() - serverLevelWrapper.getMinHeight();
 			this.relativeMaxHeight = serverLevelWrapper.getMaxHeight() - serverLevelWrapper.getMinHeight();
 			
 			
+			// superflat worlds don't have the noise functions we normally use
 			this.isSuperFlatWorld = this.chunkGenerator
 				.getClass()
 				.equals(FlatLevelSource.class);
+			
+			// the nether can't have a surface generated 
+			if (serverLevelWrapper.hasCeiling())
+			{
+				this.isSuperFlatWorld = true;
+			}
 			
 			
 			

@@ -47,7 +47,8 @@ public abstract class AbstractDhMixinPlugin
 		}
 		
 		// iris
-		if (mixinClassName.endsWith("MixinIrisFrameBuffer"))
+		if (mixinClassName.endsWith("MixinIrisFrameBuffer")
+			|| mixinClassName.endsWith("MixinOculusFrameBuffer"))
 		{
 			boolean irisPresent = isClassPresent(IIrisAccessor.FRAMEBUFFER_MIXIN_CLASS, Thread.currentThread().getContextClassLoader());
 			return irisPresent;

@@ -158,6 +158,8 @@ public class BlockStateWrapper implements IBlockStateWrapper
 	// properties //
 	
 	#if MC_VER <= MC_1_7_10
+	// TODO why aren't we just storing the block/meta?
+	/** cache this to prevent re-allocating the array each time the wrapped objects are needed */
 	private final Object[] wrappedMcObject;
 	#endif
 	
@@ -239,6 +241,7 @@ public class BlockStateWrapper implements IBlockStateWrapper
 		}
 		else
 		{
+			// TODO can we just grab the block/meta directly instead of casting?
 			#if MC_VER <= MC_1_7_10
 			Object[] wrappedObject = (Object[]) guess.getWrappedMcObject();
 			guessBlockState = new FakeBlockState(
@@ -382,6 +385,7 @@ public class BlockStateWrapper implements IBlockStateWrapper
 		
 		this.blockState = blockState;
 		#if MC_VER <= MC_1_7_10
+		// TODO store block/meta separately
 		if (blockState != null && !isAir()) {
 			this.wrappedMcObject = new Object[] {
 				blockState.getBlock(),
@@ -901,7 +905,8 @@ public class BlockStateWrapper implements IBlockStateWrapper
 		
 		boolean isNetherRack;
 		#if MC_VER <= MC_1_7_10
-		isNetherRack = blockState.getBlock() == Blocks.netherrack || blockState.getBlock() == Blocks.nether_brick;
+		isNetherRack = blockState.getBlock() == Blocks.netherrack 
+			|| blockState.getBlock() == Blocks.nether_brick;
 		#elif MC_VER <= MC_1_12_2
 		isNetherRack = blockState.getBlock() == Blocks.NETHERRACK;
 		#else
@@ -1106,6 +1111,11 @@ public class BlockStateWrapper implements IBlockStateWrapper
 		for (int i = 0; i < blockNameList.size(); i++)
 		{
 			String baseBlockName = blockNameList.get(i);
+			if (baseBlockName.trim().isEmpty())
+			{
+				continue;
+			}
+			
 			if (lowerCaseSerial.contains(baseBlockName))
 			{
 				blockMatches = true;
@@ -1386,7 +1396,6 @@ public class BlockStateWrapper implements IBlockStateWrapper
 	
 	@Override
 	public int getLightEmission() { return getLightEmission(this.blockState); }
-	
 	#if MC_VER <= MC_1_12_2
 	public static int getLightEmission(IBlockState blockState)
 	#else
@@ -1410,7 +1419,8 @@ public class BlockStateWrapper implements IBlockStateWrapper
 	public String getSerialString() { return this.serialString; }
 	
 	@Override
-	public Object getWrappedMcObject() {
+	public Object getWrappedMcObject() 
+	{
 		#if MC_VER <= MC_1_7_10
 		return this.wrappedMcObject;
 		#else
@@ -1526,6 +1536,7 @@ public class BlockStateWrapper implements IBlockStateWrapper
 		return serialString;
 		#endif
 	}
+	
 	
 	/** returns AIR if the given string can't be deserialized */
 	public static BlockStateWrapper deserializeOrDefault(String resourceStateString, ILevelWrapper levelWrapper)

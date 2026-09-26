@@ -46,15 +46,18 @@ import org.lwjgl.PointerBuffer;
  * </p>
  *
  */
-public class MemoryStack extends Pointer.Default implements AutoCloseable {
+public class MemoryStack extends Pointer.Default implements AutoCloseable 
+{
 
     public static final int DEFAULT_STACK_SIZE = 64 * 1024;
     public static final int DEFAULT_STACK_FRAMES = 8;
 
     private static final ThreadLocal<MemoryStack> TLS = ThreadLocal.withInitial(MemoryStack::create);
 
-    static {
-        if (DEFAULT_STACK_SIZE < 0) {
+    static 
+    {
+        if (DEFAULT_STACK_SIZE < 0) 
+		{
             throw new IllegalStateException("Invalid stack size.");
         }
     }

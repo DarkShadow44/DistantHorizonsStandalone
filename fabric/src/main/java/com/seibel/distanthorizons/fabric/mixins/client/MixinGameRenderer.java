@@ -99,20 +99,20 @@ public class MixinGameRenderer
 	#else
 	
 	@Inject(method = "renderLevel", at = @At("HEAD"))
-	private void onRenderLevelStart(CallbackInfo ci) 
+	private void onRenderLevelStart(CallbackInfo ci)
 	{
 		ClientApi.RENDER_STATE.clientLevelWrapper = ClientLevelWrapper.getWrapperIfDifferent(
-			ClientApi.RENDER_STATE.clientLevelWrapper, 
+			ClientApi.RENDER_STATE.clientLevelWrapper,
 			(ClientLevel)MinecraftClientWrapper.INSTANCE.getPlayer().level());
 		
 		ClientApi.RENDER_STATE.partialTickTime = MinecraftRenderWrapper.INSTANCE.getPartialTickTime();
 		
-		MixinProjectionMatrixBufferCommon.inWorldRenderPass = true;
+		MixinProjectionMatrixBufferCommon.getNewMvmMatrix = true;
 	}
 	
 	@Inject(method = "renderLevel", at = @At("RETURN"))
-	private void onRenderLevelEnd(CallbackInfo ci) 
-	{ MixinProjectionMatrixBufferCommon.inWorldRenderPass = false; }
+	private void onRenderLevelEnd(CallbackInfo ci)
+	{ MixinProjectionMatrixBufferCommon.getNewMvmMatrix = false; }
 	
 	#endif
 	

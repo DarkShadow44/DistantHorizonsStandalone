@@ -52,6 +52,9 @@ public class BlazeVertexBufferWrapper implements IVertexBufferWrapper
 	public GpuBuffer vertexGpuBuffer = null;
 	
 	public int vertexCount = -1;
+	@Override 
+	public int getVertexCount() { return this.vertexCount; }
+	
 	public int indexCount = -1;
 	public boolean uploaded = false;
 	

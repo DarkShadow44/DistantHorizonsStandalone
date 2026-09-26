@@ -22,6 +22,7 @@ package com.seibel.distanthorizons.common.wrappers.minecraft;
 import java.awt.Color;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.seibel.distanthorizons.api.enums.config.EDhApiDepthDirection;
 import com.seibel.distanthorizons.core.render.RenderThreadTaskHandler;
 import com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor.IAngelicaAccessor;
 import org.jetbrains.annotations.Nullable;
@@ -74,9 +75,11 @@ import com.seibel.distanthorizons.core.util.math.DhVec3d;
 import com.seibel.distanthorizons.core.util.math.DhVec3f;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor.IImmersivePortalsAccessor;
+import com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor.IIrisAccessor;
 import com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor.IOptifineAccessor;
 
 #if MC_VER <= MC_1_12_2
+import com.seibel.distanthorizons.common.commonMixins.IFramebufferDepthTexture;
 import net.minecraft.client.renderer.entity.RenderManager;
 import net.minecraft.client.shader.Framebuffer;
 #if MC_VER <= MC_1_7_10
@@ -147,19 +150,6 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
 	
 	private static final IOptifineAccessor OPTIFINE_ACCESSOR = ModAccessorInjector.INSTANCE.get(IOptifineAccessor.class);
 	
-	private static IAngelicaAccessor angelicaAccessor = null;
-	
-	private static IAngelicaAccessor getAngelicaAccessor()
-	{
-		if (angelicaAccessor != null)
-		{
-			return angelicaAccessor;
-		}
-		
-		angelicaAccessor = ModAccessorInjector.INSTANCE.get(IAngelicaAccessor.class);
-		return angelicaAccessor;
-	}
-	
 	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
 	#if MC_VER <= MC_1_12_2
@@ -172,10 +162,12 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
 	private static class DelayedAccessors
 	{
 		public static final IImmersivePortalsAccessor IMMERSIVE_PORTALS = ModAccessorInjector.INSTANCE.get(IImmersivePortalsAccessor.class);
+		private static final IIrisAccessor IRIS = ModAccessorInjector.INSTANCE.get(IIrisAccessor.class);
+		private static final IAngelicaAccessor ANGELICA = ModAccessorInjector.INSTANCE.get(IAngelicaAccessor.class);
 	}
 	
 	/**
-	 * In the case of immersive portals multiple levels may be active at once, causing conflicting lightmaps. <br> 
+	 * In the case of immersive portals multiple levels may be active at once, causing conflicting lightmaps. <br>
 	 * Requiring the use of multiple {@link LightMapWrapper}.
 	 */
 	public ConcurrentHashMap<IDimensionTypeWrapper, LightMapWrapper> lightmapByDimensionType = new ConcurrentHashMap<>();
@@ -222,8 +214,8 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
 	}
 	
 	/**
-	 * Unless you really need to know if the player is blind, 
-	 * use {@link MinecraftRenderWrapper#isFogStateSpecial()} or {@link IMinecraftRenderWrapper#isFogStateSpecial()} instead 
+	 * Unless you really need to know if the player is blind,
+	 * use {@link MinecraftRenderWrapper#isFogStateSpecial()} or {@link IMinecraftRenderWrapper#isFogStateSpecial()} instead
 	 */
 	@Override
 	public boolean playerHasBlindingEffect()
@@ -332,20 +324,19 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
 		#if MC_VER < MC_1_17_1
 		
 		#if MC_VER <= MC_1_7_10
-		IAngelicaAccessor accessor = getAngelicaAccessor();
-		if (accessor != null)
+		if (DelayedAccessors.ANGELICA != null)
 		{
-			return accessor.getFogColor();
+			return DelayedAccessors.ANGELICA.getFogColor();
 		}
 		#endif
 		
 		float[] colorValues = new float[4];
 		LWJGL.glGetFloatv(GL11.GL_FOG_COLOR, colorValues);
 		return new Color(
-				Math.max(0f, Math.min(colorValues[0], 1f)), // r
-				Math.max(0f, Math.min(colorValues[1], 1f)), // g
-				Math.max(0f, Math.min(colorValues[2], 1f)), // b
-				Math.max(0f, Math.min(colorValues[3], 1f))  // a
+			Math.max(0f, Math.min(colorValues[0], 1f)), // r
+			Math.max(0f, Math.min(colorValues[1], 1f)), // g
+			Math.max(0f, Math.min(colorValues[2], 1f)), // b
+			Math.max(0f, Math.min(colorValues[3], 1f))  // a
 		);
 		#elif MC_VER < MC_1_21_3
 		FogRenderer.setupColor(MC.gameRenderer.getMainCamera(), partialTicks, MC.level, 1, MC.gameRenderer.getDarkenWorldAmount(partialTicks));
@@ -583,6 +574,28 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
 		return this.renderApi;
 	}
 	
+	@Override 
+	public EDhApiDepthDirection getMcDepthDirection()
+	{
+		if (DelayedAccessors.IRIS != null
+			&& DelayedAccessors.IRIS.isShaderPackInUse())
+		{
+			if (DelayedAccessors.IRIS.isReverseZDuringShaders())
+			{
+				return EDhApiDepthDirection.REVERSE_Z;
+			}
+			else
+			{
+				return EDhApiDepthDirection.FORWARD_Z;
+			}
+		}
+		
+		#if MC_VER <= MC_26_1_2
+		return EDhApiDepthDirection.FORWARD_Z;
+		#else
+		return EDhApiDepthDirection.REVERSE_Z;
+		#endif
+	}
 	
 	@Override
 	public int getTargetFramebuffer()
@@ -611,17 +624,23 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
 	public int getGlDepthTextureId()
 	{
 		#if MC_VER <= MC_1_7_10
-		IAngelicaAccessor accessor = getAngelicaAccessor();
-		if (accessor != null)
+		if (DelayedAccessors.ANGELICA != null)
 		{
-			return accessor.getDepthTextureId();
+			return DelayedAccessors.ANGELICA.getDepthTextureId();
 		}
 		
 		final Framebuffer framebuffer = Minecraft.getMinecraft().getFramebuffer();
 		return framebuffer.depthBuffer;
 		#elif MC_VER <= MC_1_12_2
-		final Framebuffer framebuffer = Minecraft.getMinecraft().getFramebuffer();
-		return framebuffer.depthBuffer;
+		final Framebuffer framebuffer = MC.getFramebuffer();
+		if (DelayedAccessors.IRIS != null)
+		{
+			return DelayedAccessors.IRIS.getFramebufferDepthTextureId(framebuffer);
+		}
+		else
+		{
+			return ((IFramebufferDepthTexture) framebuffer).distantHorizons$getDistantHorizonsDepthTexture();
+		}
 		#elif MC_VER < MC_1_21_5
 		return this.getRenderTarget().getDepthTextureId();
 		#else
@@ -709,16 +728,12 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
 	public boolean isFogStateSpecial()
 	{
 		#if MC_VER <= MC_1_7_10
-		float partialTicks = this.getPartialTickTime();
-		
-		double x = MC.renderViewEntity.prevPosX + (MC.renderViewEntity.posX - MC.renderViewEntity.prevPosX) * partialTicks;
-		double y = MC.renderViewEntity.prevPosY + (MC.renderViewEntity.posY - MC.renderViewEntity.prevPosY) * partialTicks + MC.renderViewEntity.getEyeHeight();
-		double z = MC.renderViewEntity.prevPosZ + (MC.renderViewEntity.posZ - MC.renderViewEntity.prevPosZ) * partialTicks;
+		DhVec3d cameraPos = this.getCameraExactPosition();
 		
 		Block fluidBlock = MC.renderViewEntity.worldObj.getBlock(
-			MathHelper.floor_double(x), 
-			MathHelper.floor_double(y), 
-			MathHelper.floor_double(z));
+			MathHelper.floor_double(cameraPos.x),
+			MathHelper.floor_double(cameraPos.y),
+			MathHelper.floor_double(cameraPos.z));
 		
 		return this.playerHasBlindingEffect() 
 			|| fluidBlock.getMaterial().isLiquid() 
@@ -726,8 +741,8 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
 		#elif MC_VER <= MC_1_12_2
 		BlockPos blockPos = new BlockPos(MC.getRenderViewEntity().getPositionEyes(MC.getRenderPartialTicks()));
 		IBlockState fluidState = MC.getRenderViewEntity().world.getBlockState(blockPos);
-		return this.playerHasBlindingEffect() 
-			|| fluidState.getMaterial().isLiquid() 
+		return this.playerHasBlindingEffect()
+			|| fluidState.getMaterial().isLiquid()
 			|| fluidState.getBlock() instanceof IFluidBlock;
 		
 		#elif MC_VER < MC_1_17_1
@@ -859,7 +874,6 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
 		wrapper.uploadLightmap(lightPixels);
 	}
 	#endif
-	
 	public void setLightmapId(int textureId)
 	{
 		IClientLevelWrapper clientLevel = getLightmapClientLevelWrapper();

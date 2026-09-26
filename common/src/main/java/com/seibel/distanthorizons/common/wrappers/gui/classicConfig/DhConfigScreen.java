@@ -22,6 +22,7 @@ import com.seibel.distanthorizons.common.wrappers.gui.updater.ChangelogScreen;
 import com.seibel.distanthorizons.core.config.types.enums.EConfigCommentTextPosition;
 import com.seibel.distanthorizons.core.config.types.enums.EConfigValidity;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
+import com.seibel.distanthorizons.core.enums.MinecraftTextFormat;
 import com.seibel.distanthorizons.core.jar.updater.SelfUpdater;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.util.AnnotationUtil;
@@ -156,6 +157,7 @@ class DhConfigScreen extends DhScreen
 	public void updateScreen()
 	{
 		super.updateScreen();
+		
 		#if MC_VER <= MC_1_7_10
 		for (GuiTextField field : this.textFieldProcessors.keySet())
 		{
@@ -1046,10 +1048,17 @@ class DhConfigScreen extends DhScreen
 		
 		boolean apiOverrideActive = false;
 		boolean unsupportedMcVersion = false;
+		String apiUser = null;
 		if (configBase instanceof ConfigEntry)
 		{
 			apiOverrideActive = ((ConfigEntry<?>) configBase).apiIsOverriding();
 			unsupportedMcVersion = ((ConfigEntry<?>) configBase).mcVersionOverridePresent();
+			apiUser = ((ConfigEntry<?>) configBase).getApiUser();
+		}
+		if (apiUser == null
+			|| apiUser.isEmpty())
+		{
+			apiUser = "UNKNOWN";
 		}
 		
 		String key = TRANSLATION_PREFIX + (configBase.category.isEmpty() ? "" : configBase.category + ".") + configBase.getName() + ".@tooltip";
@@ -1091,6 +1100,13 @@ class DhConfigScreen extends DhScreen
 				list.add(TextOrTranslatable(langLine));
 			}
 			
+			if (apiOverrideActive)
+			{
+				// raw text is used here since we don't want to force
+				// API users to translate their name
+				list.add(TextOrLiteral(MinecraftTextFormat.ORANGE + apiUser + MinecraftTextFormat.CLEAR_FORMATTING));
+			}
+			
 			#if MC_VER <= MC_1_12_2
 			this.DhRenderComponentTooltip(list, mouseX, mouseY);
 			#else
@@ -1129,9 +1145,11 @@ class DhConfigScreen extends DhScreen
 		{
 			for (ClassicConfigGUI.DhButtonEntry entry : this.configListWidget.children)
 			{
-				if (entry.button instanceof GuiButton btn 
-					&& btn.visible)
+				if (entry.button instanceof GuiButton 
+					&& ((GuiButton)entry.button).visible)
 				{
+					GuiButton btn = (GuiButton)entry.button;
+					
 					if (btn.mousePressed(this.mc, mouseX, mouseY))
 					{
 						btn.playPressSound(this.mc.getSoundHandler());
@@ -1143,15 +1161,18 @@ class DhConfigScreen extends DhScreen
 						}
 					}
 				}
-				else if (entry.button instanceof GuiTextField field 
-					&& field.getVisible())
+				else if (entry.button instanceof GuiTextField 
+					&& ((GuiTextField)entry.button).getVisible())
 				{
+					GuiTextField field = (GuiTextField) entry.button;
 					field.mouseClicked(mouseX, mouseY, mouseButton);
 				}
 				
-				if (entry.resetButton instanceof GuiButton reset 
-					&& reset.visible)
+				if (entry.resetButton instanceof GuiButton 
+					&& ((GuiButton)entry.resetButton).visible)
 				{
+					GuiButton reset = (GuiButton) entry.resetButton;
+					
 					if (reset.mousePressed(this.mc, mouseX, mouseY))
 					{
 						reset.playPressSound(this.mc.getSoundHandler());
@@ -1174,9 +1195,12 @@ class DhConfigScreen extends DhScreen
 		super.keyTyped(typedChar, keyCode);
 		for (ClassicConfigGUI.DhButtonEntry entry : this.configListWidget.children)
 		{
-			if (entry.button instanceof GuiTextField field)
+			if (entry.button instanceof GuiTextField)
 			{
+				GuiTextField field = (GuiTextField) entry.button;
+				
 				field.textboxKeyTyped(typedChar, keyCode);
+				
 				#if MC_VER <= MC_1_7_10
 				Predicate<String> processor = this.textFieldProcessors.get(field);
 				if (processor != null)
@@ -1193,6 +1217,7 @@ class DhConfigScreen extends DhScreen
 		#if MC_VER > MC_1_7_10 throws java.io.IOException #endif
 	{
 		super.handleMouseInput();
+		
 		#if MC_VER > MC_1_7_10
 		this.configListWidget.handleMouseInput();
 		#endif
