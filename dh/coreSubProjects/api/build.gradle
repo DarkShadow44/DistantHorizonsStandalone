@@ -32,8 +32,6 @@ task createReleaseApiJar(type: ShadowJar) {
     mustRunAfter sourcesJar
     dependsOn jar
 
-    // shadeDowngradedApi downgrades the shadow jar to our desired Java version
-    // we package its output to ensure we can run on the oldest supported MC version.
     def compiledJarFile = tasks.jar.archiveFile
 
     // doFirst is so these only run when the task is actually executed
