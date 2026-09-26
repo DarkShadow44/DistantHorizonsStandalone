@@ -134,7 +134,14 @@ public class GuiHelper
 	}
 	
 	#if MC_VER <= MC_1_12_2
-	public static void SetY(GuiTextField textField, int y) { #if MC_VER <= MC_1_7_10 textField.yPosition #else textField.y #endif = y; }
+	public static void SetY(GuiTextField textField, int y) 
+	{
+		#if MC_VER <= MC_1_7_10 
+		textField.yPosition = y; 
+		#else 
+		textField.y = y; 
+		#endif
+	}
 	#endif
 	
 	#if MC_VER <= MC_1_12_2

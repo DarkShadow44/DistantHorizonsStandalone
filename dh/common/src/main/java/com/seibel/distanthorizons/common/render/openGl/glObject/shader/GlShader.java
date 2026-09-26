@@ -104,37 +104,6 @@ public class GlShader
 	//=========//
 	//region
 	
-/*	*//**
-	 * Identical in function to {@link GL20#glShaderSource(int, CharSequence)} but
-	 * passes a null pointer for string length to force the driver to rely on the null
-	 * terminator for string length.  This is a workaround for an apparent flaw with some
-	 * AMD drivers that don't receive or interpret the length correctly, resulting in
-	 * an access violation when the driver tries to read past the string memory.
-	 *
-	 * <p>Hat tip to fewizz for the find and the fix.
-	 * 
-	 * <p>Source: https://github.com/vram-guild/canvas/commit/820bf754092ccaf8d0c169620c2ff575722d7d96
-	 *//*
-	private static void safeShaderSource(@NativeType("GLuint") int glId, @NativeType("GLchar const **") CharSequence source)
-	{
-		final MemoryStack stack = MemoryStack.stackGet();
-		final int stackPointer = stack.getPointer();
-
-		try
-		{
-			final ByteBuffer sourceBuffer = MemoryUtil.memUTF8(source, true);
-			final PointerBuffer pointers = stack.mallocPointer(1);
-			pointers.put(sourceBuffer);
-
-			GL33.nglShaderSource(glId, 1, pointers.address0(), 0);
-			org.lwjgl.system.APIUtil.apiArrayFree(pointers.address0(), 1);
-		}
-		finally
-		{
-			stack.setPointer(stackPointer);
-		}
-	}*/
-	
 	public void free() { LWJGL.glDeleteShader(this.id); }
 	
 	public static String loadFile(String path, boolean absoluteFilePath)

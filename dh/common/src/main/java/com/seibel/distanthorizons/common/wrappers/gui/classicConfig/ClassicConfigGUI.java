@@ -234,8 +234,9 @@ public class ClassicConfigGUI
 				
 				double minX, minY, maxX, maxY;
 				
-				if (gui instanceof GuiButton button)
+				if (gui instanceof GuiButton)
 				{
+					GuiButton button = (GuiButton) gui;
 					if (!button.visible)
 					{
 						continue;
@@ -246,8 +247,9 @@ public class ClassicConfigGUI
 					maxX = minX + button.width;
 					maxY = minY + button.height;
 				}
-				else if (gui instanceof GuiTextField field)
+				else if (gui instanceof GuiTextField)
 				{
+					GuiTextField field = (GuiTextField) gui;	
 					if (!field.getVisible())
 					{
 						continue;
@@ -422,8 +424,10 @@ public class ClassicConfigGUI
 				if (this.button != null)
 				{
 					#if MC_VER <= MC_1_12_2
-					if (this.button instanceof GuiButton guiButton)
+					if (this.button instanceof GuiButton)
 					{
+						GuiButton guiButton = (GuiButton) this.button;
+						
 						SetY(guiButton, y);
 						#if MC_VER <= MC_1_7_10
 						guiButton.drawButton(Minecraft.getMinecraft(), mouseX, mouseY);
@@ -431,8 +435,9 @@ public class ClassicConfigGUI
 						guiButton.drawButton(Minecraft.getMinecraft(), mouseX, mouseY, tickDelta);
 						#endif
 					}
-					if (this.button instanceof GuiTextField guiTextField)
+					if (this.button instanceof GuiTextField)
 					{
+						GuiTextField guiTextField = (GuiTextField) this.button;
 						SetY(guiTextField, y);
 						guiTextField.drawTextBox();
 					}

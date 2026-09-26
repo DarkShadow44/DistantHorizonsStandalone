@@ -599,20 +599,23 @@ public class ClientLevelWrapper implements IClientLevelWrapper
 		// cast to core objects //
 		//region
 		
-		if(!(blockStateWrapper instanceof IBlockStateWrapper coreBlockStateWrapper))
+		if(!(blockStateWrapper instanceof IBlockStateWrapper))
 		{
 			return DhApiResult.createFail("Unable to cast ["+blockStateWrapper.getClass()+"] to ["+IBlockStateWrapper.class+"]");
 		}
+		IBlockStateWrapper coreBlockStateWrapper = (IBlockStateWrapper)blockStateWrapper;
 		
-		if(!(biomeWrapper instanceof IBiomeWrapper coreBiomeWrapper))
+		if(!(biomeWrapper instanceof IBiomeWrapper))
 		{
 			return DhApiResult.createFail("Unable to cast ["+biomeWrapper.getClass()+"] to ["+IBiomeWrapper.class+"]");
 		}
+		IBiomeWrapper coreBiomeWrapper = (IBiomeWrapper) biomeWrapper;
 		
-		if(!(dataSource instanceof FullDataSourceV2 coreDataSource))
+		if(!(dataSource instanceof FullDataSourceV2))
 		{
 			return DhApiResult.createFail("Unable to cast ["+dataSource.getClass()+"] to ["+FullDataSourceV2.class+"]");
 		}
+		FullDataSourceV2 coreDataSource = (FullDataSourceV2) dataSource;
 		
 		//endregion
 		

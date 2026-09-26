@@ -79,10 +79,11 @@ public class ChunkPos
 		{
 			return true;
 		}
-		else if (object instanceof ChunkPos lv)
+		else if (object instanceof ChunkPos)
 		{
-			return this.x == lv.x 
-				&& this.z == lv.z;
+			ChunkPos pos = (ChunkPos)object;
+			return this.x == pos.x 
+				&& this.z == pos.z;
 		}
 		else
 		{

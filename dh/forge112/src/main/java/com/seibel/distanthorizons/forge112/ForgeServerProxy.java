@@ -119,8 +119,9 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
 	@SubscribeEvent
 	public void serverChunkLoadEvent(ChunkEvent.Load event)
 	{
-		if (event.getWorld() instanceof WorldServer worldServer)
+		if (event.getWorld() instanceof WorldServer)
 		{
+			WorldServer worldServer = (WorldServer) event.getWorld();
 			MixinChunkMapCommon.onChunkSave(worldServer, event.getChunk());
 		}
 	}
@@ -128,8 +129,10 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
 	@SubscribeEvent
 	public void serverChunkSaveEvent(ChunkDataEvent.Save event)
 	{
-		if (event.getWorld() instanceof WorldServer worldServer && event.getChunk().dirty)
+		if (event.getWorld() instanceof WorldServer 
+			&& event.getChunk().dirty)
 		{
+			WorldServer worldServer = (WorldServer) event.getWorld();
 			MixinChunkMapCommon.onChunkSave(worldServer, event.getChunk());
 		}
 	}

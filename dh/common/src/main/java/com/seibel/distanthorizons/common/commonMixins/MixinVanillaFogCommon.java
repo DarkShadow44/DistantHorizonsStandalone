@@ -157,9 +157,9 @@ public class MixinVanillaFogCommon
 		boolean cameraNotInFluid = true;
 		#elif MC_VER <= MC_1_12_2
 		Entity view = mc.getRenderViewEntity();
-		if (view == null) 
+		if (view == null)
 		{
-			return true;
+			 return true;
 		}
 		
 		IBlockState fluidState = mc.world.getBlockState(new BlockPos(view.getPositionEyes(mc.getRenderPartialTicks())));

@@ -119,8 +119,9 @@ public class ServerPlayerWrapper implements IServerPlayerWrapper
 	{
 		#if MC_VER <= MC_1_12_2
 		WorldServer level = null;
-		if (this.getServerPlayer() instanceof IMixinServerPlayer mixinPlayer)
+		if (this.getServerPlayer() instanceof IMixinServerPlayer)
 		{
+			IMixinServerPlayer mixinPlayer = (IMixinServerPlayer) this.getServerPlayer();
 			level = mixinPlayer.distantHorizons$getDimensionChangeDestination();
 		}
 		#else

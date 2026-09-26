@@ -23,10 +23,8 @@ import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.nio.LongBuffer;
 import java.nio.ShortBuffer;
-import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CharsetEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.function.LongPredicate;
 
@@ -62,7 +60,9 @@ import org.lwjgl.PointerBuffer;
  * so custom codecs can be used if necessary.
  * </p>
  */
-public final class MemoryUtilities {
+@SuppressWarnings({ "removal" })
+public final class MemoryUtilities // full "utilities" name is to prevent conflicting with LWGJL's MemoryUtil class
+{
 
     /**
      * Returns true if the specified integer {@code value} is a power-of-two number.
@@ -103,6 +103,8 @@ public final class MemoryUtilities {
         return ((value - 0x0001000100010001L) & ~value & 0x8000800080008000L) != 0L;
     }
 
+	
+	
     /** Alias for the null pointer address. */
     public static final long NULL = 0L;
 
@@ -144,7 +146,8 @@ public final class MemoryUtilities {
     private static final long PARENT_FLOAT;
     private static final long PARENT_DOUBLE;
 
-    static {
+    static
+    {
         ByteBuffer bb = ByteBuffer.allocateDirect(0).order(NATIVE_ORDER);
 
         BUFFER_BYTE = bb.getClass();
@@ -157,7 +160,8 @@ public final class MemoryUtilities {
 
         UNSAFE = getUnsafeInstance();
 
-        try {
+        try 
+        {
             MARK = getMarkOffset();
             POSITION = getPositionOffset();
             LIMIT = getLimitOffset();
@@ -172,25 +176,29 @@ public final class MemoryUtilities {
             PARENT_LONG = getFieldOffsetObject(bb.asLongBuffer(), bb);
             PARENT_FLOAT = getFieldOffsetObject(bb.asFloatBuffer(), bb);
             PARENT_DOUBLE = getFieldOffsetObject(bb.asDoubleBuffer(), bb);
-        } catch (Throwable t) {
-            throw new UnsupportedOperationException(t);
+        }
+        catch (Throwable t)
+        {
+	        throw new UnsupportedOperationException(t);
         }
 
         PAGE_SIZE = UNSAFE.pageSize();
         CACHE_LINE_SIZE = 64;
     }
 
+	
+	
     private static final StdlibAllocator ALLOC = new StdlibAllocator();
 
-    private static final class StdlibAllocator implements MemoryAllocator {
+    private static final class StdlibAllocator implements MemoryAllocator 
+    {
 
         @Override
-        public long malloc(long size) {
-            return UNSAFE.allocateMemory(size);
-        }
+        public long malloc(long size) { return UNSAFE.allocateMemory(size); }
 
         @Override
-        public long calloc(long num, long size) {
+        public long calloc(long num, long size) 
+        {
             final long totalSize = Math.multiplyExact(num, size);
             final long addr = UNSAFE.allocateMemory(totalSize);
             UNSAFE.setMemory(addr, totalSize, (byte) 0);
@@ -198,18 +206,16 @@ public final class MemoryUtilities {
         }
 
         @Override
-        public long realloc(long ptr, long size) {
-            return UNSAFE.reallocateMemory(ptr, size);
-        }
+        public long realloc(long ptr, long size) {  return UNSAFE.reallocateMemory(ptr, size); }
 
         @Override
-        public void free(long ptr) {
-            UNSAFE.freeMemory(ptr);
-        }
+        public void free(long ptr) { UNSAFE.freeMemory(ptr); }
     }
 
     private MemoryUtilities() {}
 
+	
+	
     /*
      * ------------------------------------- ------------------------------------- EXPLICIT MEMORY MANAGEMENT API
      * ------------------------------------- -------------------------------------
@@ -219,7 +225,8 @@ public final class MemoryUtilities {
      * The interface implemented by the memory allocator used by the explicit memory management API ({@link #memAlloc},
      * {@link #memFree}, etc).
      */
-    public interface MemoryAllocator {
+    public interface MemoryAllocator
+    {
 
         /** Called by {@link MemoryUtilities#memAlloc}. */
         long malloc(long size);
@@ -268,6 +275,8 @@ public final class MemoryUtilities {
         return ALLOC;
     }
 
+	
+	
     // --- [ memAlloc ] ---
 
     /**
@@ -285,12 +294,14 @@ public final class MemoryUtilities {
      *
      * @throws OutOfMemoryError if the function failed to allocate the requested block of memory
      */
-    public static long nmemAllocChecked(long size) {
-        long address = nmemAlloc(size != 0 ? size : 1L);
-        if (address == NULL) {
-            throw new OutOfMemoryError();
-        }
-        return address;
+    public static long nmemAllocChecked(long size)
+    {
+	    long address = nmemAlloc(size != 0 ? size : 1L);
+	    if (address == NULL)
+	    {
+		    throw new OutOfMemoryError();
+	    }
+	    return address;
     }
 
     private static long getAllocationSize(int elements, int elementShift) {
@@ -392,61 +403,79 @@ public final class MemoryUtilities {
      *            functions, it causes undefined behavior. If {@code ptr} is a {@link #NULL} pointer, the function does
      *            nothing.
      */
-    public static void memFree(@Nullable Buffer ptr) {
-        if (ptr != null) {
-            nmemFree(UNSAFE.getLong(ptr, ADDRESS));
-        }
+    public static void memFree(@Nullable Buffer ptr)
+    {
+	    if (ptr != null)
+	    {
+		    nmemFree(UNSAFE.getLong(ptr, ADDRESS));
+	    }
     }
 
     /** {@code ByteBuffer} version of {@link #memFree(Buffer)}. */
-    public static void memFree(@Nullable ByteBuffer ptr) {
-        if (ptr != null) {
-            nmemFree(UNSAFE.getLong(ptr, ADDRESS));
-        }
+    public static void memFree(@Nullable ByteBuffer ptr)
+    {
+	    if (ptr != null)
+	    {
+		    nmemFree(UNSAFE.getLong(ptr, ADDRESS));
+	    }
     }
 
     /** {@code ShortBuffer} version of {@link #memFree(Buffer)}. */
-    public static void memFree(@Nullable ShortBuffer ptr) {
-        if (ptr != null) {
-            nmemFree(UNSAFE.getLong(ptr, ADDRESS));
-        }
+    public static void memFree(@Nullable ShortBuffer ptr)
+    {
+	    if (ptr != null)
+	    {
+		    nmemFree(UNSAFE.getLong(ptr, ADDRESS));
+	    }
     }
 
     /** {@code CharBuffer} version of {@link #memFree(Buffer)}. */
-    public static void memFree(@Nullable CharBuffer ptr) {
-        if (ptr != null) {
-            nmemFree(UNSAFE.getLong(ptr, ADDRESS));
-        }
+    public static void memFree(@Nullable CharBuffer ptr)
+    {
+	    if (ptr != null)
+	    {
+		    nmemFree(UNSAFE.getLong(ptr, ADDRESS));
+	    }
     }
 
     /** {@code IntBuffer} version of {@link #memFree(Buffer)}. */
-    public static void memFree(@Nullable IntBuffer ptr) {
-        if (ptr != null) {
-            nmemFree(UNSAFE.getLong(ptr, ADDRESS));
-        }
+    public static void memFree(@Nullable IntBuffer ptr)
+    {
+	    if (ptr != null)
+	    {
+		    nmemFree(UNSAFE.getLong(ptr, ADDRESS));
+	    }
     }
 
     /** {@code LongBuffer} version of {@link #memFree(Buffer)}. */
-    public static void memFree(@Nullable LongBuffer ptr) {
-        if (ptr != null) {
-            nmemFree(UNSAFE.getLong(ptr, ADDRESS));
-        }
+    public static void memFree(@Nullable LongBuffer ptr)
+    {
+	    if (ptr != null)
+	    {
+		    nmemFree(UNSAFE.getLong(ptr, ADDRESS));
+	    }
     }
 
     /** {@code FloatBuffer} version of {@link #memFree(Buffer)}. */
-    public static void memFree(@Nullable FloatBuffer ptr) {
-        if (ptr != null) {
-            nmemFree(UNSAFE.getLong(ptr, ADDRESS));
-        }
+    public static void memFree(@Nullable FloatBuffer ptr)
+    {
+	    if (ptr != null)
+	    {
+		    nmemFree(UNSAFE.getLong(ptr, ADDRESS));
+	    }
     }
 
     /** {@code DoubleBuffer} version of {@link #memFree(Buffer)}. */
-    public static void memFree(@Nullable DoubleBuffer ptr) {
-        if (ptr != null) {
-            nmemFree(UNSAFE.getLong(ptr, ADDRESS));
-        }
+    public static void memFree(@Nullable DoubleBuffer ptr)
+    {
+	    if (ptr != null)
+	    {
+		    nmemFree(UNSAFE.getLong(ptr, ADDRESS));
+	    }
     }
 
+	
+	
     // --- [ memCalloc ] ---
 
     /**
