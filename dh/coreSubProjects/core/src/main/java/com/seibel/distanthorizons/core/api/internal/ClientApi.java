@@ -21,7 +21,6 @@ package com.seibel.distanthorizons.core.api.internal;
 
 import com.seibel.distanthorizons.api.DhApi;
 import com.seibel.distanthorizons.api.enums.config.EDhApiMcRenderingFadeMode;
-import com.seibel.distanthorizons.api.enums.config.EDhApiRenderingEngine;
 import com.seibel.distanthorizons.api.enums.rendering.EDhApiRenderPass;
 import com.seibel.distanthorizons.api.methods.events.abstractEvents.*;
 import com.seibel.distanthorizons.core.api.internal.rendering.DhRenderState;
@@ -245,7 +244,7 @@ public class ClientApi
 	//==============//
 	// level events //
 	//==============//
-	//region
+	//region level events
 	
 	public void loadWaitingChunksForLevel(IClientLevelWrapper level)
 	{
@@ -960,7 +959,7 @@ public class ClientApi
 	 * 
 	 * This is good for logging or alerts.
 	 */
-	public void queueFastChatMessage(String chatMessage) { this.slowChatMessageQueue.add(chatMessage); }
+	public void queueFastChatMessage(String chatMessage) { this.fastChatMessageQueue.add(chatMessage); }
 	
 	/**
 	 * Similar to {@link ClientApi#queueSlowChatMessage(String)} but appears above the toolbar.

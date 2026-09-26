@@ -39,7 +39,7 @@ project.gradle.ext.getProperties().each { prop ->
 
 project.ext.lwjgl2Version = rootProject.hasProperty("lwjgl2_version") ? rootProject.lwjgl2_version : "2.9.3"
 project.ext.lwjgl3Version = rootProject.hasProperty("lwjgl3_version") ? rootProject.lwjgl3_version : "3.3.1"
-project.ext.needsDowngrade = (rootProject.java_version as Integer) < 17
+project.ext.needsDowngrade = (rootProject.minecraft_version == "1.12.2") // 1.12's Iris stand-in needs JDK 17, so we need to downgrade it with the JVMDowngrader
 manifold {
     version = rootProject.manifold_version
 }
@@ -95,11 +95,31 @@ repositories {
 // ==================== Java Config ====================
 
 tasks.withType(JavaCompile).configureEach {
-    options.release = 17 // LWJGL Service needs java 17, we will downgrade it with JVMDowngrader
+    
+    if (project.ext.needsDowngrade)
+    {
+        // 1.12's Iris stand-in needs JDK 17, so we need to downgrade it with the JVMDowngrader
+        options.release = 17
+    }
+    else
+    {
+        // Used instead of "release" so we can have the LWJGL libs access "sun.misc.Unsafe"
+        // and to prevent ByteBuffer NoSuchMethod errors.
+        // ByteBuffer issue reason: https://www.morling.dev/blog/bytebuffer-and-the-dreaded-nosuchmethoderror/
+        javaCompiler = javaToolchains.compilerFor {
+            languageVersion = JavaLanguageVersion.of(rootProject.java_version as Integer)
+        }
+    }
+    
     options.encoding = "UTF-8"
+    
+    // silence the "java 8 is deprecated" javac compiler warnings
+    options.compilerArgs << '-Xlint:-options'
 }
 
 java {
+    sourceCompatibility = rootProject.java_version as Integer
+    targetCompatibility = rootProject.java_version as Integer
     withSourcesJar()
 }
 
@@ -196,9 +216,12 @@ unimined.minecraft(sourceSets.main, true) {
                 mojmap()
                 devNamespace "mojmap"
             }
+            
         }
     }
 }
+
+boolean isLegacyLwjgl = ["1.7.10", "1.12.2"].contains(gradle.ext.minecraft_version)
 
 if (isNotCommonProject) {
     // Mixin remapping and common project wiring
@@ -214,19 +237,18 @@ if (isNotCommonProject) {
         }
     }
 
-    def lwjglVariant = ["1.7.10", "1.12.2"].contains(gradle.ext.minecraft_version) ? "lwjgl2" : "lwjgl3"
+    String lwjglVersion = isLegacyLwjgl ? "lwjgl2" : "lwjgl3"
 
     tasks.withType(JavaCompile).configureEach {
         source(project(":common").sourceSets.main.allSource)
         source(project(":common").sourceSets.lwjglCommon.allSource)
-        source(project(":common").sourceSets."${lwjglVariant}".allSource)
+        source(project(":common").sourceSets."${lwjglVersion}".allSource)
     }
     
     dependencies {
         implementation(project(":common"))
     }
 
-    def isLegacyLwjgl = ["1.7.10", "1.12.2"].contains(gradle.ext.minecraft_version)
     if (isLegacyLwjgl) {
         def lwjgl3Classes = files(project(":common").sourceSets.lwjgl3.output.classesDirs)
         lwjgl3Classes.builtBy(project(":common").tasks.named("compileLwjgl3Java"))
@@ -245,7 +267,7 @@ if (isNotCommonProject) {
     }
 } else {
     unimined.minecraft {
-        if (["1.7.10", "1.12.2"].contains(gradle.ext.minecraft_version)) {
+        if (isLegacyLwjgl) {
             minecraftForge {
                 loader gradle.ext.forge_version
                 accessTransformer project.file("src/main/resources/${gradle.ext.accessWidenerVersion}.distanthorizons_at.cfg")
@@ -300,6 +322,7 @@ if (!isNotCommonProject) {
         dependsOn(generateAbstractionLayer)
     }
 
+	// remove manifold compiling for LWJGL
     tasks.matching { it.name in ["compileLwjglCommonJava", "compileLwjgl2Java", "compileLwjgl3Java"] }.configureEach {
         doFirst {
             options.compilerArgs.removeAll { it.toString().contains('-Xplugin:Manifold') }
@@ -498,7 +521,7 @@ if (isNotCommonProject) {
 
         mergeServiceFiles()
     }
-
+    
     afterEvaluate {
         tasks.named("remapJar").configure {
             dependsOn(shadowJar)
@@ -518,7 +541,9 @@ if (isNotCommonProject) {
             )
 
             dependsOn(shadowJar)
-            if (!needsDowngrade) {
+            if (project.name != "forge112"
+                && project.name != "forge17") 
+            {
                 classpath = files(shadowJar.archiveFile) + classpath.filter { file ->
                     file != shadowJar.archiveFile.get().asFile &&
                         !file.path.contains(project.buildDir.path) &&
@@ -528,7 +553,8 @@ if (isNotCommonProject) {
                         !(shadowedPaths.contains(file.path) && !loaderPaths.contains(file.path))
                 }
             } else {
-                dependsOn(tasks.named("shadeDowngradedApi"))
+				// For 1.7/1.12, don't put shadow jar on app classpath.
+                // crl.dev.extrapath loads it via LaunchClassLoader instead.
                 classpath = classpath.filter { file ->
                     !file.path.contains(project.buildDir.path) &&
                         !file.path.contains("core${File.separator}build") &&
@@ -538,12 +564,17 @@ if (isNotCommonProject) {
                 }
             }
 
+            if (project.ext.needsDowngrade)
+            {
+                dependsOn(tasks.named("shadeDowngradedApi"))
+            }
+            
+            
             // Shared run directory so all loaders use the same worlds
             boolean isClient = runTask.name.toLowerCase().contains("client")
             runTask.workingDir = rootProject.file("run/${isClient ? 'client' : 'server'}")
 
             boolean useZgc = (gradle.ext.java_version as Integer) >= 21;
-            boolean useZGenerational = (gradle.ext.java_version as Integer) >= 21 && (gradle.ext.java_version as Integer) <= 22;
             
             if (useZgc) 
             {
@@ -560,7 +591,8 @@ if (isNotCommonProject) {
             if (project.name == "forge"
                 || project.name == "neoforge"
                 || project.name == "forge112"
-                || project.name == "forge17") {
+                || project.name == "forge17") 
+            {
                 // fix (Neo)forge, debug running
                 doFirst {
                     def modsDir = rootProject.file("run/${isClient ? 'client' : 'server'}/mods")
@@ -575,7 +607,7 @@ if (isNotCommonProject) {
                     });
 
 
-                    def jarSource = needsDowngrade ? tasks.named("shadeDowngradedApi").get().archiveFile : shadowJar.archiveFile
+                    def jarSource = project.ext.needsDowngrade ? tasks.named("shadeDowngradedApi").get().archiveFile : shadowJar.archiveFile
 
                     // Copy shadow jar into mods folder so (Neo)Forge discovers it properly
                     copy {
@@ -603,13 +635,6 @@ if (isNotCommonProject) {
                 )
             }
             
-            if (useZGenerational)
-            {
-                runTask.jvmArgs(
-                    "-XX:+ZGenerational"
-                )    
-            }
-
             if (isClient) {
                 runTask.jvmArgs(
                     "-Dminecraft.api.auth.host=https://nope.invalid",
@@ -780,7 +805,7 @@ if (isNotCommonProject) {
     downgradeJar.archiveClassifier.set(null)
     shadeDowngradedApi.archiveClassifier.set(null)
 
-    if (needsDowngrade) {
+    if (project.ext.needsDowngrade) {
         gradle.taskGraph.whenReady { graph ->
             if (graph.hasTask("${project.path}:runClient")) {
                 downgradeJar.inputFile.set(shadowJar.archiveFile)

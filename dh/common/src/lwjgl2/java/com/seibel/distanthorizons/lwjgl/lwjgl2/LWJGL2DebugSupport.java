@@ -16,9 +16,10 @@ final class LWJGL2DebugSupport
     private KHRDebugCallback debugCallbackKHR;
     private ARBDebugOutputCallback debugCallbackARB;
     private AMDDebugOutputCallback debugCallbackAMD;
-
 	
 	
+	// TODO replace return type with an enum, 0 as an error code is not standard behavior
+	/** @return 0=unsupported, 1=success, 2=restart needed */
     int setupDebugCallback(IDebugMessageHandler handler) 
     {
         ContextCapabilities caps = GLContext.getCapabilities();
@@ -29,7 +30,8 @@ final class LWJGL2DebugSupport
             this.debugCallbackKHR = new KHRDebugCallback(new KHRDebugCallback.Handler() 
             {
                 @Override
-                public void handleMessage(int source, int type, int id, int severity, String message) {
+                public void handleMessage(int source, int type, int id, int severity, String message) 
+                {
                     handler.handle(source, type, id, severity, message, EDebugExtension.GL43);
                 }
             });
@@ -45,8 +47,8 @@ final class LWJGL2DebugSupport
                 GL11.glEnable(KHRDebug.GL_DEBUG_OUTPUT);
                 return 2;
             }
+			
             return 1;
-
         } 
 		else if (caps.GL_KHR_debug) 
 		{
@@ -72,8 +74,8 @@ final class LWJGL2DebugSupport
                 GL11.glEnable(KHRDebug.GL_DEBUG_OUTPUT);
                 return 2;
             }
+			
             return 1;
-
         } 
 		else if (caps.GL_ARB_debug_output) 
 		{
@@ -90,8 +92,8 @@ final class LWJGL2DebugSupport
             ARBDebugOutput.glDebugMessageControlARB(GL11.GL_DONT_CARE, GL11.GL_DONT_CARE, ARBDebugOutput.GL_DEBUG_SEVERITY_MEDIUM_ARB, null, false);
             ARBDebugOutput.glDebugMessageControlARB(GL11.GL_DONT_CARE, GL11.GL_DONT_CARE, ARBDebugOutput.GL_DEBUG_SEVERITY_LOW_ARB, null, false);
             ARBDebugOutput.glDebugMessageCallbackARB(this.debugCallbackARB);
+			
             return 1;
-
         } 
 		else if (caps.GL_AMD_debug_output) 
 		{
@@ -109,8 +111,8 @@ final class LWJGL2DebugSupport
             AMDDebugOutput.glDebugMessageEnableAMD(0, AMDDebugOutput.GL_DEBUG_SEVERITY_MEDIUM_AMD, null, false);
             AMDDebugOutput.glDebugMessageEnableAMD(0, AMDDebugOutput.GL_DEBUG_SEVERITY_LOW_AMD, null, false);
             AMDDebugOutput.glDebugMessageCallbackAMD(this.debugCallbackAMD);
+			
             return 1;
-
         } 
 		else 
 		{

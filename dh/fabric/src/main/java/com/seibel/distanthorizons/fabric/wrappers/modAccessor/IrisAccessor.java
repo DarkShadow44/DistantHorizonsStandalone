@@ -24,11 +24,7 @@ package com.seibel.distanthorizons.fabric.wrappers.modAccessor;
 
 import com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor.IIrisAccessor;
 
-#if MC_VER <= MC_1_20_4
-import net.coderbot.iris.Iris;
-#else
 import net.irisshaders.iris.Iris;
-#endif
 import net.irisshaders.iris.api.v0.IrisApi;
 
 public class IrisAccessor implements IIrisAccessor

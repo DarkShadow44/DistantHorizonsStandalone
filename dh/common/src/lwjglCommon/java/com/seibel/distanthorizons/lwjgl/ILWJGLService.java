@@ -9,15 +9,21 @@ import java.nio.IntBuffer;
 /**
  * LWJGL2/LWJGL3 abstraction.
  */
-public interface ILWJGLService {
-	
+public interface ILWJGLService 
+{
 	// ===================== CAPABILITIES =====================
+	//region
 	
 	boolean isOpenGLVersionSupported(int major, int minor);
 	boolean isExtensionSupported(EGLExtension extension);
 	int getPointerSize();
 	
+	//endregion
+	
+	
+	
 	// ===================== BUFFER OPERATIONS =====================
+	//region
 	
 	int glGenBuffers();
 	void glDeleteBuffers(int buffer);
@@ -39,7 +45,12 @@ public interface ILWJGLService {
 	void glBindBufferBase(int target, int index, int buffer);
 	void glBindVertexBuffer(int bindingindex, int buffer, int offset, int stride);
 	
+	//endregion
+	
+	
+	
 	// ===================== VAO OPERATIONS =====================
+	//region
 	
 	int glGenVertexArrays();
 	void glDeleteVertexArrays(int array);
@@ -53,7 +64,12 @@ public interface ILWJGLService {
 	void glVertexAttribIFormat(int attribindex, int size, int type, int relativeoffset);
 	void glVertexAttribBinding(int attribindex, int bindingindex);
 	
+	//endregion
+	
+	
+	
 	// ===================== SHADER OPERATIONS =====================
+	//region
 	
 	int glCreateShader(int type);
 	void glShaderSource(int shader, CharSequence source);
@@ -85,7 +101,12 @@ public interface ILWJGLService {
 	void glBindAttribLocation(int program, int index, CharSequence name);
 	void glBindFragDataLocation(int program, int colorNumber, CharSequence name);
 	
+	//endregion
+	
+	
+	
 	// ===================== UNIFORM OPERATIONS =====================
+	//region
 	
 	int glGetUniformLocation(int program, CharSequence name);
 	int glGetUniformBlockIndex(int program, CharSequence name);
@@ -105,7 +126,12 @@ public interface ILWJGLService {
 	void glUniformMatrix3fv(int location, boolean transpose, FloatBuffer value);
 	void glUniformMatrix4fv(int location, boolean transpose, FloatBuffer value);
 	
+	//endregion
+	
+	
+	
 	// ===================== DRAW OPERATIONS =====================
+	//region
 	
 	void glDrawArrays(int mode, int first, int count);
 	void glDrawElements(int mode, int count, int type, int indices);
@@ -114,7 +140,12 @@ public interface ILWJGLService {
 	void glMultiDrawElementsBaseVertex(int mode, long pCount, int type, long pIndices, int drawcount, long pBaseVertex);
 	void glMultiDrawElementsIndirect(int mode, int type, long indirect, int drawcount, int stride);
 	
+	//endregion
+	
+	
+	
 	// ===================== SYNC OPERATIONS =====================
+	//region
 	
 	long glFenceSync(int condition, int flags);
 	int glClientWaitSync(long sync, int flags, long timeout);
@@ -123,23 +154,39 @@ public interface ILWJGLService {
 	void glDeleteSync(long sync);
 	void glFlush();
 	
+	//endregion
+	
+	
+	
 	// ===================== QUERY OPERATIONS =====================
+	//region
 	
 	int glGenQueries();
 	void glDeleteQueries(int query);
 	void glQueryCounter(int id, int target);
 	long glGetQueryObjectui64(int id, int pname);
 	
+	//endregion
+	
+	
+	
 	// ===================== DEBUG OPERATIONS =====================
+	//region
 	
 	default PrintStream getDebugStream() { return System.err; }
-	int setupDebugCallback(IDebugMessageHandler handler); // returns 0=unsupported, 1=success, 2=restart needed
+	/** @return 0=unsupported, 1=success, 2=restart needed */
+	int setupDebugCallback(IDebugMessageHandler handler); // TODO replace return type with an enum, 0 as an error code is not standard behavior
 	void disableDebugCallback();
 	void glObjectLabel(int identifier, int name, CharSequence label);
 	void glPushDebugGroup(int source, int id, CharSequence message);
 	void glPopDebugGroup();
 	
+	//endregion
+	
+	
+	
 	// ===================== TEXTURE OPERATIONS =====================
+	//region
 	
 	int glGenTextures();
 	void glGenTextures(int[] textures);
@@ -157,7 +204,12 @@ public interface ILWJGLService {
 	boolean glIsTexture(int texture);
 	void glBindSampler(int unit, int sampler);
 	
+	//endregion
+	
+	
+	
 	// ===================== FRAMEBUFFER OPERATIONS =====================
+	//region
 	
 	int glGenFramebuffers();
 	void glDeleteFramebuffers(int framebuffer);
@@ -167,7 +219,12 @@ public interface ILWJGLService {
 	void glFramebufferTexture(int target, int attachment, int texture, int level);
 	int glGetFramebufferAttachmentParameteri(int target, int attachment, int pname);
 	
+	//endregion
+	
+	
+	
 	// ===================== STATE OPERATIONS =====================
+	//region
 	
 	void glEnable(int cap);
 	void glDisable(int cap);
@@ -189,16 +246,31 @@ public interface ILWJGLService {
 	int glGetError();
 	void glColor4f(float v, float v1, float v2, float v3);
 	
+	//endregion
+	
+	
+	
 	// ===================== COMPATIBILITY PROFILE =====================
+	//region
 	
 	void glMatrixMode(int mode);
 	void glLoadMatrixf(FloatBuffer m);
 	
+	//endregion
+	
+	
+	
 	// ===================== Fog =========================
+	//region
 	
 	void glFogf(int	pname, float params);
 	
+	//endregion
+	
+	
+	
 	// ===================== MISC GL =====================
+	//region
 	
 	int glGetInteger(int pname);
 	void glGetIntegerv(int pname, int[] params);
@@ -207,11 +279,21 @@ public interface ILWJGLService {
 	String glGetString(int pname);
 	int glGetAttribLocation(int program, CharSequence name);
 	
+	//endregion
+	
+	
+	
 	// ===================== MEMORY STACK =====================
+	//region
 	
 	AbstractMemoryStack stackPush();
 	
+	//endregion
+	
+	
+	
 	// ===================== NATIVE MEMORY =====================
+	//region
 	
 	long nmemAlloc(long size);
 	long nmemCalloc(long count, long size);
@@ -250,8 +332,16 @@ public interface ILWJGLService {
 	long memGetAddress(long address);
 	ByteBuffer memSlice(ByteBuffer buffer, int offset, int capacity);
 	
+	//endregion
+	
+	
+	
 	// ===================== UTIL =====================
+	//region
 	
 	boolean isRunningOnRenderThread();
+	
+	//endregion
+	
 	
 }

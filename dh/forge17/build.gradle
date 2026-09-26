@@ -40,23 +40,6 @@ dependencies {
     modCompileOnly "com.falsepattern:rple-mc1.7.10:2.1.0:api"
     
     modImplementation "io.github.legacymoddingmc:unimixins:0.2.1@jar"
-/*
-    modImplementation("com.github.GTNewHorizons:lwjgl3ify:2.1.5") {
-        exclude group: "io.github.legacymoddingmc", module: "unimixins"
-    }
-    modImplementation("com.github.GTNewHorizons:lwjgl3ify:2.1.5:forgePatches") {
-        exclude group: "io.github.legacymoddingmc", module: "unimixins"
-    }
-    def lwjglVersion = "3.3.3"
-    implementation "org.lwjgl:lwjgl:${lwjglVersion}"
-    implementation "org.lwjgl:lwjgl-opengl:${lwjglVersion}"
-    implementation "org.lwjgl:lwjgl-glfw:${lwjglVersion}"
-    implementation "org.lwjgl:lwjgl-stb:${lwjglVersion}"
-    implementation "org.lwjgl:lwjgl:${lwjglVersion}:natives-windows"
-    implementation "org.lwjgl:lwjgl-opengl:${lwjglVersion}:natives-windows"
-    implementation "org.lwjgl:lwjgl-glfw:${lwjglVersion}:natives-windows"
-    implementation "org.lwjgl:lwjgl-stb:${lwjglVersion}:natives-windows"
-*/
 
 }
 

@@ -166,8 +166,9 @@ public class ForgeClientProxy implements AbstractModInitializer.IEventProxy
 	{
 		if (MC.clientConnectedToDedicatedServer())
 		{
-			if (event.getWorld() instanceof WorldServer worldServer)
+			if (event.getWorld() instanceof WorldServer)
 			{
+				WorldServer worldServer = (WorldServer) event.getWorld();
 				MixinChunkMapCommon.onChunkSave(worldServer, event.getChunk());
 			}
 		}

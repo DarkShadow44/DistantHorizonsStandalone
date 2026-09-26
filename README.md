@@ -87,7 +87,7 @@ One commit touches exactly one area — the wrapper, `dh/` (excluding core), or
 Always sync DH first:
 
 ```bash
-git subtree pull --prefix=dh dh <branch>
+git subtree pull --squash --prefix=dh dh <branch>
 ```
 
 A DH update may also require a core update. A core update is never standalone: DH pins the
@@ -101,8 +101,10 @@ git ls-files -u -- 'dh/coreSubProjects*' | awk '$3 == 3 { print $2 }' # note the
 git update-index --force-remove dh/coreSubProjects~*                  # drop their gitlink
 rmdir dh/coreSubProjects~*                                            # remove the empty conflict directory
 git commit
-git subtree pull --prefix=dh/coreSubProjects dh-core <core sha>
+git subtree pull --squash --prefix=dh/coreSubProjects dh-core <core sha>
 ```
+
+Never merge with githubs squash feature when you updated from upstream, this breaks the subtree merge!
 
 ## Licensing
 

@@ -9,6 +9,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Supplier;
 
+// TODO move to core
+//  Although only currently called in MC 1.7.10.
+//  Maybe move into Forge17 instead?
 /**
  * Queues work that must run on the Minecraft server thread. The platform's
  * server-tick callback is responsible for calling {@link #onTickStart()} at the

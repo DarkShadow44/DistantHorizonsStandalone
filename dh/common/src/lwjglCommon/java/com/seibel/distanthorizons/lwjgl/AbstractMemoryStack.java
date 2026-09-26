@@ -15,12 +15,13 @@ import java.nio.ShortBuffer;
  * } // automatically freed here
  * }</pre>
  */
-public abstract class AbstractMemoryStack implements AutoCloseable {
+public abstract class AbstractMemoryStack implements AutoCloseable 
+{
 
-    public static AbstractMemoryStack stackPush() {
-        return LWJGLServiceProvider.LWJGL.stackPush();
-    }
+    public static AbstractMemoryStack stackPush() { return LWJGLServiceProvider.LWJGL.stackPush();  }
 
+	
+	
     @Override
     public abstract void close();
 
@@ -29,51 +30,78 @@ public abstract class AbstractMemoryStack implements AutoCloseable {
     public abstract long getAddress();
     public abstract int getSize();
 
+	
+	
     // ===================== MALLOC OPERATIONS =====================
+	//region
 
     public abstract ByteBuffer malloc(int size);
     public abstract ShortBuffer mallocShort(int count);
     public abstract IntBuffer mallocInt(int count);
     public abstract LongBuffer mallocLong(int count);
     public abstract FloatBuffer mallocFloat(int count);
-
+	
+	//endregion
+	
+	
+	
     // ===================== CALLOC OPERATIONS =====================
-
+	//region
+	
     public abstract ByteBuffer calloc(int size);
     public abstract ShortBuffer callocShort(int count);
     public abstract IntBuffer callocInt(int count);
     public abstract LongBuffer callocLong(int count);
     public abstract FloatBuffer callocFloat(int count);
-
+	
+	//endregion
+	
+	
+	
     // ===================== PRIMITIVE ALLOCATIONS =====================
-
-    public IntBuffer ints(int value) {
+	//region
+	
+    public IntBuffer ints(int value) 
+    {
         IntBuffer buf = mallocInt(1);
         buf.put(0, value);
         return buf;
     }
 
-    public IntBuffer ints(int... values) {
+    public IntBuffer ints(int... values) 
+    {
         IntBuffer buf = mallocInt(values.length);
         buf.put(values).flip();
         return buf;
     }
 
-    public FloatBuffer floats(float value) {
+    public FloatBuffer floats(float value) 
+    {
         FloatBuffer buf = mallocFloat(1);
         buf.put(0, value);
         return buf;
     }
 
-    public FloatBuffer floats(float... values) {
+    public FloatBuffer floats(float... values) 
+    {
         FloatBuffer buf = mallocFloat(values.length);
         buf.put(values).flip();
         return buf;
     }
-
+	
+	//endregion
+	
+	
+	
     // ===================== POINTER OPERATIONS =====================
-
+	//region
+	
     public abstract long nmalloc(int size);
     public abstract long nmalloc(int alignment, int size);
     public abstract long ncalloc(int alignment, int count, int size);
+	
+	//endregion
+	
+	
+	
 }

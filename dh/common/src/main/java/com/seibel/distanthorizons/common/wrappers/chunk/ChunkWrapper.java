@@ -175,6 +175,7 @@ public class ChunkWrapper implements IChunkWrapper
 	#endif
 	
 	
+	
 	// copiers //
 	//region
 	
@@ -744,7 +745,7 @@ public class ChunkWrapper implements IChunkWrapper
 		{
 			this.blockLightPosList = new ArrayList<>();
 			
-			//1.12.2 and older doesn't store lights we must bruteforce it
+			// 1.12.2 and older doesn't store light blocks, so we have to bruteforce it
 			#if MC_VER <= MC_1_12_2
 			for (ExtendedBlockStorage section : this.chunk.getBlockStorageArray())
 			{
