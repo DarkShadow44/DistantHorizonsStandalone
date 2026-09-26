@@ -26,6 +26,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.Closeable;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class ClientNetworkState implements Closeable
 {
@@ -46,6 +47,7 @@ public class ClientNetworkState implements Closeable
 	
 	
 	private final NetworkSession networkSession = new NetworkSession(null);
+	private final CopyOnWriteArrayList<Runnable> sessionConfigListeners = new CopyOnWriteArrayList<>();
 	/**
 	 * Returns the client used by this instance. <p>
 	 * If you need to subscribe to any packet events, create an instance of {@link ScopedNetworkEventSource} using the returned instance.
@@ -53,10 +55,16 @@ public class ClientNetworkState implements Closeable
 	public NetworkSession getSession() { return this.networkSession; }
 	
 	@NotNull
-	public SessionConfig sessionConfig = new SessionConfig();
+	public volatile SessionConfig sessionConfig = new SessionConfig();
 	
 	private volatile boolean configReceived = false;
 	public boolean isReady() { return this.configReceived; }
+
+	public Closeable addSessionConfigListener(Runnable listener)
+	{
+		this.sessionConfigListeners.add(listener);
+		return () -> this.sessionConfigListeners.remove(listener);
+	}
 	
 	private EServerSupportStatus serverSupportStatus = EServerSupportStatus.NONE;
 	
@@ -145,13 +153,29 @@ public class ClientNetworkState implements Closeable
 		{
 			this.networkSession.registerHandler(SessionConfigMessage.class, message ->
 			{
-				this.serverSupportStatus = EServerSupportStatus.FULL;
-				
-				String configChanges = this.sessionConfig.getDifferencesAsString(message.config);
+				String configChanges = this.sessionConfig.getDifferencesAsString(message.config, this.serverSupportStatus != EServerSupportStatus.FULL);
 				CONFIG_CHANGE_LOGGER.info("Connection config has been changed: [" + configChanges + "].");
+				boolean generatorPlanChanged = this.sessionConfig.getGeneratorPlan() != message.config.getGeneratorPlan();
+				
+				this.serverSupportStatus = EServerSupportStatus.FULL;
 				
 				this.sessionConfig = message.config;
 				this.configReceived = true;
+
+				if (generatorPlanChanged)
+				{
+					for (Runnable listener : this.sessionConfigListeners)
+					{
+						try
+						{
+							listener.run();
+						}
+						catch (Exception e)
+						{
+							LOGGER.error("Unexpected session config listener error: " + e.getMessage(), e);
+						}
+					}
+				}
 			});
 			
 			this.networkSession.registerHandler(FullDataSplitMessage.class, this.fullDataPayloadReceiver::receiveChunk);
@@ -218,6 +242,7 @@ public class ClientNetworkState implements Closeable
 	@Override
 	public void close()
 	{
+		this.sessionConfigListeners.clear();
 		this.fullDataPayloadReceiver.close();
 		this.adaptiveTransferSpeedListener.close();
 		this.configAnyChangeListener.close();

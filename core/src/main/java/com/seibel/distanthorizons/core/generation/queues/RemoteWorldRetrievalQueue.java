@@ -24,7 +24,7 @@ public class RemoteWorldRetrievalQueue extends AbstractFullDataNetworkRequestQue
 	
 	private long estimatedTotalChunkCount;
 	
-	private boolean retrievingLowDetailLods;
+	private boolean canRegenerate = false;
 	
 	private final RollingAverage rollingAverageChunkGenTimeInMs = new RollingAverage(1_000);
 	@Override public RollingAverage getRollingAverageChunkGenTimeInMs() { return this.rollingAverageChunkGenTimeInMs; }
@@ -81,10 +81,10 @@ public class RemoteWorldRetrievalQueue extends AbstractFullDataNetworkRequestQue
 	}
 	
 	@Override
-	public boolean getRetrievingLowDetailLods() { return this.retrievingLowDetailLods; }
+	public boolean getCanRegenerate() { return this.canRegenerate; }
 	@Override
-	public void setRetrievingLowDetailLods(boolean retrievingLowDetailLods)
-	{ this.retrievingLowDetailLods = retrievingLowDetailLods; }
+	public void setCanRegenerate(boolean canRegen)
+	{ this.canRegenerate = canRegen; }
 	
 	@Override
 	public CompletableFuture<Void> startClosingAsync(boolean cancelCurrentGeneration, boolean alsoInterruptRunning)
@@ -116,20 +116,6 @@ public class RemoteWorldRetrievalQueue extends AbstractFullDataNetworkRequestQue
 		
 		return DhSectionPos.getChebyshevSignedBlockDistance(sectionPos, targetPos) <= this.networkState.sessionConfig.getMaxGenerationRequestDistance() * 16;
 	}
-	@Override
-	protected boolean onBeforeRequest(long sectionPos, CompletableFuture<DataSourceRetrievalResult> future)
-	{
-		// split up large requests if N-sized gen isn't enabled
-		if (!Config.Server.enableNSizedGeneration.get()
-			&& DhSectionPos.getDetailLevel(sectionPos) > DhSectionPos.SECTION_MINIMUM_DETAIL_LEVEL)
-		{
-			future.complete(DataSourceRetrievalResult.CreateSplit());
-			return false;
-		}
-		
-		return true;
-	}
-	
 	@Override
 	protected String getQueueName() { return "World Remote Generation Queue"; }
 	

@@ -102,8 +102,8 @@ public interface IFullDataSourceRetrievalQueue extends Closeable
 	 * Used to make sure the low-quality LODs
 	 * are generated first (if requested).
 	 */
-	boolean getRetrievingLowDetailLods();
-	void setRetrievingLowDetailLods(boolean retrievingLowDetailLods);
+	boolean getCanRegenerate();
+	void setCanRegenerate(boolean retrievingLowDetailLods);
 	
 	/** 
 	 * Generally the retrieval queue should be fairly small, so its faster to iterate over the existing list

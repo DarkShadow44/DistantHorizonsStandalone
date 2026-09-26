@@ -19,6 +19,8 @@
 
 package com.seibel.distanthorizons.core.render;
 
+import com.seibel.distanthorizons.api.enums.config.EDhApiDepthDirection;
+import com.seibel.distanthorizons.api.enums.config.EDhApiDepthRange;
 import com.seibel.distanthorizons.api.enums.config.EDhApiRenderingApi;
 import com.seibel.distanthorizons.api.enums.config.EDhApiRenderingEngine;
 import com.seibel.distanthorizons.api.interfaces.render.IDhApiBlazeTextureWrapper;
@@ -135,6 +137,31 @@ public class DhApiRenderProxy implements IDhApiRenderProxy
 		}
 		
 		return apiDef.isNativeRenderer();
+	}
+	
+	@Override
+	public EDhApiDepthRange getDepthRange() throws IllegalStateException
+	{
+		AbstractDhRenderApiDefinition apiDef = tryGetApiDef();
+		if (apiDef == null)
+		{
+			// The rendering API hasn't been set up yet
+			throw new IllegalStateException("Distant Horizons hasn't finished setup yet. No renderer has been set.");
+		}
+		
+		return apiDef.getDepthRange();
+	}
+	@Override
+	public EDhApiDepthDirection getDepthDirection() throws IllegalStateException
+	{
+		AbstractDhRenderApiDefinition apiDef = tryGetApiDef();
+		if (apiDef == null)
+		{
+			// The rendering API hasn't been set up yet
+			throw new IllegalStateException("Distant Horizons hasn't finished setup yet. No renderer has been set.");
+		}
+		
+		return apiDef.getDepthDirection();
 	}
 	
 	

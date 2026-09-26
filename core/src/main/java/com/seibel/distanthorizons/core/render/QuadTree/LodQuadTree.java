@@ -20,6 +20,7 @@
 package com.seibel.distanthorizons.core.render.QuadTree;
 
 import com.seibel.distanthorizons.api.enums.config.EDhApiMaxHorizontalResolution;
+import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiDistantGeneratorMode;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.config.listeners.IConfigListener;
 import com.seibel.distanthorizons.core.dataObjects.fullData.sources.FullDataSourceV2;
@@ -29,10 +30,10 @@ import com.seibel.distanthorizons.core.file.fullDatafile.V2.FullDataSourceProvid
 import com.seibel.distanthorizons.core.file.fullDatafile.V2.FullDataUpdatePropagatorV2;
 import com.seibel.distanthorizons.core.generation.tasks.DataSourceRetrievalResult;
 import com.seibel.distanthorizons.core.generation.tasks.ERetrievalResultState;
-import com.seibel.distanthorizons.core.level.DhClientServerLevel;
 import com.seibel.distanthorizons.core.level.IDhClientLevel;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
+import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos2D;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
 import com.seibel.distanthorizons.core.render.CameraZoom;
@@ -183,7 +184,6 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 		this.beaconBeamRepo = this.level.getBeaconBeamRepo();
 		
 		Config.Common.WorldGenerator.generatorPlan.addListener(this);
-		Config.Server.enableServerGeneration.addListener(this);
 		
 	}
 	
@@ -945,7 +945,7 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 				long missingPos = this.sortedMissingPosList.get(i);
 				
 				// chunk count
-				int sectionWidthInChunks = DhSectionPos.getChunkWidth(missingPos);
+				long sectionWidthInChunks = DhSectionPos.getChunkWidth(missingPos);
 				totalWorldGenChunkCount += (sectionWidthInChunks * sectionWidthInChunks);
 				
 				// don't let any regeneration happen until
@@ -956,13 +956,13 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 				}
 			}
 			
-			this.fullDataSourceProvider.setGeneratingLowDetailLods(highDetailRequestPresent);
+			this.fullDataSourceProvider.setCanRegenerate(!highDetailRequestPresent);
 		}
 		else
 		{
 			// count the LODs that need re-generating
 			
-			if (Config.Common.WorldGenerator.generatorPlan.get().chunkGenEnabled)
+			if (WorldGenUtil.regenAllowed(this.fullDataSourceProvider))
 			{
 				// only query the DB every few seconds
 				// to prevent constant DB reads (we only need this as an estimate
@@ -982,7 +982,7 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 				}
 			}
 			
-			this.fullDataSourceProvider.setGeneratingLowDetailLods(false);
+			this.fullDataSourceProvider.setCanRegenerate(true);
 		}
 		
 		this.fullDataSourceProvider.setEstimatedRemainingRetrievalChunkCount(totalWorldGenChunkCount);
@@ -991,9 +991,19 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 	@Override
 	public void onConfigValueSet()
 	{
-		boolean generatorEnabled = this.level instanceof DhClientServerLevel
-			? Config.Common.WorldGenerator.generatorPlan.get().generationEnabled
-			: Config.Server.enableServerGeneration.get();
+		// the generator plan was changed,
+		// clear the queues to make sure we get the
+		// correct sized generator tasks
+		this.missingGenerationPosSet.clear();
+		this.queuedGenerationPosSet.clear();
+		
+		// don't allow regeneration until the next world gen tick
+		// this is done to prevent queuing chunks if there are still
+		// lower-detail LODs that need generating
+		this.fullDataSourceProvider.setCanRegenerate(false);
+		
+		
+		boolean generatorEnabled = this.fullDataSourceProvider.getGeneratorPlan().generationEnabled;
 		if (generatorEnabled)
 		{
 			// world gen tasks will need to be re-queued
@@ -1002,10 +1012,6 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 		}
 		else
 		{
-			// generation is disabled, clear the queues
-			this.missingGenerationPosSet.clear();
-			this.queuedGenerationPosSet.clear();
-			
 			this.requeueAllRetrievalTasksRef.set(false);
 		}
 	}
@@ -1205,25 +1211,31 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 		// the radius (half diagonal) is needed so the zoom cone check doesn't
 		// miss sections that only partially overlap the camera's view
 		double sectionBlockRadius = DhSectionPos.getBlockWidth(sectionPos) * (Math.sqrt(2.0) / 2.0);
-		return this.calcExpectedDetailLevel(playerPos, DhSectionPos.getCenterBlockPosX(sectionPos), DhSectionPos.getCenterBlockPosZ(sectionPos), sectionBlockRadius);
+		return this.calcExpectedDetailLevel(playerPos, sectionPos, DhSectionPos.getCenterBlockPosX(sectionPos), DhSectionPos.getCenterBlockPosZ(sectionPos), sectionBlockRadius);
 	}
 	
 	public byte calcExpectedDetailLevel(DhBlockPos2D playerPos, int targetBlockPosX, int targetBlockPosZ)
-	{ return this.calcExpectedDetailLevel(playerPos, targetBlockPosX, targetBlockPosZ, 0.0); }
+	{ return this.calcExpectedDetailLevel(playerPos, DhSectionPos.encodeContaining(DhSectionPos.SECTION_BLOCK_DETAIL_LEVEL, new DhBlockPos(targetBlockPosX, 0, targetBlockPosZ)), targetBlockPosX, targetBlockPosZ, 0.0); }
 	
-	private byte calcExpectedDetailLevel(DhBlockPos2D playerPos, int targetBlockPosX, int targetBlockPosZ, double targetBlockRadius)
+	private byte calcExpectedDetailLevel(DhBlockPos2D playerPos, long targetSectionPos, int targetBlockPosX, int targetBlockPosZ, double targetBlockRadius)
 	{
 		double blockDistance = playerPos.dist(targetBlockPosX, targetBlockPosZ);
 		
-		// LODs visible through a zoomed in camera appear closer than they actually are,
-		// using the magnified distance gives them the detail they'd have if the player walked up to them
-		if (CameraZoom.INSTANCE.magnification > CameraZoom.NOT_ZOOMED_MAGNIFICATION
-			&& CameraZoom.INSTANCE.coneIntersectsCircle(playerPos.x, playerPos.z, targetBlockPosX, targetBlockPosZ, targetBlockRadius))
+		// Don't allow zooming for LODs that will be missing child nodes.
+		// Doing so will cause holes/missing LODs.
+		boolean allowZooming = DhSectionPos.getDetailLevel(targetSectionPos) < FullDataUpdatePropagatorV2.HIGHEST_DOWNSAMPLE_DETAIL_LEVEL;
+		if (allowZooming)
 		{
-			blockDistance /= CameraZoom.INSTANCE.magnification;
-			
-			EDhApiMaxHorizontalResolution maxHorizontalResolution = Config.Client.Advanced.Graphics.Quality.maxHorizontalResolution.get();
-			return this.calcDetailLevelFromDistance(blockDistance, maxHorizontalResolution.detailLevel);
+			// LODs visible through a zoomed in camera appear closer than they actually are,
+			// using the magnified distance gives them the detail they'd have if the player walked up to them
+			if (CameraZoom.INSTANCE.magnification > CameraZoom.NOT_ZOOMED_MAGNIFICATION
+				&& CameraZoom.INSTANCE.coneIntersectsCircle(playerPos.x, playerPos.z, targetBlockPosX, targetBlockPosZ, targetBlockRadius))
+			{
+				blockDistance /= CameraZoom.INSTANCE.magnification;
+				
+				EDhApiMaxHorizontalResolution maxHorizontalResolution = Config.Client.Advanced.Graphics.Quality.maxHorizontalResolution.get();
+				return this.calcDetailLevelFromDistance(blockDistance, maxHorizontalResolution.detailLevel);
+			}
 		}
 		
 		return this.calcDetailLevelFromDistance(blockDistance);
@@ -1395,7 +1407,6 @@ public class LodQuadTree extends QuadTree<LodRenderSection> implements IDebugRen
 		
 		DEBUG_RENDERER.unregister(this, Config.Client.Advanced.Debugging.DebugWireframe.showQuadTreeRenderStatus);
 		Config.Common.WorldGenerator.generatorPlan.removeListener(this);
-		Config.Server.enableServerGeneration.removeListener(this);
 		
 		this.fullDataRetrievalQueueThread.shutdownNow();
 		

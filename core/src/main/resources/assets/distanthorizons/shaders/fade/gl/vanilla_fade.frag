@@ -18,7 +18,7 @@ uniform float uEndFadeBlockDistance;
 uniform float uMaxLevelHeight;
 
 uniform bool uOnlyRenderLods;
-uniform bool uIsReverseZDepth;
+uniform bool uIsMcReverseZDepth;
 uniform bool uDepthIsZeroToPositiveOne;
 
 
@@ -80,7 +80,7 @@ void main()
 
     // we only want to fade vanilla rendered objects, not to the sky or LODs
     bool isGround;
-    if (uIsReverseZDepth)
+    if (uIsMcReverseZDepth)
     {
         isGround = (mcFragmentDepth > 0);
     }
