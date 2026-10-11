@@ -5,6 +5,7 @@ import org.apache.logging.log4j.Logger;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.opengl.*;
 import org.lwjgl.system.APIUtil;
+import org.lwjgl.system.FunctionProvider;
 import org.lwjgl.system.JNI;
 import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.system.Pointer;
@@ -14,6 +15,7 @@ import com.seibel.distanthorizons.lwjgl.ILWJGLService;
 import com.seibel.distanthorizons.lwjgl.AbstractMemoryStack;
 
 import java.io.PrintStream;
+import java.lang.reflect.Method;
 import java.nio.*;
 
 /**
@@ -267,15 +269,21 @@ public class LWJGL3Service implements ILWJGLService
     private enum VertexAttribIMode { CORE, EXT, NONE }
 
 
-    // Cached function addresses for APPLE VAO extensions
-    private static final long glGenVertexArraysAPPLE = GL.getFunctionProvider().getFunctionAddress("glGenVertexArraysAPPLE");
-    private static final long glDeleteVertexArraysAPPLE = GL.getFunctionProvider().getFunctionAddress("glDeleteVertexArraysAPPLE");
-    private static final long glBindVertexArrayAPPLE = GL.getFunctionProvider().getFunctionAddress("glBindVertexArrayAPPLE");
+    // Cached function addresses for APPLE VAO extensions.
+    // Looked up in create() rather than during <clinit>: lwjgl3ify sets
+    // OPENGL_EXPLICIT_INIT, so GL.getFunctionProvider() is null until the
+    // window/context exists. Class-init from a Tessellator mixin would NPE
+    // and permanently poison LWJGLServiceProvider.
+    private static long glGenVertexArraysAPPLE;
+    private static long glDeleteVertexArraysAPPLE;
+    private static long glBindVertexArrayAPPLE;
 
 	
 	
     public static LWJGL3Service create() 
     {
+        ensureOpenGlInitialized();
+        resolveAppleVaoFunctions();
         GLCapabilities caps = GL.getCapabilities();
 
         VAOMode vaoMode;
@@ -340,6 +348,92 @@ public class LWJGL3Service implements ILWJGLService
 	    }
 
         return new LWJGL3Service(vaoMode, timerQueryMode, debugMode, vertexAttribIMode);
+    }
+
+    /**
+     * lwjgl3ify (and some other loaders) set {@code Configuration.OPENGL_EXPLICIT_INIT}
+     * and bind OpenGL through SDL/GLFW instead of LWJGL's default GLX loader.
+     * Without this, {@link GL#getFunctionProvider()} stays null even after the
+     * window is on screen, and the first DH GL call crashes class init.
+     */
+    private static void ensureOpenGlInitialized()
+    {
+        if (GL.getFunctionProvider() == null)
+        {
+            createFunctionProvider();
+        }
+
+        try
+        {
+            GL.getCapabilities();
+        }
+        catch (IllegalStateException ignored)
+        {
+            GL.createCapabilities();
+        }
+    }
+
+    private static void createFunctionProvider()
+    {
+        // Same path Display.create() uses on lwjgl3ify 3.x
+        if (tryCreateWithProcAddress("org.lwjgl.sdl.SDLVideo", "SDL_GL_GetProcAddress"))
+        {
+            return;
+        }
+        if (tryCreateWithProcAddress("org.lwjgl.glfw.GLFW", "glfwGetProcAddress"))
+        {
+            return;
+        }
+
+        GL.create();
+    }
+
+    private static boolean tryCreateWithProcAddress(String className, String methodName)
+    {
+        try
+        {
+            Class<?> clazz = Class.forName(className);
+            final Method method = clazz.getMethod(methodName, CharSequence.class);
+            GL.create(new FunctionProvider()
+            {
+                @Override
+                public long getFunctionAddress(ByteBuffer functionName)
+                {
+                    return getFunctionAddress(MemoryUtil.memASCII(functionName));
+                }
+
+                @Override
+                public long getFunctionAddress(CharSequence functionName)
+                {
+                    try
+                    {
+                        return (Long) method.invoke(null, functionName);
+                    }
+                    catch (ReflectiveOperationException e)
+                    {
+                        return 0L;
+                    }
+                }
+            });
+            return true;
+        }
+        catch (Throwable ignored)
+        {
+            return false;
+        }
+    }
+
+    private static void resolveAppleVaoFunctions()
+    {
+        FunctionProvider provider = GL.getFunctionProvider();
+        if (provider == null)
+        {
+            return;
+        }
+
+        glGenVertexArraysAPPLE = provider.getFunctionAddress("glGenVertexArraysAPPLE");
+        glDeleteVertexArraysAPPLE = provider.getFunctionAddress("glDeleteVertexArraysAPPLE");
+        glBindVertexArrayAPPLE = provider.getFunctionAddress("glBindVertexArrayAPPLE");
     }
 
 	

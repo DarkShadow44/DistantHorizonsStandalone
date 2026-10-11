@@ -42,8 +42,8 @@ public final class LWJGLServiceProvider
 		}
 		catch (ReflectiveOperationException e)
 		{
-			// shouldn't happen, but just in case
-			throw new AssertionError(e);
+			Throwable cause = e.getCause() != null ? e.getCause() : e;
+			throw new ExceptionInInitializerError(cause);
 		}
 	}
 	
