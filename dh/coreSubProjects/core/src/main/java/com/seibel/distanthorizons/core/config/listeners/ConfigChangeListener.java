@@ -22,6 +22,7 @@ package com.seibel.distanthorizons.core.config.listeners;
 import com.seibel.distanthorizons.core.config.types.ConfigEntry;
 
 import java.io.Closeable;
+import java.util.Objects;
 import java.util.function.Consumer;
 
 /**
@@ -34,30 +35,36 @@ import java.util.function.Consumer;
 public class ConfigChangeListener<T> implements IConfigListener, Closeable
 {
 	private final ConfigEntry<T> configEntry;
-	private final Consumer<T> onValueChangeFunc;
+	private final OnChangeFunc<T> onChangeFunc;
 	
-	private T previousValue;
+	private T previousTrueValue;
+	private T previousApiValue;
 	
 	
 	
-	public ConfigChangeListener(ConfigEntry<T> configEntry, Consumer<T> onValueChangeFunc)
+	public ConfigChangeListener(ConfigEntry<T> configEntry, OnChangeFunc<T> onChangeFunc)
 	{
 		this.configEntry = configEntry;
-		this.onValueChangeFunc = onValueChangeFunc;
+		this.onChangeFunc = onChangeFunc;
 		
 		this.configEntry.addListener(this);
-		this.previousValue = this.configEntry.get();
+		this.previousTrueValue = this.configEntry.get();
 	}
 	
 	
 	@Override
 	public void onConfigValueSet()
 	{
-		T newValue = this.configEntry.get();
-		if (newValue != this.previousValue)
+		// fire the event if either the API or True value was changed
+		T newTrueValue = this.configEntry.getTrueValue();
+		T newApiValue = this.configEntry.getApiValue();
+		if (!Objects.equals(this.previousTrueValue, newTrueValue)
+			|| !Objects.equals(this.previousApiValue, newApiValue))
 		{
-			this.previousValue = newValue;
-			this.onValueChangeFunc.accept(newValue);
+			this.previousTrueValue = newTrueValue;
+			this.previousApiValue = newApiValue;
+			
+			this.onChangeFunc.OnConfigValueChanged(this.configEntry);
 		}
 	}
 	
@@ -72,5 +79,22 @@ public class ConfigChangeListener<T> implements IConfigListener, Closeable
 	 */
 	@Override
 	public void close() { this.configEntry.removeListener(this); }
+	
+	
+	
+	//================//
+	// helper classes //
+	//================//
+	//region
+	
+	@FunctionalInterface
+	public interface OnChangeFunc<T>
+	{
+		void OnConfigValueChanged(ConfigEntry<T> entry);
+	}
+	
+	//endregion
+	
+	
 	
 }

@@ -53,10 +53,9 @@ import com.seibel.distanthorizons.common.render.blaze.wrappers.texture.BlazeText
 import com.seibel.distanthorizons.common.render.blaze.util.BlazePostProcessUtil;
 import com.seibel.distanthorizons.common.render.blaze.wrappers.texture.BlazeTextureWrapper;
 import com.seibel.distanthorizons.common.render.blaze.wrappers.uniform.BlazeUniformBufferWrapper;
-import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.AbstractDhRenderApiDefinition;
+import com.seibel.distanthorizons.core.render.RenderParam;
 import com.seibel.distanthorizons.coreapi.ModInfo;
 import org.jetbrains.annotations.Nullable;
 
@@ -73,8 +72,6 @@ import java.util.Arrays;
 public class BlazeDhApplyRenderer
 {
 	public static final DhLogger LOGGER = new DhLoggerBuilder().build();
-	
-	private static final AbstractDhRenderApiDefinition RENDER_DEF = SingletonInjector.INSTANCE.get(AbstractDhRenderApiDefinition.class);
 	
 	private static final GpuDevice GPU_DEVICE = RenderSystem.getDevice();
 	private static final CommandEncoder COMMAND_ENCODER = GPU_DEVICE.createCommandEncoder();
@@ -237,6 +234,7 @@ public class BlazeDhApplyRenderer
 	}
 	
 	public void render(
+		RenderParam renderParams,
 		GpuTexture sourceColorTexture,
 		GpuTexture sourceDepthTexture,
 		GpuTexture destinationColorTexture)
@@ -247,7 +245,7 @@ public class BlazeDhApplyRenderer
 		
 		
 		this.fragUniformBufferWrapper
-			.putInt((RENDER_DEF.getDepthDirection() == EDhApiDepthDirection.REVERSE_Z) ? 1 : 0) // uIsReverseZDepth
+			.putInt((renderParams.renderDefinition.getDepthDirection() == EDhApiDepthDirection.REVERSE_Z) ? 1 : 0) // uIsReverseZDepth
 			.finishAndUpload();
 		;
 		

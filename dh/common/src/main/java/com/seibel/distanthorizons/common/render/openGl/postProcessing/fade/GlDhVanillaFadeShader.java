@@ -29,10 +29,9 @@ import com.seibel.distanthorizons.common.wrappers.minecraft.MinecraftGLWrapper;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.common.render.openGl.util.GlAbstractShaderRenderer;
-import com.seibel.distanthorizons.core.render.RenderParams;
+import com.seibel.distanthorizons.core.render.RenderParam;
 import com.seibel.distanthorizons.core.util.RenderUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.AbstractDhRenderApiDefinition;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL30;
 
@@ -44,7 +43,6 @@ public class GlDhVanillaFadeShader extends GlAbstractShaderRenderer
 	
 	private static final IMinecraftRenderWrapper MC_RENDER = SingletonInjector.INSTANCE.get(IMinecraftRenderWrapper.class);
 	private static final MinecraftGLWrapper GLMC = MinecraftGLWrapper.INSTANCE;
-	private static final AbstractDhRenderApiDefinition RENDER_DEF = SingletonInjector.INSTANCE.get(AbstractDhRenderApiDefinition.class);
 	
 	
 	public int frameBuffer = -1;
@@ -122,7 +120,7 @@ public class GlDhVanillaFadeShader extends GlAbstractShaderRenderer
 	//region
 	
 	@Override
-	protected void onApplyUniforms(RenderParams renderParams)
+	protected void onApplyUniforms(RenderParam renderParams)
 	{
 		this.shader.setUniform(this.uMcInvMvmProj, this.inverseMcMvmProjMatrix);
 		this.shader.setUniform(this.uDhInvMvmProj, this.inverseDhMvmProjMatrix);
@@ -145,10 +143,10 @@ public class GlDhVanillaFadeShader extends GlAbstractShaderRenderer
 		
 		this.shader.setUniform(this.uOnlyRenderLods, Config.Client.Advanced.Debugging.lodOnlyMode.get());
 		this.shader.setUniform(this.uIsMcReverseZDepth, (MC_RENDER.getMcDepthDirection() == EDhApiDepthDirection.REVERSE_Z) ? 1 : 0);
-		this.shader.setUniform(this.uDepthIsZeroToPositiveOne, (RENDER_DEF.getDepthRange() == EDhApiDepthRange.ZERO_TO_POS_ONE) ? 1 : 0);
+		this.shader.setUniform(this.uDepthIsZeroToPositiveOne, (renderParams.renderDefinition.getDepthRange() == EDhApiDepthRange.ZERO_TO_POS_ONE) ? 1 : 0);
 	}
 	
-	public void setProjectionMatrix(RenderParams renderParams)
+	public void setProjectionMatrix(RenderParam renderParams)
 	{
 		this.inverseMcMvmProjMatrix = renderParams.mcInverseMvmProjectionMatrix;
 		this.inverseDhMvmProjMatrix = renderParams.dhInverseMvmProjectionMatrix;
@@ -165,7 +163,7 @@ public class GlDhVanillaFadeShader extends GlAbstractShaderRenderer
 	//region
 	
 	@Override
-	protected void onRender()
+	protected void onRender(RenderParam renderParams)
 	{
 		int depthTextureId = GlDhMetaRenderer.INSTANCE.getActiveDepthTextureId();
 		int colorTextureId = GlDhMetaRenderer.INSTANCE.getActiveColorTextureId();

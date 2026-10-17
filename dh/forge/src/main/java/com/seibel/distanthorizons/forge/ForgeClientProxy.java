@@ -20,6 +20,7 @@
 package com.seibel.distanthorizons.forge;
 
 import com.seibel.distanthorizons.common.AbstractModInitializer;
+import com.seibel.distanthorizons.common.util.DebugKeybindHandler;
 import com.seibel.distanthorizons.common.util.ProxyUtil;
 import com.seibel.distanthorizons.common.wrappers.minecraft.MinecraftRenderWrapper;
 import com.seibel.distanthorizons.common.wrappers.world.ClientLevelWrapper;
@@ -207,7 +208,7 @@ public class ForgeClientProxy implements AbstractModInitializer.IEventProxy
 			return;
 		}
 		
-		ClientApi.INSTANCE.keyPressedEvent(event.getKey());
+		DebugKeybindHandler.onKeyPressed(event.getKey());
 	}
 	
 	

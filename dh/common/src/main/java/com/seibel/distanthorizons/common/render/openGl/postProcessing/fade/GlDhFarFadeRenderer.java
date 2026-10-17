@@ -19,14 +19,15 @@
 
 package com.seibel.distanthorizons.common.render.openGl.postProcessing.fade;
 
+import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam;
 import com.seibel.distanthorizons.common.render.openGl.GlDhMetaRenderer;
 import com.seibel.distanthorizons.common.wrappers.minecraft.MinecraftGLWrapper;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
-import com.seibel.distanthorizons.core.render.RenderParams;
+import com.seibel.distanthorizons.core.render.RenderParam;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass.IDhFarFadeRenderer;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.IDhApiFarFadeRenderer;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL30;
@@ -41,7 +42,7 @@ import java.nio.ByteBuffer;
  * {@link GlDhFarFadeShader} - draws the Fade to a texture. <br>
  * {@link GlDhFarFadeApplyShader} - draws the Fade texture to DH's framebuffer. <br>
  */
-public class GlDhFarFadeRenderer implements IDhFarFadeRenderer
+public class GlDhFarFadeRenderer implements IDhApiFarFadeRenderer
 {
 	
 	public static GlDhFarFadeRenderer INSTANCE = new GlDhFarFadeRenderer();
@@ -121,8 +122,10 @@ public class GlDhFarFadeRenderer implements IDhFarFadeRenderer
 	//region
 	
 	@Override 
-	public void render(RenderParams renderParams)
+	public void render(DhApiRenderParam apiRenderParams)
 	{
+		RenderParam renderParams = (RenderParam)apiRenderParams;
+		
 		try
 		{
 			this.init();

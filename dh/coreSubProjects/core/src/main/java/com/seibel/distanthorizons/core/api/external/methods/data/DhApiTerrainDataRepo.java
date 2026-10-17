@@ -34,7 +34,7 @@ import com.seibel.distanthorizons.core.level.IDhLevel;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pos.DhChunkPos;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
-import com.seibel.distanthorizons.core.render.renderer.AbstractDebugWireframeRenderer;
+import com.seibel.distanthorizons.core.render.renderer.DebugWireframeHandler;
 import com.seibel.distanthorizons.core.util.DhApiTerrainDataPointUtil;
 import com.seibel.distanthorizons.core.util.FullDataPointUtil;
 import com.seibel.distanthorizons.core.util.LodUtil;
@@ -573,7 +573,7 @@ public class DhApiTerrainDataRepo implements IDhApiTerrainDataRepo
 			{
 				try
 				{
-					AbstractDebugWireframeRenderer debugRenderer = SingletonInjector.INSTANCE.get(AbstractDebugWireframeRenderer.class);
+					DebugWireframeHandler debugRenderer = SingletonInjector.INSTANCE.get(DebugWireframeHandler.class);
 					
 					long nowMs = System.currentTimeMillis();
 					if (nowMs - timeSinceLastDebugClear > 5_000L)
@@ -649,8 +649,8 @@ public class DhApiTerrainDataRepo implements IDhApiTerrainDataRepo
 						if (debugRenderer != null)
 						{
 							debugRenderer.makeParticle(
-								new AbstractDebugWireframeRenderer.BoxParticle(
-									new AbstractDebugWireframeRenderer.Box(
+								new DebugWireframeHandler.BoxParticle(
+									new DebugWireframeHandler.Box(
 										DhSectionPos.encode((byte) 0, rayCast.payload.pos.x, rayCast.payload.pos.z), 
 											rayCast.payload.dataPoint.bottomYBlockPos, 
 											rayCast.payload.dataPoint.topYBlockPos, 

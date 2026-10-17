@@ -20,8 +20,8 @@
 package com.seibel.distanthorizons.api.methods.events.sharedParameterObjects;
 
 import com.seibel.distanthorizons.api.enums.rendering.EDhApiRenderPass;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.AbstractDhApiRenderDefinition;
 import com.seibel.distanthorizons.api.interfaces.world.IDhApiLevelWrapper;
-import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiWorldLoadEvent;
 import com.seibel.distanthorizons.api.methods.events.interfaces.IDhApiEventParam;
 import com.seibel.distanthorizons.api.objects.math.DhApiMat4f;
 
@@ -74,6 +74,13 @@ public class DhApiRenderParam implements IDhApiEventParam
 	 */
 	public IDhApiLevelWrapper clientLevelWrapper;
 	
+	/**
+	 * Defines how this frame will be rendered.
+	 * 
+	 * @since API 7.3.0
+	 */
+	public AbstractDhApiRenderDefinition renderDefinition;
+	
 	
 	
 	//==============//
@@ -87,7 +94,7 @@ public class DhApiRenderParam implements IDhApiEventParam
 	public void update(DhApiRenderParam param) 
 	{
 		this.update(
-			param.renderPass,
+			param.renderPass, param.renderDefinition,
 			param.partialTicks,
 			param.nearClipPlane, param.farClipPlane,
 			param.mcProjectionMatrix, param.mcModelViewMatrix,
@@ -98,7 +105,7 @@ public class DhApiRenderParam implements IDhApiEventParam
 	}
 	/** Internal DH method */
 	public void update(
-			EDhApiRenderPass renderPass,
+			EDhApiRenderPass renderPass, AbstractDhApiRenderDefinition renderDefinition,
 			float newPartialTicks,
 			float nearClipPlane, float farClipPlane,
 			DhApiMat4f newMcProjectionMatrix, DhApiMat4f newMcModelViewMatrix,
@@ -107,6 +114,8 @@ public class DhApiRenderParam implements IDhApiEventParam
 			IDhApiLevelWrapper clientLevelWrapper
 		)
 	{
+		this.renderDefinition = renderDefinition;
+		
 		this.renderPass = renderPass;
 		
 		this.partialTicks = newPartialTicks;

@@ -103,6 +103,8 @@ public interface IMinecraftRenderWrapper extends IBindable
 	int getTargetFramebufferViewportWidth();
 	int getTargetFramebufferViewportHeight();
 	
+	boolean useSingleIbo();
+	
 	/** 
 	 * generally shouldn't be needed, the frame buffer should generally stay the same 
 	 * but in case something goes wrong this allows for re-getting the buffer ID.

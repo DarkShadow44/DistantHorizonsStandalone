@@ -2,12 +2,11 @@
 // needed for "layout(location = 0)" required as as of MC 26.3
 #extension GL_ARB_separate_shader_objects : require
 
-layout(location = 0) in uvec3 vPosition;
-layout(location = 1) in uint meta; // contains light and micro-offset data
-layout(location = 2) in vec4 vColor;
-layout(location = 3) in uint irisMaterial;
-layout(location = 4) in uint irisNormal;
-layout(location = 5) in uint textureTile; // block texture tile id, 0 = flat color
+layout(location = 0) in uvec4 vPositionAndMeta; // Meta contains light and micro-offset data
+layout(location = 1) in vec4 vColor;
+layout(location = 2) in uint irisMaterial;
+layout(location = 3) in uint irisNormal;
+layout(location = 4) in uint textureTile; // block texture tile id, 0 = flat color
 
 // order matters, this must match the fragment shader's inputs
 layout(location = 0) out vec3 vPos;
@@ -20,7 +19,7 @@ layout(location = 5) flat out uint vTextureTileId;
 
 layout (std140) uniform vertUniqueUniformBlock
 {
-    vec3 uModelOffset;
+    ivec3 uModelOffset;
 };
 
 layout (std140) uniform vertSharedUniformBlock 
@@ -35,7 +34,8 @@ layout (std140) uniform vertSharedUniformBlock
     float uViewWidth;
     float uViewHeight;
 
-    vec3 uCameraPos;
+    ivec3 uCorseCameraPos;
+    vec3 uFineCameraPos;
     mat4 uCombinedMatrix;
 };
 
@@ -63,13 +63,17 @@ vec2 TAAJitter(vec2 coord, float w)
  */
 void main()
 {
+    vec3 vPosition = vPositionAndMeta.xyz;
+    uint meta = vPositionAndMeta.w;
+    
     vPos = vPosition; // This is so it can be passed to the fragment shader
     
     vBlockPos = vec3(vPosition.xyz);
     vNormalIndex = uint(irisNormal);
     vTextureTileId = textureTile;
     
-    vertexWorldPos = vPosition.xyz + (uModelOffset - uCameraPos);
+    ivec3 relOffset = uModelOffset - uCorseCameraPos; // ints needed for extreme (10 million +) distances
+    vertexWorldPos = vPosition.xyz + (vec3(relOffset) - uFineCameraPos);
     
     float vertexYPos = vPosition.y + uWorldYOffset;
     

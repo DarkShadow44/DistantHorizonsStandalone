@@ -21,6 +21,7 @@ package com.seibel.distanthorizons.fabric;
 
 import com.seibel.distanthorizons.common.AbstractModInitializer;
 import com.seibel.distanthorizons.common.AbstractPluginPacketSender;
+import com.seibel.distanthorizons.common.util.DebugKeybindHandler;
 import com.seibel.distanthorizons.common.wrappers.McObjectConverter;
 import com.seibel.distanthorizons.common.wrappers.minecraft.MinecraftClientWrapper;
 import com.seibel.distanthorizons.common.wrappers.world.ClientLevelWrapper;
@@ -59,7 +60,6 @@ import com.seibel.distanthorizons.core.network.messages.AbstractNetworkMessage;
 #if MC_VER < MC_1_19_4
 import java.nio.FloatBuffer;
 #endif
-import java.util.HashSet;
 import java.util.concurrent.AbstractExecutorService;
 
 #if MC_VER < MC_1_21_9
@@ -73,17 +73,11 @@ import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelTerrainRenderContext;
 #endif
 
-import com.mojang.blaze3d.platform.InputConstants;
-
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.phys.HitResult;
 
-#if MC_VER <= MC_26_2_0
-import org.lwjgl.glfw.GLFW;
-#else
-#endif
 
 /**
  * This handles all events sent to the client,
@@ -100,8 +94,6 @@ public class FabricClientProxy implements AbstractModInitializer.IEventProxy
 	
 	private static final MinecraftClientWrapper MC = MinecraftClientWrapper.INSTANCE;
 	private static final AbstractPluginPacketSender PACKET_SENDER = (AbstractPluginPacketSender) SingletonInjector.INSTANCE.get(IPluginPacketSender.class);
-	
-	HashSet<Integer> previouslyPressKeyCodes = new HashSet<>();
 	
 	
 	
@@ -148,7 +140,7 @@ public class FabricClientProxy implements AbstractModInitializer.IEventProxy
 			{
 				IClientLevelWrapper wrappedLevel = ClientLevelWrapper.getWrapper((ClientLevel) level);
 				
-				if (SharedApi.isChunkAtBlockPosAlreadyUpdating(wrappedLevel, blockPos.getX(), blockPos.getZ()))
+				if (!SharedApi.isChunkAtBlockPosAlreadyUpdating(wrappedLevel, blockPos.getX(), blockPos.getZ()))
 				{
 					// executor to prevent locking up the render/event thread
 					AbstractExecutorService executor = ThreadPoolUtil.getFileHandlerExecutor();
@@ -188,7 +180,7 @@ public class FabricClientProxy implements AbstractModInitializer.IEventProxy
 				{
 					IClientLevelWrapper wrappedLevel = ClientLevelWrapper.getWrapper((ClientLevel) level);
 					
-					if (SharedApi.isChunkAtBlockPosAlreadyUpdating(wrappedLevel, hitResult.getBlockPos().getX(), hitResult.getBlockPos().getZ()))
+					if (!SharedApi.isChunkAtBlockPosAlreadyUpdating(wrappedLevel, hitResult.getBlockPos().getX(), hitResult.getBlockPos().getZ()))
 					{
 						// executor to prevent locking up the render/event thread
 						AbstractExecutorService executor = ThreadPoolUtil.getFileHandlerExecutor();
@@ -328,14 +320,12 @@ public class FabricClientProxy implements AbstractModInitializer.IEventProxy
 		//region
 		
 		// Debug keyboard event
-		// FIXME: Use better hooks so it doesn't trigger key press events in text boxes
 		ClientTickEvents.END_CLIENT_TICK.register(client -> 
 		{
-			// TODO
-			//if (client.player != null && !(Minecraft.getInstance().screen instanceof TitleScreen))
-			//{
-			//	this.onKeyInput();
-			//}
+			if (client.player != null)
+			{
+				DebugKeybindHandler.checkDebugKeysEachTick();
+			}
 		});
 		
 		//endregion
@@ -382,43 +372,6 @@ public class FabricClientProxy implements AbstractModInitializer.IEventProxy
 		
 		
 		
-	}
-	
-	public void onKeyInput()
-	{
-		HashSet<Integer> currentKeyDown = new HashSet<>();
-		
-		#if MC_VER <= MC_26_2_0
-		// Note: Minecraft's InputConstants are the same as GLFW Key values
-		for (int keyCode = GLFW.GLFW_KEY_0; keyCode <= GLFW.GLFW_KEY_LAST; keyCode++)
-		{
-			if (InputConstants.isKeyDown(MC.getGlfwWindowId(), keyCode))
-			{
-				currentKeyDown.add(keyCode);
-			}
-		}
-		#else
-		// Note: Minecraft's InputConstants are NOT the same as SDL Key values
-		for (int keyCode = InputConstants.RELEASE; keyCode <= InputConstants.MOD_ALT; keyCode++)
-		{
-			if (InputConstants.isKeyDown(keyCode))
-			{
-				currentKeyDown.add(keyCode);
-			}
-		}
-		#endif
-		
-		// Diff and trigger events
-		for (int keyCode : currentKeyDown)
-		{
-			if (!this.previouslyPressKeyCodes.contains(keyCode))
-			{
-				ClientApi.INSTANCE.keyPressedEvent(keyCode);
-			}
-		}
-		
-		// Update the set
-		this.previouslyPressKeyCodes = currentKeyDown;
 	}
 	
 }

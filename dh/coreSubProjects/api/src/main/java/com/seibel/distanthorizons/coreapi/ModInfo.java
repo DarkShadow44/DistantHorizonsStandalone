@@ -43,19 +43,19 @@ public final class ModInfo
 	public static final String NAME = "DistantHorizons";
 	/** Human-readable version of NAME */
 	public static final String READABLE_NAME = "Distant Horizons";
-	public static final String VERSION = "3.3.3-dev";
+	public static final String VERSION = "3.3.5-dev";
 	/** Returns true if the current build is an unstable developer build, false otherwise. */
 	public static final boolean IS_DEV_BUILD = VERSION.toLowerCase().contains("dev");
 	
 	/** This version should only be updated when breaking changes are introduced to the DH API */
 	public static final int API_MAJOR_VERSION = 7;
 	/** This version should be updated whenever new methods are added to the DH API */
-	public static final int API_MINOR_VERSION = 2;
+	public static final int API_MINOR_VERSION = 3;
 	/** This version should be updated whenever non-breaking fixes are added to the DH API */
 	public static final int API_PATCH_VERSION = 0;
 	
 	/** If the config file has an older version it'll be re-created from scratch. */
-	public static final int CONFIG_FILE_VERSION = 4;
+	public static final int CONFIG_FILE_VERSION = 5;
 	
 	/** All DH owned threads should start with this string to allow for easier debugging and profiling. */
 	public static final String THREAD_NAME_PREFIX = "DH-";

@@ -1,23 +1,15 @@
 package com.seibel.distanthorizons.lwjgl.lwjgl2;
 
-import com.seibel.distanthorizons.lwjgl.AbstractMemoryStack;
+import com.seibel.distanthorizons.lwjgl.*;
 import org.lwjgl.BufferUtils;
-import com.seibel.distanthorizons.lwjgl.IDebugMessageHandler;
-import com.seibel.distanthorizons.lwjgl.ILWJGLService;
 import com.seibel.distanthorizons.lwjgl.lwjgl2.memory.MemoryStack;
 import com.seibel.distanthorizons.lwjgl.lwjgl2.memory.MemoryUtilities;
 import com.seibel.distanthorizons.lwjgl.lwjgl2.memory.Pointer;
-import com.seibel.distanthorizons.lwjgl.EGLExtension;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.LWJGLException;
-import org.lwjgl.opengl.APPLEVertexArrayObject;
-import org.lwjgl.opengl.ARBBufferStorage;
-import org.lwjgl.opengl.ARBTimerQuery;
-import org.lwjgl.opengl.ARBVertexArrayObject;
-import org.lwjgl.opengl.ContextCapabilities;
-import org.lwjgl.opengl.EXTGpuShader4;
+import org.lwjgl.opengl.*;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL14;
@@ -28,12 +20,9 @@ import org.lwjgl.opengl.GL31;
 import org.lwjgl.opengl.GL32;
 import org.lwjgl.opengl.GL33;
 import org.lwjgl.opengl.GL43;
-import org.lwjgl.opengl.Display;
-import org.lwjgl.opengl.GLContext;
-import org.lwjgl.opengl.GLSync;
-import org.lwjgl.opengl.KHRDebug;
 
 import java.io.PrintStream;
+import java.lang.reflect.Field;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
@@ -314,6 +303,54 @@ public class LWJGL2Service implements ILWJGLService
 			default: throw new UnsupportedOperationException("No logic defined for extension ["+extension+"].");
 		}
 	}
+	
+	@Override
+	public boolean isFeatureSupported(EGLFeature feature)
+	{
+		ContextCapabilities caps = GLContext.getCapabilities();
+		switch (feature)
+		{
+			case glBufferStorage: return reflectivelyGetCapabilitySupported(caps, "glBufferStorage");
+			case glBindVertexBuffer: return reflectivelyGetCapabilitySupported(caps, "glBindVertexBuffer");
+			
+			default: throw new UnsupportedOperationException("No logic defined for feature ["+feature+"].");
+		}
+	}
+	private static boolean reflectivelyGetCapabilitySupported(ContextCapabilities caps, String fieldName)
+	{
+		// try finding the field by its name
+		Field desiredField = null;
+		Field[] fields = caps.getClass().getDeclaredFields();
+		for (int i = 0; i < fields.length; i++)
+		{
+			Field field = fields[i];
+			if (field.getName().equals(fieldName))
+			{
+				desiredField = field;
+				break;
+			}
+		}
+		
+		if (desiredField == null)
+		{
+			// LWJGL 2 should be stable enough that if this comes up it means we screwed up the capitalization or something similar
+			throw new NullPointerException("No capability field found with the name ["+fieldName+"].");
+		}
+		
+		// the field is normally private, we need it public
+		desiredField.setAccessible(true);
+		try
+		{
+			Object obj = desiredField.get(caps);
+			return ((Long) obj) != 0; // if the pointer is non-null, then this is a valid method
+		}
+		catch (IllegalAccessException e)
+		{
+			LOGGER.error("Unable to access GL capability field ["+fieldName+"] due to error: ["+e.getMessage()+"].", e);
+			return false;
+		}
+	}
+	
 	
 	@Override
 	public int getPointerSize()
@@ -1066,6 +1103,12 @@ public class LWJGL2Service implements ILWJGLService
 	{
 		GL11.glDisable(cap);
 	}
+	
+	@Override
+	public void glDisablei(int target, int index) { GL30.glDisablei(target, index); }
+	
+	@Override
+	public void glEnablei(int target, int index) { GL30.glEnablei(target, index); }
 	
 	@Override
 	public boolean glIsEnabled(int cap)

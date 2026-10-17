@@ -19,22 +19,30 @@
 
 package com.seibel.distanthorizons.core.render;
 
+import com.seibel.distanthorizons.api.DhApi;
 import com.seibel.distanthorizons.api.enums.config.EDhApiDepthDirection;
 import com.seibel.distanthorizons.api.enums.config.EDhApiDepthRange;
 import com.seibel.distanthorizons.api.enums.config.EDhApiRenderingApi;
 import com.seibel.distanthorizons.api.enums.config.EDhApiRenderingEngine;
 import com.seibel.distanthorizons.api.interfaces.render.IDhApiBlazeTextureWrapper;
 import com.seibel.distanthorizons.api.interfaces.render.IDhApiRenderProxy;
+import com.seibel.distanthorizons.api.interfaces.world.IDhApiLevelWrapper;
+import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiEBeforeRenderDataCacheClearEvent;
 import com.seibel.distanthorizons.api.objects.DhApiResult;
 import com.seibel.distanthorizons.core.api.internal.SharedApi;
+import com.seibel.distanthorizons.core.dataObjects.render.textures.BlockTextureRegistry;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.level.IDhClientLevel;
 import com.seibel.distanthorizons.core.level.IDhLevel;
 import com.seibel.distanthorizons.core.util.RenderUtil;
 import com.seibel.distanthorizons.core.world.AbstractDhWorld;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.AbstractDhRenderApiDefinition;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.AbstractDhApiRenderDefinition;
+import com.seibel.distanthorizons.core.wrapperInterfaces.misc.IDependencySetup;
+import com.seibel.distanthorizons.coreapi.DependencyInjection.OverrideInjector;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Used to interact with Distant Horizons' rendering systems.
@@ -47,20 +55,11 @@ public class DhApiRenderProxy implements IDhApiRenderProxy
 	public static final DhApiRenderProxy INSTANCE = new DhApiRenderProxy();
 	
 	private static final IMinecraftRenderWrapper MC_RENDER = SingletonInjector.INSTANCE.get(IMinecraftRenderWrapper.class);
+	private static final IDependencySetup DEPENDENCY_SETUP = SingletonInjector.INSTANCE.get(IDependencySetup.class);
 	
 	private boolean deferTransparentRendering = false;
-	
-	private static AbstractDhRenderApiDefinition renderApiDef = null;
 	@Nullable
-	private static AbstractDhRenderApiDefinition tryGetApiDef()
-	{
-		if (renderApiDef == null)
-		{
-			renderApiDef = SingletonInjector.INSTANCE.get(AbstractDhRenderApiDefinition.class);
-		}
-		
-		return renderApiDef; 
-	}
+	public EDhApiRenderingEngine currentRenderingEngine = null;
 	
 	
 	
@@ -77,7 +76,11 @@ public class DhApiRenderProxy implements IDhApiRenderProxy
 	//=========//
 	
 	@Override
-	public DhApiResult<Boolean> clearRenderDataCache()
+	public DhApiResult<Boolean> clearRenderDataCache() { return this.reloadRenderDataCache(true); }
+	@Override
+	public DhApiResult<Boolean> reloadRenderDataCache() { return this.reloadRenderDataCache(false); }
+		
+	private DhApiResult<Boolean> reloadRenderDataCache(boolean clearExistingData)
 	{
 		// make sure this is a valid time to run the method
 		AbstractDhWorld world = SharedApi.getAbstractDhWorld();
@@ -87,13 +90,18 @@ public class DhApiRenderProxy implements IDhApiRenderProxy
 		}
 		
 		
+		DhApi.events.fireAllEvents(DhApiEBeforeRenderDataCacheClearEvent.class, new DhApiEBeforeRenderDataCacheClearEvent.EventParam());
+		
+		// handles both colors and textures
+		BlockTextureRegistry.INSTANCE.clear();
+		
 		// clear the render caches for each level
 		Iterable<? extends IDhLevel> loadedLevels = world.getAllLoadedLevels();
 		for (IDhLevel level : loadedLevels)
 		{
 			if (level instanceof IDhClientLevel)
 			{
-				((IDhClientLevel) level).clearRenderCache();
+				((IDhClientLevel) level).clearRenderCache(clearExistingData);
 			}
 		}
 		
@@ -103,7 +111,7 @@ public class DhApiRenderProxy implements IDhApiRenderProxy
 	@Override 
 	public EDhApiRenderingApi getRenderingApi() throws IllegalStateException
 	{
-		AbstractDhRenderApiDefinition apiDef = tryGetApiDef();
+		AbstractDhApiRenderDefinition apiDef = OverrideInjector.INSTANCE.get(AbstractDhApiRenderDefinition.class);
 		if (apiDef == null)
 		{
 			// The rendering API hasn't been set up yet
@@ -116,20 +124,60 @@ public class DhApiRenderProxy implements IDhApiRenderProxy
 	@Override 
 	public EDhApiRenderingEngine getRenderingEngine() throws IllegalStateException
 	{
-		AbstractDhRenderApiDefinition apiDef = tryGetApiDef();
-		if (apiDef == null)
+		EDhApiRenderingEngine engine = this.currentRenderingEngine;
+		if (engine == null)
 		{
 			// The rendering API hasn't been set up yet
 			throw new IllegalStateException("Distant Horizons hasn't finished setup yet. No renderer has been set.");
 		}
 		
-		return apiDef.getRenderingEngine();
+		return engine;
+	}
+	
+	@Override
+	public CompletableFuture<DhApiResult<String>> setRenderDefinitionOverrideAsync(AbstractDhApiRenderDefinition renderDef, String apiUserDisplayName)
+	{
+		CompletableFuture<DhApiResult<String>> apiFuture = new CompletableFuture<>();
+		
+		CompletableFuture<String> setFuture = DEPENDENCY_SETUP.trySetRenderDefinitionAsync(renderDef, EDhApiRenderingEngine.API, apiUserDisplayName);
+		setFuture.exceptionally((throwable) -> 
+		{
+			// shouldn't happen, but just in case
+			apiFuture.completeExceptionally(throwable);
+			return null;
+		});
+		setFuture.thenAccept((String message) -> 
+		{
+			if (message != null)
+			{
+				apiFuture.complete(DhApiResult.createFail(message));
+			}
+			else
+			{
+				apiFuture.complete(DhApiResult.createSuccess());
+			}
+		});
+		
+		return apiFuture;
+	}
+	@Override
+	public CompletableFuture<DhApiResult<String>> clearRenderDefinitionOverrideAsync()
+	{
+		CompletableFuture<DhApiResult<String>> apiFuture = new CompletableFuture<>();
+		
+		DEPENDENCY_SETUP.clearRenderDefinitionOverrideAsync()
+			.thenAccept((voidObj) -> 
+			{
+				apiFuture.complete(DhApiResult.createSuccess());
+			});
+		
+		return apiFuture;
 	}
 	
 	@Override 
 	public boolean isNativeRenderer() throws IllegalStateException
 	{
-		AbstractDhRenderApiDefinition apiDef = tryGetApiDef();
+		AbstractDhApiRenderDefinition apiDef = OverrideInjector.INSTANCE.get(AbstractDhApiRenderDefinition.class);
 		if (apiDef == null)
 		{
 			// The rendering API hasn't been set up yet
@@ -142,7 +190,7 @@ public class DhApiRenderProxy implements IDhApiRenderProxy
 	@Override
 	public EDhApiDepthRange getDepthRange() throws IllegalStateException
 	{
-		AbstractDhRenderApiDefinition apiDef = tryGetApiDef();
+		AbstractDhApiRenderDefinition apiDef = OverrideInjector.INSTANCE.get(AbstractDhApiRenderDefinition.class);
 		if (apiDef == null)
 		{
 			// The rendering API hasn't been set up yet
@@ -154,7 +202,7 @@ public class DhApiRenderProxy implements IDhApiRenderProxy
 	@Override
 	public EDhApiDepthDirection getDepthDirection() throws IllegalStateException
 	{
-		AbstractDhRenderApiDefinition apiDef = tryGetApiDef();
+		AbstractDhApiRenderDefinition apiDef = OverrideInjector.INSTANCE.get(AbstractDhApiRenderDefinition.class);
 		if (apiDef == null)
 		{
 			// The rendering API hasn't been set up yet

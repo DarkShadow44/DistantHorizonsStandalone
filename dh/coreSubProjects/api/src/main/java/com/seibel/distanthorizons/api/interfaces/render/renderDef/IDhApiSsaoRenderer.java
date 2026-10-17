@@ -17,18 +17,19 @@
  *    along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.seibel.distanthorizons.core.wrapperInterfaces.render.objects;
+package com.seibel.distanthorizons.api.interfaces.render.renderDef;
 
-import com.seibel.distanthorizons.core.dataObjects.render.bufferBuilding.LodBufferContainer;
+import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam;
 
 /**
- * @see LodBufferContainer
+ * Handles rendering Distant Horizons
+ * Ambient Occlusioning.
+ *
+ * @since API 7.3.0
+ * @version 2026-10-02
  */
-public interface ILodContainerUniformBufferWrapper extends AutoCloseable
+public interface IDhApiSsaoRenderer
 {
-	/** does nothing if the buffer has already been uploaded */
-	void tryUpload(LodBufferContainer bufferContainer);
-	
-	@Override void close();
+	void render(DhApiRenderParam renderParams);
 	
 }

@@ -35,6 +35,11 @@ public class DhApiVec3d
 	
 	
 	
+	//==============//
+	// constructors //
+	//==============//
+	//region
+	
 	/** creates a Vec3 at (0,0,0) */
 	public DhApiVec3d()
 	{
@@ -49,6 +54,39 @@ public class DhApiVec3d
 		this.y = y;
 		this.z = z;
 	}
+	
+	//endregion
+	
+	
+	
+	//===========//
+	// modifiers //
+	//===========//
+	//region
+	
+	/** copies over everything from that into this */
+	public void set(DhApiVec3d that)
+	{
+		this.x = that.x;
+		this.y = that.y;
+		this.z = that.z;
+	}
+	
+	public void set(double x, double y, double z)
+	{
+		this.x = x;
+		this.y = y;
+		this.z = z;
+	}
+	
+	//endregion
+	
+	
+	
+	//================//
+	// base overrides //
+	//================//
+	//region
 	
 	@Override
 	public boolean equals(Object obj)
@@ -90,5 +128,9 @@ public class DhApiVec3d
 	
 	@Override
 	public String toString() { return "[" + this.x + ", " + this.y + ", " + this.z + "]"; }
+	
+	//endregion
+	
+	
 	
 }

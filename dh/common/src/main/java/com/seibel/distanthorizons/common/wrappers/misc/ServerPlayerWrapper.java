@@ -67,8 +67,18 @@ public class ServerPlayerWrapper implements IServerPlayerWrapper
 		#if MC_VER <= MC_1_7_10
 		// 1.7.10's NetHandlerPlayServer is reached through `playerNetServerHandler`, not `connection`
 		NetHandlerPlayServer netHandler = serverPlayer.playerNetServerHandler;
+		if (netHandler == null)
+		{
+			// 1.12.2 and older trigger playerDisconnectEvent with null NetHandlerPlayServer value if player got rejected during mod-check handshake
+			return null;
+		}
 		return serverPlayerWrapperMap.computeIfAbsent(netHandler, ignored -> new ServerPlayerWrapper(netHandler));
 		#else
+		if (serverPlayer.connection == null)
+		{
+			// 1.12.2 and older trigger playerDisconnectEvent with null NetHandlerPlayServer value if player got rejected during mod-check handshake
+			return null;
+		}
 		return serverPlayerWrapperMap.computeIfAbsent(serverPlayer.connection, ignored -> new ServerPlayerWrapper(serverPlayer.connection));
 		#endif
 	}

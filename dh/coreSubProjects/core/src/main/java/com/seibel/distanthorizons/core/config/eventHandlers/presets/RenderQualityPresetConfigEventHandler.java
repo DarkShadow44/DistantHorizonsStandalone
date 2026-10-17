@@ -158,7 +158,7 @@ public class RenderQualityPresetConfigEventHandler extends AbstractPresetConfigE
 		for (ConfigPresetOptions<EDhApiQualityPreset, ?> config : this.configList)
 		{
 			// ignore try-using, the listener should only ever be added once and should never be removed
-			new ConfigChangeListener<>(config.configEntry, (val) -> { this.onConfigValueChanged(); });
+			new ConfigChangeListener<>(config.configEntry, (ignored) -> { this.onConfigValueChanged(); });
 		}
 	}
 	

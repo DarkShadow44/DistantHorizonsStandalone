@@ -25,7 +25,7 @@ import com.seibel.distanthorizons.common.render.openGl.glObject.shader.GlShaderP
 import com.seibel.distanthorizons.common.render.openGl.postProcessing.GlScreenQuad;
 import com.seibel.distanthorizons.common.render.openGl.util.GlAbstractShaderRenderer;
 import com.seibel.distanthorizons.common.wrappers.minecraft.MinecraftGLWrapper;
-import com.seibel.distanthorizons.core.render.RenderParams;
+import com.seibel.distanthorizons.core.render.RenderParam;
 import com.seibel.distanthorizons.core.util.math.DhMat4f;
 import com.seibel.distanthorizons.core.util.math.DhVec3d;
 import org.lwjgl.opengl.GL13;
@@ -128,7 +128,7 @@ public class GlDhTaaShader extends GlAbstractShaderRenderer
 	//region
 	
 	@Override
-	protected void onApplyUniforms(RenderParams renderParams)
+	protected void onApplyUniforms(RenderParam renderParams)
 	{
 		DhMat4f dhProjectionInverse = new DhMat4f(renderParams.dhProjectionMatrix);
 		dhProjectionInverse.invert();
@@ -158,11 +158,11 @@ public class GlDhTaaShader extends GlAbstractShaderRenderer
 			this.shader.setUniform(this.uViewWidth, (float) width);
 			this.shader.setUniform(this.uViewHeight, (float) height);
 			
-			this.shader.setUniform(this.uDepthIsZeroToPositiveOne, (RENDER_DEF.getDepthRange() == EDhApiDepthRange.ZERO_TO_POS_ONE) ? 1 : 0);
+			this.shader.setUniform(this.uDepthIsZeroToPositiveOne, (renderParams.renderDefinition.getDepthRange() == EDhApiDepthRange.ZERO_TO_POS_ONE) ? 1 : 0);
 		}
 	}
 	
-	public void savePostRenderUniformObjects(RenderParams renderParams)
+	public void savePostRenderUniformObjects(RenderParam renderParams)
 	{
 		// Save this frame's data for next frame's reprojection
 		
@@ -191,7 +191,7 @@ public class GlDhTaaShader extends GlAbstractShaderRenderer
 	}
 	
 	@Override
-	protected void onRender()
+	protected void onRender(RenderParam renderParams)
 	{
 		GLMC.glBindFramebuffer(GL30.GL_FRAMEBUFFER, this.frameBuffer);
 		GLMC.disableScissorTest();

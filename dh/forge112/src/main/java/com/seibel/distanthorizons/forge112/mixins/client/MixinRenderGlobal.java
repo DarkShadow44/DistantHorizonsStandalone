@@ -19,6 +19,8 @@
 
 package com.seibel.distanthorizons.forge112.mixins.client;
 
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.seibel.distanthorizons.common.wrappers.minecraft.MinecraftRenderWrapper;
 import com.seibel.distanthorizons.common.wrappers.world.ClientLevelWrapper;
 import com.seibel.distanthorizons.core.api.internal.ClientApi;
@@ -57,13 +59,13 @@ public class MixinRenderGlobal
 	
 	@Unique private static final boolean DEBUG_GL_STATE = false;
 	
-	@Inject(method = "renderBlockLayer(Lnet/minecraft/util/BlockRenderLayer;DILnet/minecraft/entity/Entity;)I", at = @At("HEAD"), cancellable = true)
-	private void renderChunkLayerHead(BlockRenderLayer blockLayerIn, double partialTicks, int pass, Entity entityIn, CallbackInfoReturnable<Integer> cir)
+	@WrapMethod(method = "renderBlockLayer(Lnet/minecraft/util/BlockRenderLayer;DILnet/minecraft/entity/Entity;)I")
+	private int renderChunkLayerHead(BlockRenderLayer blockLayerIn, double partialTicks, int pass, Entity entityIn, Operation<Integer> original)
 	{
 		// Cancelling CUTOUT RenderLayer will cause crash
 		if (Config.Client.Advanced.Debugging.lodOnlyMode.get() && blockLayerIn != BlockRenderLayer.CUTOUT)
 		{
-			cir.cancel();
+			return 0;
 		}
 		
 		if (blockLayerIn == BlockRenderLayer.SOLID)
@@ -84,11 +86,9 @@ public class MixinRenderGlobal
 		{
 			GlStateManager.depthMask(true); // Water will be rendered black otherwise
 		}
-	}
-	
-	@Inject(method = "renderBlockLayer(Lnet/minecraft/util/BlockRenderLayer;DILnet/minecraft/entity/Entity;)I", at = @At("TAIL"))
-	private void renderChunkLayerTail(BlockRenderLayer blockLayerIn, double partialTicks, int pass, Entity entityIn, CallbackInfoReturnable<Integer> cir)
-	{
+		
+		int originalResult = original.call(blockLayerIn, partialTicks, pass, entityIn);
+		
 		if (blockLayerIn == BlockRenderLayer.SOLID)
 		{
 			distantHorizons$captureRenderState((float) partialTicks);
@@ -139,6 +139,7 @@ public class MixinRenderGlobal
 				GLStateSnapshot.diffAndPrint("FADE TRAN() [TRANSLUCENT]", before, after);
 			}
 		}
+		return originalResult;
 	}
 	
 	@Inject(method = "renderBlockLayer(Lnet/minecraft/util/BlockRenderLayer;)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/EntityRenderer;enableLightmap()V", shift = At.Shift.AFTER))

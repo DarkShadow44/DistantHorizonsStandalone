@@ -20,7 +20,9 @@
 package com.seibel.distanthorizons.common.render.openGl.test;
 
 import com.seibel.distanthorizons.api.enums.config.EDhApiGpuUploadMethod;
+import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam;
 import com.seibel.distanthorizons.common.render.openGl.postProcessing.apply.GlDhApplyShader;
+import com.seibel.distanthorizons.common.render.openGl.postProcessing.copy.GlDhCopyShader;
 import com.seibel.distanthorizons.common.wrappers.minecraft.MinecraftGLWrapper;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.logging.DhLogger;
@@ -29,10 +31,10 @@ import com.seibel.distanthorizons.common.render.openGl.glObject.buffer.GLVertexB
 import com.seibel.distanthorizons.common.render.openGl.glObject.shader.GlShaderProgram;
 import com.seibel.distanthorizons.common.render.openGl.glObject.vertexAttribute.GlAbstractVertexAttribute;
 import com.seibel.distanthorizons.common.render.openGl.glObject.vertexAttribute.GlVertexPointer;
-import com.seibel.distanthorizons.core.render.RenderParams;
+import com.seibel.distanthorizons.core.render.RenderParam;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
 
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass.IDhTestTriangleRenderer;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.IDhApiTestTriangleRenderer;
 import org.lwjgl.opengl.GL11;
 
 import static com.seibel.distanthorizons.lwjgl.LWJGLServiceProvider.LWJGL;
@@ -45,7 +47,7 @@ import java.nio.ByteOrder;
  * to the center of the screen to confirm DH's
  * apply shader is running correctly
  */
-public class GlTestTriangleRenderer implements IDhTestTriangleRenderer
+public class GlTestTriangleRenderer implements IDhApiTestTriangleRenderer
 {
 	public static final DhLogger LOGGER = new DhLoggerBuilder().build(); 
 	
@@ -65,10 +67,10 @@ public class GlTestTriangleRenderer implements IDhTestTriangleRenderer
 	
 	
 	
-	GlShaderProgram basicShader;
-	GLVertexBuffer vbo;
-	GlAbstractVertexAttribute va;
-	boolean init = false;
+	private GlShaderProgram basicShader;
+	private GLVertexBuffer vbo;
+	private GlAbstractVertexAttribute va;
+	private boolean init = false;
 	
 	
 	
@@ -126,19 +128,22 @@ public class GlTestTriangleRenderer implements IDhTestTriangleRenderer
 	//region
 	
 	@Override
-	public void render(RenderParams renderParams)
+	public void render(DhApiRenderParam renderParams)
 	{
 		this.init();
 		
 		this.basicShader.bind();
 		this.va.bind();
 		
+		GLMC.disableBlend();
+		GLMC.disableDepthTest();
+		
 		this.vbo.bind();
 		this.va.bindBufferToAllBindingPoints(this.vbo.getId());
 		
 		LWJGL.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
 		
-		GlDhApplyShader.INSTANCE.render(renderParams);
+		GlDhCopyShader.INSTANCE.render((RenderParam)renderParams);
 	}
 	
 	//endregion

@@ -20,6 +20,9 @@
 package com.seibel.distanthorizons.common.render.openGl;
 
 import com.seibel.distanthorizons.api.enums.config.EDhApiGpuUploadMethod;
+import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam;
+import com.seibel.distanthorizons.api.objects.math.DhApiVec3f;
+import com.seibel.distanthorizons.api.objects.render.IDebugBox;
 import com.seibel.distanthorizons.common.render.openGl.glObject.buffer.GLIndexBuffer;
 import com.seibel.distanthorizons.common.render.openGl.glObject.buffer.GLVertexBuffer;
 import com.seibel.distanthorizons.common.render.openGl.glObject.shader.GlShaderProgram;
@@ -28,7 +31,6 @@ import com.seibel.distanthorizons.common.render.openGl.glObject.vertexAttribute.
 import com.seibel.distanthorizons.common.wrappers.minecraft.MinecraftGLWrapper;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
-import com.seibel.distanthorizons.core.render.RenderParams;
 import com.seibel.distanthorizons.core.render.renderer.AbstractDebugWireframeRenderer;
 import com.seibel.distanthorizons.core.util.math.DhMat4f;
 import org.lwjgl.opengl.GL11;
@@ -36,6 +38,7 @@ import org.lwjgl.opengl.GL15;
 
 import static com.seibel.distanthorizons.lwjgl.LWJGLServiceProvider.LWJGL;
 
+import java.awt.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
@@ -59,42 +62,6 @@ public class GlDhDebugWireframeRenderer extends AbstractDebugWireframeRenderer
 	private GLIndexBuffer indexBuffer;
 	private GlAbstractVertexAttribute va;
 	private boolean init = false;
-	
-	
-	
-	/** A box from 0,0,0 to 1,1,1 */
-	private static final float[] BOX_VERTICES = {
-		//region
-			// Pos x y z
-			0, 0, 0,
-			1, 0, 0,
-			1, 1, 0,
-			0, 1, 0,
-			0, 0, 1,
-			1, 0, 1,
-			1, 1, 1,
-			0, 1, 1,
-		//endregion
-	};
-
-	private static final int[] BOX_OUTLINE_INDICES = {
-		//region
-			0, 1,
-			1, 2,
-			2, 3,
-			3, 0,
-
-			4, 5,
-			5, 6,
-			6, 7,
-			7, 4,
-
-			0, 4,
-			1, 5,
-			2, 6,
-			3, 7,
-		//endregion
-	};
 	
 	
 	
@@ -159,8 +126,9 @@ public class GlDhDebugWireframeRenderer extends AbstractDebugWireframeRenderer
 	//region
 	
 	@Override
-	public void render(RenderParams renderParams)
+	public void beginRenderBatch(DhApiRenderParam apiRenderParams)
 	{
+		super.beginRenderBatch(apiRenderParams);
 		this.init();
 		
 		LWJGL.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE);
@@ -171,26 +139,32 @@ public class GlDhDebugWireframeRenderer extends AbstractDebugWireframeRenderer
 		this.va.bindBufferToAllBindingPoints(this.vertexBuffer.getId());
 		
 		this.indexBuffer.bind();
-		
-		super.render(renderParams);
-		
-		// revert to prevent issues with the following passes
-		LWJGL.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL);
 	}
 	
 	@Override
-	public void renderBox(Box box)
+	public void renderBox(IDebugBox box)
 	{
-		DhMat4f boxTransform = DhMat4f.createTranslateMatrix(box.minPos.x - this.camPosFloatThisFrame.x, box.minPos.y - this.camPosFloatThisFrame.y, box.minPos.z - this.camPosFloatThisFrame.z);
-		boxTransform.multiply(DhMat4f.createScaleMatrix(box.maxPos.x - box.minPos.x, box.maxPos.y - box.minPos.y, box.maxPos.z - box.minPos.z));
-
+		DhApiVec3f minPos = box.getMinPos();
+		DhApiVec3f maxPos = box.getMaxPos();
+		Color color = box.getColor();
+		
+		DhMat4f boxTransform = DhMat4f.createTranslateMatrix(minPos.x - this.camPosFloatThisFrame.x, minPos.y - this.camPosFloatThisFrame.y, minPos.z - this.camPosFloatThisFrame.z);
+		boxTransform.multiply(DhMat4f.createScaleMatrix(maxPos.x - minPos.x, maxPos.y - minPos.y, maxPos.z - minPos.z));
+		
 		DhMat4f transformMatrix = this.dhMvmProjMatrixThisFrame.copy();
 		transformMatrix.multiply(boxTransform);
 		this.basicShader.setUniform(this.basicShader.getUniformLocation("uTransform"), transformMatrix);
-
-		this.basicShader.setUniform(this.basicShader.getUniformLocation("uColor"), box.color);
-
+		
+		this.basicShader.setUniform(this.basicShader.getUniformLocation("uColor"), color);
+		
 		LWJGL.glDrawElements(GL11.GL_LINES, BOX_OUTLINE_INDICES.length, GL11.GL_UNSIGNED_INT, 0);
+	}
+	
+	@Override
+	public void endRenderBatch(DhApiRenderParam apiRenderParams)
+	{
+		// revert to prevent issues with the following passes
+		LWJGL.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL);
 	}
 	
 	//endregion

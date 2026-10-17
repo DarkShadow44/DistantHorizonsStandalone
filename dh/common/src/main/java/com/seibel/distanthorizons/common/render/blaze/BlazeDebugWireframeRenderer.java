@@ -43,17 +43,20 @@ import com.mojang.renderpearl.api.vertex.VertexFormat;
 #endif
 
 import com.seibel.distanthorizons.api.enums.config.EDhApiDepthDirection;
+import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam;
+import com.seibel.distanthorizons.api.objects.math.DhApiVec3f;
+import com.seibel.distanthorizons.api.objects.render.IDebugBox;
 import com.seibel.distanthorizons.common.render.blaze.util.BlazeDhVertexFormatUtil;
 import com.seibel.distanthorizons.common.render.blaze.wrappers.BlazeVertexFormatBuilder;
 import com.seibel.distanthorizons.common.render.blaze.wrappers.RenderPassWrapper;
 import com.seibel.distanthorizons.common.render.blaze.wrappers.RenderPipelineBuilderWrapper;
 import com.seibel.distanthorizons.common.render.blaze.wrappers.uniform.BlazeUniformBufferWrapper;
-import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
+import com.seibel.distanthorizons.core.render.RenderParam;
 import com.seibel.distanthorizons.core.render.renderer.AbstractDebugWireframeRenderer;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.AbstractDhRenderApiDefinition;
 
+import java.awt.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
@@ -65,49 +68,10 @@ public class BlazeDebugWireframeRenderer extends AbstractDebugWireframeRenderer
 {
 	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
-	private static final AbstractDhRenderApiDefinition RENDER_DEF = SingletonInjector.INSTANCE.get(AbstractDhRenderApiDefinition.class);
-	
 	private static final GpuDevice GPU_DEVICE = RenderSystem.getDevice();
 	private static final CommandEncoder COMMAND_ENCODER = GPU_DEVICE.createCommandEncoder();
 	
 	public static BlazeDebugWireframeRenderer INSTANCE = new BlazeDebugWireframeRenderer();
-	
-	/** A box from 0,0,0 to 1,1,1 */
-	private static final float[] BOX_VERTICES = {
-		//region
-		// Pos x y z
-		0, 0, 0,
-		1, 0, 0,
-		1, 1, 0,
-		0, 1, 0,
-		0, 0, 1,
-		1, 0, 1,
-		1, 1, 1,
-		0, 1, 1,
-		//endregion
-	};
-	
-	private static final int[] BOX_OUTLINE_INDICES = {
-		//region
-		0, 1,
-		1, 2,
-		2, 3,
-		3, 0,
-		
-		4, 5,
-		5, 6,
-		6, 7,
-		7, 4,
-		
-		0, 4,
-		1, 5,
-		2, 6,
-		3, 7,
-		//endregion
-	};
-	
-	private static final int VERTICES_PER_BOX = 8; // BOX_VERTICES.length / 3
-	private static final int INDICES_PER_BOX = BOX_OUTLINE_INDICES.length; // 24
 	
 	/**
 	 * How many boxes a single batch can hold before it must be flushed.
@@ -151,7 +115,7 @@ public class BlazeDebugWireframeRenderer extends AbstractDebugWireframeRenderer
 	
 	public BlazeDebugWireframeRenderer() { }
 	
-	public void init()
+	public void init(RenderParam renderParams)
 	{
 		if (this.init)
 		{
@@ -159,17 +123,17 @@ public class BlazeDebugWireframeRenderer extends AbstractDebugWireframeRenderer
 		}
 		this.init = true;
 		
-		this.createPipelines();
+		this.createPipelines(renderParams);
 		this.createBuffers();
 		
 	}
-	private void createPipelines()
+	private void createPipelines(RenderParam renderParams)
 	{
 		RenderPipelineBuilderWrapper pipelineBuilder = new RenderPipelineBuilderWrapper();
 		{
 			pipelineBuilder.withFaceCulling(false);
 			pipelineBuilder.withDepthWrite(true);
-			if (RENDER_DEF.getDepthDirection() == EDhApiDepthDirection.FORWARD_Z)
+			if (renderParams.renderDefinition.getDepthDirection() == EDhApiDepthDirection.FORWARD_Z)
 			{
 				pipelineBuilder.withDepthTest(RenderPipelineBuilderWrapper.EDhDepthTest.LESS);
 			}
@@ -248,22 +212,20 @@ public class BlazeDebugWireframeRenderer extends AbstractDebugWireframeRenderer
 	//region
 	
 	@Override
-	protected void beginRenderBatch()
+	public void beginRenderBatch(DhApiRenderParam apiRenderParams)
 	{
-		this.init();
+		RenderParam renderParams = (RenderParam)apiRenderParams;
+		
+		super.beginRenderBatch(renderParams);
+		this.init(renderParams);
 		
 		this.batchVertexStagingBuffer.clear();
 		this.batchedBoxCount = 0;
 	}
 	
 	@Override
-	protected void endRenderBatch() { this.flushBatchAndRender(); }
-	
-	@Override
-	public void renderBox(Box box)
+	public void renderBox(IDebugBox box)
 	{
-		this.init();
-		
 		// shouldn't happen, but just in case
 		if (box == null)
 		{
@@ -278,19 +240,23 @@ public class BlazeDebugWireframeRenderer extends AbstractDebugWireframeRenderer
 		
 		this.addBoxToBatch(box);
 	}
-	private void addBoxToBatch(Box box)
+	private void addBoxToBatch(IDebugBox box)
 	{
-		float minX = box.minPos.x - this.camPosFloatThisFrame.x;
-		float minY = box.minPos.y - this.camPosFloatThisFrame.y;
-		float minZ = box.minPos.z - this.camPosFloatThisFrame.z;
-		float sizeX = box.maxPos.x - box.minPos.x;
-		float sizeY = box.maxPos.y - box.minPos.y;
-		float sizeZ = box.maxPos.z - box.minPos.z;
+		DhApiVec3f minPos = box.getMinPos();
+		DhApiVec3f maxPos = box.getMaxPos();
+		Color color = box.getColor();
 		
-		float r = box.color.getRed() / 255.0f;
-		float g = box.color.getGreen() / 255.0f;
-		float b = box.color.getBlue() / 255.0f;
-		float a = box.color.getAlpha() / 255.0f;
+		float minX = minPos.x - this.camPosFloatThisFrame.x;
+		float minY = minPos.y - this.camPosFloatThisFrame.y;
+		float minZ = minPos.z - this.camPosFloatThisFrame.z;
+		float sizeX = maxPos.x - minPos.x;
+		float sizeY = maxPos.y - minPos.y;
+		float sizeZ = maxPos.z - minPos.z;
+		
+		float r = color.getRed() / 255.0f;
+		float g = color.getGreen() / 255.0f;
+		float b = color.getBlue() / 255.0f;
+		float a = color.getAlpha() / 255.0f;
 		
 		for (int i = 0; i < VERTICES_PER_BOX; i++)
 		{
@@ -365,6 +331,9 @@ public class BlazeDebugWireframeRenderer extends AbstractDebugWireframeRenderer
 		this.batchedBoxCount = 0;
 	}
 	private String getRenderPassName() { return "distantHorizons:DebugRenderer"; }
+	
+	@Override
+	public void endRenderBatch(DhApiRenderParam apiRenderParams) { this.flushBatchAndRender(); }
 	
 	//endregion
 	

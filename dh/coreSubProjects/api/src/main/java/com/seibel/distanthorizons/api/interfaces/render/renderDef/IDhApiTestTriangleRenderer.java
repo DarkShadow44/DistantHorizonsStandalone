@@ -17,22 +17,23 @@
  *    along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.seibel.distanthorizons.core.wrapperInterfaces.render.objects;
+package com.seibel.distanthorizons.api.interfaces.render.renderDef;
 
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.AbstractDhRenderApiDefinition;
-import com.seibel.distanthorizons.coreapi.interfaces.dependencyInjection.IBindable;
+import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam;
 
-import java.nio.ByteBuffer;
-
-public interface IVertexBufferWrapper extends IBindable, AutoCloseable
+/**
+ * Can be used alongside {@link IDhApiMetaRenderer} as
+ * a proof-of-concept renderer to make sure
+ * DH's renderer is working properly. <Br><Br>
+ * 
+ * The "GL triangle" should render behind vanilla terrain
+ * just like DH's normal rendering does.
+ *
+ * @since API 7.3.0
+ * @version 2026-10-02
+ */
+public interface IDhApiTestTriangleRenderer
 {
-	void uploadVertexBuffer(ByteBuffer buffer, int vertexCount);
-	/** Does nothing if {@link AbstractDhRenderApiDefinition#useSingleIbo()} returns true */
-	void uploadIndexBuffer(ByteBuffer buffer, int vertexCount);
-	
-	int getVertexCount();
-	
-	@Override
-	void close();
+	void render(DhApiRenderParam renderParams);
 	
 }

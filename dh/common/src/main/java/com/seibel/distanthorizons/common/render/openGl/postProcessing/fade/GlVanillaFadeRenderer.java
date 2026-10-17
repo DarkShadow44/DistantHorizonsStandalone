@@ -19,16 +19,17 @@
 
 package com.seibel.distanthorizons.common.render.openGl.postProcessing.fade;
 
+import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam;
 import com.seibel.distanthorizons.common.render.openGl.GlDhMetaRenderer;
 import com.seibel.distanthorizons.common.render.openGl.glObject.GLState;
 import com.seibel.distanthorizons.common.wrappers.minecraft.MinecraftGLWrapper;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
-import com.seibel.distanthorizons.core.render.RenderParams;
+import com.seibel.distanthorizons.core.render.RenderParam;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IProfilerWrapper;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass.IDhVanillaFadeRenderer;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.IDhApiVanillaFadeRenderer;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
@@ -44,7 +45,7 @@ import java.nio.ByteBuffer;
  * {@link GlDhVanillaFadeShader} - draws the Fade to a texture. <br>
  * {@link GlDhFarFadeApplyShader} - draws the Fade texture to MC's FrameBuffer. <br>
  */
-public class GlVanillaFadeRenderer implements IDhVanillaFadeRenderer
+public class GlVanillaFadeRenderer implements IDhApiVanillaFadeRenderer
 {
 	public static GlVanillaFadeRenderer INSTANCE = new GlVanillaFadeRenderer();
 	
@@ -126,8 +127,10 @@ public class GlVanillaFadeRenderer implements IDhVanillaFadeRenderer
 	//region
 	
 	@Override
-	public void render(RenderParams renderParams)
+	public void render(DhApiRenderParam apiRenderParams)
 	{
+		RenderParam renderParams = (RenderParam)apiRenderParams;
+		
 		int depthTextureId = GlDhMetaRenderer.INSTANCE.getActiveDepthTextureId();
 		if (depthTextureId == -1)
 		{

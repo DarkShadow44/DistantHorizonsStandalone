@@ -18,6 +18,8 @@ variables:
   GET_SOURCES_ATTEMPTS: 5
   ARTIFACT_DOWNLOAD_ATTEMPTS: 5
   RESTORE_CACHE_ATTEMPTS: 5
+  # jobs needing project credentials or deploy access only run here; forks skip them
+  UPSTREAM_PROJECT_PATH: "distant-horizons-team/distant-horizons"
 
 
 # Shared bash helper: 
@@ -56,12 +58,24 @@ variables:
           - runner_system_failure
           - stuck_or_timeout_failure
 
+# for jobs that need project credentials or deploy access, so they are simply
+# not created on forks instead of failing there
+.upstream_only:
+  rules:
+    # jobs without `rules` implicitly get `except: merge_requests`; keep that here too,
+    # otherwise these jobs would start pulling in duplicate merge request pipelines
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: never
+    - if: $CI_PROJECT_PATH == $UPSTREAM_PROJECT_PATH
+
 
 build:
   stage: build
   needs:
+    # optional so the build still runs where translations is skipped, using the committed lang files
     - job: translations
       artifacts: true
+      optional: true
   parallel:
     matrix:
       - MC_VER: [
@@ -135,6 +149,7 @@ api:
 # publish the API javadocs built by the api job
 pages:
   stage: pages
+  extends: .upstream_only
   needs:
     - job: api
       artifacts: true
@@ -150,6 +165,7 @@ translations:
   stage: translations
   needs: []
   image: crowdin/cli:latest
+  extends: .upstream_only
   before_script:
     - *retry_script
   script:

@@ -17,14 +17,23 @@
  *    along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass;
+package com.seibel.distanthorizons.api.interfaces.render.renderDef.objects;
 
-import com.seibel.distanthorizons.core.render.RenderParams;
-import com.seibel.distanthorizons.coreapi.interfaces.dependencyInjection.IBindable;
-
-public interface IDhAntiAliasRenderer extends IBindable
+/**
+ * Allows your renderer to upload a uniform buffer
+ * for a {@link IDhApiTerrainBufferContainer}.
+ * 
+ * @see IDhApiTerrainBufferContainer
+ * @since API 7.3.0
+ * @version 2026-10-02
+ */
+public interface IDhApiTerrainContainerUniformBufferWrapper extends AutoCloseable
 {
+	/** Should do nothing if the buffer has already been uploaded */
+	void tryUpload(IDhApiTerrainBufferContainer bufferContainer);
 	
-	void render(RenderParams renderParams);
+	@Override void close();
+	
+	
 	
 }

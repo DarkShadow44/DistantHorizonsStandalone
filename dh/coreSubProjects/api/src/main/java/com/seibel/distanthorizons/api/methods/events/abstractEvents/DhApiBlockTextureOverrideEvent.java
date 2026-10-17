@@ -92,10 +92,17 @@ public abstract class DhApiBlockTextureOverrideEvent implements IDhApiEvent<DhAp
 		public void update(
 			IDhApiBlockStateWrapper blockStateWrapper,
 			EDhApiDirection faceDirection,
+			int[] argbPixels,
 			ITextureRegenFunc textureRegenFunc)
 		{
 			this.blockStateWrapper = blockStateWrapper;
 			this.faceDirection = faceDirection;
+			
+			System.arraycopy(
+				argbPixels, 0, 
+				this.argbPixels, 0, 
+				this.argbPixels.length);
+			
 			this.textureRegenFunc = textureRegenFunc;
 		}
 		

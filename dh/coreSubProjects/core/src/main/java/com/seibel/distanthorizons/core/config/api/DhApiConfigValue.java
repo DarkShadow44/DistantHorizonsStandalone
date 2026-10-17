@@ -188,9 +188,9 @@ public class DhApiConfigValue<coreType, apiType> implements IDhApiConfigValue<ap
 	@Override
 	public void addChangeListener(Consumer<apiType> onValueChangeFunc) 
 	{
-		this.configBase.addValueChangeListener((coreValue) -> 
+		this.configBase.addValueChangeListener((config) -> 
 		{
-			apiType apiValue = this.configConverter.convertToApiType(coreValue);
+			apiType apiValue = this.configConverter.convertToApiType(config.get());
 			onValueChangeFunc.accept(apiValue);
 		}); 
 	}

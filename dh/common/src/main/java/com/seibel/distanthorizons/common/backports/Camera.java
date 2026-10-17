@@ -23,6 +23,13 @@ public class Camera
 
 	public void update(EntityLivingBase entity, float partialTicks)
 	{
+		// the render view entity is briefly null while changing dimensions,
+		// keep the last position until it's available again
+		if (entity == null)
+		{
+			return;
+		}
+
 		final Vector4f offset = new Vector4f(); // third person offset
 		final Matrix4f inverseModelView = ClientApi.RENDER_STATE.mcModelViewMatrix
 			.createJomlMatrix()

@@ -17,20 +17,18 @@
  *    along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass;
+package com.seibel.distanthorizons.api.interfaces.render.renderDef;
 
-import com.seibel.distanthorizons.api.interfaces.render.IDhApiCustomRenderRegister;
-import com.seibel.distanthorizons.core.render.RenderParams;
-import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IProfilerWrapper;
+import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam;
 
-public interface IDhGenericRenderer extends IDhApiCustomRenderRegister, AutoCloseable
+/**
+ * Handles fading between DH and vanilla terrain.
+ * 
+ * @since API 7.3.0
+ * @version 2026-10-02
+ */
+public interface IDhApiVanillaFadeRenderer
 {
-	void render(RenderParams renderEventParam, IProfilerWrapper profiler, boolean renderingWithSsao);
-	
-	String getVboRenderDebugMenuString();
-	
-	@Override void close(); // override to remove "throws exception"
-	
-	
+	void render(DhApiRenderParam renderParams);
 	
 }

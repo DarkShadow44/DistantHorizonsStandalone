@@ -25,11 +25,10 @@ import com.seibel.distanthorizons.common.render.openGl.glObject.GLState;
 import com.seibel.distanthorizons.common.render.openGl.glObject.shader.GlShaderProgram;
 import com.seibel.distanthorizons.common.render.openGl.postProcessing.GlScreenQuad;
 import com.seibel.distanthorizons.common.wrappers.minecraft.MinecraftGLWrapper;
-import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.common.render.openGl.util.GlAbstractShaderRenderer;
 import com.seibel.distanthorizons.core.logging.DhLogger;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.AbstractDhRenderApiDefinition;
+import com.seibel.distanthorizons.core.render.RenderParam;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL30;
 
@@ -46,7 +45,6 @@ public class GlDhApplyShader extends GlAbstractShaderRenderer
 	
 	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	private static final MinecraftGLWrapper GLMC = MinecraftGLWrapper.INSTANCE;
-	private static final AbstractDhRenderApiDefinition RENDER_DEF = SingletonInjector.INSTANCE.get(AbstractDhRenderApiDefinition.class);
 	
 	
 	// uniforms
@@ -89,18 +87,18 @@ public class GlDhApplyShader extends GlAbstractShaderRenderer
 	//region
 	
 	@Override
-	protected void onRender()
+	protected void onRender(RenderParam renderParam)
 	{
 		if (MC_RENDER.mcRendersToFrameBuffer())
 		{
-			this.renderToFrameBuffer();
+			this.renderToFrameBuffer(renderParam);
 		}
 		else
 		{
-			this.renderToMcTexture();
+			this.renderToMcTexture(renderParam);
 		}
 	}
-	private void renderToFrameBuffer()
+	private void renderToFrameBuffer(RenderParam renderParam)
 	{
 		int targetFrameBuffer = MC_RENDER.getTargetFramebuffer();
 		if (targetFrameBuffer == -1)
@@ -132,7 +130,7 @@ public class GlDhApplyShader extends GlAbstractShaderRenderer
 			GLMC.glBindTexture(GlDhMetaRenderer.INSTANCE.getActiveDepthTextureId());
 			LWJGL.glUniform1i(this.uSourceDepthTexture, 1);
 			
-			LWJGL.glUniform1i(this.uIsReverseZDepth, (RENDER_DEF.getDepthDirection() == EDhApiDepthDirection.REVERSE_Z) ? 1 : 0);
+			LWJGL.glUniform1i(this.uIsReverseZDepth, (renderParam.renderDefinition.getDepthDirection() == EDhApiDepthDirection.REVERSE_Z) ? 1 : 0);
 			
 			// Copy to MC's framebuffer
 			GLMC.glBindFramebuffer(GL30.GL_FRAMEBUFFER, targetFrameBuffer);
@@ -143,7 +141,7 @@ public class GlDhApplyShader extends GlAbstractShaderRenderer
 		GLMC.glBindFramebuffer(GL30.GL_FRAMEBUFFER, targetFrameBuffer);
 		
 	}
-	private void renderToMcTexture()
+	private void renderToMcTexture(RenderParam renderParam)
 	{
 		int targetColorTextureId = MC_RENDER.getGlColorTextureId();
 		if (targetColorTextureId == -1)
@@ -182,7 +180,7 @@ public class GlDhApplyShader extends GlAbstractShaderRenderer
 			GLMC.glBindTexture(GlDhMetaRenderer.INSTANCE.getActiveDepthTextureId());
 			LWJGL.glUniform1i(this.uSourceDepthTexture, 1);
 			
-			LWJGL.glUniform1i(this.uIsReverseZDepth, (RENDER_DEF.getDepthDirection() == EDhApiDepthDirection.REVERSE_Z) ? 1 : 0);
+			LWJGL.glUniform1i(this.uIsReverseZDepth, (renderParam.renderDefinition.getDepthDirection() == EDhApiDepthDirection.REVERSE_Z) ? 1 : 0);
 			
 			
 			

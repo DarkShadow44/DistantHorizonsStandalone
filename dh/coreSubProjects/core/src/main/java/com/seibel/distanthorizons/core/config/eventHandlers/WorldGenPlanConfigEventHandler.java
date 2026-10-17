@@ -3,10 +3,11 @@ package com.seibel.distanthorizons.core.config.eventHandlers;
 import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiGeneratorPlan;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.config.listeners.IConfigListener;
+import com.seibel.distanthorizons.core.config.types.ConfigEntry;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftSharedWrapper;
 
-public class WorldGenPlanConfigEventHandler implements IConfigListener
+public class WorldGenPlanConfigEventHandler implements IConfigListener, ConfigEntry.IShowEnumOptionFunc<EDhApiGeneratorPlan>
 {
 	public static WorldGenPlanConfigEventHandler INSTANCE = new WorldGenPlanConfigEventHandler();
 	public static IMinecraftSharedWrapper MC_SHARED = SingletonInjector.INSTANCE.get(IMinecraftSharedWrapper.class);
@@ -38,7 +39,8 @@ public class WorldGenPlanConfigEventHandler implements IConfigListener
 	@Override
 	public void onUiModify() { /* do nothing, we only care about modified config values */ }
 	
-	public static Boolean setShowEnumOptionFunc(Enum<?> enumValue)
+	@Override 
+	public boolean shouldShowEnum(EDhApiGeneratorPlan genPlan)
 	{
 		boolean supportsSurfaceGen = MC_SHARED.supportsSurfaceGeneration();
 		if (supportsSurfaceGen)
@@ -47,9 +49,9 @@ public class WorldGenPlanConfigEventHandler implements IConfigListener
 			return true;
 		}
 		
-		
-		EDhApiGeneratorPlan genPlan = (EDhApiGeneratorPlan)enumValue;
 		return !genPlan.surfaceGenEnabled;
 	}
+	
+	
 	
 }

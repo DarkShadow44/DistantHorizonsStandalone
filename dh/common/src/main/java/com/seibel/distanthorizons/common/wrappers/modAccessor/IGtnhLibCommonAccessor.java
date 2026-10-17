@@ -17,14 +17,11 @@
  *    along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass;
+package com.seibel.distanthorizons.common.wrappers.modAccessor;
 
-import com.seibel.distanthorizons.core.render.RenderParams;
-import com.seibel.distanthorizons.coreapi.interfaces.dependencyInjection.IBindable;
+import com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor.IModAccessor;
 
-public interface IDhFarFadeRenderer extends IBindable
+public interface IGtnhLibCommonAccessor extends IModAccessor
 {
-	
-	void render(RenderParams renderParams);
-	
+	void renderTextAboveHotbar(String text);
 }

@@ -17,15 +17,32 @@
  *    along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass;
+package com.seibel.distanthorizons.api.interfaces.render.renderDef.objects;
 
-import com.seibel.distanthorizons.api.objects.math.DhApiMat4f;
-import com.seibel.distanthorizons.core.render.RenderParams;
+import com.seibel.distanthorizons.api.enums.config.EDhApiRenderingApi;
 import com.seibel.distanthorizons.coreapi.interfaces.dependencyInjection.IBindable;
 
-public interface IDhSsaoRenderer extends IBindable
+import java.nio.ByteBuffer;
+
+/**
+ * Holds the vertex/index data used to render an LOD.
+ * The number/size of these buffers may vary based on
+ * OS and {@link EDhApiRenderingApi}.
+ * 
+ * @see IDhApiTerrainBufferContainer
+ * @since API 7.3.0
+ * @version 2026-10-02
+ */
+public interface IDhApiVertexBufferWrapper extends IBindable, AutoCloseable
 {
+	void uploadVertexBuffer(ByteBuffer buffer, int vertexCount);
+	void uploadIndexBuffer(ByteBuffer buffer, int vertexCount);
 	
-	void render(RenderParams renderParams);
+	int getVertexCount();
+	
+	@Override
+	void close();
+	
+	
 	
 }

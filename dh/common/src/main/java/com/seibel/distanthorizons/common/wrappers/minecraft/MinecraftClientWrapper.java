@@ -25,6 +25,7 @@ import java.io.File;
 import com.mojang.blaze3d.platform.Window;
 #endif
 import com.seibel.distanthorizons.common.wrappers.gui.NativeDialogUtil;
+import com.seibel.distanthorizons.common.wrappers.modAccessor.IGtnhLibCommonAccessor;
 import com.seibel.distanthorizons.common.wrappers.world.ClientLevelWrapper;
 import com.seibel.distanthorizons.common.wrappers.world.ServerLevelWrapper;
 import com.seibel.distanthorizons.core.dependencyInjection.ModAccessorInjector;
@@ -126,6 +127,9 @@ public class MinecraftClientWrapper extends AbstractMinecraftSharedWrapper imple
 	private static class DelayedAccessors 
 	{
 		public static final IImmersivePortalsAccessor IMMERSIVE_PORTALS = ModAccessorInjector.INSTANCE.get(IImmersivePortalsAccessor.class);
+		#if MC_VER <= MC_1_7_10
+		public static final IGtnhLibCommonAccessor GTNHLIB = ModAccessorInjector.INSTANCE.get(IGtnhLibCommonAccessor.class);
+		#endif
 	}
 	
 	
@@ -434,7 +438,14 @@ public class MinecraftClientWrapper extends AbstractMinecraftSharedWrapper imple
 		}
 		
 		#if MC_VER <= MC_1_7_10
-		player.addChatMessage(new ChatComponentText(string));
+		if (DelayedAccessors.GTNHLIB != null)
+		{
+			DelayedAccessors.GTNHLIB.renderTextAboveHotbar(string);
+		}
+		else
+		{
+			player.addChatMessage(new ChatComponentText(string));
+		}
 		#elif MC_VER <= MC_1_12_2
 		MINECRAFT.ingameGUI.setOverlayMessage(string, /*animateColor*/false);
         #elif MC_VER < MC_1_19_2

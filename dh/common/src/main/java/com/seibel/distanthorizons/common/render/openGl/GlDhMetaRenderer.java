@@ -20,13 +20,12 @@ import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.render.DhApiRenderProxy;
-import com.seibel.distanthorizons.core.render.RenderParams;
+import com.seibel.distanthorizons.core.render.RenderParam;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.misc.ILightMapWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor.IIrisAccessor;
 import com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor.IOptifineAccessor;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.AbstractDhRenderApiDefinition;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass.IDhMetaRenderer;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.IDhApiMetaRenderer;
 import com.seibel.distanthorizons.coreapi.DependencyInjection.ApiEventInjector;
 import com.seibel.distanthorizons.coreapi.DependencyInjection.OverrideInjector;
 import org.jetbrains.annotations.Nullable;
@@ -37,7 +36,7 @@ import org.lwjgl.opengl.GL30;
 
 import static com.seibel.distanthorizons.lwjgl.LWJGLServiceProvider.LWJGL;
 
-public class GlDhMetaRenderer implements IDhMetaRenderer
+public class GlDhMetaRenderer implements IDhApiMetaRenderer
 {
 	public static final DhLogger LOGGER = new DhLoggerBuilder()
 		.fileLevelConfig(Config.Common.Logging.logRendererEventToFile)
@@ -53,7 +52,6 @@ public class GlDhMetaRenderer implements IDhMetaRenderer
 	
 	private static final IMinecraftRenderWrapper MC_RENDER = SingletonInjector.INSTANCE.get(IMinecraftRenderWrapper.class);
 	private static final MinecraftGLWrapper GLMC = MinecraftGLWrapper.INSTANCE;
-	private static final AbstractDhRenderApiDefinition RENDER_DEF = SingletonInjector.INSTANCE.get(AbstractDhRenderApiDefinition.class);
 	
 	private static final IOptifineAccessor OPTIFINE_ACCESSOR = ModAccessorInjector.INSTANCE.get(IOptifineAccessor.class);
 	private static final IIrisAccessor IRIS_ACCESSOR = ModAccessorInjector.INSTANCE.get(IIrisAccessor.class);
@@ -103,8 +101,10 @@ public class GlDhMetaRenderer implements IDhMetaRenderer
 	//region
 	
 	@Override
-	public void runRenderPassSetup(RenderParams renderParams)
+	public void runRenderPassSetup(DhApiRenderParam apiRenderParams)
 	{
+		RenderParam renderParams = (RenderParam)apiRenderParams;
+		
 		boolean firstPass =
 			(renderParams.renderPass == EDhApiRenderPass.OPAQUE
 			|| renderParams.renderPass == EDhApiRenderPass.OPAQUE_AND_TRANSPARENT);
@@ -199,7 +199,7 @@ public class GlDhMetaRenderer implements IDhMetaRenderer
 		
 		// Enable depth test and depth mask
 		GLMC.enableDepthTest();
-		if (RENDER_DEF.getDepthDirection() == EDhApiDepthDirection.FORWARD_Z)
+		if (renderEventParam.renderDefinition.getDepthDirection() == EDhApiDepthDirection.FORWARD_Z)
 		{
 			GLMC.glDepthFunc(GL11.GL_LESS);
 		}
@@ -274,7 +274,7 @@ public class GlDhMetaRenderer implements IDhMetaRenderer
 		boolean clearTextures = !ApiEventInjector.INSTANCE.fireAllEvents(DhApiBeforeTextureClearEvent.class, renderEventParam);
 		if (clearTextures)
 		{
-			float clearDepth = RENDER_DEF.getDepthDirection().farDepth;
+			float clearDepth = renderEventParam.renderDefinition.getDepthDirection().farDepth;
 			LWJGL.glClearDepth(clearDepth);
 			
 			float[] clearColorValues = new float[4];
@@ -425,7 +425,7 @@ public class GlDhMetaRenderer implements IDhMetaRenderer
 	//region
 	
 	@Override
-	public void runRenderPassCleanup(RenderParams renderParams)
+	public void runRenderPassCleanup(DhApiRenderParam renderParams)
 	{
 		boolean runningDeferredPass = (renderParams.renderPass == EDhApiRenderPass.TRANSPARENT);
 		if (!runningDeferredPass)
@@ -473,7 +473,7 @@ public class GlDhMetaRenderer implements IDhMetaRenderer
 	}
 	
 	@Override
-	public void copyToMcTexture(RenderParams renderParams) { GlDhCopyShader.INSTANCE.render(renderParams); }
+	public void copyToMcTexture(DhApiRenderParam renderParams) { GlDhCopyShader.INSTANCE.render((RenderParam)renderParams); }
 	
 	//endregion
 	
@@ -485,7 +485,7 @@ public class GlDhMetaRenderer implements IDhMetaRenderer
 	//region
 	
 	@Override
-	public void clearDhDepthAndColorTextures(RenderParams renderParams) 
+	public void clearDhDepthAndColorTextures(DhApiRenderParam renderParams) 
 	{
 		IDhApiFramebuffer framebufferOverride = OverrideInjector.INSTANCE.get(IDhApiFramebuffer.class);
 		
@@ -495,7 +495,7 @@ public class GlDhMetaRenderer implements IDhMetaRenderer
 		
 		
 		
-		float clearDepth = RENDER_DEF.getDepthDirection().farDepth;
+		float clearDepth = renderParams.renderDefinition.getDepthDirection().farDepth;
 		LWJGL.glClearDepth(clearDepth);
 		
 		float[] clearColorValues = new float[4];
@@ -562,8 +562,18 @@ public class GlDhMetaRenderer implements IDhMetaRenderer
 	public void bindLightmap(ILightMapWrapper lightMapWrapper)
 	{
 		LightMapWrapper lightMap = (LightMapWrapper)lightMapWrapper;
-		GLMC.glActiveTexture(GL13.GL_TEXTURE0 + LightMapWrapper.GL_BOUND_INDEX);
+		GLMC.glActiveTexture(GL13.GL_TEXTURE0 + LightMapWrapper.GL_DH_BOUND_INDEX);
 		GLMC.glBindTexture(lightMap.getOpenGlId());
+		
+		#if MC_VER <= MC_1_21_11
+		#else
+		// This is only needed for MC 26.1.2 and newer
+		// for older MC versions it causes issues due to overwriting existing Iris textures
+		
+		// Iris expects the lightmap in a different index on certain minecraft versions, so handle that here
+		GLMC.glActiveTexture(GL13.GL_TEXTURE0 + LightMapWrapper.GL_IRIS_BOUND_INDEX);
+		GLMC.glBindTexture(lightMap.getOpenGlId());
+		#endif
 	}
 	
 	public void unbindLightmap() 

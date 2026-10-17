@@ -1,6 +1,7 @@
 package com.seibel.distanthorizons.core.render;
 
 import com.seibel.distanthorizons.api.enums.rendering.EDhApiRenderPass;
+import com.seibel.distanthorizons.api.interfaces.render.IDhApiCustomRenderRegister;
 import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam;
 import com.seibel.distanthorizons.core.api.internal.SharedApi;
 import com.seibel.distanthorizons.core.api.internal.rendering.DhRenderState;
@@ -13,17 +14,19 @@ import com.seibel.distanthorizons.core.util.math.DhVec3d;
 import com.seibel.distanthorizons.core.world.IDhClientWorld;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
+import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IProfilerWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.misc.ILightMapWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor.IOptifineAccessor;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass.IDhGenericRenderer;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.AbstractDhApiRenderDefinition;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
+import com.seibel.distanthorizons.coreapi.DependencyInjection.OverrideInjector;
 
 /**
  * An extension of {@link DhApiRenderParam}
  * that allows additional validation and putting all
  * rendering variables in a single place.
  */
-public class RenderParams extends DhApiRenderParam
+public class RenderParam extends DhApiRenderParam
 {
 	private static final IMinecraftClientWrapper MC_CLIENT = SingletonInjector.INSTANCE.get(IMinecraftClientWrapper.class);
 	private static final IMinecraftRenderWrapper MC_RENDER = SingletonInjector.INSTANCE.get(IMinecraftRenderWrapper.class);
@@ -44,10 +47,11 @@ public class RenderParams extends DhApiRenderParam
 	public IClientLevelWrapper clientLevelWrapper;
 	public ILightMapWrapper lightmap;
 	public RenderBufferHandler renderBufferHandler;
-	public IDhGenericRenderer genericRenderer;
+	public IDhApiCustomRenderRegister genericRegister;
 	public DhVec3d exactCameraPosition;
 	/** @see DhRenderState#vanillaFogEnabled */
 	public boolean vanillaFogEnabled;
+	public IProfilerWrapper profiler;
 	
 	public boolean hasBeenValidated = false;
 	
@@ -60,10 +64,13 @@ public class RenderParams extends DhApiRenderParam
 	
 	public void update(EDhApiRenderPass renderPass, DhRenderState renderState)
 	{
-		RenderUtil.setDhProjectionMatrix(this.dhProjectionMatrix, renderState.mcProjectionMatrix);
+		// get the definition that's bound for this frame
+		AbstractDhApiRenderDefinition renderDefinition = OverrideInjector.INSTANCE.get(AbstractDhApiRenderDefinition.class);
+		
+		RenderUtil.setDhProjectionMatrix(this.dhProjectionMatrix, renderState.mcProjectionMatrix, renderDefinition);
 		this.dhModelViewMatrix.set(renderState.mcModelViewMatrix); // DH and MC MVM matrix are the same 
 		
-		super.update(renderPass,
+		super.update(renderPass, renderDefinition,
 			renderState.partialTickTime,
 			RenderUtil.getNearClipPlaneInBlocks(), RenderUtil.getFarClipPlaneDistanceInBlocks(),
 			renderState.mcProjectionMatrix, renderState.mcModelViewMatrix,
@@ -78,11 +85,11 @@ public class RenderParams extends DhApiRenderParam
 		this.dhClientWorld = SharedApi.tryGetDhClientWorld();
 		if (this.dhClientWorld != null)
 		{
-			this.dhClientLevel = this.dhClientWorld.getOrLoadClientLevel(clientLevelWrapper);
+			this.dhClientLevel = this.dhClientWorld.getOrLoadClientLevel(this.clientLevelWrapper);
 			if (this.dhClientLevel != null)
 			{
 				this.renderBufferHandler = this.dhClientLevel.getRenderBufferHandler();
-				this.genericRenderer = this.dhClientLevel.getGenericRenderer();
+				this.genericRegister = this.dhClientLevel.getGenericRendererRegister();
 			}
 		}
 		
@@ -94,6 +101,8 @@ public class RenderParams extends DhApiRenderParam
 		}
 		
 		this.vanillaFogEnabled = renderState.vanillaFogEnabled;
+		
+		this.profiler = MC_CLIENT.getProfiler();
 		
 		this.apiCopy.update(this);
 	}
@@ -148,9 +157,14 @@ public class RenderParams extends DhApiRenderParam
 			return "No RenderBufferHandler Present";
 		}
 		
-		if (this.genericRenderer == null)
+		if (this.genericRegister == null)
 		{
-			return "No Generic Renderer Present";
+			return "No Generic Render Register Present";
+		}
+		
+		if (this.renderDefinition == null)
+		{
+			return "No Render Definition Present";
 		}
 		
 		if (this.dhModelViewMatrix.equals(DhMat4f.IDENTITY) 

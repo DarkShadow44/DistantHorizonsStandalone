@@ -27,7 +27,7 @@ import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPosMutable;
 import com.seibel.distanthorizons.core.pos.DhChunkPos;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
-import com.seibel.distanthorizons.core.render.renderer.AbstractDebugWireframeRenderer;
+import com.seibel.distanthorizons.core.render.renderer.DebugWireframeHandler;
 import com.seibel.distanthorizons.core.util.FullDataPointUtil;
 import com.seibel.distanthorizons.core.util.LodUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.block.IBlockStateWrapper;
@@ -53,7 +53,7 @@ public class DhLightingEngine
 	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	public static final DhLightingEngine INSTANCE = new DhLightingEngine();
 	
-	private static final AbstractDebugWireframeRenderer DEBUG_RENDERER = SingletonInjector.INSTANCE.get(AbstractDebugWireframeRenderer.class);
+	private static final DebugWireframeHandler DEBUG_RENDERER = SingletonInjector.INSTANCE.get(DebugWireframeHandler.class);
 	
 	/** 
 	 * Minor garbage collection optimization. <br>
@@ -747,8 +747,8 @@ public class DhLightingEngine
 							if (color != null)
 							{
 								DEBUG_RENDERER.makeParticle(
-									new AbstractDebugWireframeRenderer.BoxParticle(
-										new AbstractDebugWireframeRenderer.Box(DhSectionPos.encode((byte) 0, chunkMinX + x, chunkMinZ + z), y, y + 1, 0.2f, color),
+									new DebugWireframeHandler.BoxParticle(
+										new DebugWireframeHandler.Box(DhSectionPos.encode((byte) 0, chunkMinX + x, chunkMinZ + z), y, y + 1, 0.2f, color),
 										10.0, 0f
 									)
 								);
