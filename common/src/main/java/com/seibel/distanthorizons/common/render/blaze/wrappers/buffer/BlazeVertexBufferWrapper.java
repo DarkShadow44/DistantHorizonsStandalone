@@ -20,6 +20,7 @@ import com.mojang.renderpearl.api.device.GpuDevice;
 import com.mojang.blaze3d.systems.RenderSystem;
 #endif
 
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.objects.IDhApiVertexBufferWrapper;
 import com.seibel.distanthorizons.core.dataObjects.render.bufferBuilding.IndexBufferBuilder;
 import com.seibel.distanthorizons.core.dataObjects.render.bufferBuilding.LodBufferContainer;
 import com.seibel.distanthorizons.core.dataObjects.render.bufferBuilding.LodQuadBuilder;
@@ -28,17 +29,16 @@ import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.render.RenderThreadTaskHandler;
 import com.seibel.distanthorizons.core.util.objects.pooling.PhantomArrayList.PhantomArrayListCheckout;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.AbstractDhRenderApiDefinition;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.objects.IVertexBufferWrapper;
+import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
 
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class BlazeVertexBufferWrapper implements IVertexBufferWrapper
+public class BlazeVertexBufferWrapper implements IDhApiVertexBufferWrapper
 {
 	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
-	private static final AbstractDhRenderApiDefinition RENDER_DEF = SingletonInjector.INSTANCE.get(AbstractDhRenderApiDefinition.class);
+	private static final IMinecraftRenderWrapper MC_RENDER = SingletonInjector.INSTANCE.get(IMinecraftRenderWrapper.class);
 	
 	private static final GpuDevice GPU_DEVICE = RenderSystem.getDevice();
 	private static final CommandEncoder COMMAND_ENCODER = GPU_DEVICE.createCommandEncoder();
@@ -63,7 +63,7 @@ public class BlazeVertexBufferWrapper implements IVertexBufferWrapper
 	private static GpuBuffer GLOBAL_INDEX_GPU_BUFFER = null;
 	public GpuBuffer getIndexGpuBuffer()
 	{
-		if (RENDER_DEF.useSingleIbo())
+		if (MC_RENDER.useSingleIbo())
 		{
 			return GLOBAL_INDEX_GPU_BUFFER;
 		}
@@ -82,7 +82,7 @@ public class BlazeVertexBufferWrapper implements IVertexBufferWrapper
 	
 	static
 	{
-		if (RENDER_DEF.useSingleIbo())
+		if (MC_RENDER.useSingleIbo())
 		{
 			RenderThreadTaskHandler.INSTANCE.queueRunningOnRenderThread("Global IBO Creation", () ->
 			{
@@ -160,7 +160,7 @@ public class BlazeVertexBufferWrapper implements IVertexBufferWrapper
 		// 4 vertices per face, but 6 indices (IE 2 triangles) per face, aka need to multiply by 1.5
 		this.indexCount = (int)(vertexCount * 1.5);
 		
-		if (RENDER_DEF.useSingleIbo())
+		if (MC_RENDER.useSingleIbo())
 		{
 			// ignore index uploading when running a single IBO
 			return;

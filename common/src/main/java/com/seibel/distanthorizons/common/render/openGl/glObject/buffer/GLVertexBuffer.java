@@ -21,6 +21,7 @@ package com.seibel.distanthorizons.common.render.openGl.glObject.buffer;
 
 import java.nio.ByteBuffer;
 
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.objects.IDhApiVertexBufferWrapper;
 import com.seibel.distanthorizons.common.render.openGl.glObject.GLProxy;
 import com.seibel.distanthorizons.core.dataObjects.render.bufferBuilding.IndexBufferBuilder;
 import com.seibel.distanthorizons.core.dataObjects.render.bufferBuilding.LodBufferContainer;
@@ -28,9 +29,7 @@ import com.seibel.distanthorizons.core.dataObjects.render.bufferBuilding.LodQuad
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.render.RenderThreadTaskHandler;
 import com.seibel.distanthorizons.core.util.objects.pooling.PhantomArrayList.PhantomArrayListCheckout;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.AbstractDhRenderApiDefinition;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.objects.IVertexBufferWrapper;
-import static com.seibel.distanthorizons.lwjgl.LWJGLServiceProvider.LWJGL;
+import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
 
 import com.seibel.distanthorizons.api.enums.config.EDhApiGpuUploadMethod;
 import org.lwjgl.opengl.GL15;
@@ -42,9 +41,9 @@ import org.lwjgl.opengl.GL15;
  * @author James Seibel
  * @version 11-20-2021
  */
-public class GLVertexBuffer extends GLBuffer implements IVertexBufferWrapper
+public class GLVertexBuffer extends GLBuffer implements IDhApiVertexBufferWrapper
 {
-	private static final AbstractDhRenderApiDefinition RENDER_DEF = SingletonInjector.INSTANCE.get(AbstractDhRenderApiDefinition.class);
+	private static final IMinecraftRenderWrapper MC_RENDER = SingletonInjector.INSTANCE.get(IMinecraftRenderWrapper.class);
 	
 	/**
 	 * When uploading to a buffer that is too small, recreate it this many times
@@ -59,7 +58,7 @@ public class GLVertexBuffer extends GLBuffer implements IVertexBufferWrapper
 	private static GlQuadIndexBuffer GLOBAL_QUAD_IBO = null;
 	public GlQuadIndexBuffer getQuadIBO()
 	{
-		if (RENDER_DEF.useSingleIbo())
+		if (MC_RENDER.useSingleIbo())
 		{
 			return GLOBAL_QUAD_IBO;
 		}
@@ -78,7 +77,7 @@ public class GLVertexBuffer extends GLBuffer implements IVertexBufferWrapper
 	
 	static
 	{
-		if (RENDER_DEF.useSingleIbo())
+		if (MC_RENDER.useSingleIbo())
 		{
 			RenderThreadTaskHandler.INSTANCE.queueRunningOnRenderThread("Global IBO Creation", () ->
 			{
@@ -145,7 +144,7 @@ public class GLVertexBuffer extends GLBuffer implements IVertexBufferWrapper
 	@Override
 	public void uploadIndexBuffer(ByteBuffer buffer, int vertexCount)
 	{
-		if (RENDER_DEF.useSingleIbo())
+		if (MC_RENDER.useSingleIbo())
 		{
 			// ignore index uploading when running a single IBO
 			return;

@@ -6,7 +6,7 @@ import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.render.renderer.RenderableBoxGroup;
 import com.seibel.distanthorizons.core.util.LodUtil;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.objects.IDhGenericObjectVertexBufferContainer;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.objects.IDhApiGenericObjectVertexBufferContainer;
 import org.lwjgl.opengl.GL15;
 
 import static com.seibel.distanthorizons.lwjgl.LWJGLServiceProvider.LWJGL;
@@ -19,7 +19,7 @@ import java.util.List;
  * 
  * @see RenderableBoxGroup
  */
-public class GlGenericObjectVertexContainer implements IDhGenericObjectVertexBufferContainer
+public class GlGenericObjectVertexContainer implements IDhApiGenericObjectVertexBufferContainer
 {
 	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
@@ -54,7 +54,7 @@ public class GlGenericObjectVertexContainer implements IDhGenericObjectVertexBuf
 	//===========================//
 	//region
 	
-	public void updateVertexData(List<DhApiRenderableBox> uploadBoxList)
+	public void updateCpuSideVertexData(List<DhApiRenderableBox> uploadBoxList)
 	{
 		int boxCount = uploadBoxList.size();
 		

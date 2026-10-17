@@ -27,7 +27,7 @@ import com.seibel.distanthorizons.common.render.openGl.postProcessing.GlScreenQu
 import com.seibel.distanthorizons.common.wrappers.minecraft.MinecraftGLWrapper;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.common.render.openGl.util.GlAbstractShaderRenderer;
-import com.seibel.distanthorizons.core.render.RenderParams;
+import com.seibel.distanthorizons.core.render.RenderParam;
 import com.seibel.distanthorizons.core.util.RenderUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
 import org.lwjgl.opengl.GL11;
@@ -103,7 +103,7 @@ public class GlDhFarFadeShader extends GlAbstractShaderRenderer
 	//=============//
 	
 	@Override
-	protected void onApplyUniforms(RenderParams renderParams)
+	protected void onApplyUniforms(RenderParam renderParams)
 	{
 		this.shader.setUniform(this.uDhInvMvmProj, this.inverseDhMvmProjMatrix);
 		
@@ -115,11 +115,11 @@ public class GlDhFarFadeShader extends GlAbstractShaderRenderer
 		this.shader.setUniform(this.uStartFadeBlockDistance, fadeStartDistance);
 		this.shader.setUniform(this.uEndFadeBlockDistance, fadeEndDistance);
 		
-		this.shader.setUniform(this.uDepthIsZeroToPositiveOne, (RENDER_DEF.getDepthRange() == EDhApiDepthRange.ZERO_TO_POS_ONE) ? 1 : 0);
+		this.shader.setUniform(this.uDepthIsZeroToPositiveOne, (renderParams.renderDefinition.getDepthRange() == EDhApiDepthRange.ZERO_TO_POS_ONE) ? 1 : 0);
 		
 	}
 	
-	public void setProjectionMatrix(RenderParams renderParams)
+	public void setProjectionMatrix(RenderParam renderParams)
 	{
 		this.inverseDhMvmProjMatrix = renderParams.dhInverseMvmProjectionMatrix;
 	}
@@ -130,7 +130,7 @@ public class GlDhFarFadeShader extends GlAbstractShaderRenderer
 	//========//
 	
 	@Override
-	protected void onRender()
+	protected void onRender(RenderParam renderParams)
 	{
 		int depthTextureId = GlDhMetaRenderer.INSTANCE.getActiveDepthTextureId();
 		int colorTextureId = GlDhMetaRenderer.INSTANCE.getActiveColorTextureId();

@@ -21,6 +21,9 @@ dependencies {
     
     // Sodium
     addMod("maven.modrinth:sodium:${rootProject.neo_sodium_version}", rootProject.neo_enable_sodium)
+    
+    // Chunky
+    addMod("maven.modrinth:chunky:${rootProject.neo_chunky_version}", rootProject.neo_enable_chunky)
 }
 
 

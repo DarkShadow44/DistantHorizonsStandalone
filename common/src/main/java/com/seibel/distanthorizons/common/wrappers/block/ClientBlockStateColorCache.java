@@ -296,7 +296,9 @@ public class ClientBlockStateColorCache
 
 			// Backup tinting heuristics
 			// (aka guess that the block should be tinted if it's entirely white)
-			this.needPostTinting = blockState.block.getBlockColor() != 0xFFFFFF; // white
+			// getRenderColor(meta) catches blocks tinted per metadata, IE Extra Utilities' Lapis Caelestis
+			this.needPostTinting = blockState.block.getBlockColor() != 0xFFFFFF // white
+				|| blockState.block.getRenderColor(blockState.meta) != 0xFFFFFF;
 			
 			if (blockState.block instanceof BlockGrass
 				|| blockState.block instanceof BlockLeavesBase
@@ -794,10 +796,11 @@ public class ClientBlockStateColorCache
 								}
 							}
 							
-							// save this color to speed up future queries
-							TintWithoutLevelOverrider.setStaticColor(this.blockStateWrapper, biomeWrapper, tintColor);
-							// try to get the blended color with this new information
-							tintColor = tintOverride.tryGetBlockTint(new DhBlockPosMutable(blockPos));
+							if (tintColor != ClientBlockStateColorCache.INVALID_COLOR)
+							{
+								// save this color to speed up future queries
+								TintWithoutLevelOverrider.setStaticColor(this.blockStateWrapper, biomeWrapper, tintColor);
+							}
 						#endif
 						}
 					}

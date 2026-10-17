@@ -118,10 +118,22 @@ public class ForgeMain extends AbstractModInitializer implements IForgeMain
 		
 		ForgeChunkManager.setForcedChunkLoadingCallback(
 			instance,
-			(List<ForgeChunkManager.Ticket> tickets, World world) -> chunkLoadedCallback());
+			(List<ForgeChunkManager.Ticket> tickets, World world) -> releaseStaleTickets(tickets));
 	}
 	
-	private void chunkLoadedCallback() { }
+	/**
+	 * DH requests a new ticket each time a level loads and doesn't need to re-force
+	 * any chunks from a previous session, so tickets restored from the world save are never used.
+	 * Release them, otherwise they accumulate in forcedchunks.dat until the mod's ticket limit is reached,
+	 * after which DH can't request a ticket anymore.
+	 */
+	private static void releaseStaleTickets(List<ForgeChunkManager.Ticket> tickets)
+	{
+		for (ForgeChunkManager.Ticket ticket : tickets)
+		{
+			ForgeChunkManager.releaseTicket(ticket);
+		}
+	}
 	
 	@Override
 	protected void createInitialSharedBindings()
@@ -142,6 +154,7 @@ public class ForgeMain extends AbstractModInitializer implements IForgeMain
 	protected void initializeModCompat()
 	{
 		this.tryCreateModCompatAccessor("actinium", IIrisAccessor.class, IrisAccessor::new);
+		this.tryCreateModCompatAccessor("demonica", IIrisAccessor.class, IrisAccessor::new);
 		IRIS_ACCESSOR = ModAccessorInjector.INSTANCE.get(IIrisAccessor.class);
 	}
 	

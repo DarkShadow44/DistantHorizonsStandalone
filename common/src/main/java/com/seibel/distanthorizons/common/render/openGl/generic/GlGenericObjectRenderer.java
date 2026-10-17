@@ -20,13 +20,11 @@
 package com.seibel.distanthorizons.common.render.openGl.generic;
 
 import com.seibel.distanthorizons.api.enums.config.EDhApiGpuUploadMethod;
-import com.seibel.distanthorizons.api.enums.rendering.EDhApiBlockMaterial;
 import com.seibel.distanthorizons.api.interfaces.override.rendering.IDhApiGenericObjectShaderProgram;
 import com.seibel.distanthorizons.api.interfaces.render.IDhApiRenderableBoxGroup;
 import com.seibel.distanthorizons.api.interfaces.render.IDhApiCustomRenderRegister;
 import com.seibel.distanthorizons.api.methods.events.abstractEvents.*;
 import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam;
-import com.seibel.distanthorizons.api.objects.math.DhApiVec3d;
 import com.seibel.distanthorizons.api.objects.render.DhApiRenderableBox;
 import com.seibel.distanthorizons.api.objects.render.DhApiRenderableBoxGroupShading;
 import com.seibel.distanthorizons.common.render.openGl.glObject.GLProxy;
@@ -38,18 +36,15 @@ import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.jar.EPlatform;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
-import com.seibel.distanthorizons.core.logging.f3.F3Screen;
-import com.seibel.distanthorizons.core.render.RenderParams;
-import com.seibel.distanthorizons.core.render.renderer.GenericRenderObjectFactory;
+import com.seibel.distanthorizons.core.render.RenderParam;
 import com.seibel.distanthorizons.core.render.renderer.RenderableBoxGroup;
-import com.seibel.distanthorizons.core.util.LodUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IProfilerWrapper;
 import com.seibel.distanthorizons.core.util.math.DhVec3d;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass.IDhGenericRenderer;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.IDhApiGenericRenderer;
 import com.seibel.distanthorizons.coreapi.DependencyInjection.ApiEventInjector;
 import com.seibel.distanthorizons.coreapi.DependencyInjection.OverrideInjector;
-import com.seibel.distanthorizons.coreapi.ModInfo;
+import com.seibel.distanthorizons.lwjgl.ILWJGLService;
 import org.lwjgl.opengl.ARBInstancedArrays;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL14;
@@ -57,11 +52,9 @@ import org.lwjgl.opengl.GL15;
 
 import static com.seibel.distanthorizons.lwjgl.LWJGLServiceProvider.LWJGL;
 
-import java.awt.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Handles rendering generic groups of {@link DhApiRenderableBox}.
@@ -69,9 +62,12 @@ import java.util.concurrent.ConcurrentHashMap;
  * @see IDhApiCustomRenderRegister
  * @see DhApiRenderableBox
  */
-public class GlGenericObjectRenderer implements IDhGenericRenderer
+public class GlGenericObjectRenderer implements IDhApiGenericRenderer
 {
 	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
+	
+	public static final GlGenericObjectRenderer INSTANCE = new GlGenericObjectRenderer();
+	
 	
 	private static final IMinecraftRenderWrapper MC_RENDER = SingletonInjector.INSTANCE.get(IMinecraftRenderWrapper.class);
 	private static final MinecraftGLWrapper GLMC = MinecraftGLWrapper.INSTANCE;
@@ -79,12 +75,6 @@ public class GlGenericObjectRenderer implements IDhGenericRenderer
 	private static final DhApiRenderableBoxGroupShading DEFAULT_SHADING = DhApiRenderableBoxGroupShading.getUnshaded();
 	
 	private static final DhApiBeforeGenericObjectRenderEvent.EventParam EVENT_PARAM = new DhApiBeforeGenericObjectRenderEvent.EventParam();
-	
-	/** 
-	 * Can be used to troubleshoot the renderer. 
-	 * If enabled several debug objects will render around (0,150,0). 
-	 */
-	public static final boolean RENDER_DEBUG_OBJECTS = false;
 	
 	
 	// rendering setup
@@ -98,10 +88,6 @@ public class GlGenericObjectRenderer implements IDhGenericRenderer
 	private boolean instancedRenderingAvailable;
 	private boolean vertexAttribDivisorSupported;
 	private boolean instancedArraysSupported;
-	
-	
-	
-	private final ConcurrentHashMap<Long, RenderableBoxGroup> boxGroupById = new ConcurrentHashMap<>();
 	
 	
 	
@@ -178,7 +164,7 @@ public class GlGenericObjectRenderer implements IDhGenericRenderer
 	//=============//
 	//region
 	
-	public GlGenericObjectRenderer() { }
+	private GlGenericObjectRenderer() { }
 	
 	public void init()
 	{
@@ -224,11 +210,6 @@ public class GlGenericObjectRenderer implements IDhGenericRenderer
 		this.directShaderProgram = new GlGenericObjectShaderProgram(false);
 		
 		this.createBuffers();
-		
-		if (RENDER_DEBUG_OBJECTS)
-		{
-			this.addGenericDebugObjects();
-		}
 	}
 	private void createBuffers()
 	{
@@ -250,150 +231,6 @@ public class GlGenericObjectRenderer implements IDhGenericRenderer
 		this.boxIndexBuffer.uploadBuffer(solidIndexBuffer, EDhApiGpuUploadMethod.DATA, BOX_INDICES.length * Integer.BYTES, GL15.GL_STATIC_DRAW);
 		this.boxIndexBuffer.bind();
 	}
-	private void addGenericDebugObjects()
-	{
-		GenericRenderObjectFactory factory = GenericRenderObjectFactory.INSTANCE;
-		
-		
-		// single giant box
-		IDhApiRenderableBoxGroup singleGiantBoxGroup = factory.createForSingleBox(
-				ModInfo.NAME + ":CyanChunkBox",
-				new DhApiRenderableBox(
-						new DhApiVec3d(0,0,0), new DhApiVec3d(16,190,16),
-						new Color(Color.CYAN.getRed(), Color.CYAN.getGreen(), Color.CYAN.getBlue(), 125),
-						EDhApiBlockMaterial.WATER)
-		);
-		singleGiantBoxGroup.setSkyLight(LodUtil.MAX_MC_LIGHT);
-		singleGiantBoxGroup.setBlockLight(LodUtil.MAX_MC_LIGHT);
-		this.add(singleGiantBoxGroup);
-
-
-		// single slender box
-		IDhApiRenderableBoxGroup singleTallBoxGroup = factory.createForSingleBox(
-				ModInfo.NAME + ":GreenBeacon",
-				new DhApiRenderableBox(
-						new DhApiVec3d(16,0,31), new DhApiVec3d(17,2000,32),
-						new Color(Color.GREEN.getRed(), Color.GREEN.getGreen(), Color.GREEN.getBlue(), 125),
-						EDhApiBlockMaterial.ILLUMINATED)
-		);
-		singleTallBoxGroup.setSkyLight(LodUtil.MAX_MC_LIGHT);
-		singleTallBoxGroup.setBlockLight(LodUtil.MAX_MC_LIGHT);
-		this.add(singleTallBoxGroup);
-
-
-		// absolute box group
-		ArrayList<DhApiRenderableBox> absBoxList = new ArrayList<>();
-		for (int i = 0; i < 18; i++)
-		{
-			absBoxList.add(new DhApiRenderableBox(
-					new DhApiVec3d(i,150+i,24), new DhApiVec3d(1+i,151+i,25),
-					new Color(Color.ORANGE.getRed(), Color.ORANGE.getGreen(), Color.ORANGE.getBlue()),
-					EDhApiBlockMaterial.LAVA
-				)
-			);
-		}
-		IDhApiRenderableBoxGroup absolutePosBoxGroup = factory.createAbsolutePositionedGroup(ModInfo.NAME + ":OrangeStairs", absBoxList);
-		this.add(absolutePosBoxGroup);
-
-
-		// relative box group
-		ArrayList<DhApiRenderableBox> relBoxList = new ArrayList<>();
-		for (int i = 0; i < 8; i+=2)
-		{
-			relBoxList.add(new DhApiRenderableBox(
-					new DhApiVec3d(0,i,0), new DhApiVec3d(1,1+i,1),
-					new Color(Color.MAGENTA.getRed(), Color.MAGENTA.getGreen(), Color.MAGENTA.getBlue()),
-					EDhApiBlockMaterial.METAL
-				)
-			);
-		}
-		IDhApiRenderableBoxGroup relativePosBoxGroup = factory.createRelativePositionedGroup(
-				ModInfo.NAME + ":MovingMagentaGroup",
-				new DhApiVec3d(24, 140, 24),
-				relBoxList);
-		relativePosBoxGroup.setPreRenderFunc((event) ->
-		{
-			DhApiVec3d pos = relativePosBoxGroup.getOriginBlockPos();
-			pos.x += event.partialTicks / 2;
-			pos.x %= 32;
-			relativePosBoxGroup.setOriginBlockPos(pos);
-		});
-		this.add(relativePosBoxGroup);
-
-
-		// massive relative box group
-		ArrayList<DhApiRenderableBox> massRelBoxList = new ArrayList<>();
-		for (int x = 0; x < 50*2; x+=2)
-		{
-			for (int z = 0; z < 50*2; z+=2)
-			{
-				massRelBoxList.add(new DhApiRenderableBox(
-						new DhApiVec3d(-x, 0, -z), new DhApiVec3d(1-x, 1, 1-z),
-						new Color(Color.RED.getRed(), Color.RED.getGreen(), Color.RED.getBlue()),
-						EDhApiBlockMaterial.TERRACOTTA
-					)
-				);
-			}
-		}
-		IDhApiRenderableBoxGroup massRelativePosBoxGroup = factory.createRelativePositionedGroup(
-				ModInfo.NAME + ":MassRedGroup",
-				new DhApiVec3d(-25, 140, 0),
-				massRelBoxList);
-		massRelativePosBoxGroup.setPreRenderFunc((event) ->
-		{
-			DhApiVec3d blockPos = massRelativePosBoxGroup.getOriginBlockPos();
-			blockPos.y += event.partialTicks / 4;
-			if (blockPos.y > 150f)
-			{
-				blockPos.y = 140f;
-
-				Color newColor = (massRelativePosBoxGroup.get(0).color == Color.RED) ? Color.RED.darker() : Color.RED;
-				massRelativePosBoxGroup.forEach((box) -> { box.color = newColor; });
-				massRelativePosBoxGroup.triggerBoxChange();
-			}
-
-			massRelativePosBoxGroup.setOriginBlockPos(blockPos);
-		});
-		this.add(massRelativePosBoxGroup);
-	}
-	
-	//endregion
-	
-	
-	
-	//==============//
-	// registration //
-	//==============//
-	//region
-	
-	@Override
-	public void add(IDhApiRenderableBoxGroup iBoxGroup) throws IllegalArgumentException 
-	{
-		if (!(iBoxGroup instanceof RenderableBoxGroup))
-		{
-			throw new IllegalArgumentException("Box group must be of type ["+ RenderableBoxGroup.class.getSimpleName()+"], type received: ["+(iBoxGroup != null ? iBoxGroup.getClass() : "NULL")+"].");
-		}
-		RenderableBoxGroup boxGroup = (RenderableBoxGroup) iBoxGroup;
-		if (boxGroup.size() != 0)
-		{
-			// trigger a box change to make sure the initial data is uploaded
-			boxGroup.triggerBoxChange();
-		}
-		
-		
-		long id = boxGroup.getId();
-		if (this.boxGroupById.containsKey(id))
-		{
-			throw new IllegalArgumentException("A box group with the ID [" + id + "] is already present.");
-		}
-		
-		this.boxGroupById.put(id, boxGroup);
-	}
-	
-	@Override
-	public IDhApiRenderableBoxGroup remove(long id) { return this.boxGroupById.remove(id); }
-	
-	public void clear() { this.boxGroupById.clear(); }
 	
 	//endregion
 	
@@ -410,8 +247,13 @@ public class GlGenericObjectRenderer implements IDhGenericRenderer
      *      and any objects rendered in this pass will have SSAO applied to them.
 	 */
 	@Override
-	public void render(RenderParams renderEventParam, IProfilerWrapper profiler, boolean renderingWithSsao)
+	public void render(
+		DhApiRenderParam apiRenderEventParam,
+		IDhApiCustomRenderRegister renderRegister, boolean renderingWithSsao)
 	{
+		RenderParam renderEventParam = (RenderParam)apiRenderEventParam;
+		IProfilerWrapper profiler = renderEventParam.profiler;
+		
 		// generic rendering (both instanced and direct) is extremely unstable on Mac, so don't render anything
 		if (EPlatform.get() == EPlatform.MACOS)
 		{
@@ -461,9 +303,11 @@ public class GlGenericObjectRenderer implements IDhGenericRenderer
 			
 			// rendering //
 			
-			Collection<RenderableBoxGroup> boxList = this.boxGroupById.values();
-			for (RenderableBoxGroup boxGroup : boxList)
+			Collection<? extends IDhApiRenderableBoxGroup> boxList = renderRegister.getRenderBoxList();
+			for (IDhApiRenderableBoxGroup apiBoxGroup : boxList)
 			{
+				RenderableBoxGroup boxGroup = (RenderableBoxGroup)apiBoxGroup;
+				
 				// validation //
 				
 				// shouldn't happen, but just in case
@@ -498,7 +342,7 @@ public class GlGenericObjectRenderer implements IDhGenericRenderer
 				// update instanced data if needed
 				if (this.instancedRenderingAvailable)
 				{
-					boxGroup.tryUpdateInstancedDataAsync();
+					boxGroup.tryUpdateInstancedDataAsync(apiRenderEventParam);
 					
 					// skip groups that haven't been uploaded yet
 					if (boxGroup.vertexBufferContainer.getState() != GlGenericObjectVertexContainer.EState.RENDER)
@@ -591,7 +435,7 @@ public class GlGenericObjectRenderer implements IDhGenericRenderer
 			// Bind instance data //
 			profiler.popPush("binding");
 			
-			GlGenericObjectVertexContainer container = (GlGenericObjectVertexContainer) (boxGroup.vertexBufferContainer);
+			GlGenericObjectVertexContainer container = (GlGenericObjectVertexContainer) boxGroup.vertexBufferContainer;
 			
 			LWJGL.glBindBuffer(GL15.GL_ARRAY_BUFFER, container.color);
 			LWJGL.glEnableVertexAttribArray(1);
@@ -638,7 +482,7 @@ public class GlGenericObjectRenderer implements IDhGenericRenderer
 		}
 	}
 	/** 
-	 * Clean way to handle both {@link LWJGL#glVertexAttribDivisor} and {@link ARBInstancedArrays#glVertexAttribDivisorARB}
+	 * Clean way to handle both {@link ILWJGLService#glVertexAttribDivisor} and {@link ARBInstancedArrays#glVertexAttribDivisorARB}
 	 * based on which one is supported.
 	 */
 	private void vertexAttribDivisor(int index, int divisor)
@@ -723,40 +567,6 @@ public class GlGenericObjectRenderer implements IDhGenericRenderer
 		}
 		
 		return this.instancedRenderingAvailable; 
-	}
-	
-	//endregion
-	
-	
-	
-	//=========//
-	// F3 menu //
-	//=========//
-	//region
-	
-	public String getVboRenderDebugMenuString()
-	{
-		// get counts
-		int totalGroupCount = this.boxGroupById.size();
-		int totalBoxCount = 0;
-		
-		int activeGroupCount = 0;
-		int activeBoxCount = 0;
-		
-		for (long key : this.boxGroupById.keySet())
-		{
-			RenderableBoxGroup renderGroup = this.boxGroupById.get(key);
-			if (renderGroup.active)
-			{
-				activeGroupCount++;
-				activeBoxCount += renderGroup.size();
-			}
-			totalBoxCount += renderGroup.size();
-		}
-		
-		
-		return "Generic Obj #: " + F3Screen.NUMBER_FORMAT.format(activeGroupCount) + "/" + F3Screen.NUMBER_FORMAT.format(totalGroupCount) + ", " +
-				"Cube #: " + F3Screen.NUMBER_FORMAT.format(activeBoxCount) + "/" + F3Screen.NUMBER_FORMAT.format(totalBoxCount);
 	}
 	
 	//endregion

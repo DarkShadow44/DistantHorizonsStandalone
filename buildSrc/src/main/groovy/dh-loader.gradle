@@ -115,6 +115,10 @@ tasks.withType(JavaCompile).configureEach {
     
     // silence the "java 8 is deprecated" javac compiler warnings
     options.compilerArgs << '-Xlint:-options'
+    
+    // makes javac's "sun.misc.Unsafe is internal proprietary API" warning
+    // suppressible via @SuppressWarnings("sunapi") (see MemoryUtilities)
+    options.compilerArgs << '-XDenableSunApiLintControl'
 }
 
 java {
@@ -526,6 +530,13 @@ if (isNotCommonProject) {
         tasks.named("remapJar").configure {
             dependsOn(shadowJar)
             inputFile.set(shadowJar.archiveFile)
+            // without MixinExtra, @WrapOperation/@ModifyReturnValue/etc. targets are missing from the refmap
+            // and silently don't apply in obfuscated environments
+            mixinRemap {
+                reset()
+                enableBaseMixin()
+                enableMixinExtra()
+            }
         }
 
         // Make run tasks use the shadow jar so relocated deps work in dev.
@@ -807,7 +818,11 @@ if (isNotCommonProject) {
 
     if (project.ext.needsDowngrade) {
         gradle.taskGraph.whenReady { graph ->
-            if (graph.hasTask("${project.path}:runClient")) {
+			// Only the top level projects need to be re-mapped (those that can be run).
+			// James isn't sure why, but things break otherwise.
+            if (graph.hasTask("${project.path}:runClient")
+                || graph.hasTask("${project.path}:runServer"))
+            {
                 downgradeJar.inputFile.set(shadowJar.archiveFile)
                 downgradeJar.archiveClassifier.set("dev")
                 shadeDowngradedApi.archiveClassifier.set("dev")

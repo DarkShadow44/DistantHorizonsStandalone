@@ -5,11 +5,12 @@ public class BlazeLodUniformBufferWrapper {}
 
 #else
 
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.objects.IDhApiTerrainBufferContainer;
 import com.seibel.distanthorizons.core.dataObjects.render.bufferBuilding.LodBufferContainer;
 import com.seibel.distanthorizons.core.util.math.DhVec3f;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.objects.ILodContainerUniformBufferWrapper;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.objects.IDhApiTerrainContainerUniformBufferWrapper;
 
-public class BlazeLodUniformBufferWrapper extends BlazeUniformBufferWrapper implements ILodContainerUniformBufferWrapper
+public class BlazeLodUniformBufferWrapper extends BlazeUniformBufferWrapper implements IDhApiTerrainContainerUniformBufferWrapper
 {
 	
 	private boolean uploaded = false;
@@ -33,21 +34,21 @@ public class BlazeLodUniformBufferWrapper extends BlazeUniformBufferWrapper impl
 	//region
 	
 	@Override
-	public void tryUpload(LodBufferContainer bufferContainer)
+	public void tryUpload(IDhApiTerrainBufferContainer apiBufferContainer)
 	{
 		if (this.uploaded)
 		{
 			return;
 		}
 		
-		DhVec3f modelOffset = new DhVec3f(
-			(float) (bufferContainer.minCornerBlockPos.getX()),
-			(float) (bufferContainer.minCornerBlockPos.getY()),
-			(float) (bufferContainer.minCornerBlockPos.getZ()));
+		LodBufferContainer bufferContainer = (LodBufferContainer)apiBufferContainer;
 		
 		// upload data //
 		this
-			.putVec3f(modelOffset.x, modelOffset.y, modelOffset.z) // uModelOffset
+			.putVec3i(
+				bufferContainer.minCornerBlockPos.getX(), 
+				bufferContainer.minCornerBlockPos.getY(), 
+				bufferContainer.minCornerBlockPos.getZ()) // uModelOffset
 			.finishAndUpload();
 		
 		this.uploaded = true;

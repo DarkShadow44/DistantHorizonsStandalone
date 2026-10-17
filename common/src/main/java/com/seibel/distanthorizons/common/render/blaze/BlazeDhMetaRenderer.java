@@ -6,6 +6,7 @@ public class BlazeDhMetaRenderer {}
 #else
 
 import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiAfterColorDepthTextureCreatedEvent;
+import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam;
 import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiTextureCreatedParam;
 import com.seibel.distanthorizons.common.render.blaze.apply.BlazeDhCopyRenderer;
 import com.seibel.distanthorizons.common.render.blaze.wrappers.texture.BlazeTextureViewWrapper;
@@ -13,23 +14,19 @@ import com.seibel.distanthorizons.common.render.blaze.wrappers.texture.BlazeText
 import com.seibel.distanthorizons.common.wrappers.minecraft.MinecraftRenderWrapper;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.render.DhApiRenderProxy;
-import com.seibel.distanthorizons.core.render.RenderParams;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.AbstractDhRenderApiDefinition;
 import com.seibel.distanthorizons.coreapi.util.ColorUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass.IDhMetaRenderer;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.IDhApiMetaRenderer;
 import com.seibel.distanthorizons.coreapi.DependencyInjection.ApiEventInjector;
 
 import java.awt.*;
 
-public class BlazeDhMetaRenderer implements IDhMetaRenderer
+public class BlazeDhMetaRenderer implements IDhApiMetaRenderer
 {
 	public static final BlazeDhMetaRenderer INSTANCE = new BlazeDhMetaRenderer();
 	
 	private static final IMinecraftRenderWrapper MC_RENDER = SingletonInjector.INSTANCE.get(IMinecraftRenderWrapper.class);
 	
-	
-	private final float clearDepth;
 	
 	public final BlazeTextureWrapper dhDepthTextureWrapper = BlazeTextureWrapper.createDepth("DhDepthTexture");
 	public final BlazeTextureWrapper dhColorTextureWrapper = BlazeTextureWrapper.createColor("DhColorTexture");
@@ -42,11 +39,7 @@ public class BlazeDhMetaRenderer implements IDhMetaRenderer
 	//=============//
 	//region
 	
-	private BlazeDhMetaRenderer()
-	{
-		AbstractDhRenderApiDefinition renderApiDefinition = SingletonInjector.INSTANCE.get(AbstractDhRenderApiDefinition.class);
-		this.clearDepth = renderApiDefinition.getDepthDirection().farDepth;
-	}
+	private BlazeDhMetaRenderer() { }
 	
 	//endregion
 	
@@ -58,7 +51,7 @@ public class BlazeDhMetaRenderer implements IDhMetaRenderer
 	//region
 	
 	@Override
-	public void runRenderPassSetup(RenderParams renderParams)
+	public void runRenderPassSetup(DhApiRenderParam renderParams)
 	{
 		int oldWidth = this.dhDepthTextureWrapper.getWidth();
 		int oldHeight = this.dhDepthTextureWrapper.getHeight();
@@ -84,10 +77,10 @@ public class BlazeDhMetaRenderer implements IDhMetaRenderer
 	}
 	
 	@Override
-	public void runRenderPassCleanup(RenderParams renderParams) {}
+	public void runRenderPassCleanup(DhApiRenderParam renderParams) {}
 	
 	@Override
-	public void copyToMcTexture(RenderParams renderParams)
+	public void copyToMcTexture(DhApiRenderParam renderParams)
 	{
 		this.mcColorTextureWrapper.tryWrap(MinecraftRenderWrapper.INSTANCE.getRenderTarget().getColorTexture());
 		BlazeDhCopyRenderer.INSTANCE.render(this.dhColorTextureWrapper, this.mcColorTextureWrapper);
@@ -103,9 +96,9 @@ public class BlazeDhMetaRenderer implements IDhMetaRenderer
 	//region
 	
 	@Override
-	public void clearDhDepthAndColorTextures(RenderParams renderParams)
+	public void clearDhDepthAndColorTextures(DhApiRenderParam renderParams)
 	{
-		this.dhDepthTextureWrapper.clearDepth(this.clearDepth);
+		this.dhDepthTextureWrapper.clearDepth(renderParams.renderDefinition.getDepthDirection().farDepth);
 		
 		Color color = MC_RENDER.getSkyColor();
 		

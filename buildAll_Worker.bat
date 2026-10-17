@@ -12,7 +12,8 @@ if "%ROOT:~-1%"=="\" set "ROOT=%ROOT:~0,-1%"
 set "WORKER=%~3\%~1"
 
 set "FORGIX_BUILT_JAR_DIR=%WORKER%\build\forgix"
-set "CLEANROOM_BUILT_JAR_DIR=%WORKER%\cleanroom\build\libs"
+set "FORGE_17_BUILT_JAR_DIR=%WORKER%\forge17\build\libs"
+set "FORGE_12_BUILT_JAR_DIR=%WORKER%\forge112\build\libs"
 
 
 
@@ -34,7 +35,8 @@ REM >>"%WORK_DIR%\build_%VERSION%.log" 2>&1
 echo ==================== [%VERSION%] Exporting ====================
 mkdir "%JAR_OUTPUT_DIR%"
 robocopy "%FORGIX_BUILT_JAR_DIR%" "%JAR_OUTPUT_DIR%" /NFL /NDL
-robocopy "%CLEANROOM_BUILT_JAR_DIR%" "%JAR_OUTPUT_DIR%" /XF "*-dev.jar" "*-all.jar" "*-sources.jar" /NFL /NDL
+robocopy "%FORGE_17_BUILT_JAR_DIR%" "%JAR_OUTPUT_DIR%" /XF "*-dev.jar" "*-all.jar" "*-sources.jar" /NFL /NDL
+robocopy "%FORGE_12_BUILT_JAR_DIR%" "%JAR_OUTPUT_DIR%" /XF "*-dev.jar" "*-all.jar" "*-sources.jar" /NFL /NDL
 
 echo ==================== [%VERSION%] Done ====================
 endlocal

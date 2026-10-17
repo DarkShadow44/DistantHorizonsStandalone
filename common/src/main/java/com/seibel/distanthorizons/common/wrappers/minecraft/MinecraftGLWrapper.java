@@ -30,10 +30,11 @@ import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.renderpearl.backend.opengl.GlStateManager;
 #endif
 
-import com.seibel.distanthorizons.core.jar.EPlatform;
+import com.seibel.distanthorizons.core.dependencyInjection.ModAccessorInjector;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 
 import com.seibel.distanthorizons.core.logging.DhLogger;
+import com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor.IIrisAccessor;
 import org.lwjgl.opengl.GL11;
 
 import static com.seibel.distanthorizons.lwjgl.LWJGLServiceProvider.LWJGL;
@@ -63,11 +64,30 @@ public class MinecraftGLWrapper
 	
 	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
+	private static final IIrisAccessor IRIS_ACCESSOR = ModAccessorInjector.INSTANCE.get(IIrisAccessor.class);
 	
-	
-	/*
-    private static final StencilState STENCIL;
+	/** 
+	 * on certain MC versions Iris is more controlling over the GL state
+	 * (ie canceling state updates when certain shaders are active).
+	 * For those versions, just let Iris handle stuff and assume they know
+	 * what they're doing.
 	 */
+	private static boolean runDirectGlCall()
+	{
+		#if MC_VER <= MC_26_1_2
+		return true;
+		#else
+		if (IRIS_ACCESSOR == null)
+		{
+			return true;
+		}
+		
+		// when shaders are active, assume Iris has full control of the GLStateManager and knows what they're doing
+		return !IRIS_ACCESSOR.isShaderPackInUse();
+		#endif
+	}
+	
+	
 	
 	// scissor //
 	//region
@@ -75,35 +95,31 @@ public class MinecraftGLWrapper
 	/** @see GL11#GL_SCISSOR_TEST */
 	public void enableScissorTest()
 	{
-		LWJGL.glEnable(GL11.GL_SCISSOR_TEST);
+		if (runDirectGlCall())
+		{
+			LWJGL.glEnable(GL11.GL_SCISSOR_TEST);
+		}
+		
 		#if MC_VER <= MC_1_7_10
 		#elif MC_VER <= MC_1_12_2
 		#else
-		GlStateManager._enableScissorTest(); 
+		GlStateManager._enableScissorTest();
 		#endif
 	}
 	/** @see GL11#GL_SCISSOR_TEST */
 	public void disableScissorTest()
 	{
-		LWJGL.glDisable(GL11.GL_SCISSOR_TEST);
+		if (runDirectGlCall())
+		{
+			LWJGL.glDisable(GL11.GL_SCISSOR_TEST);
+		}
+		
 		#if MC_VER <= MC_1_7_10
-		#elif MC_VER <= MC_1_12_2
-		#else
+	    #elif MC_VER <= MC_1_12_2
+	    #else
 		GlStateManager._disableScissorTest();
 		#endif
 	}
-	
-	//endregion
-	
-	
-	
-	// stencil //
-	//region
-
-//	/** @see LWJGL#GL_SCISSOR_TEST */
-//	public void enableScissorTest() { GlStateManager._stencilFunc(); }
-//	/** @see LWJGL#GL_SCISSOR_TEST */
-//	public void disableScissorTest() { GlStateManager._disableScissorTest(); }
 	
 	//endregion
 	
@@ -115,35 +131,47 @@ public class MinecraftGLWrapper
 	/** @see GL11#GL_DEPTH_TEST */
 	public void enableDepthTest()
 	{
-		LWJGL.glEnable(GL11.GL_DEPTH_TEST);
+		if (runDirectGlCall())
+		{
+			LWJGL.glEnable(GL11.GL_DEPTH_TEST);
+		}
+		
 		#if MC_VER <= MC_1_7_10
-		#elif MC_VER <= MC_1_12_2
-		GlStateManager.enableDepth();
-		#else
-		GlStateManager._enableDepthTest(); 
+	    #elif MC_VER <= MC_1_12_2
+	    GlStateManager.enableDepth();
+	    #else
+		GlStateManager._enableDepthTest();
 		#endif
 	}
 	/** @see GL11#GL_DEPTH_TEST */
 	public void disableDepthTest()
 	{
-		LWJGL.glDisable(GL11.GL_DEPTH_TEST);
+		if (runDirectGlCall())
+		{
+			LWJGL.glDisable(GL11.GL_DEPTH_TEST);
+		}
+		
 		#if MC_VER <= MC_1_7_10
-		#elif MC_VER <= MC_1_12_2
-		GlStateManager.disableDepth();
-		#else
-		GlStateManager._disableDepthTest(); 
+	    #elif MC_VER <= MC_1_12_2
+	    GlStateManager.disableDepth();
+	    #else
+		GlStateManager._disableDepthTest();
 		#endif
 	}
 
 	/** @see GL11#glDepthFunc(int)  */
 	public void glDepthFunc(int func)
 	{
-		LWJGL.glDepthFunc(func);
+		if (runDirectGlCall())
+		{
+			LWJGL.glDepthFunc(func);
+		}
+		
 		#if MC_VER <= MC_1_7_10
-		#elif MC_VER <= MC_1_12_2
-		GlStateManager.depthFunc(func);
-		#else
-		GlStateManager._depthFunc(func); 
+	    #elif MC_VER <= MC_1_12_2
+	    GlStateManager.depthFunc(func);
+	    #else
+		GlStateManager._depthFunc(func);
 		#endif
 	}
 	public int getActiveDepthFunc() { return LWJGL.glGetInteger(GL11.GL_DEPTH_FUNC); }
@@ -151,18 +179,26 @@ public class MinecraftGLWrapper
 	/** @see GL11#glDepthMask(boolean) */
 	public void enableDepthMask()
 	{
-		LWJGL.glDepthMask(true);
+		if (runDirectGlCall())
+		{
+			LWJGL.glDepthMask(true);
+		}
+		
 		#if MC_VER <= MC_1_7_10
-		#elif MC_VER <= MC_1_12_2
-		GlStateManager.depthMask(true);
-		#else
+	    #elif MC_VER <= MC_1_12_2
+	    GlStateManager.depthMask(true);
+	    #else
 		GlStateManager._depthMask(true);
 		#endif
 	}
 	/** @see GL11#glDepthMask(boolean) */
 	public void disableDepthMask()
 	{
-		LWJGL.glDepthMask(false);
+		if (runDirectGlCall())
+		{
+			LWJGL.glDepthMask(false);
+		}
+		
 		#if MC_VER <= MC_1_7_10
 		#elif MC_VER <= MC_1_12_2
 		GlStateManager.depthMask(false);
@@ -181,34 +217,73 @@ public class MinecraftGLWrapper
 	/** @see GL11#GL_BLEND */
 	public void enableBlend()
 	{
-		LWJGL.glEnable(GL11.GL_BLEND);
 		#if MC_VER <= MC_1_7_10
+		LWJGL.glEnable(GL11.GL_BLEND);
 		#elif MC_VER <= MC_1_12_2
 		GlStateManager.enableBlend();
+		if (runDirectGlCall())
+		{
+			LWJGL.glEnable(GL11.GL_BLEND);
+		}
 		#elif MC_VER <= MC_26_1_2
 		GlStateManager._enableBlend();
+		if (runDirectGlCall())
+		{
+			LWJGL.glEnable(GL11.GL_BLEND);
+		}
 		#else
-		GlStateManager._enableBlend(0);
+		// MC has 8 blend indicies that can be set
+		for (int i = 0; i < 8; i++)
+		{
+			GlStateManager._enableBlend(i);
+		}
+		
+		if (runDirectGlCall())
+		{
+			for (int i = 0; i < 8; i++)
+			{
+				LWJGL.glEnablei(GL11.GL_BLEND, i);
+			}
+		}
 		#endif
 	}
 	/** @see GL11#GL_BLEND */
 	public void disableBlend()
 	{
-		LWJGL.glDisable(GL11.GL_BLEND);
 		#if MC_VER <= MC_1_7_10
+		LWJGL.glDisable(GL11.GL_BLEND);
 		#elif MC_VER <= MC_1_12_2
 		GlStateManager.disableBlend();
+		LWJGL.glDisable(GL11.GL_BLEND);
 		#elif MC_VER <= MC_26_1_2
 		GlStateManager._disableBlend();
+		LWJGL.glDisable(GL11.GL_BLEND);
 		#else
-		GlStateManager._disableBlend(0); 
+		// MC has 8 blend indicies that can be set
+		for (int i = 0; i < 8; i++)
+		{
+			GlStateManager._disableBlend(i);
+		}
+		
+		if (runDirectGlCall())
+		{
+			for (int i = 0; i < 8; i++)
+			{
+				LWJGL.glDisablei(GL11.GL_BLEND, i);
+			}
+		}
+		
 		#endif
 	}
 	
 	/** @see GL11#glBlendFunc */
 	public void glBlendFunc(int sfactor, int dfactor)
 	{
-		LWJGL.glBlendFunc(sfactor, dfactor);
+		if (runDirectGlCall())
+		{
+			LWJGL.glBlendFunc(sfactor, dfactor);
+		}
+		
 		#if MC_VER <= MC_1_7_10
 		#elif MC_VER <= MC_1_12_2
 		GlStateManager.blendFunc(sfactor, dfactor);
@@ -219,7 +294,11 @@ public class MinecraftGLWrapper
 	/** @see org.lwjgl.opengl.GL14#glBlendFuncSeparate */
 	public void glBlendFuncSeparate(int sfactorRGB, int dfactorRGB, int sfactorAlpha, int dfactorAlpha)
 	{
-		LWJGL.glBlendFuncSeparate(sfactorRGB, dfactorRGB, sfactorAlpha, dfactorAlpha);
+		if (runDirectGlCall())
+		{
+			LWJGL.glBlendFuncSeparate(sfactorRGB, dfactorRGB, sfactorAlpha, dfactorAlpha);
+		}
+		
 		#if MC_VER <= MC_1_7_10
 		#elif MC_VER <= MC_1_12_2
 		GlStateManager.tryBlendFuncSeparate(sfactorRGB, dfactorRGB, sfactorAlpha, dfactorAlpha);
@@ -238,7 +317,11 @@ public class MinecraftGLWrapper
 	/** @see org.lwjgl.opengl.GL30#glBindFramebuffer */
 	public void glBindFramebuffer(int target, int framebuffer)
 	{
-		LWJGL.glBindFramebuffer(target, framebuffer);
+		if (runDirectGlCall())
+		{
+			LWJGL.glBindFramebuffer(target, framebuffer);
+		}
+		
 		#if MC_VER > MC_1_12_2
 		GlStateManager._glBindFramebuffer(target, framebuffer);
 		#endif
@@ -277,7 +360,11 @@ public class MinecraftGLWrapper
 	/** @see GL11#GL_CULL_FACE */
 	public void enableFaceCulling()
 	{
-		LWJGL.glEnable(GL11.GL_CULL_FACE);
+		if (runDirectGlCall())
+		{
+			LWJGL.glEnable(GL11.GL_CULL_FACE);
+		}
+		
 		#if MC_VER <= MC_1_7_10
 		#elif MC_VER <= MC_1_12_2
 		GlStateManager.enableCull();
@@ -288,7 +375,11 @@ public class MinecraftGLWrapper
 	/** @see GL11#GL_CULL_FACE */
 	public void disableFaceCulling()
 	{
-		LWJGL.glDisable(GL11.GL_CULL_FACE);
+		if (runDirectGlCall())
+		{
+			LWJGL.glDisable(GL11.GL_CULL_FACE);
+		}
+		
 		#if MC_VER <= MC_1_7_10
 		#elif MC_VER <= MC_1_12_2
 		GlStateManager.disableCull();
@@ -330,7 +421,11 @@ public class MinecraftGLWrapper
 	/** @see org.lwjgl.opengl.GL13#glActiveTexture(int) */
 	public void glActiveTexture(int textureId)
 	{
-		LWJGL.glActiveTexture(textureId);
+		if (runDirectGlCall())
+		{
+			LWJGL.glActiveTexture(textureId);
+		}
+		
 		#if MC_VER <= MC_1_7_10
 		#elif MC_VER <= MC_1_12_2
 		GlStateManager.setActiveTexture(textureId);
@@ -346,7 +441,11 @@ public class MinecraftGLWrapper
 	 */
 	public void glBindTexture(int texture)
 	{
-		LWJGL.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+		if (runDirectGlCall())
+		{
+			LWJGL.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+		}
+		
 		#if MC_VER <= MC_1_7_10
 		#elif MC_VER <= MC_1_12_2
 		GlStateManager.bindTexture(texture);

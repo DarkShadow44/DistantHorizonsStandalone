@@ -153,6 +153,11 @@ public class ConfigCommand extends AbstractDhCommand
 				throw new IllegalStateException("Duplicate command name: " + configEntry.getChatCommandName());
 			}
 			
+			if (configEntry.getComment() == null)
+			{
+				throw new IllegalStateException("Chat command without a comment: " + configEntry.getChatCommandName());
+			}
+			
 			LiteralArgumentBuilder<CommandSourceStack> subcommand = literal(configEntry.getChatCommandName())
 					.executes(commandContext -> this.sendSuccessResponse(commandContext,
 							"\n" +

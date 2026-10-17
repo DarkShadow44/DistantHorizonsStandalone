@@ -1,14 +1,15 @@
 package com.seibel.distanthorizons.common.render.openGl;
 
-import com.seibel.distanthorizons.common.render.openGl.terrain.GlBlockTextureAtlas;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.objects.IDhApiTerrainBufferContainer;
+import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam;
+import com.seibel.distanthorizons.api.objects.util.IDhApiReadOnlyList;
 import com.seibel.distanthorizons.common.render.openGl.terrain.GlDhTerrainShaderProgram;
-import com.seibel.distanthorizons.core.dataObjects.render.bufferBuilding.LodBufferContainer;
-import com.seibel.distanthorizons.core.render.RenderParams;
-import com.seibel.distanthorizons.core.util.objects.SortedArraySet;
-import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IProfilerWrapper;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass.IDhTerrainRenderer;
+import com.seibel.distanthorizons.core.render.RenderParam;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.IDhApiTerrainRenderer;
 
-public class GlDhTerrainRenderer implements IDhTerrainRenderer
+import java.util.List;
+
+public class GlDhTerrainRenderer implements IDhApiTerrainRenderer
 {
 	public static final GlDhTerrainRenderer INSTANCE = new GlDhTerrainRenderer();
 	
@@ -53,12 +54,16 @@ public class GlDhTerrainRenderer implements IDhTerrainRenderer
 	//region
 	
 	@Override 
-	public void render(RenderParams renderEventParam, boolean opaquePass, SortedArraySet<LodBufferContainer> bufferContainers, IProfilerWrapper profiler)
+	public void render(
+		DhApiRenderParam apiRenderEventParam, boolean opaquePass,
+		IDhApiReadOnlyList<? extends IDhApiTerrainBufferContainer> bufferContainers)
 	{
+		RenderParam renderEventParam = (RenderParam) apiRenderEventParam;
+		
 		this.getTerrainShaderProgram();
 		
 		this.terrainShaderProgram.tryInit();
-		this.terrainShaderProgram.render(renderEventParam, opaquePass, bufferContainers, profiler);
+		this.terrainShaderProgram.render(renderEventParam, opaquePass, bufferContainers);
 	}
 	
 	//endregion

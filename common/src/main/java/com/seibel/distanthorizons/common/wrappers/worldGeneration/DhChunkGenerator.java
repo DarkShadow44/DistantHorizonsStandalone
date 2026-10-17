@@ -717,7 +717,13 @@ public final class DhChunkGenerator implements IChunkGenerator
 			
 			throwIfThreadInterrupted();
 			this.stepTerrain.generateGroup(genEvent.threadedParam, region, GetCutoutFrom(chunkWrappersToGenerate, EDhApiWorldGenerationStep.TERRAIN));
-			if (step == EDhApiWorldGenerationStep.TERRAIN)
+			// terrain covers every step it replaced,
+			// so a request for any of them (IE the SURFACE generator mode) is complete here
+			if (step == EDhApiWorldGenerationStep.NOISE
+				|| step == EDhApiWorldGenerationStep.SURFACE
+				|| step == EDhApiWorldGenerationStep.CARVERS
+				|| step == EDhApiWorldGenerationStep.LIQUID_CARVERS
+				|| step == EDhApiWorldGenerationStep.TERRAIN)
 			{
 				return;
 			}

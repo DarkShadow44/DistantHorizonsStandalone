@@ -117,6 +117,7 @@ public class FabricMain extends AbstractModInitializer implements ClientModIniti
 		this.tryCreateModCompatAccessor("bclib", IBCLibAccessor.class, BCLibAccessor::new);
 		this.tryCreateModCompatAccessor("c2me", IC2meAccessor.class, C2meAccessor::new);
 		this.tryCreateModCompatAccessor(IImmersivePortalsAccessor.MOD_ID_ARRAY, IImmersivePortalsAccessor.class, ImmersivePortalsAccessorFabric::new);
+		this.tryCreateModCompatAccessor("chunky", IChunkyAccessor.class, ChunkyAccessor::new);
 		
 		#if MC_VER >= MC_1_20_1
 		// 1.20.1 is the lowest version Iris supports DH
@@ -151,7 +152,8 @@ public class FabricMain extends AbstractModInitializer implements ClientModIniti
 	{
 		SingletonInjector.INSTANCE.runDelayedSetup();
 		
-		if (!Config.Client.Advanced.Graphics.Fog.enableVanillaFog.get() && SingletonInjector.INSTANCE.get(IModChecker.class).isModLoaded("bclib"))
+		if (!Config.Client.Advanced.Graphics.Fog.enableVanillaFog.get() 
+			&& SingletonInjector.INSTANCE.get(IModChecker.class).isModLoaded("bclib"))
 		{
 			ModAccessorInjector.INSTANCE.get(IBCLibAccessor.class).setRenderCustomFog(false); // Remove BCLib's fog
 		}

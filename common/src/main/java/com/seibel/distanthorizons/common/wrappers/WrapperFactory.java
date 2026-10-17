@@ -31,18 +31,12 @@ import com.seibel.distanthorizons.common.wrappers.world.ClientLevelWrapper;
 import com.seibel.distanthorizons.common.wrappers.world.ServerLevelWrapper;
 import com.seibel.distanthorizons.common.wrappers.worldGeneration.DhChunkGenerator;
 import com.seibel.distanthorizons.common.wrappers.worldGeneration.DhRoughSurfaceGenerator;
-import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.level.IDhLevel;
 import com.seibel.distanthorizons.core.level.IDhServerLevel;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.AbstractDhRenderApiDefinition;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.objects.IDhGenericObjectVertexBufferContainer;
 import com.seibel.distanthorizons.core.util.LodUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.IWrapperFactory;
 import com.seibel.distanthorizons.core.wrapperInterfaces.block.IBlockStateWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.IChunkWrapper;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.objects.ILodContainerUniformBufferWrapper;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass.IDhGenericRenderer;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.objects.IVertexBufferWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IBiomeWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.worldGeneration.IChunkGenerator;
@@ -86,28 +80,6 @@ import java.io.IOException;
 public class WrapperFactory implements IWrapperFactory
 {
 	public static final WrapperFactory INSTANCE = new WrapperFactory();
-	
-	
-	
-	//=====================//
-	// internal properties //
-	//=====================//
-	//region
-	
-	private AbstractDhRenderApiDefinition renderDefinition;
-	private AbstractDhRenderApiDefinition getRenderDefinition()
-	{
-		// delayed get to make sure we don't accidentally set the variable before it's bound
-		if (this.renderDefinition != null)
-		{
-			return this.renderDefinition;
-		}
-		
-		this.renderDefinition = SingletonInjector.INSTANCE.get(AbstractDhRenderApiDefinition.class);
-		return this.renderDefinition;
-	}
-	
-	//endregion
 	
 	
 	
@@ -348,11 +320,6 @@ public class WrapperFactory implements IWrapperFactory
 		return createWrapperErrorMessage("Chunk wrapper", expectedClassNames, objectArray);
 	}
 	
-	
-	@Override public IVertexBufferWrapper createVboWrapper(String name) { return this.getRenderDefinition().createVboWrapper(name); }
-	@Override public ILodContainerUniformBufferWrapper createLodContainerUniformWrapper() { return this.getRenderDefinition().createLodContainerUniformWrapper(); }
-	@Override public IDhGenericObjectVertexBufferContainer createGenericObjectVboContainer() { return this.getRenderDefinition().createGenericVboContainer(); }
-	@Override public IDhGenericRenderer createGenericRenderer() { return this.getRenderDefinition().createGenericRenderer(); }
 	
 	//endregion
 	

@@ -1,10 +1,8 @@
 package com.seibel.distanthorizons.common;
 
-import com.seibel.distanthorizons.api.enums.config.EDhApiMcRenderingFadeMode;
 import com.seibel.distanthorizons.api.enums.config.EDhApiRenderingEngine;
 import com.seibel.distanthorizons.api.enums.config.quickOptions.EDhApiThreadPreset;
 import com.seibel.distanthorizons.api.enums.rendering.EDhApiTransparency;
-import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiDistantGeneratorMode;
 import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiGeneratorPlan;
 import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiAfterDhInitEvent;
 import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiBeforeDhInitEvent;
@@ -25,11 +23,10 @@ import com.seibel.distanthorizons.core.enums.MinecraftTextFormat;
 import com.seibel.distanthorizons.core.jar.ModJarInfo;
 import com.seibel.distanthorizons.core.jar.updater.SelfUpdater;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
-import com.seibel.distanthorizons.core.render.renderer.AbstractDebugWireframeRenderer;
-import com.seibel.distanthorizons.core.render.renderer.StubDebugWireframeRenderer;
+import com.seibel.distanthorizons.core.render.renderer.DebugWireframeHandler;
+import com.seibel.distanthorizons.core.render.renderer.StubDebugWireframeHandler;
 import com.seibel.distanthorizons.common.wrappers.gui.NativeDialogUtil;
 import com.seibel.distanthorizons.core.util.ThreadUtil;
-import com.seibel.distanthorizons.core.util.threading.ThreadPoolUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.IVersionConstants;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor.IC2meAccessor;
@@ -53,6 +50,10 @@ import com.mojang.brigadier.CommandDispatcher;
 import net.minecraft.commands.CommandSourceStack;
 #else
 import net.minecraft.command.ServerCommandManager;
+#endif
+
+#if MC_VER <= MC_1_12_2
+import com.seibel.distanthorizons.api.enums.worldGeneration.EDhApiDistantGeneratorMode;
 #endif
 
 /**
@@ -100,7 +101,7 @@ public abstract class AbstractModInitializer
 	
 	public void onInitializeClient()
 	{
-		DependencySetup.createClientBindings();
+		DependencySetup.INSTANCE.createClientBindings();
 		this.createInitialClientBindings();
 		
 		LOGGER.info("Initializing " + ModInfo.READABLE_NAME + " client, firing DhApiBeforeDhInitEvent...");
@@ -135,7 +136,7 @@ public abstract class AbstractModInitializer
 	
 	public void onInitializeServer()
 	{
-		DependencySetup.createServerBindings();
+		DependencySetup.INSTANCE.createServerBindings();
 		
 		LOGGER.info("Initializing " + ModInfo.READABLE_NAME + " server, firing DhApiBeforeDhInitEvent event...");
 		ApiEventInjector.INSTANCE.fireAllEvents(DhApiBeforeDhInitEvent.class, null);
@@ -201,7 +202,7 @@ public abstract class AbstractModInitializer
 	
 	private void startup()
 	{
-		DependencySetup.createSharedBindings();
+		DependencySetup.INSTANCE.createSharedBindings();
 		Initializer.preConfigInit();
 		this.createInitialSharedBindings();
 	}
@@ -305,12 +306,22 @@ public abstract class AbstractModInitializer
 		{
 			try
 			{
-				DependencySetup.setRenderingApiBindings();
+				DependencySetup.INSTANCE.setRenderingApiBindingsFromConfigAsync()
+					.thenApply((String errorMessage) -> 
+					{
+						if (errorMessage != null)
+						{
+							Exception e = new Exception(errorMessage);
+							onRenderApiBindingError(e);
+						}
+						
+						return null;
+					});
 			}
 			catch (Exception e)
 			{
-				NativeDialogUtil.showDialog(ModInfo.READABLE_NAME, e.getMessage(), "ok", "error");
-				MinecraftClientWrapper.INSTANCE.crashMinecraft(e.getMessage(), e);
+				// shouldn't happen, but just in case
+				onRenderApiBindingError(e);
 				future.completeExceptionally(e);
 			}
 			finally
@@ -323,7 +334,15 @@ public abstract class AbstractModInitializer
 		
 		future.join();
 	}
-	private void postServerInit() { SingletonInjector.INSTANCE.bind(AbstractDebugWireframeRenderer.class, new StubDebugWireframeRenderer()); }
+	private static void onRenderApiBindingError(Exception e)
+	{
+		LOGGER.fatal(e.getMessage());
+		
+		NativeDialogUtil.showDialog(ModInfo.READABLE_NAME, e.getMessage(), "ok", "error");
+		MinecraftClientWrapper.INSTANCE.crashMinecraft(e.getMessage(), e);
+	}
+	
+	private void postServerInit() { SingletonInjector.INSTANCE.bind(DebugWireframeHandler.class, new StubDebugWireframeHandler()); }
 	
 	//endregion
 	
@@ -441,7 +460,6 @@ public abstract class AbstractModInitializer
 			LOGGER.warn(startingString + "[Chunky] "+ chunkyWarning);
 			
 			// don't allow for the possibility of DH and chunky to generate chunks at the same time
-			Config.Common.WorldGenerator.generatorPlan.setApiValue(EDhApiGeneratorPlan.DISABLED, ModInfo.READABLE_NAME + " / Chunky");
 			Config.Common.LodBuilding.disableUnchangedChunkCheck.setApiValue(true, ModInfo.READABLE_NAME + " / Chunky");
 		}
 		
@@ -523,16 +541,18 @@ public abstract class AbstractModInitializer
 				}
 			}
 			
+			int maxCpuThreadCount = Runtime.getRuntime().availableProcessors();
 			
-			int cpuThreadCount = Runtime.getRuntime().availableProcessors();
-			int expectedC2meThreadCount = Math.max(cpuThreadCount / 2, 1); // if no C2ME threads were found, default to 50%, C2ME's default
-			int newDhThreadCount = MathUtil.clamp(expectedC2meThreadCount, numberOfC2meThreads, cpuThreadCount);
+			// if no C2ME threads were found, default to 50%, C2ME's default
+			int estimatedC2meThreadCount = Math.max(maxCpuThreadCount / 2, 1);
+			
+			int newDhThreadCount = MathUtil.clamp(estimatedC2meThreadCount, numberOfC2meThreads, maxCpuThreadCount);
 			
 			LOGGER.info("Found ["+numberOfC2meThreads+"] C2ME threads. DH needs to use at least the same number of threads as C2ME to prevent issues with Chunky.");
 			
 			if (chunkyPresent)
 			{
-				Config.Common.MultiThreading.numberOfThreads.setApiValue(numberOfC2meThreads, "Chunky");
+				Config.Common.MultiThreading.numberOfThreads.setApiValue(newDhThreadCount, "Chunky");
 				Config.Common.MultiThreading.threadRunTimeRatio.setApiValue(1.0, "Chunky"); // C2ME threads have 100% uptime, so should we
 				Config.Client.threadPresetSetting.setApiValue(EDhApiThreadPreset.CUSTOM, "Chunky");
 				
@@ -554,7 +574,6 @@ public abstract class AbstractModInitializer
 		// graphics/rendering
 		#if MC_VER <= MC_1_12_2
 		Config.Client.Advanced.Graphics.Experimental.renderingEngine.setMcVersionOverrideValue(EDhApiRenderingEngine.OPEN_GL);
-		Config.Common.WorldGenerator.generatorPlan.setMcVersionOverrideValue(EDhApiGeneratorPlan.CHUNKS_ONLY);
 		Config.Common.WorldGenerator.chunkGeneratorMode.setMcVersionOverrideValue(EDhApiDistantGeneratorMode.INTERNAL_SERVER);
 		
 		// Disabled since it prevents the JVM from exiting in 1.7.10

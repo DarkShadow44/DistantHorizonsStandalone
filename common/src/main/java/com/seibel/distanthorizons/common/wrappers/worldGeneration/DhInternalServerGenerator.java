@@ -49,7 +49,6 @@ import net.minecraft.server.level.ChunkHolder;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.chunk.ChunkAccess;
 #endif
 
 #if MC_VER <= MC_1_12_2
@@ -232,11 +231,7 @@ public class DhInternalServerGenerator
 			// create gen requests //
 			//=====================//
 			
-			#if MC_VER <= MC_1_12_2
-			ArrayList<CompletableFuture<Chunk>> getChunkFutureList = new ArrayList<>();
-			#else
-			ArrayList<CompletableFuture<ChunkAccess>> getChunkFutureList = new ArrayList<>();
-			#endif
+			ArrayList<CompletableFuture<ChunkWrapper>> getChunkFutureList = new ArrayList<>();
 			
 			{
 				Iterator<ChunkPos> chunkPosIterator = ChunkPosGenStream.getIterator(genEvent.minChunkPos.getX(), genEvent.minChunkPos.getZ(), genEvent.widthInChunks, 0);
@@ -244,11 +239,7 @@ public class DhInternalServerGenerator
 				{
 					ChunkPos chunkPos = chunkPosIterator.next();
 					
-					#if MC_VER <= MC_1_12_2
-					CompletableFuture<Chunk> requestChunkFuture;
-					#else
-					CompletableFuture<ChunkAccess> requestChunkFuture;
-					#endif
+					CompletableFuture<ChunkWrapper> requestChunkFuture;
 					
 					requestChunkFuture =
 						this.requestChunkFromServerAsync(chunkPos)
@@ -298,19 +289,10 @@ public class DhInternalServerGenerator
 			ArrayList<IChunkWrapper> chunkWrappers = new ArrayList<>();
 			for (int i = 0; i < getChunkFutureList.size(); i++)
 			{
-				#if MC_VER <= MC_1_12_2
-				CompletableFuture<Chunk> getChunkFuture;
-				Chunk chunk;
-				#else
-				CompletableFuture<ChunkAccess> getChunkFuture;
-				ChunkAccess chunk;
-				#endif
-				
-				getChunkFuture = getChunkFutureList.get(i);
-				chunk = getChunkFuture.join();
-				if (chunk != null)
+				CompletableFuture<ChunkWrapper> getChunkFuture = getChunkFutureList.get(i);
+				ChunkWrapper chunkWrapper = getChunkFuture.join();
+				if (chunkWrapper != null)
 				{
-					ChunkWrapper chunkWrapper = new ChunkWrapper(chunk, this.dhServerLevel.getLevelWrapper());
 					chunkWrapper.createDhHeightMaps();
 					chunkWrappers.add(chunkWrapper);
 				}
@@ -465,11 +447,7 @@ public class DhInternalServerGenerator
 		}, MS_TO_IGNORE_CHUNK_AFTER_COMPLETION);
 	}
 
-	#if MC_VER <= MC_1_12_2
-	private CompletableFuture<Chunk> requestChunkFromServerAsync(ChunkPos chunkPos)
-	#else
-	private CompletableFuture<ChunkAccess> requestChunkFromServerAsync(ChunkPos chunkPos)
-	#endif
+	private CompletableFuture<ChunkWrapper> requestChunkFromServerAsync(ChunkPos chunkPos)
 	{
 		#if MC_VER <= MC_1_12_2
 		{
@@ -537,12 +515,13 @@ public class DhInternalServerGenerator
 					}
 				}
 				
-				// load the target chunk itself, at the requested generation step
+				// load the target chunk itself
 				#if MC_VER <= MC_1_7_10
-				return provider.loadChunk(chunkPos.x, chunkPos.z);
+				Chunk chunk = provider.loadChunk(chunkPos.x, chunkPos.z);
 				#else
-				return provider.provideChunk(chunkPos.x, chunkPos.z);
+				Chunk chunk = provider.provideChunk(chunkPos.x, chunkPos.z);
 				#endif
+				return (chunk != null) ? new ChunkWrapper(chunk, this.dhServerLevel.getLevelWrapper()) : null;
 			});
 		}
 		#else
@@ -590,7 +569,8 @@ public class DhInternalServerGenerator
 				#endif
 				
 			}, this.params.mcServerLevel.getChunkSource().chunkMap.mainThreadExecutor)
-			.thenCompose(Function.identity());
+			.thenCompose(Function.identity())
+			.thenApply(chunk -> (chunk != null) ? new ChunkWrapper(chunk, this.dhServerLevel.getLevelWrapper()) : null);
 		}
 		#endif
 	}
@@ -642,16 +622,16 @@ public class DhInternalServerGenerator
 						}
 						#endif
 						
-						#if MC_VER <= MC_1_7_10
 						// don't unload chunks a player is watching, MC still owns those.
 						// this mirrors the same guard vanilla uses in WorldServer.saveAllChunks().
+						#if MC_VER <= MC_1_7_10
 						if (!level.getPlayerManager().func_152621_a(neighborPosX, neighborPosZ))
 						{
 							provider.dropChunk(neighborPosX, neighborPosZ);
 						}
 						#else
 						Chunk chunk = provider.getLoadedChunk(neighborPosX, neighborPosZ);
-						if (chunk != null)
+						if (chunk != null && !level.getPlayerChunkMap().contains(neighborPosX, neighborPosZ))
 						{
 							provider.queueUnload(chunk);
 						}

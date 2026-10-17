@@ -22,8 +22,12 @@ import com.mojang.renderpearl.api.vertex.VertexFormat;
 #endif
 
 import com.seibel.distanthorizons.api.enums.config.EDhApiDepthDirection;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.objects.IDhApiTerrainBufferContainer;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.objects.IDhApiVertexBufferWrapper;
 import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiBeforeBufferRenderEvent;
 import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiBeforeRenderPassEvent;
+import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam;
+import com.seibel.distanthorizons.api.objects.util.IDhApiReadOnlyList;
 import com.seibel.distanthorizons.common.render.blaze.util.BlazeDhVertexFormatUtil;
 import com.seibel.distanthorizons.common.render.blaze.wrappers.BlazeVertexFormatBuilder;
 import com.seibel.distanthorizons.common.render.blaze.wrappers.RenderPassWrapper;
@@ -37,28 +41,23 @@ import com.seibel.distanthorizons.common.render.blaze.wrappers.uniform.BlazeUnif
 import com.seibel.distanthorizons.common.wrappers.misc.LightMapWrapper;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.dataObjects.render.bufferBuilding.LodBufferContainer;
-import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
 import com.seibel.distanthorizons.core.render.DhApiRenderProxy;
-import com.seibel.distanthorizons.core.render.RenderParams;
+import com.seibel.distanthorizons.core.render.RenderParam;
 import com.seibel.distanthorizons.core.util.RenderUtil;
 import com.seibel.distanthorizons.core.util.math.DhVec3d;
 import com.seibel.distanthorizons.core.util.math.DhVec3f;
-import com.seibel.distanthorizons.core.util.objects.SortedArraySet;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IProfilerWrapper;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.AbstractDhRenderApiDefinition;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass.IDhTerrainRenderer;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.objects.IVertexBufferWrapper;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.AbstractDhApiRenderDefinition;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.IDhApiTerrainRenderer;
 import com.seibel.distanthorizons.coreapi.DependencyInjection.ApiEventInjector;
 
 /** Renders rendering DH's LOD terrain. */
-public class BlazeDhTerrainRenderer implements IDhTerrainRenderer
+public class BlazeDhTerrainRenderer implements IDhApiTerrainRenderer
 {
 	public static final DhLogger LOGGER = new DhLoggerBuilder().build();
-	
-	private static final AbstractDhRenderApiDefinition RENDER_DEF = SingletonInjector.INSTANCE.get(AbstractDhRenderApiDefinition.class);
 	
 	private static final GpuDevice GPU_DEVICE = RenderSystem.getDevice();
 	private static final CommandEncoder COMMAND_ENCODER = GPU_DEVICE.createCommandEncoder();
@@ -72,7 +71,7 @@ public class BlazeDhTerrainRenderer implements IDhTerrainRenderer
 	
 	private RenderPipeline opaquePipeline;
 	private RenderPipeline transparentPipeline;
-	private boolean init = false;
+	private AbstractDhApiRenderDefinition currentRenderDef = null;
 	
 	private final BlazeUniformBufferWrapper fragUniformBufferWrapper = new BlazeUniformBufferWrapper("fragUniformBlock");
 	private final BlazeUniformBufferWrapper vertSharedUniformBufferWrapper = new BlazeUniformBufferWrapper("vertSharedUniformBlock");
@@ -89,12 +88,14 @@ public class BlazeDhTerrainRenderer implements IDhTerrainRenderer
 	
 	private BlazeDhTerrainRenderer() { }
 	
-	private void tryInit()
+	private void tryInit(RenderParam renderEventParam)
 	{
-		if (this.init)
+		if (this.currentRenderDef != null
+			&& this.currentRenderDef.equals(renderEventParam.renderDefinition))
 		{
 			return;
 		}
+		this.currentRenderDef = renderEventParam.renderDefinition;
 		
 		
 		
@@ -110,7 +111,7 @@ public class BlazeDhTerrainRenderer implements IDhTerrainRenderer
 			
 			pipelineBuilder.withFaceCulling(true);
 			pipelineBuilder.withDepthWrite(true);
-			if (RENDER_DEF.getDepthDirection() == EDhApiDepthDirection.FORWARD_Z)
+			if (this.currentRenderDef.getDepthDirection() == EDhApiDepthDirection.FORWARD_Z)
 			{
 				pipelineBuilder.withDepthTest(RenderPipelineBuilderWrapper.EDhDepthTest.LESS);
 			}
@@ -132,8 +133,7 @@ public class BlazeDhTerrainRenderer implements IDhTerrainRenderer
 			pipelineBuilder.withUniformBuffer("fragUniformBlock");
 			
 			VertexFormat vertexFormat = new BlazeVertexFormatBuilder()
-				.add("vPosition", BlazeDhVertexFormatUtil.SHORT_XYZ_POS)
-				.add("meta", BlazeDhVertexFormatUtil.META)
+				.add("vPositionAndMeta", BlazeDhVertexFormatUtil.SHORT_XYZ_POS_AND_W_META)
 				.add("vColor", BlazeDhVertexFormatUtil.RGBA_UBYTE_COLOR)
 				.add("irisMaterial", BlazeDhVertexFormatUtil.IRIS_MATERIAL)
 				.add("irisNormal", BlazeDhVertexFormatUtil.IRIS_NORMAL)
@@ -158,8 +158,6 @@ public class BlazeDhTerrainRenderer implements IDhTerrainRenderer
 			translucentPipelineBuilder.withBlend(BlendFunction.TRANSLUCENT);
 			this.transparentPipeline = translucentPipelineBuilder.build();
 		}
-		
-		this.init = true;
 	}
 	
 	//endregion
@@ -173,12 +171,14 @@ public class BlazeDhTerrainRenderer implements IDhTerrainRenderer
 	
 	@Override
 	public void render(
-		RenderParams renderEventParam, 
+		DhApiRenderParam apiRenderEventParam, 
 		boolean opaquePass,
-		SortedArraySet<LodBufferContainer> bufferContainers,
-		IProfilerWrapper profiler)
+		IDhApiReadOnlyList<? extends IDhApiTerrainBufferContainer> bufferContainers)
 	{
-		this.tryInit();
+		RenderParam renderEventParam = (RenderParam)apiRenderEventParam;
+		IProfilerWrapper profiler = renderEventParam.profiler;
+		
+		this.tryInit(renderEventParam);
 		
 		
 		
@@ -192,7 +192,7 @@ public class BlazeDhTerrainRenderer implements IDhTerrainRenderer
 			this.frameIndexMod8 = -1;
 		}
 		
-		try(IProfilerWrapper.IProfileBlock terrain_profile = profiler.push("terrain render"))
+		try(IProfilerWrapper.IProfileBlock terrain_profile = renderEventParam.profiler.push("terrain render"))
 		{
 			profiler.popPush("vert unique uniforms");
 			{
@@ -200,8 +200,8 @@ public class BlazeDhTerrainRenderer implements IDhTerrainRenderer
 				
 				for (int lodIndex = 0; lodIndex < bufferContainers.size(); lodIndex++)
 				{
-					LodBufferContainer bufferContainer = bufferContainers.get(lodIndex);
-					bufferContainer.uniformContainer.tryUpload(bufferContainer);
+					IDhApiTerrainBufferContainer bufferContainer = bufferContainers.get(lodIndex);
+					bufferContainer.getUniformContainer().tryUpload(bufferContainer);
 				}
 			}
 			
@@ -223,6 +223,10 @@ public class BlazeDhTerrainRenderer implements IDhTerrainRenderer
 				
 				int i = Config.Client.Advanced.Debugging.enableWhiteWorld.get() ? 1 : 0;
 				
+				int camFloorX = (int)Math.floor(renderEventParam.exactCameraPosition.x);
+				int camFloorY = (int)Math.floor(renderEventParam.exactCameraPosition.y);
+				int camFloorZ = (int)Math.floor(renderEventParam.exactCameraPosition.z);
+				
 				this.vertSharedUniformBufferWrapper
 					.putInt(i) // uIsWhiteWorld
 					
@@ -235,10 +239,14 @@ public class BlazeDhTerrainRenderer implements IDhTerrainRenderer
 					.putFloat(BlazeDhMetaRenderer.INSTANCE.dhColorTextureWrapper.getWidth()) // uViewWidth
 					.putFloat(BlazeDhMetaRenderer.INSTANCE.dhColorTextureWrapper.getHeight()) // uViewHeight
 					
+					.putVec3i(
+						camFloorX,
+						camFloorY,
+						camFloorZ) // uCorseCameraPos
 					.putVec3f(
-						(float) renderEventParam.exactCameraPosition.x,
-						(float) renderEventParam.exactCameraPosition.y,
-						(float) renderEventParam.exactCameraPosition.z) // uCameraPos
+						(float) (renderEventParam.exactCameraPosition.x - camFloorX),
+						(float) (renderEventParam.exactCameraPosition.y - camFloorY),
+						(float) (renderEventParam.exactCameraPosition.z - camFloorZ)) // uFineCameraPos
 					.putMat4f(renderEventParam.dhMvmProjMatrix) // uCombinedMatrix
 					.finishAndUpload();
 			}
@@ -304,8 +312,9 @@ public class BlazeDhTerrainRenderer implements IDhTerrainRenderer
 					
 					for (int lodIndex = 0; lodIndex < bufferContainers.size(); lodIndex++)
 					{
-						LodBufferContainer bufferContainer = bufferContainers.get(lodIndex);
-						BlazeLodUniformBufferWrapper uniformWrapper = (BlazeLodUniformBufferWrapper) bufferContainer.uniformContainer;
+						IDhApiTerrainBufferContainer apiBufferContainer = bufferContainers.get(lodIndex);
+						LodBufferContainer bufferContainer = (LodBufferContainer) apiBufferContainer;
+						BlazeLodUniformBufferWrapper uniformWrapper = (BlazeLodUniformBufferWrapper) bufferContainer.getUniformContainer();
 						
 						boolean columnBuilderDebugEnabled = Config.Client.Advanced.Debugging.ColumnBuilderDebugging.columnBuilderDebugEnable.get();
 						if (columnBuilderDebugEnabled)
@@ -327,7 +336,9 @@ public class BlazeDhTerrainRenderer implements IDhTerrainRenderer
 						
 						
 						// render each buffer
-						IVertexBufferWrapper[] bufferWrapperList = opaquePass ? bufferContainer.vboOpaqueWrappers : bufferContainer.vboTransparentWrappers;
+						IDhApiVertexBufferWrapper[] bufferWrapperList = opaquePass 
+							? bufferContainer.getVboOpaqueWrappers() 
+							: bufferContainer.getVboTransparentWrappers();
 						for (int i = 0; i < bufferWrapperList.length; i++)
 						{
 							BlazeVertexBufferWrapper bufferWrapper = (BlazeVertexBufferWrapper) bufferWrapperList[i];

@@ -19,12 +19,13 @@
 
 package com.seibel.distanthorizons.common.render.openGl.postProcessing.antialiasing;
 
+import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam;
 import com.seibel.distanthorizons.common.render.openGl.glObject.GLState;
 import com.seibel.distanthorizons.common.wrappers.minecraft.MinecraftGLWrapper;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
-import com.seibel.distanthorizons.core.render.RenderParams;
+import com.seibel.distanthorizons.core.render.RenderParam;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass.IDhAntiAliasRenderer;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.IDhApiAntiAliasRenderer;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL30;
@@ -39,7 +40,7 @@ import static com.seibel.distanthorizons.lwjgl.LWJGLServiceProvider.LWJGL;
  * {@link GlDhTaaShader} - draws the AntiAliasing to a texture. <br>
  * {@link GlDhTaaSharpenShader} - draws the AntiAliasing texture to DH's FrameBuffer. <br>
  */
-public class GlDhTaaRenderer implements IDhAntiAliasRenderer
+public class GlDhTaaRenderer implements IDhApiAntiAliasRenderer
 {
 	public static GlDhTaaRenderer INSTANCE = new GlDhTaaRenderer();
 	
@@ -135,8 +136,10 @@ public class GlDhTaaRenderer implements IDhAntiAliasRenderer
 	//region
 	
 	@Override
-	public void render(RenderParams renderParams)
+	public void render(DhApiRenderParam apiRenderParams)
 	{
+		RenderParam renderParams = (RenderParam)apiRenderParams;
+		
 		// GLState needed in MC 1.16.5 probably due to MC not manually setting each GL state they need before the next rendering step
 		try (GLState state = new GLState())
 		{

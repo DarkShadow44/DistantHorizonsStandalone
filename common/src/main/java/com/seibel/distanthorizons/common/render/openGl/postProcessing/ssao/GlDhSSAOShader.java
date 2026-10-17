@@ -27,14 +27,10 @@ import com.seibel.distanthorizons.common.render.openGl.glObject.shader.GlShaderP
 import com.seibel.distanthorizons.common.render.openGl.postProcessing.GlScreenQuad;
 import com.seibel.distanthorizons.common.wrappers.minecraft.MinecraftGLWrapper;
 import com.seibel.distanthorizons.common.render.openGl.util.GlAbstractShaderRenderer;
-import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
-import com.seibel.distanthorizons.core.render.RenderParams;
+import com.seibel.distanthorizons.core.render.RenderParam;
 import com.seibel.distanthorizons.core.util.math.DhMat4f;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.AbstractDhRenderApiDefinition;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL30;
-
-import static com.seibel.distanthorizons.lwjgl.LWJGLServiceProvider.LWJGL;
 
 /**
  * Draws the SSAO to a texture. <br><br>
@@ -48,7 +44,6 @@ public class GlDhSSAOShader extends GlAbstractShaderRenderer
 	public static GlDhSSAOShader INSTANCE = new GlDhSSAOShader();
 	
 	private static final MinecraftGLWrapper GLMC = MinecraftGLWrapper.INSTANCE;
-	private static final AbstractDhRenderApiDefinition RENDER_DEF = SingletonInjector.INSTANCE.get(AbstractDhRenderApiDefinition.class);
 	
 	
 	public int frameBuffer;
@@ -114,7 +109,7 @@ public class GlDhSSAOShader extends GlAbstractShaderRenderer
 	}
 	
 	@Override
-	protected void onApplyUniforms(RenderParams renderParams)
+	protected void onApplyUniforms(RenderParam renderParams)
 	{
 		this.shader.setUniform(this.uProj, this.projection);
 		
@@ -127,8 +122,8 @@ public class GlDhSSAOShader extends GlAbstractShaderRenderer
 		this.shader.setUniform(this.uBias, 0.02f);
 		this.shader.setUniform(this.uFadeDistanceInBlocks, 1_600.0f);
 		
-		this.shader.setUniform(this.uIsReverseZDepth, (RENDER_DEF.getDepthDirection() == EDhApiDepthDirection.REVERSE_Z) ? 1 : 0);
-		this.shader.setUniform(this.uDepthIsZeroToPositiveOne, (RENDER_DEF.getDepthRange() == EDhApiDepthRange.ZERO_TO_POS_ONE) ? 1 : 0);
+		this.shader.setUniform(this.uIsReverseZDepth, (renderParams.renderDefinition.getDepthDirection() == EDhApiDepthDirection.REVERSE_Z) ? 1 : 0);
+		this.shader.setUniform(this.uDepthIsZeroToPositiveOne, (renderParams.renderDefinition.getDepthRange() == EDhApiDepthRange.ZERO_TO_POS_ONE) ? 1 : 0);
 		
 	}
 	
@@ -139,7 +134,7 @@ public class GlDhSSAOShader extends GlAbstractShaderRenderer
 	//========//
 	
 	@Override
-	protected void onRender()
+	protected void onRender(RenderParam renderParams)
 	{
 		GLMC.glBindFramebuffer(GL30.GL_FRAMEBUFFER, this.frameBuffer);
 		GLMC.disableScissorTest();

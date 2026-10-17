@@ -40,6 +40,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 
 import com.seibel.distanthorizons.api.enums.config.EDhApiDepthDirection;
 import com.seibel.distanthorizons.api.enums.config.EDhApiDepthRange;
+import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam;
 import com.seibel.distanthorizons.common.render.blaze.BlazeDhMetaRenderer;
 import com.seibel.distanthorizons.common.render.blaze.apply.BlazeDhCopyRenderer;
 import com.seibel.distanthorizons.common.render.blaze.util.BlazePostProcessUtil;
@@ -53,23 +54,21 @@ import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
-import com.seibel.distanthorizons.core.render.RenderParams;
+import com.seibel.distanthorizons.core.render.RenderParam;
 import com.seibel.distanthorizons.core.util.RenderUtil;
 import com.seibel.distanthorizons.core.util.math.DhMat4f;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.AbstractDhRenderApiDefinition;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass.IDhVanillaFadeRenderer;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.IDhApiVanillaFadeRenderer;
 
 /**
  * Fades the vanilla chunks
  * into DH's LODs.
  */
-public class BlazeVanillaFadeRenderer implements IDhVanillaFadeRenderer
+public class BlazeVanillaFadeRenderer implements IDhApiVanillaFadeRenderer
 {
 	public static final DhLogger LOGGER = new DhLoggerBuilder().build(); 
 	
 	private static final IMinecraftRenderWrapper MC_RENDER = SingletonInjector.INSTANCE.get(IMinecraftRenderWrapper.class);
-	private static final AbstractDhRenderApiDefinition RENDER_DEF = SingletonInjector.INSTANCE.get(AbstractDhRenderApiDefinition.class);
 	
 	private static final GpuDevice GPU_DEVICE = RenderSystem.getDevice();
 	private static final CommandEncoder COMMAND_ENCODER = GPU_DEVICE.createCommandEncoder();
@@ -151,8 +150,9 @@ public class BlazeVanillaFadeRenderer implements IDhVanillaFadeRenderer
 	//region
 	
 	@Override
-	public void render(RenderParams renderParams)
+	public void render(DhApiRenderParam apiRenderParams)
 	{
+		RenderParam renderParams = (RenderParam)apiRenderParams;
 		this.tryInit();
 		
 		if (BlazeDhMetaRenderer.INSTANCE.dhDepthTextureWrapper.isEmpty()
@@ -206,7 +206,7 @@ public class BlazeVanillaFadeRenderer implements IDhVanillaFadeRenderer
 				.putMat4f(inverseDhMvmProjMatrix) // uDhInvMvmProj
 				.putMat4f(inverseMcMvmProjMatrix) // uMcInvMvmProj
 				.putInt((MC_RENDER.getMcDepthDirection() == EDhApiDepthDirection.REVERSE_Z) ? 1 : 0) // uIsMcReverseZDepth
-				.putInt((RENDER_DEF.getDepthRange() == EDhApiDepthRange.ZERO_TO_POS_ONE) ? 1 : 0) // uDepthIsZeroToPositiveOne
+				.putInt((renderParams.renderDefinition.getDepthRange() == EDhApiDepthRange.ZERO_TO_POS_ONE) ? 1 : 0) // uDepthIsZeroToPositiveOne
 				.finishAndUpload()
 			;
 		}

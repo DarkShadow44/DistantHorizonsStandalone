@@ -96,7 +96,9 @@ public final class StepTerrain extends AbstractWorldGenStep
 				Blender.of(worldGenRegion),
 				this.dhChunkGen.globalParams.randomState,
 				tParams.structFeatManager.forWorldGenRegion(worldGenRegion),
-				this.dhChunkGen.globalParams.biomeManager,
+				// the biome manager must be pulled from the region, not the server level,
+				// otherwise this can cause the thread to get stuck waiting on requests that will never finish.
+				worldGenRegion.getBiomeManager(),
 				worldGenRegion,
 				possibleBiomes
 			);

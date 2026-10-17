@@ -130,7 +130,15 @@ public class GLState implements AutoCloseable
 		LWJGL.glGetIntegerv(GL11.GL_VIEWPORT, this.view);
 		this.cull = LWJGL.glIsEnabled(GL11.GL_CULL_FACE);
 		this.cullMode = LWJGL.glGetInteger(GL11.GL_CULL_FACE_MODE);
-		this.polyMode = LWJGL.glGetInteger(GL11.GL_POLYGON_MODE);
+		
+		// GL_POLYGON_MODE can return two values (front, back), 
+		// if running in GL compatibility mode,
+		// which overflows glGetInteger's one-int buffer on macOS
+		// https://community.khronos.org/t/get-the-polygon-mode/12870/3
+		// https://stackoverflow.com/questions/78401034/why-did-glget-with-gl-polygon-mode-returns-two-values
+		int[] polyModes = new int[2];
+		LWJGL.glGetIntegerv(GL11.GL_POLYGON_MODE, polyModes);
+		this.polyMode = polyModes[0]; // if 2 elements are returned, they should be the same, so we only need to care about the first one
 	}
 	
 	@Override 

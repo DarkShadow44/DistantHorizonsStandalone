@@ -324,7 +324,7 @@ public class ServerLevelWrapper implements IServerLevelWrapper
 			return null;
 		}
 		
-		return this.dhLevel.getGenericRenderer();
+		return this.dhLevel.getGenericRendererRegister();
 	}
 	
 	@Override

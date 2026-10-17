@@ -39,6 +39,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 #endif
 
 import com.seibel.distanthorizons.api.enums.config.EDhApiDepthRange;
+import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam;
 import com.seibel.distanthorizons.common.render.blaze.BlazeDhMetaRenderer;
 import com.seibel.distanthorizons.common.render.blaze.apply.BlazeDhCopyRenderer;
 import com.seibel.distanthorizons.common.render.blaze.util.BlazePostProcessUtil;
@@ -48,24 +49,20 @@ import com.seibel.distanthorizons.common.render.blaze.wrappers.texture.BlazeText
 import com.seibel.distanthorizons.common.render.blaze.wrappers.texture.BlazeTextureWrapper;
 import com.seibel.distanthorizons.common.render.blaze.wrappers.uniform.BlazeUniformBufferWrapper;
 import com.seibel.distanthorizons.common.wrappers.minecraft.MinecraftRenderWrapper;
-import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
-import com.seibel.distanthorizons.core.render.RenderParams;
 import com.seibel.distanthorizons.core.util.RenderUtil;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.AbstractDhRenderApiDefinition;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass.IDhFarFadeRenderer;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.IDhApiFarFadeRenderer;
 
 /**
  * Fades out DH's far clip plane
  */
-public class BlazeDhFarFadeRenderer implements IDhFarFadeRenderer
+public class BlazeDhFarFadeRenderer implements IDhApiFarFadeRenderer
 {
 	public static final DhLogger LOGGER = new DhLoggerBuilder().build(); 
 	
 	private static final GpuDevice GPU_DEVICE = RenderSystem.getDevice();
 	private static final CommandEncoder COMMAND_ENCODER = GPU_DEVICE.createCommandEncoder();
-	private static final AbstractDhRenderApiDefinition RENDER_DEF = SingletonInjector.INSTANCE.get(AbstractDhRenderApiDefinition.class);
 	
 	public static final BlazeDhFarFadeRenderer INSTANCE = new BlazeDhFarFadeRenderer();
 	
@@ -140,7 +137,7 @@ public class BlazeDhFarFadeRenderer implements IDhFarFadeRenderer
 	//region
 	
 	@Override
-	public void render(RenderParams renderParams)
+	public void render(DhApiRenderParam renderParams)
 	{
 		this.tryInit();
 		
@@ -172,7 +169,7 @@ public class BlazeDhFarFadeRenderer implements IDhFarFadeRenderer
 				.putFloat(fadeStartDistance) // uStartFadeBlockDistance
 				.putFloat(fadeEndDistance) // uEndFadeBlockDistance
 				.putMat4f(renderParams.dhInverseMvmProjectionMatrix) // uDhInvMvmProj
-				.putInt((RENDER_DEF.getDepthRange() == EDhApiDepthRange.ZERO_TO_POS_ONE) ? 1 : 0) // uDepthIsZeroToPositiveOne
+				.putInt((renderParams.renderDefinition.getDepthRange() == EDhApiDepthRange.ZERO_TO_POS_ONE) ? 1 : 0) // uDepthIsZeroToPositiveOne
 				.finishAndUpload()
 			;
 		}

@@ -36,6 +36,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.textures.*;
 import com.mojang.blaze3d.vertex.VertexFormat;
 #else
+
 import com.mojang.renderpearl.api.buffers.GpuBuffer;
 import com.mojang.renderpearl.api.buffers.GpuBufferSlice;
 import com.mojang.renderpearl.api.pipeline.RenderPipeline;
@@ -45,6 +46,7 @@ import com.mojang.renderpearl.api.device.GpuDevice;
 import com.mojang.blaze3d.systems.RenderSystem;
 #endif
 
+import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam;
 import com.seibel.distanthorizons.common.render.blaze.util.BlazeDhVertexFormatUtil;
 import com.seibel.distanthorizons.common.render.blaze.wrappers.BlazeVertexFormatBuilder;
 import com.seibel.distanthorizons.common.render.blaze.wrappers.RenderPassWrapper;
@@ -53,8 +55,7 @@ import com.seibel.distanthorizons.common.render.blaze.wrappers.texture.BlazeText
 import com.seibel.distanthorizons.common.wrappers.minecraft.MinecraftRenderWrapper;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
-import com.seibel.distanthorizons.core.render.RenderParams;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass.IDhTestTriangleRenderer;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.IDhApiTestTriangleRenderer;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -64,7 +65,7 @@ import java.nio.ByteOrder;
  * to the center of the screen to confirm DH's
  * apply shader is running correctly
  */
-public class BlazeDhTestTriangleRenderer implements IDhTestTriangleRenderer
+public class BlazeDhTestTriangleRenderer implements IDhApiTestTriangleRenderer
 {
 	public static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
@@ -164,7 +165,7 @@ public class BlazeDhTestTriangleRenderer implements IDhTestTriangleRenderer
 	//region
 	
 	@Override
-	public void render(RenderParams renderParams)
+	public void render(DhApiRenderParam apiRenderParams)
 	{
 		this.tryInit();
 		

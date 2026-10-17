@@ -1,9 +1,13 @@
 package com.seibel.distanthorizons.common.render.openGl.terrain;
 
 import com.seibel.distanthorizons.api.interfaces.override.rendering.IDhApiShaderProgram;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.IDhApiTerrainRenderer;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.objects.IDhApiTerrainBufferContainer;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.objects.IDhApiVertexBufferWrapper;
 import com.seibel.distanthorizons.api.methods.events.abstractEvents.*;
 import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam;
 import com.seibel.distanthorizons.api.objects.math.DhApiVec3f;
+import com.seibel.distanthorizons.api.objects.util.IDhApiReadOnlyList;
 import com.seibel.distanthorizons.common.render.openGl.GlDhMetaRenderer;
 import com.seibel.distanthorizons.common.render.openGl.glObject.GLProxy;
 import com.seibel.distanthorizons.common.render.openGl.glObject.buffer.GLVertexBuffer;
@@ -15,7 +19,6 @@ import com.seibel.distanthorizons.common.render.openGl.glObject.vertexAttribute.
 import com.seibel.distanthorizons.common.render.openGl.util.vertexFormat.GlLodVertexFormat;
 import com.seibel.distanthorizons.common.wrappers.minecraft.MinecraftGLWrapper;
 import com.seibel.distanthorizons.common.wrappers.misc.LightMapWrapper;
-import com.seibel.distanthorizons.core.api.internal.ClientApi;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.dataObjects.render.bufferBuilding.LodBufferContainer;
 import com.seibel.distanthorizons.core.dataObjects.render.bufferBuilding.LodQuadBuilder;
@@ -23,19 +26,18 @@ import com.seibel.distanthorizons.core.dependencyInjection.ModAccessorInjector;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
-import com.seibel.distanthorizons.core.render.RenderParams;
+import com.seibel.distanthorizons.core.render.RenderParam;
 import com.seibel.distanthorizons.core.util.RenderUtil;
 import com.seibel.distanthorizons.core.util.math.DhMat4f;
 import com.seibel.distanthorizons.core.util.math.DhVec3d;
 import com.seibel.distanthorizons.core.util.math.DhVec3f;
-import com.seibel.distanthorizons.core.util.objects.SortedArraySet;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
-import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IProfilerWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor.IIrisAccessor;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.objects.IVertexBufferWrapper;
 import com.seibel.distanthorizons.coreapi.DependencyInjection.ApiEventInjector;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL14;
+
+import java.util.List;
 
 import static com.seibel.distanthorizons.lwjgl.LWJGLServiceProvider.LWJGL;
 
@@ -231,7 +233,7 @@ public class GlDhTerrainShaderProgram extends GlShaderProgram implements IDhApiS
 		this.setUniform(this.uCombinedMatrix, combinedMatrix);
 		this.setUniform(this.uMircoOffset, 0.01f); // 0.01 block offset
 		
-		this.setUniform(this.uLightMap, LightMapWrapper.GL_BOUND_INDEX);
+		this.setUniform(this.uLightMap, LightMapWrapper.GL_DH_BOUND_INDEX);
 		
 		boolean texturedLodsEnabled = Config.Client.Advanced.Graphics.Texture.enableTexturedLods.get();
 		if (texturedLodsEnabled)
@@ -316,7 +318,9 @@ public class GlDhTerrainShaderProgram extends GlShaderProgram implements IDhApiS
 	//===========//
 	//region
 	
-	public void render(RenderParams renderEventParam, boolean opaquePass, SortedArraySet<LodBufferContainer> bufferContainers, IProfilerWrapper profiler)
+	public void render(
+		RenderParam renderEventParam, boolean opaquePass,
+		IDhApiReadOnlyList<? extends IDhApiTerrainBufferContainer> bufferContainers)
 	{
 		//=======================//
 		// debug wireframe setup //
@@ -374,7 +378,8 @@ public class GlDhTerrainShaderProgram extends GlShaderProgram implements IDhApiS
 		{
 			for (int lodIndex = 0; lodIndex < bufferContainers.size(); lodIndex++)
 			{
-				LodBufferContainer bufferContainer = bufferContainers.get(lodIndex);
+				IDhApiTerrainBufferContainer apiBufferContainer = bufferContainers.get(lodIndex); 
+				LodBufferContainer bufferContainer = (LodBufferContainer)apiBufferContainer;
 				if (!bufferContainer.buffersUploaded)
 				{
 					// make sure we don't accidentally try
@@ -397,7 +402,7 @@ public class GlDhTerrainShaderProgram extends GlShaderProgram implements IDhApiS
 					ApiEventInjector.INSTANCE.fireAllEvents(DhApiBeforeBufferRenderEvent.class, BEFORE_BUFFER_RENDER_EVENT_PARAM);
 				}
 				
-				IVertexBufferWrapper[] vertexBuffers = (opaquePass ? bufferContainer.vboOpaqueWrappers : bufferContainer.vboTransparentWrappers);
+				IDhApiVertexBufferWrapper[] vertexBuffers = (opaquePass ? bufferContainer.getVboOpaqueWrappers() : bufferContainer.getVboTransparentWrappers());
 				for (int vboIndex = 0; vboIndex < vertexBuffers.length; vboIndex++)
 				{
 					GLVertexBuffer vbo = (GLVertexBuffer) vertexBuffers[vboIndex];
