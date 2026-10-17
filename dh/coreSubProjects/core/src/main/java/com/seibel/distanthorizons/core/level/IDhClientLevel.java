@@ -38,7 +38,7 @@ public interface IDhClientLevel extends IDhLevel
 	 * Re-creates the color, render data.
 	 * This method should be called after resource packs are changed or LOD settings are modified.
 	 */
-	void clearRenderCache();
+	void clearRenderCache(boolean clearExistingData);
 	
 	/** 
 	 * returns true if this level is currently rendering. <br>

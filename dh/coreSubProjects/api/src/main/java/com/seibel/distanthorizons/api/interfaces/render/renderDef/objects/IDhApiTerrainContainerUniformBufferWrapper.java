@@ -17,19 +17,22 @@
  *    along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass;
+package com.seibel.distanthorizons.api.interfaces.render.renderDef.objects;
 
-import com.seibel.distanthorizons.api.interfaces.render.IDhApiCustomRenderRegister;
-import com.seibel.distanthorizons.core.render.RenderParams;
-import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IProfilerWrapper;
-
-public interface IDhGenericRenderer extends IDhApiCustomRenderRegister, AutoCloseable
+/**
+ * Allows your renderer to upload a uniform buffer
+ * for a {@link IDhApiTerrainBufferContainer}.
+ * 
+ * @see IDhApiTerrainBufferContainer
+ * @since API 7.3.0
+ * @version 2026-10-02
+ */
+public interface IDhApiTerrainContainerUniformBufferWrapper extends AutoCloseable
 {
-	void render(RenderParams renderEventParam, IProfilerWrapper profiler, boolean renderingWithSsao);
+	/** Should do nothing if the buffer has already been uploaded */
+	void tryUpload(IDhApiTerrainBufferContainer bufferContainer);
 	
-	String getVboRenderDebugMenuString();
-	
-	@Override void close(); // override to remove "throws exception"
+	@Override void close();
 	
 	
 	

@@ -308,7 +308,7 @@ public class ColumnBox
 		int adjCount = adjColumnView.size;
 		
 		// Start with the entire range at max light
-		segments.add(YSegmentUtil.encode(yMin, yMax, LodUtil.MAX_MC_LIGHT));
+		segments.add(YSegmentUtil.encode(yMin, yMax, LodUtil.MAX_MC_LIGHT, false));
 		
 		// Process each adjacent datapoint and split segments as needed
 		// (index -1 is a special case for the void datapoint)
@@ -400,7 +400,7 @@ public class ColumnBox
 			
 			
 			// Apply light to the range [adjMinY, adjMaxY)
-			applyLightToRangeAndPopulateNewSgements(segments, newSegments, adjMinY, adjMaxY, lightToApply);
+			applyLightToRangeAndPopulateNewSgements(segments, newSegments, adjMinY, adjMaxY, lightToApply, true);
 			{
 				// swap references so we can use the newly populated segments
 				LongArrayList temp = segments;
@@ -412,7 +412,7 @@ public class ColumnBox
 			short adjAboveMinY = RenderDataPointUtil.getYMin(adjAbovePoint);
 			if (adjMaxY < adjAboveMinY)
 			{
-				applyLightToRangeAndPopulateNewSgements(segments, newSegments, adjMaxY, adjAboveMinY, adjSkyLight);
+				applyLightToRangeAndPopulateNewSgements(segments, newSegments, adjMaxY, adjAboveMinY, adjSkyLight, false);
 				{
 					LongArrayList temp = segments;
 					segments = newSegments;
@@ -436,7 +436,7 @@ public class ColumnBox
 				x, z, horizontalBlockWidth,
 				color, tryGetTextureId(faceTileIdsByDirectionOrdinal, direction),
 				irisBlockMaterialId, blockLight,
-				YSegmentUtil.getSkyLight(segment), 
+				YSegmentUtil.getSkyLight(segment), YSegmentUtil.isCovered(segment),
 				inputTransparent, 
 				YSegmentUtil.getEndY(segment), YSegmentUtil.getStartY(segment)
 			);
@@ -453,7 +453,7 @@ public class ColumnBox
 	private static void applyLightToRangeAndPopulateNewSgements(
 			LongArrayList segments, LongArrayList newSegments, 
 			short rangeStart, short rangeEnd, 
-			byte newLight)
+			byte newLight, boolean coversRange)
 	{
 		// clear the pooled array that the new segments will go into
 		newSegments.clear();
@@ -464,6 +464,7 @@ public class ColumnBox
 			short endY = YSegmentUtil.getEndY(seg);
 			short startY = YSegmentUtil.getStartY(seg);
 			byte skyLight = YSegmentUtil.getSkyLight(seg);
+			boolean covered = YSegmentUtil.isCovered(seg);
 			
 			// No overlap
 			if (endY <= rangeStart 
@@ -478,19 +479,19 @@ public class ColumnBox
 			// Part before the range
 			if (startY < rangeStart)
 			{
-				newSegments.add(YSegmentUtil.encode(startY, rangeStart, skyLight));
+				newSegments.add(YSegmentUtil.encode(startY, rangeStart, skyLight, covered));
 			}
 			
 			// Overlapping part - take minimum light
 			short overlapStart = (short)Math.max(startY, rangeStart);
 			short overlapEnd = (short)Math.min(endY, rangeEnd);
 			byte minLight = (byte) Math.min(newLight, skyLight);
-			newSegments.add(YSegmentUtil.encode(overlapStart, overlapEnd, minLight));
+			newSegments.add(YSegmentUtil.encode(overlapStart, overlapEnd, minLight, covered || coversRange));
 			
 			// Part after the range
 			if (endY > rangeEnd)
 			{
-				newSegments.add(YSegmentUtil.encode(rangeEnd, endY, skyLight));
+				newSegments.add(YSegmentUtil.encode(rangeEnd, endY, skyLight, covered));
 			}
 		}
 	}
@@ -500,7 +501,7 @@ public class ColumnBox
 		short x, short z, short horizontalWidth,
 		int color, short faceTextureId, 
 		byte irisBlockMaterialId, 
-		byte blockLight, byte lastSkyLight, 
+		byte blockLight, byte lastSkyLight, boolean covered,
 		boolean inputTransparent, 
 		int quadTopY, int quadBottomY
 		)
@@ -515,7 +516,7 @@ public class ColumnBox
 		// unless the adjacent position is empty.
 		// This is done to prevent walls between water blocks in the ocean.
 		if (inputTransparent
-			&& (lastSkyLight != LodUtil.MAX_MC_LIGHT))
+			&& covered)
 		{
 			return;
 		}
@@ -579,21 +580,24 @@ public class ColumnBox
 		private static final int START_Y_OFFSET = 0;
 		private static final int END_Y_OFFSET = START_Y_OFFSET + HEIGHT_WIDTH;
 		private static final int SKY_LIGHT_OFFSET = END_Y_OFFSET + HEIGHT_WIDTH;
+		private static final int COVERED_OFFSET = SKY_LIGHT_OFFSET + SKY_LIGHT_WIDTH;
 		
 		
 		
-		public static long encode(short startY, short endY, byte skyLight)
+		public static long encode(short startY, short endY, byte skyLight, boolean covered)
 		{
 			long data = 0L;
 			data |= (long) (startY & START_Y_MASK) << START_Y_OFFSET;
 			data |= (long) (endY & END_Y_MASK) << END_Y_OFFSET;
 			data |= (long) (skyLight & SKY_LIGHT_MASK) << SKY_LIGHT_OFFSET;
+			data |= (covered ? 1L : 0L) << COVERED_OFFSET;
 			return data;
 		}
 		
 		public static short getStartY(long data) { return (short) ((data >> START_Y_OFFSET) & START_Y_MASK); }
 		public static short getEndY(long data) { return (short) ((data >> END_Y_OFFSET) & END_Y_MASK); }
 		public static byte getSkyLight(long data) { return (byte) ((data >> SKY_LIGHT_OFFSET) & SKY_LIGHT_MASK); }
+		public static boolean isCovered(long data) { return ((data >> COVERED_OFFSET) & 1L) != 0; }
 		
 	}
 	

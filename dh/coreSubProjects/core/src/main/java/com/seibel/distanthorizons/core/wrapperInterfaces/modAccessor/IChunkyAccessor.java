@@ -17,15 +17,11 @@
  *    along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass;
+package com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor;
 
-import com.seibel.distanthorizons.api.objects.math.DhApiMat4f;
-import com.seibel.distanthorizons.core.render.RenderParams;
-import com.seibel.distanthorizons.coreapi.interfaces.dependencyInjection.IBindable;
-
-public interface IDhSsaoRenderer extends IBindable
+public interface IChunkyAccessor extends IModAccessor
 {
-	
-	void render(RenderParams renderParams);
+	/** does nothing if the first time setup has already been completed */
+	void tryRunFirstTimeSetup();
 	
 }

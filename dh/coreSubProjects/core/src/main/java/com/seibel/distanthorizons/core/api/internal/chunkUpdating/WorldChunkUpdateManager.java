@@ -30,8 +30,6 @@ public class WorldChunkUpdateManager
 	/** singleton since we only expect to have one world loaded at a time */
 	public static final WorldChunkUpdateManager INSTANCE = new WorldChunkUpdateManager();
 	
-	public static final Set<String> LOGGED_GET_ERROR_MESSAGES = Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
-	
 	
 	/** 
 	 * Queues are only removed during world shutdown.

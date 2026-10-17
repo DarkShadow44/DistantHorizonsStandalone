@@ -1,19 +1,12 @@
 package com.seibel.distanthorizons.core.render.renderer;
 
 import com.seibel.distanthorizons.core.config.types.ConfigEntry;
-import com.seibel.distanthorizons.core.render.RenderParams;
 
 /**
  * Used to prevent attempts to render debug stuff on the server side.
  */
-public class StubDebugWireframeRenderer extends AbstractDebugWireframeRenderer
+public class StubDebugWireframeHandler extends DebugWireframeHandler
 {
-	@Override
-	public void render(RenderParams renderParams) { }
-	
-	@Override
-	public void renderBox(Box box) { }
-	
 	@Override
 	public void makeParticle(BoxParticle particle) { }
 	

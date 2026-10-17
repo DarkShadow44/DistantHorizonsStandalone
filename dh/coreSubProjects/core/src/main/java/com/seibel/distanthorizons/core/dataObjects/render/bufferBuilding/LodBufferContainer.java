@@ -19,8 +19,10 @@
 
 package com.seibel.distanthorizons.core.dataObjects.render.bufferBuilding;
 
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.AbstractDhApiRenderDefinition;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.objects.IDhApiTerrainBufferContainer;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.objects.IDhApiVertexBufferWrapper;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
-import com.seibel.distanthorizons.core.level.IDhClientLevel;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
@@ -30,10 +32,10 @@ import com.seibel.distanthorizons.core.util.ExceptionUtil;
 import com.seibel.distanthorizons.core.util.objects.pooling.PhantomArrayList.PhantomArrayListCheckout;
 import com.seibel.distanthorizons.core.util.objects.pooling.PhantomArrayList.PhantomArrayListPool;
 import com.seibel.distanthorizons.core.wrapperInterfaces.IWrapperFactory;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.AbstractDhRenderApiDefinition;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.objects.ILodContainerUniformBufferWrapper;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.objects.IVertexBufferWrapper;
+import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.objects.IDhApiTerrainContainerUniformBufferWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
+import com.seibel.distanthorizons.coreapi.DependencyInjection.OverrideInjector;
 import org.jetbrains.annotations.Nullable;
 
 import java.nio.ByteBuffer;
@@ -45,12 +47,12 @@ import java.util.concurrent.*;
  *
  * @see ColumnRenderBufferBuilder
  */
-public class LodBufferContainer implements AutoCloseable
+public class LodBufferContainer implements IDhApiTerrainBufferContainer, AutoCloseable
 {
 	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
 	private static final IWrapperFactory WRAPPER_FACTORY = SingletonInjector.INSTANCE.get(IWrapperFactory.class);
-	private static final AbstractDhRenderApiDefinition RENDER_DEF = SingletonInjector.INSTANCE.get(AbstractDhRenderApiDefinition.class);
+	private static final IMinecraftRenderWrapper MC_RENDER = SingletonInjector.INSTANCE.get(IMinecraftRenderWrapper.class);
 	
 	public static final PhantomArrayListPool ARRAY_LIST_POOL = new PhantomArrayListPool("LodBufferContainer");
 	
@@ -61,10 +63,16 @@ public class LodBufferContainer implements AutoCloseable
 	
 	public boolean buffersUploaded = false;
 	
-	public IVertexBufferWrapper[] vboOpaqueWrappers;
-	public IVertexBufferWrapper[] vboTransparentWrappers;
+	/**
+	 * final since this whole object would need to be recreated
+	 * when the {@link AbstractDhApiRenderDefinition} is changed.
+	 */
+	private final AbstractDhApiRenderDefinition renderDef = OverrideInjector.INSTANCE.get(AbstractDhApiRenderDefinition.class);
 	
-	public ILodContainerUniformBufferWrapper uniformContainer = WRAPPER_FACTORY.createLodContainerUniformWrapper();
+	private IDhApiVertexBufferWrapper[] vboOpaqueWrappers;
+	private IDhApiVertexBufferWrapper[] vboTransparentWrappers;
+	
+	private final IDhApiTerrainContainerUniformBufferWrapper uniformContainer;
 	
 	
 	
@@ -77,9 +85,24 @@ public class LodBufferContainer implements AutoCloseable
 	{
 		this.pos = pos;
 		this.minCornerBlockPos = minCornerBlockPos;
-		this.vboOpaqueWrappers = new IVertexBufferWrapper[0];
-		this.vboTransparentWrappers = new IVertexBufferWrapper[0];
+		this.vboOpaqueWrappers = new IDhApiVertexBufferWrapper[0];
+		this.vboTransparentWrappers = new IDhApiVertexBufferWrapper[0];
+		
+		this.uniformContainer = this.renderDef.createLodContainerUniformWrapper();
 	}
+	
+	//endregion
+	
+	
+	
+	//=========//
+	// getters //
+	//=========//
+	//region
+	
+	@Override public IDhApiVertexBufferWrapper[] getVboOpaqueWrappers() { return this.vboOpaqueWrappers; }
+	@Override public IDhApiVertexBufferWrapper[] getVboTransparentWrappers() { return this.vboTransparentWrappers; }
+	@Override public IDhApiTerrainContainerUniformBufferWrapper getUniformContainer() { return this.uniformContainer; }
 	
 	//endregion
 	
@@ -128,7 +151,7 @@ public class LodBufferContainer implements AutoCloseable
 		// create CPU index buffers if needed.
 		// Mac requires separate IBO objects for each VBO when using OpenGL,
 		// all other OS's can share a single IBO for quicker loading times
-		boolean useSingleIbo = RENDER_DEF.useSingleIbo();
+		boolean useSingleIbo = MC_RENDER.useSingleIbo();
 		@Nullable ArrayList<ByteBuffer> opaqueIndexBuffers = useSingleIbo ? null : bufferContainer.createIndexBuffers(opaqueIndexCheckout, opaqueBuffers);
 		@Nullable ArrayList<ByteBuffer> transparentIndexBuffers = useSingleIbo ? null : bufferContainer.createIndexBuffers(transparentIndexCheckout, transparentBuffers);
 		
@@ -153,8 +176,8 @@ public class LodBufferContainer implements AutoCloseable
 					throw new InterruptedException();
 				}
 				
-				createBufferWrappers(bufferContainer.vboOpaqueWrappers, opaqueBuffers);
-				createBufferWrappers(bufferContainer.vboTransparentWrappers, transparentBuffers);
+				createBufferWrappers(bufferContainer.renderDef, bufferContainer.vboOpaqueWrappers, opaqueBuffers);
+				createBufferWrappers(bufferContainer.renderDef, bufferContainer.vboTransparentWrappers, transparentBuffers);
 				
 				createFuture.complete(null);
 			}
@@ -242,14 +265,14 @@ public class LodBufferContainer implements AutoCloseable
 		return indexBuffers;
 	}
 	
-	private static IVertexBufferWrapper[] resizeWrapperArray(IVertexBufferWrapper[] vbos, int newSize)
+	private static IDhApiVertexBufferWrapper[] resizeWrapperArray(IDhApiVertexBufferWrapper[] vbos, int newSize)
 	{
 		if (vbos.length == newSize)
 		{
 			return vbos;
 		}
 		
-		IVertexBufferWrapper[] newVbos = new IVertexBufferWrapper[newSize];
+		IDhApiVertexBufferWrapper[] newVbos = new IDhApiVertexBufferWrapper[newSize];
 		System.arraycopy(vbos, 0, newVbos, 0, Math.min(vbos.length, newSize));
 		if (newSize < vbos.length)
 		{
@@ -265,7 +288,8 @@ public class LodBufferContainer implements AutoCloseable
 	}
 	
 	private static void createBufferWrappers(
-		IVertexBufferWrapper[] vboWrappers, 
+		AbstractDhApiRenderDefinition renderDef,
+		IDhApiVertexBufferWrapper[] vboWrappers, 
 		ArrayList<ByteBuffer> vertexBuffers)
 	{
 		for (int i = 0; i < vertexBuffers.size(); i++)
@@ -277,15 +301,15 @@ public class LodBufferContainer implements AutoCloseable
 			
 			if (vboWrappers[i] == null)
 			{
-				vboWrappers[i] = WRAPPER_FACTORY.createVboWrapper("distantHorizons:TerrainRenderer");
+				vboWrappers[i] = renderDef.createVboWrapper("distantHorizons:TerrainRenderer");
 			}
 		}
 	}
 	
-	/** Index buffers should be null if {@link AbstractDhRenderApiDefinition#useSingleIbo()} returns true. */
+	/** Index buffers should be null if {@link IMinecraftRenderWrapper#useSingleIbo()} returns true. */
 	private static CompletableFuture<Void> uploadBuffersAsync(
 		CompletableFuture<LodBufferContainer> parentFuture,
-		IVertexBufferWrapper[] vboWrappers, 
+		IDhApiVertexBufferWrapper[] vboWrappers, 
 		ArrayList<ByteBuffer> vertexBuffers, @Nullable ArrayList<ByteBuffer> indexBuffers
 		)
 	{
@@ -302,7 +326,7 @@ public class LodBufferContainer implements AutoCloseable
 			
 			// final variables for use in lambdas //
 			
-			final IVertexBufferWrapper finalVboWrapper = vboWrappers[vboIndex];
+			final IDhApiVertexBufferWrapper finalVboWrapper = vboWrappers[vboIndex];
 			
 			final ByteBuffer finalVertexBuffer = vertexBuffers.get(vboIndex);
 			// index buffers are optional
@@ -467,13 +491,13 @@ public class LodBufferContainer implements AutoCloseable
 		});
 	}
 	
-	private static void tryCloseBufferWrapperArray(@Nullable IVertexBufferWrapper[] bufferWrappers)
+	private static void tryCloseBufferWrapperArray(@Nullable IDhApiVertexBufferWrapper[] bufferWrappers)
 	{
 		if (bufferWrappers != null)
 		{
 			for (int i = 0; i < bufferWrappers.length; i++)
 			{
-				IVertexBufferWrapper buffer = bufferWrappers[i];
+				IDhApiVertexBufferWrapper buffer = bufferWrappers[i];
 				bufferWrappers[i] = null;
 				if (buffer != null)
 				{

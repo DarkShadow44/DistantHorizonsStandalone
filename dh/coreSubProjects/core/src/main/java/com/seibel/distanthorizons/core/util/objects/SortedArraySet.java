@@ -19,9 +19,12 @@
 
 package com.seibel.distanthorizons.core.util.objects;
 
+import com.seibel.distanthorizons.api.objects.util.IDhApiReadOnlyList;
+import org.jetbrains.annotations.NotNull;
+
 import java.util.*;
 
-public class SortedArraySet<E>
+public class SortedArraySet<E> implements IDhApiReadOnlyList<E>
 {
 	private final ArrayList<E> list = new ArrayList<>();
 	private final HashSet<E> set = new HashSet<>();
@@ -33,11 +36,9 @@ public class SortedArraySet<E>
 	//==============//
 	// constructors //
 	//==============//
+	//region
 	
-	public SortedArraySet(Comparator<? super E> comparator)
-	{
-		this.comparator = comparator;
-	}
+	public SortedArraySet(Comparator<? super E> comparator) { this.comparator = comparator; }
 	
 	public SortedArraySet(Collection<? extends E> collection, Comparator<? super E> comparator)
 	{
@@ -45,6 +46,8 @@ public class SortedArraySet<E>
 		this.list.addAll(collection);
 		this.list.sort(comparator);
 	}
+	
+	//endregion
 	
 	
 	
@@ -75,6 +78,7 @@ public class SortedArraySet<E>
 	//================//
 	// base overrides //
 	//================//
+	//region
 	
 	@Override
 	public String toString()
@@ -84,6 +88,8 @@ public class SortedArraySet<E>
 				", comparator=" + this.comparator +
 				'}';
 	}
+	
+	//endregion
 	
 	
 	

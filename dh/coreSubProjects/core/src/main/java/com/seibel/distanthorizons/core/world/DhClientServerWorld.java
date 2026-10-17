@@ -200,6 +200,8 @@ public class DhClientServerWorld extends AbstractDhServerWorld<DhClientServerLev
 	@Override
 	public synchronized void close()
 	{
+		super.close();
+		
 		ArrayList<CompletableFuture<Void>> closeFutures = new ArrayList<>();
 		
 		synchronized (this.clientLevelWrapperSetByDhLevel)

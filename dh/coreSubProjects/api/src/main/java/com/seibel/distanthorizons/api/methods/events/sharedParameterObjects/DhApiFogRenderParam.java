@@ -130,7 +130,7 @@ public class DhApiFogRenderParam implements IDhApiEventParam
 			// far fog
 			parent.farFogFalloff,
 			parent.farFogStartPercent, parent.farFogEndPercent,
-			parent.farFogMinThickness, parent.farFogEndPercent,
+			parent.farFogMinThickness, parent.farFogMaxThickness,
 			parent.farFogDensity,
 			
 			// height fog

@@ -17,14 +17,19 @@
  *    along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass;
+package com.seibel.distanthorizons.api.interfaces.render.renderDef;
 
-import com.seibel.distanthorizons.core.render.RenderParams;
-import com.seibel.distanthorizons.coreapi.interfaces.dependencyInjection.IBindable;
+import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam;
 
-public interface IDhVanillaFadeRenderer extends IBindable
+/**
+ * Handles rendering Distant Horizons fading before
+ * hitting the far clip plane.
+ *
+ * @since API 7.3.0
+ * @version 2026-10-02
+ */
+public interface IDhApiFarFadeRenderer
 {
-	
-	void render(RenderParams renderParams);
+	void render(DhApiRenderParam renderParams);
 	
 }

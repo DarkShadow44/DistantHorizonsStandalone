@@ -21,6 +21,7 @@ package com.seibel.distanthorizons.core.render.renderer;
 
 import com.seibel.distanthorizons.api.enums.rendering.EDhApiBlockMaterial;
 import com.seibel.distanthorizons.api.interfaces.render.IDhApiCustomRenderObjectFactory;
+import com.seibel.distanthorizons.api.interfaces.render.IDhApiCustomRenderRegister;
 import com.seibel.distanthorizons.api.interfaces.render.IDhApiRenderableBoxGroup;
 import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam;
 import com.seibel.distanthorizons.api.objects.math.DhApiVec3d;
@@ -34,7 +35,6 @@ import com.seibel.distanthorizons.core.util.LodUtil;
 import com.seibel.distanthorizons.core.util.math.DhVec3d;
 import com.seibel.distanthorizons.core.util.math.DhVec3f;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass.IDhGenericRenderer;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
 import com.seibel.distanthorizons.coreapi.ModInfo;
 import com.seibel.distanthorizons.core.logging.DhLogger;
@@ -86,7 +86,7 @@ public class CloudRenderHandler
 			= new IDhApiRenderableBoxGroup[CLOUD_LAYER_COUNT][(CLOUD_INSTANCE_RADIUS_COUNT * 2) + 1][(CLOUD_INSTANCE_RADIUS_COUNT * 2) + 1];
 	
 	private final IDhClientLevel level;
-	private final IDhGenericRenderer renderer;
+	private final IDhApiCustomRenderRegister rendererRegister;
 	
 	/** cached array so we don't need to re-create it each frame for each cloud group */
 	private final DhVec3d[] cullingCorners = new DhVec3d[]
@@ -105,10 +105,10 @@ public class CloudRenderHandler
 	//=============//
 	//region
 	
-	public CloudRenderHandler(IDhClientLevel level, IDhGenericRenderer renderer) 
+	public CloudRenderHandler(IDhClientLevel level, IDhApiCustomRenderRegister rendererRegister) 
 	{
 		this.level = level;
-		this.renderer = renderer;
+		this.rendererRegister = rendererRegister;
 		
 		
 		
@@ -296,7 +296,7 @@ public class CloudRenderHandler
 						y, x, z);
 					boxGroup.setPreRenderFunc((renderParam) -> this.preRender(renderParam, cloudParams));
 					
-					this.renderer.add(boxGroup);
+					this.rendererRegister.add(boxGroup);
 					this.boxGroupByOffset[y][x + CLOUD_INSTANCE_RADIUS_COUNT][z + CLOUD_INSTANCE_RADIUS_COUNT] = boxGroup;
 				}
 			}

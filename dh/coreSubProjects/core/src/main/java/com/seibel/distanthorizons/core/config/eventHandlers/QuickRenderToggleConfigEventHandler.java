@@ -36,15 +36,50 @@ public class QuickRenderToggleConfigEventHandler
 	private QuickRenderToggleConfigEventHandler()
 	{
 		this.quickRenderChangeListener = new ConfigChangeListener<>(Config.Client.quickEnableRendering,
-				(val) -> {
-					Config.Client.Advanced.Debugging.rendererMode.set(Config.Client.quickEnableRendering.get()
+				(config) -> 
+				{
+					if (config.apiIsOverriding())
+					{
+						Boolean apiValue = config.getApiValue();
+						if (apiValue == null)
+						{
+							apiValue = false;
+						}
+						
+						EDhApiRendererMode newMode = apiValue
 							? EDhApiRendererMode.DEFAULT
-							: EDhApiRendererMode.DISABLED);
+							: EDhApiRendererMode.DISABLED;
+						Config.Client.Advanced.Debugging.rendererMode.setApiValueWithoutFiringEvents(newMode, config.getApiUser());
+					}
+					else
+					{
+						EDhApiRendererMode newMode = config.get()
+							? EDhApiRendererMode.DEFAULT
+							: EDhApiRendererMode.DISABLED;
+						Config.Client.Advanced.Debugging.rendererMode.setWithoutFiringEvents(newMode);
+						Config.Client.Advanced.Debugging.rendererMode.setApiValueWithoutFiringEvents(null, null);
+					}
 				});
 		this.rendererModeChangeListener = new ConfigChangeListener<>(Config.Client.Advanced.Debugging.rendererMode,
-				(val) -> {
-					Config.Client.quickEnableRendering.set(
-							Config.Client.Advanced.Debugging.rendererMode.get() != EDhApiRendererMode.DISABLED);
+				(config) -> 
+				{
+					if (config.apiIsOverriding())
+					{
+						EDhApiRendererMode apiValue = config.getApiValue();
+						if (apiValue == null)
+						{
+							apiValue = EDhApiRendererMode.DEFAULT;
+						}
+						
+						boolean newMode = apiValue == EDhApiRendererMode.DEFAULT;
+						Config.Client.quickEnableRendering.setApiValueWithoutFiringEvents(newMode, config.getApiUser());
+					}
+					else
+					{
+						boolean newValue = Config.Client.Advanced.Debugging.rendererMode.get() != EDhApiRendererMode.DISABLED;
+						Config.Client.quickEnableRendering.setWithoutFiringEvents(newValue);
+						Config.Client.quickEnableRendering.setApiValueWithoutFiringEvents(null, null);
+					}
 				});
 	}
 	

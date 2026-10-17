@@ -31,8 +31,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.function.Consumer;
-import java.util.function.Function;
 
 /**
  * This config type allows for entering text, number, or enum values.
@@ -139,7 +137,9 @@ public class ConfigEntry<T> extends AbstractConfigBase<T>
 	//===============//
 	//region
 	
-	public void setApiValue(T newApiValue, String apiUser)
+	public void setApiValue(T newApiValue, String apiUser) { this.setApiValue(newApiValue, apiUser, true);  } 
+	public void setApiValueWithoutFiringEvents(T newApiValue, String apiUser) { this.setApiValue(newApiValue, apiUser, false);  }
+	private void setApiValue(T newApiValue, String apiUser, boolean fireEvents)
 	{
 		this.apiValue = newApiValue;
 		if (apiUser != null)
@@ -157,9 +157,12 @@ public class ConfigEntry<T> extends AbstractConfigBase<T>
 			this.apiValueLastSetMs = System.currentTimeMillis();
 		}
 		
-		synchronized (this.listenerList)
+		if (fireEvents)
 		{
-			this.listenerList.forEach(IConfigListener::onConfigValueSet);
+			synchronized (this.listenerList)
+			{
+				this.listenerList.forEach(IConfigListener::onConfigValueSet);
+			}
 		}
 	}
 	
@@ -290,7 +293,7 @@ public class ConfigEntry<T> extends AbstractConfigBase<T>
 	//region
 	
 	/** Fired whenever the config value changes to a new value. */
-	public void addValueChangeListener(Consumer<T> onValueChangeFunc)
+	public void addValueChangeListener(ConfigChangeListener.OnChangeFunc<T> onValueChangeFunc)
 	{
 		ConfigChangeListener<T> changeListener = new ConfigChangeListener<>(this, onValueChangeFunc);
 		this.addListener(changeListener);
@@ -484,7 +487,7 @@ public class ConfigEntry<T> extends AbstractConfigBase<T>
 			return this;
 		}
 		
-		public Builder<T> setShowEnumOptionFunc(IShowEnumOptionFunc func)
+		public Builder<T> setShowEnumOptionFunc(IShowEnumOptionFunc<T> func)
 		{
 			this.tmpShowEnumOptionFunc = func;
 			return this;
@@ -548,9 +551,9 @@ public class ConfigEntry<T> extends AbstractConfigBase<T>
 	//region
 	
 	@FunctionalInterface
-	public interface IShowEnumOptionFunc
+	public interface IShowEnumOptionFunc<T>
 	{
-		boolean shouldShowEnum(Enum<?> enumValue);
+		boolean shouldShowEnum(T enumValue);
 	}
 	
 	//endregion

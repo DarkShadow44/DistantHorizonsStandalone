@@ -20,6 +20,8 @@
 package com.seibel.distanthorizons.core.render.renderer;
 
 import com.seibel.distanthorizons.api.enums.rendering.EDhApiTransparency;
+import com.seibel.distanthorizons.api.interfaces.render.IDhApiCustomRenderRegister;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.*;
 import com.seibel.distanthorizons.api.methods.events.abstractEvents.*;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.dataObjects.render.bufferBuilding.LodBufferContainer;
@@ -30,12 +32,11 @@ import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
 import com.seibel.distanthorizons.core.render.DhApiRenderProxy;
 import com.seibel.distanthorizons.core.render.RenderBufferHandler;
-import com.seibel.distanthorizons.core.render.RenderParams;
+import com.seibel.distanthorizons.core.render.RenderParam;
 import com.seibel.distanthorizons.core.util.objects.SortedArraySet;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IProfilerWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor.IIrisAccessor;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass.*;
 import com.seibel.distanthorizons.coreapi.DependencyInjection.ApiEventInjector;
 
 import java.awt.*;
@@ -62,15 +63,6 @@ public class LodRenderer
 	
 	
 	private boolean vanillaSettingsOverridden = false;
-	private boolean renderersBound = false;
-	
-	private IDhMetaRenderer metaRenderer;
-	private IDhTerrainRenderer terrainRenderer;
-	private IDhSsaoRenderer ssaoRenderer;
-	private IDhFogRenderer fogRenderer;
-	private IDhFarFadeRenderer farFadeRenderer;
-	private IDhAntiAliasRenderer antiAliasRenderer;
-	private AbstractDebugWireframeRenderer debugWireframeRenderer;
 	
 	
 	
@@ -80,17 +72,6 @@ public class LodRenderer
 	//region
 	
 	private LodRenderer() { }
-	
-	private void bindRenderers()
-	{
-		this.metaRenderer = SingletonInjector.INSTANCE.get(IDhMetaRenderer.class);
-		this.terrainRenderer = SingletonInjector.INSTANCE.get(IDhTerrainRenderer.class);
-		this.ssaoRenderer = SingletonInjector.INSTANCE.get(IDhSsaoRenderer.class);
-		this.fogRenderer = SingletonInjector.INSTANCE.get(IDhFogRenderer.class);
-		this.farFadeRenderer = SingletonInjector.INSTANCE.get(IDhFarFadeRenderer.class);
-		this.antiAliasRenderer = SingletonInjector.INSTANCE.get(IDhAntiAliasRenderer.class);
-		this.debugWireframeRenderer = SingletonInjector.INSTANCE.get(AbstractDebugWireframeRenderer.class);
-	}
 	
 	//endregion
 	
@@ -106,7 +87,7 @@ public class LodRenderer
 	 * {@link DhApiRenderProxy#getDeferTransparentRendering()} is false,
 	 * otherwise it will only render opaque LODs.
 	 */
-	public void render(RenderParams renderParams, IProfilerWrapper profiler)
+	public void render(RenderParam renderParams, IProfilerWrapper profiler)
 	{  this.renderTerrain(renderParams, profiler, false);  }
 	
 	/**
@@ -115,10 +96,10 @@ public class LodRenderer
 	 * It needs to be updated with any major changes, 
 	 * but shouldn't be activated as per deferWaterRendering.
 	 */
-	public void renderDeferred(RenderParams renderParams, IProfilerWrapper profiler)
+	public void renderDeferred(RenderParam renderParams, IProfilerWrapper profiler)
 	{ this.renderTerrain(renderParams, profiler, true); }
 	
-	private void renderTerrain(RenderParams renderParams, IProfilerWrapper profiler, boolean runningDeferredPass)
+	private void renderTerrain(RenderParam renderParams, IProfilerWrapper profiler, boolean runningDeferredPass)
 	{
 		//===============//
 		// validate pass //
@@ -151,18 +132,22 @@ public class LodRenderer
 		ApiEventInjector.INSTANCE.fireAllEvents(DhApiBeforeRenderSetupEvent.class, renderParams.apiCopy);
 		try (IProfilerWrapper.IProfileBlock terrainRender_profile = profiler.push("LOD GL setup")) // starts the new profile block for most DH rendering
 		{
+			AbstractDhApiRenderDefinition renderDefinition = renderParams.renderDefinition;
+			IDhApiMetaRenderer metaRenderer = renderDefinition.getMetaRenderer();
+			IDhApiTerrainRenderer terrainRenderer = renderDefinition.getTerrainRenderer();
+			IDhApiSsaoRenderer ssaoRenderer = renderDefinition.getSsaoRenderer();
+			IDhApiFogRenderer fogRenderer = renderDefinition.getFogRenderer();
+			IDhApiFarFadeRenderer farFadeRenderer = renderDefinition.getFarFadeRenderer();
+			IDhApiAntiAliasRenderer antiAliasRenderer = renderDefinition.getAntiAliasRenderer();
+			IDhApiDebugWireframeRenderer debugWireframeRenderer = renderDefinition.getDebugWireframeRenderer();
+			IDhApiGenericRenderer genericRenderer = renderDefinition.getGenericRenderer();
 			
-			if (!this.renderersBound)
-			{
-				this.bindRenderers();
-				this.renderersBound = true;
-			}
 			
 			RenderBufferHandler renderBufferHandler = renderParams.renderBufferHandler;
-			IDhGenericRenderer genericRenderer = renderParams.genericRenderer;
+			IDhApiCustomRenderRegister genericRegister = renderParams.clientLevelWrapper.getRenderRegister();
 			
 			
-			this.metaRenderer.runRenderPassSetup(renderParams);
+			metaRenderer.runRenderPassSetup(renderParams);
 			
 			if (!this.vanillaSettingsOverridden)
 			{
@@ -221,7 +206,7 @@ public class LodRenderer
 				if (clearTextures)
 				{
 					profiler.popPush("LOD Clear");
-					this.metaRenderer.clearDhDepthAndColorTextures(renderParams);
+					metaRenderer.clearDhDepthAndColorTextures(renderParams);
 				}
 				
 				
@@ -234,27 +219,27 @@ public class LodRenderer
 				// opaque LODs
 				profiler.popPush("LOD Opaque");
 				
-				this.renderTerrain(this.terrainRenderer, renderBufferHandler, renderParams, /*opaquePass*/ true, profiler);
+				this.renderTerrain(terrainRenderer, renderBufferHandler, renderParams, /*opaquePass*/ true);
 				
 				// custom objects with SSAO
 				if (Config.Client.Advanced.Graphics.GenericRendering.enableGenericRendering.get())
 				{
 					profiler.popPush("Custom Objects");
-					genericRenderer.render(renderParams, profiler, true);
+					genericRenderer.render(renderParams, genericRegister, true);
 				}
 				
 				// SSAO
 				if (Config.Client.Advanced.Graphics.enableSsao.get())
 				{
 					profiler.popPush("LOD SSAO");
-					this.ssaoRenderer.render(renderParams);
+					ssaoRenderer.render(renderParams);
 				}
 				
 				// custom objects without SSAO
 				if (Config.Client.Advanced.Graphics.GenericRendering.enableGenericRendering.get())
 				{
 					profiler.popPush("Custom Objects");
-					genericRenderer.render(renderParams, profiler, false);
+					genericRenderer.render(renderParams, genericRegister, false);
 				}
 				
 				// combined pass transparent rendering
@@ -262,7 +247,7 @@ public class LodRenderer
 					&& Config.Client.Advanced.Graphics.Quality.transparency.get() == EDhApiTransparency.COMPLETE)
 				{
 					profiler.popPush("LOD Transparent");
-					this.renderTerrain(this.terrainRenderer, renderBufferHandler, renderParams, /*opaquePass*/ false, profiler);
+					this.renderTerrain(terrainRenderer, renderBufferHandler, renderParams, /*opaquePass*/ false);
 				}
 				
 				// fog
@@ -272,7 +257,7 @@ public class LodRenderer
 				{
 					profiler.popPush("LOD Fog");
 					
-					this.fogRenderer.render(renderParams, fogRenderEventParam.getFogRenderParam());
+					fogRenderer.render(renderParams, fogRenderEventParam.getFogRenderParam());
 				}
 				
 				// far plane clip fading
@@ -283,7 +268,7 @@ public class LodRenderer
 					// but is necessary for Anti-aliasing to apply to the sky/surrounding pixels properly
 					
 					profiler.popPush("Fade Far Clip Fade");
-					this.farFadeRenderer.render(renderParams);
+					farFadeRenderer.render(renderParams);
 				}
 				
 				// Anti-Aliasing
@@ -297,7 +282,7 @@ public class LodRenderer
 				)
 				{
 					profiler.popPush("Anti-Aliasing");
-					this.antiAliasRenderer.render(renderParams);
+					antiAliasRenderer.render(renderParams);
 				}
 				
 				
@@ -311,14 +296,14 @@ public class LodRenderer
 					profiler.popPush("Debug wireframes");
 					
 					// Note: this can be very slow if a lot of boxes are being rendered
-					this.debugWireframeRenderer.render(renderParams);
+					DebugWireframeHandler.INSTANCE.render(renderParams, debugWireframeRenderer);
 				}
 				
 				
 				if (Config.Client.Advanced.Debugging.PositionFinder.positionFinderEnable.get())
 				{
 					// can be used to find specific positions when debugging
-					this.debugWireframeRenderer.renderBox(new AbstractDebugWireframeRenderer.Box(
+					debugWireframeRenderer.renderBox(new DebugWireframeHandler.Box(
 						DhSectionPos.encode(
 							Config.Client.Advanced.Debugging.PositionFinder.positionFinderDetailLevel.get().byteValue(),
 							Config.Client.Advanced.Debugging.PositionFinder.positionFinderXPos.get(),
@@ -340,7 +325,7 @@ public class LodRenderer
 				if (!cancelApplyShader)
 				{
 					profiler.popPush("Apply to MC");
-					this.metaRenderer.copyToMcTexture(renderParams);
+					metaRenderer.copyToMcTexture(renderParams);
 				}
 				
 			}
@@ -353,7 +338,7 @@ public class LodRenderer
 				if (Config.Client.Advanced.Graphics.Quality.transparency.get() == EDhApiTransparency.COMPLETE)
 				{
 					profiler.popPush("LOD Transparent");
-					this.renderTerrain(this.terrainRenderer, renderBufferHandler, renderParams, /*opaquePass*/ false, profiler);
+					this.renderTerrain(terrainRenderer, renderBufferHandler, renderParams, /*opaquePass*/ false);
 					
 					
 					boolean cancelFogEvent = ApiEventInjector.INSTANCE.fireAllEvents(DhApiBeforeFogRenderEvent.class, fogRenderEventParam);
@@ -362,7 +347,7 @@ public class LodRenderer
 					{
 						profiler.popPush("LOD Fog");
 						
-						this.fogRenderer.render(renderParams, fogRenderEventParam.getFogRenderParam());
+						fogRenderer.render(renderParams, fogRenderEventParam.getFogRenderParam());
 					}
 				}
 			}
@@ -376,7 +361,7 @@ public class LodRenderer
 			profiler.popPush("LOD cleanup");
 			ApiEventInjector.INSTANCE.fireAllEvents(DhApiBeforeRenderCleanupEvent.class, renderParams.apiCopy);
 			
-			this.metaRenderer.runRenderPassCleanup(renderParams);
+			metaRenderer.runRenderPassCleanup(renderParams);
 		}
 	}
 	
@@ -389,7 +374,7 @@ public class LodRenderer
 	//===============//
 	//region
 	
-	private void renderTerrain(IDhTerrainRenderer terrainRenderer, RenderBufferHandler lodBufferHandler, RenderParams renderEventParam, boolean opaquePass, IProfilerWrapper profilerWrapper)
+	private void renderTerrain(IDhApiTerrainRenderer terrainRenderer, RenderBufferHandler lodBufferHandler, RenderParam renderEventParam, boolean opaquePass)
 	{
 		//===========//
 		// rendering //
@@ -398,7 +383,7 @@ public class LodRenderer
 		SortedArraySet<LodBufferContainer> lodBufferContainer = lodBufferHandler.getColumnRenderBuffers();
 		if (lodBufferContainer != null)
 		{
-			terrainRenderer.render(renderEventParam, opaquePass, lodBufferContainer, profilerWrapper);
+			terrainRenderer.render(renderEventParam, opaquePass, lodBufferContainer);
 		}
 	}
 	

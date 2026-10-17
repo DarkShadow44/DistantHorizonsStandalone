@@ -127,7 +127,16 @@ public class ModrinthGetter
 	}
 	public static String getLatestNameForVersion(String mcVer)
 	{
-		return releaseNames.get(mcVerToReleaseID.get(mcVer).get(0));
+		String id = mcVerToReleaseID.get(mcVer).get(0);
+		String releaseName = releaseNames.get(id);
+		
+		// on some MC versions slashes will be present to denote different mod loaders
+		// ie: "neo/fabric"
+		// and should be removed to prevent accidentally making new folders
+		releaseName = releaseName
+			.replace("/", "-")
+			.replace("\\", "-");
+		return releaseName;
 	}
 	public static URL getLatestDownloadForVersion(String mcVer)
 	{

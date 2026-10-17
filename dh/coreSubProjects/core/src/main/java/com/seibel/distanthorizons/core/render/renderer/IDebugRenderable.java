@@ -19,8 +19,14 @@
 
 package com.seibel.distanthorizons.core.render.renderer;
 
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.IDhApiDebugWireframeRenderer;
+
+/**
+ * Adding this interface means the object
+ * can render debug wireframes during that render pass.
+ */
 public interface IDebugRenderable
 {
-	void debugRender(AbstractDebugWireframeRenderer r);
+	void debugRender(IDhApiDebugWireframeRenderer renderer);
 	
 }

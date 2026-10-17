@@ -17,14 +17,26 @@
  *    along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass;
+package com.seibel.distanthorizons.api.interfaces.render.renderDef;
 
-import com.seibel.distanthorizons.core.render.RenderParams;
-import com.seibel.distanthorizons.coreapi.interfaces.dependencyInjection.IBindable;
+import com.seibel.distanthorizons.api.interfaces.render.IDhApiCustomRenderRegister;
+import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam;
 
-public interface IDhAntiAliasRenderer extends IBindable
+/**
+ * Handles rendering Distant Horizons'
+ * generic objects (ie clouds and beacons).
+ *
+ * @since API 7.3.0
+ * @version 2026-10-02
+ */
+public interface IDhApiGenericRenderer extends AutoCloseable
 {
+	void render(
+		DhApiRenderParam renderEventParam, 
+		IDhApiCustomRenderRegister renderRegister, boolean renderingWithSsao);
 	
-	void render(RenderParams renderParams);
+	@Override void close();
+	
+	
 	
 }
