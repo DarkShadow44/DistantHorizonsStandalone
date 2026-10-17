@@ -1147,7 +1147,9 @@
   "distanthorizons.config.enum.EDhApiRenderingEngine.OPEN_GL":
     "OpenGL",
   "distanthorizons.config.enum.EDhApiRenderingEngine.BLAZE_3D":
-    "Blaze3D"
+    "Blaze3D",
+  "distanthorizons.config.enum.EDhApiRenderingEngine.API":
+    "API"
     
     
     

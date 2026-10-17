@@ -24,6 +24,7 @@ import com.seibel.distanthorizons.coreapi.interfaces.dependencyInjection.IOverri
 import com.seibel.distanthorizons.coreapi.util.StringUtil;
 
 import java.util.HashMap;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * This class takes care of dependency injection for overridable objects. <Br>
@@ -44,6 +45,8 @@ public class OverrideInjector implements IOverrideInjector<IDhApiOverrideable>
 	 * This probably isn't the best way of going about this, but it works for now.
 	 */
 	private final String corePackagePath;
+
+	private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock();
 	
 	
 	
@@ -74,69 +77,94 @@ public class OverrideInjector implements IOverrideInjector<IDhApiOverrideable>
 	@Override
 	public void bind(Class<? extends IDhApiOverrideable> dependencyInterface, IDhApiOverrideable dependencyImplementation) throws IllegalStateException, IllegalArgumentException
 	{
-		// make sure an override container exists
-		OverridePriorityListContainer overrideContainer = this.overrideContainerByInterface.get(dependencyInterface);
-		if (overrideContainer == null)
+		this.readWriteLock.writeLock().lock();
+		
+		try
 		{
-			overrideContainer = new OverridePriorityListContainer();
-			this.overrideContainerByInterface.put(dependencyInterface, overrideContainer);
-		}
-		
-		
-		// validate the new override //
-		
-		// check if this override is a core override
-		if (dependencyImplementation.getPriority() == CORE_PRIORITY)
-		{
-			// this claims to be a core override, is that true?
-			String packageName = dependencyImplementation.getClass().getPackage().getName();
-			if (!packageName.startsWith(this.corePackagePath))
+			// make sure an override container exists
+			OverridePriorityListContainer overrideContainer = this.overrideContainerByInterface.get(dependencyInterface);
+			if (overrideContainer == null)
 			{
-				throw new IllegalArgumentException("Only Distant Horizons internal objects can use the Override Priority [" + CORE_PRIORITY + "]. Please use a higher number.");
+				overrideContainer = new OverridePriorityListContainer();
+				this.overrideContainerByInterface.put(dependencyInterface, overrideContainer);
 			}
-		}
-		
-		// make sure the override has a valid priority
-		else if (dependencyImplementation.getPriority() < MIN_NON_CORE_OVERRIDE_PRIORITY)
-		{
-			throw new IllegalArgumentException("Invalid priority value [" + dependencyImplementation.getPriority() + "], override priorities must be [" + MIN_NON_CORE_OVERRIDE_PRIORITY + "] or greater.");
-		}
-		
-		// check if an override already exists with this priority
-		IDhApiOverrideable existingOverride = overrideContainer.getOverrideWithPriority(dependencyImplementation.getPriority());
-		if (existingOverride != null)
-		{
-			// Iris + Immersive Portals causes this to happen a bunch due to Iris trying to un-bind the wrong objects.
-			// I don't really want to change this API behavior (silently overriding old dependencies), 
-			// but for Iris + Immersive Portals to work properly this path should run.
-			overrideContainer.removeOverride(existingOverride);
 			
-			// can be un-commented if we want to go back to throwing exceptions for duplicate bindings
-			//throw new IllegalStateException("An override for ["+dependencyInterface.getSimpleName()+"] already exists with the priority [" + dependencyImplementation.getPriority() + "].");
+			
+			// validate the new override //
+			
+			// check if this override is a core override
+			if (dependencyImplementation.getPriority() == CORE_PRIORITY)
+			{
+				// this claims to be a core override, is that true?
+				String packageName = dependencyImplementation.getClass().getPackage().getName();
+				if (!packageName.startsWith(this.corePackagePath))
+				{
+					throw new IllegalArgumentException("Only Distant Horizons internal objects can use the Override Priority [" + CORE_PRIORITY + "]. Please use a higher number.");
+				}
+			}
+			
+			// make sure the override has a valid priority
+			else if (dependencyImplementation.getPriority() < MIN_NON_CORE_OVERRIDE_PRIORITY)
+			{
+				throw new IllegalArgumentException("Invalid priority value [" + dependencyImplementation.getPriority() + "], override priorities must be [" + MIN_NON_CORE_OVERRIDE_PRIORITY + "] or greater.");
+			}
+			
+			// check if an override already exists with this priority
+			IDhApiOverrideable existingOverride = overrideContainer.getOverrideWithPriority(dependencyImplementation.getPriority());
+			if (existingOverride != null)
+			{
+				// Iris + Immersive Portals causes this to happen a bunch due to Iris trying to un-bind the wrong objects.
+				// I don't really want to change this API behavior (silently overriding old dependencies), 
+				// but for Iris + Immersive Portals to work properly this path should run.
+				overrideContainer.removeOverride(existingOverride);
+				
+				// can be un-commented if we want to go back to throwing exceptions for duplicate bindings
+				//throw new IllegalStateException("An override for ["+dependencyInterface.getSimpleName()+"] already exists with the priority [" + dependencyImplementation.getPriority() + "].");
+			}
+			
+			
+			// bind the override
+			overrideContainer.addOverride(dependencyImplementation);
 		}
-		
-		
-		// bind the override
-		overrideContainer.addOverride(dependencyImplementation);
+		finally
+		{
+			this.readWriteLock.writeLock().unlock();
+		}
 	}
 	
 	@Override
 	public void unbind(Class<? extends IDhApiOverrideable> dependencyInterface, IDhApiOverrideable dependencyImplementation)
 	{
-		OverridePriorityListContainer overrideContainer = this.overrideContainerByInterface.get(dependencyInterface);
-		if (overrideContainer != null)
+		this.readWriteLock.writeLock().lock();
+		try
 		{
-			overrideContainer.removeOverride(dependencyImplementation);
+			OverridePriorityListContainer overrideContainer = this.overrideContainerByInterface.get(dependencyInterface);
+			if (overrideContainer != null)
+			{
+				overrideContainer.removeOverride(dependencyImplementation);
+			}
+		}
+		finally
+		{
+			this.readWriteLock.writeLock().unlock();
 		}
 	}
 	
 	@Override
 	public void unbindAll(Class<? extends IDhApiOverrideable> dependencyInterface)
 	{
-		OverridePriorityListContainer overrideContainer = this.overrideContainerByInterface.get(dependencyInterface);
-		if (overrideContainer != null)
+		this.readWriteLock.writeLock().lock();
+		try
 		{
-			overrideContainer.clear();
+			OverridePriorityListContainer overrideContainer = this.overrideContainerByInterface.get(dependencyInterface);
+			if (overrideContainer != null)
+			{
+				overrideContainer.clear();
+			}
+		}
+		finally
+		{
+			this.readWriteLock.writeLock().unlock();
 		}
 	}
 	
@@ -153,16 +181,32 @@ public class OverrideInjector implements IOverrideInjector<IDhApiOverrideable>
 	@SuppressWarnings("unchecked")
 	public <T extends IDhApiOverrideable> T get(Class<T> interfaceClass) throws ClassCastException
 	{
-		OverridePriorityListContainer overrideContainer = this.overrideContainerByInterface.get(interfaceClass);
-		return overrideContainer != null ? (T) overrideContainer.getOverrideWithHighestPriority() : null;
+		this.readWriteLock.readLock().lock();
+		try
+		{
+			OverridePriorityListContainer overrideContainer = this.overrideContainerByInterface.get(interfaceClass);
+			return overrideContainer != null ? (T) overrideContainer.getOverrideWithHighestPriority() : null;
+		}
+		finally
+		{
+			this.readWriteLock.readLock().unlock();
+		}
 	}
 	
 	@Override
 	@SuppressWarnings("unchecked")
 	public <T extends IDhApiOverrideable> T get(Class<T> interfaceClass, int priority) throws ClassCastException
 	{
-		OverridePriorityListContainer overrideContainer = this.overrideContainerByInterface.get(interfaceClass);
-		return overrideContainer != null ? (T) overrideContainer.getOverrideWithPriority(priority) : null;
+		this.readWriteLock.readLock().lock();
+		try
+		{
+			OverridePriorityListContainer overrideContainer = this.overrideContainerByInterface.get(interfaceClass);
+			return overrideContainer != null ? (T) overrideContainer.getOverrideWithPriority(priority) : null;
+		}
+		finally
+		{
+			this.readWriteLock.readLock().unlock();
+		}
 	}
 	
 	//endregion
@@ -175,7 +219,18 @@ public class OverrideInjector implements IOverrideInjector<IDhApiOverrideable>
 	//region
 	
 	@Override
-	public void clear() { this.overrideContainerByInterface.clear(); }
+	public void clear() 
+	{
+		this.readWriteLock.writeLock().lock();
+		try
+		{
+			this.overrideContainerByInterface.clear();
+		}
+		finally
+		{
+			this.readWriteLock.writeLock().unlock();
+		}
+	}
 	
 	//endregion
 	

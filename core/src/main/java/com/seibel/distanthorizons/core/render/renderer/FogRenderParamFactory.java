@@ -8,7 +8,7 @@ import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiBeforeF
 import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiFogRenderParam;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
-import com.seibel.distanthorizons.core.render.RenderParams;
+import com.seibel.distanthorizons.core.render.RenderParam;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
 
 import java.awt.*;
@@ -32,7 +32,7 @@ public class FogRenderParamFactory
 	//region
 	
 	/** returns a cached object to reduce GC pressure */
-	public static DhApiBeforeFogRenderEvent.EventParam getRenderParam(RenderParams renderParams)
+	public static DhApiBeforeFogRenderEvent.EventParam getRenderParam(RenderParam renderParams)
 	{
 		Color fogColor = getFogColor(renderParams.partialTicks);
 		

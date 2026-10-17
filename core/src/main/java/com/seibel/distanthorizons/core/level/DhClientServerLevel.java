@@ -19,14 +19,15 @@
 
 package com.seibel.distanthorizons.core.level;
 
+import com.seibel.distanthorizons.api.interfaces.render.IDhApiCustomRenderRegister;
 import com.seibel.distanthorizons.core.config.eventHandlers.IgnoredDimensionCsvHandler;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.enums.MinecraftTextFormat;
 import com.seibel.distanthorizons.core.file.structure.ISaveStructure;
 import com.seibel.distanthorizons.core.multiplayer.server.ServerPlayerStateManager;
 import com.seibel.distanthorizons.core.render.RenderBufferHandler;
+import com.seibel.distanthorizons.core.render.renderer.GenericRenderHandler;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass.IDhGenericRenderer;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IServerLevelWrapper;
 import org.jetbrains.annotations.Nullable;
@@ -116,7 +117,7 @@ public class DhClientServerLevel extends AbstractDhServerLevel implements IDhCli
 	public IClientLevelWrapper getClientLevelWrapper() { return MC_CLIENT.getWrappedClientLevel(); }
 	
 	@Override
-	public void clearRenderCache() { this.clientside.clearRenderCache(); }
+	public void clearRenderCache(boolean clearExistingData) { this.clientside.clearRenderCache(clearExistingData); }
 	
 	//endregion
 	
@@ -150,7 +151,7 @@ public class DhClientServerLevel extends AbstractDhServerLevel implements IDhCli
 	
 	
 	@Override
-	public IDhGenericRenderer getGenericRenderer() { return this.clientside.genericRenderer; }
+	public GenericRenderHandler getGenericRendererRegister() { return this.clientside.genericRendererRegister; }
 	@Override
 	public RenderBufferHandler getRenderBufferHandler()
 	{

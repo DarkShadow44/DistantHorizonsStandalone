@@ -76,6 +76,12 @@ public class Config
 			.set(EDhApiThreadPreset.BALANCED) // the default value is set via the listener when accessed
 			.setAppearance(EConfigEntryAppearance.ONLY_IN_GUI)
 			.addListener(ThreadPresetConfigEventHandler.INSTANCE)
+			.comment("Modifies how many threads Distant Horizons will use. \n\n" +
+				"Increasing this setting will increase the Distant Generator's speed and LOD loading speed, \n" +
+				"but will also increase CPU/memory usage and may introduce stuttering. \n\n" +
+				"Note: This is a CPU relative setting. \n" +
+				"It should put an equal amount of strain on a 2 core CPU as a 64 core CPU."
+			)
 			.build();
 		
 		public static ConfigUiLinkedEntry quickWorldGeneratorPlan = new ConfigUiLinkedEntry(Common.WorldGenerator.generatorPlan);
@@ -953,6 +959,8 @@ public class Config
 					
 					public static ConfigEntry<EDhApiRenderingEngine> renderingEngine = new ConfigEntry.Builder<EDhApiRenderingEngine>()
 						.set(EDhApiRenderingEngine.AUTO)
+						.addListener(RenderingEngineConfigListener.INSTANCE)
+						.setShowEnumOptionFunc(RenderingEngineConfigListener.INSTANCE)
 						.comment(""
 							+ "Requires a restart to change. \n"
 							+ " \n"
@@ -1432,8 +1440,8 @@ public class Config
 			public static ConfigEntry<EDhApiGeneratorPlan> generatorPlan = new ConfigEntry.Builder<EDhApiGeneratorPlan>()
 				.setChatCommandName("generation.plan")
 				.set(EDhApiGeneratorPlan.SURFACE_THEN_CHUNKS)
-				.setShowEnumOptionFunc(WorldGenPlanConfigEventHandler::setShowEnumOptionFunc)
 				.addListener(WorldGenPlanConfigEventHandler.INSTANCE)
+				.setShowEnumOptionFunc(WorldGenPlanConfigEventHandler.INSTANCE)
 				.comment(""
 					+ "Defines how LODs will be generated \n"
 					+ "outside the vanilla render distance. \n"

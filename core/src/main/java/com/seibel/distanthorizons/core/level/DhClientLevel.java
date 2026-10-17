@@ -40,10 +40,10 @@ import com.seibel.distanthorizons.core.network.messages.fullData.FullDataPartial
 import com.seibel.distanthorizons.core.pos.DhChunkPos;
 import com.seibel.distanthorizons.core.render.RenderBufferHandler;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos2D;
+import com.seibel.distanthorizons.core.render.renderer.GenericRenderHandler;
 import com.seibel.distanthorizons.core.sql.dto.FullDataSourceV2DTO;
 import com.seibel.distanthorizons.core.util.threading.ThreadPoolUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass.IDhGenericRenderer;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
 import org.jetbrains.annotations.NotNull;
@@ -302,7 +302,7 @@ public class DhClientLevel extends AbstractDhLevel implements IDhClientLevel
 	public IClientLevelWrapper getClientLevelWrapper() { return this.levelWrapper; }
 	
 	@Override
-	public void clearRenderCache() { this.clientside.clearRenderCache(); }
+	public void clearRenderCache(boolean clearExistingData) { this.clientside.clearRenderCache(clearExistingData); }
 	
 	@Override
 	@NotNull
@@ -318,7 +318,7 @@ public class DhClientLevel extends AbstractDhLevel implements IDhClientLevel
 	public ISaveStructure getSaveStructure() { return this.saveStructure; }
 	
 	@Override
-	public IDhGenericRenderer getGenericRenderer() { return this.clientside.genericRenderer; }
+	public GenericRenderHandler getGenericRendererRegister() { return this.clientside.genericRendererRegister; }
 	@Override
 	public RenderBufferHandler getRenderBufferHandler()
 	{

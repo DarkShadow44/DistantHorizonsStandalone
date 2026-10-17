@@ -1,6 +1,7 @@
 package com.seibel.distanthorizons.core.render.renderer;
 
 import com.seibel.distanthorizons.api.interfaces.render.IDhApiRenderableBoxGroup;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.AbstractDhApiRenderDefinition;
 import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam;
 import com.seibel.distanthorizons.api.objects.math.DhApiVec3d;
 import com.seibel.distanthorizons.api.objects.render.DhApiRenderableBox;
@@ -14,7 +15,7 @@ import com.seibel.distanthorizons.core.util.threading.PriorityTaskPicker;
 import com.seibel.distanthorizons.core.util.threading.ThreadPoolUtil;
 import com.seibel.distanthorizons.core.wrapperInterfaces.IWrapperFactory;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.objects.IDhGenericObjectVertexBufferContainer;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.objects.IDhApiGenericObjectVertexBufferContainer;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.Closeable;
@@ -26,6 +27,8 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
+
+import static com.seibel.distanthorizons.api.interfaces.render.renderDef.objects.IDhApiGenericObjectVertexBufferContainer.EState;
 
 public class RenderableBoxGroup 
 			extends AbstractList<DhApiRenderableBox> 
@@ -67,9 +70,10 @@ public class RenderableBoxGroup
 	public Consumer<DhApiRenderParam> afterRenderFunc;
 	
 	// instance data
-	public IDhGenericObjectVertexBufferContainer vertexBufferContainer = WRAPPER_FACTORY.createGenericObjectVboContainer();
+	private AbstractDhApiRenderDefinition currentRenderDef = null;
+	public IDhApiGenericObjectVertexBufferContainer vertexBufferContainer;
 	/** double buffering for thread safety and to prevent locking the render thread during update */
-	private IDhGenericObjectVertexBufferContainer altVertexBufferContainer = WRAPPER_FACTORY.createGenericObjectVboContainer();
+	private IDhApiGenericObjectVertexBufferContainer altVertexBufferContainer;
 	
 	
 	
@@ -192,16 +196,39 @@ public class RenderableBoxGroup
 	 * Does nothing if the vertex data is already up-to-date 
 	 * and is meaningless if using direct rendering.
 	 */
-	public void tryUpdateInstancedDataAsync()
+	public void tryUpdateInstancedDataAsync(DhApiRenderParam apiRenderEventParam)
 	{
+		// Recreate the GPU buffers if the render definition changed
+		// to make sure we have the correct backend objects for the renderer.
+		AbstractDhApiRenderDefinition renderDef = apiRenderEventParam.renderDefinition;
+		if (this.currentRenderDef == null
+			|| this.currentRenderDef != renderDef)
+		{
+			if (this.vertexBufferContainer != null)
+			{
+				this.vertexBufferContainer.close();
+			}
+			
+			if (this.altVertexBufferContainer != null)
+			{
+				this.altVertexBufferContainer.close();
+			}
+			
+			this.vertexBufferContainer = renderDef.createGenericObjectVboContainer();
+			this.altVertexBufferContainer = renderDef.createGenericObjectVboContainer();
+			this.currentRenderDef = renderDef;
+			this.vertexDataDirty = true;
+		}
+		
+		
 		// if the alt container is done, swap it in
-		if (this.altVertexBufferContainer.getState() == IDhGenericObjectVertexBufferContainer.EState.READY_TO_UPLOAD)
+		if (this.altVertexBufferContainer.getState() == EState.READY_FOR_GPU_UPLOAD)
 		{
 			this.altVertexBufferContainer.uploadDataToGpu();
-			this.altVertexBufferContainer.setState(IDhGenericObjectVertexBufferContainer.EState.RENDER);
+			this.altVertexBufferContainer.setState(EState.RENDER);
 			
 			// swap VBO references for rendering
-			IDhGenericObjectVertexBufferContainer temp = this.vertexBufferContainer;
+			IDhApiGenericObjectVertexBufferContainer temp = this.vertexBufferContainer;
 			this.vertexBufferContainer = this.altVertexBufferContainer;
 			this.altVertexBufferContainer = temp;
 			
@@ -224,11 +251,11 @@ public class RenderableBoxGroup
 		}
 		
 		// if the alternate container is already updating, don't double-queue it
-		if (this.altVertexBufferContainer.getState() == IDhGenericObjectVertexBufferContainer.EState.UPDATING_DATA)
+		if (this.altVertexBufferContainer.getState() == EState.UPDATING_DATA)
 		{
 			return;
 		}
-		this.altVertexBufferContainer.setState(IDhGenericObjectVertexBufferContainer.EState.UPDATING_DATA);
+		this.altVertexBufferContainer.setState(EState.UPDATING_DATA);
 		
 		
 		
@@ -247,8 +274,8 @@ public class RenderableBoxGroup
 			{
 				try
 				{
-					this.altVertexBufferContainer.updateVertexData(this.uploadBoxList);
-					this.altVertexBufferContainer.setState(IDhGenericObjectVertexBufferContainer.EState.READY_TO_UPLOAD);
+					this.altVertexBufferContainer.updateCpuSideVertexData(this.uploadBoxList);
+					this.altVertexBufferContainer.setState(EState.READY_FOR_GPU_UPLOAD);
 					
 					// upload complete
 					this.vertexDataDirty = false;
@@ -256,14 +283,14 @@ public class RenderableBoxGroup
 				catch (Exception e)
 				{
 					LOGGER.error("Unexpected error updating instanced VBO data for: ["+this+"], error: ["+e.getMessage()+"].", e);
-					this.altVertexBufferContainer.setState(IDhGenericObjectVertexBufferContainer.EState.ERROR);
+					this.altVertexBufferContainer.setState(EState.ERROR);
 				}
 			});
 		}
 		catch (RejectedExecutionException ignore) 
 		{
 			// the executor was shut down, it should be back up shortly and able to accept new jobs
-			this.altVertexBufferContainer.setState(IDhGenericObjectVertexBufferContainer.EState.NEW);
+			this.altVertexBufferContainer.setState(EState.NEW);
 		}
 	}
 	

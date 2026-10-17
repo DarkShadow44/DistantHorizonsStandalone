@@ -43,7 +43,6 @@ import com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor.IIrisAccess
 import com.seibel.distanthorizons.coreapi.ModInfo;
 import com.seibel.distanthorizons.coreapi.interfaces.dependencyInjection.IOverrideInjector;
 import com.seibel.distanthorizons.core.util.math.DhMat4f;
-import com.seibel.distanthorizons.core.util.math.DhVec3d;
 import org.joml.Matrix4f;
 
 import java.util.ArrayList;
@@ -129,7 +128,7 @@ public class RenderBufferHandler implements AutoCloseable
 	 * The following buildRenderList sorting method is based on the following reddit post: <br>
 	 * <a href="https://www.reddit.com/r/VoxelGameDev/comments/a0l8zc/correct_depthordering_for_translucent_discrete/">correct_depth_ordering_for_translucent_discrete</a>
 	 */
-	public void buildRenderList(RenderParams renderParams)
+	public void buildRenderList(RenderParam renderParams)
 	{
 		if (ModInfo.IS_DEV_BUILD)
 		{

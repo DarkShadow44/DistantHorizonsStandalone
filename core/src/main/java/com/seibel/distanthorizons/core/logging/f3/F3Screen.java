@@ -29,6 +29,7 @@ import com.seibel.distanthorizons.core.level.IDhClientLevel;
 import com.seibel.distanthorizons.core.level.IDhLevel;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.render.RenderThreadTaskHandler;
+import com.seibel.distanthorizons.core.render.renderer.GenericRenderHandler;
 import com.seibel.distanthorizons.core.util.objects.pooling.PhantomArrayList.PhantomArrayListPool;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
 import com.seibel.distanthorizons.core.render.RenderBufferHandler;
@@ -36,8 +37,8 @@ import com.seibel.distanthorizons.core.util.threading.PriorityTaskPicker;
 import com.seibel.distanthorizons.core.util.threading.ThreadPoolUtil;
 import com.seibel.distanthorizons.core.world.AbstractDhWorld;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.AbstractDhRenderApiDefinition;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass.IDhGenericRenderer;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.AbstractDhApiRenderDefinition;
+import com.seibel.distanthorizons.coreapi.DependencyInjection.OverrideInjector;
 import com.seibel.distanthorizons.coreapi.ModInfo;
 import com.seibel.distanthorizons.coreapi.util.StringUtil;
 import com.seibel.distanthorizons.core.logging.DhLogger;
@@ -127,8 +128,8 @@ public class F3Screen
 				int posZ = DhSectionPos.getZ(sectionPos);
 				messageList.add("LOD Pos: "+y+detailLevel+"*"+posX+","+posZ+cf);
 				
-				AbstractDhRenderApiDefinition renderApiDef = SingletonInjector.INSTANCE.get(AbstractDhRenderApiDefinition.class);
-				messageList.add("Rendering API: "+a+renderApiDef.getEngineName()+cf);
+				AbstractDhApiRenderDefinition renderDef = OverrideInjector.INSTANCE.get(AbstractDhApiRenderDefinition.class);
+				messageList.add("Rendering API: "+a+renderDef.getName()+cf);
 			}
 			messageList.add("");
 		}
@@ -215,7 +216,7 @@ public class F3Screen
 				}
 				
 				// Generic rendering
-				IDhGenericRenderer genericRenderer = level.getGenericRenderer();
+				GenericRenderHandler genericRenderer = level.getGenericRendererRegister();
 				if (genericRenderer != null)
 				{
 					messageList.add(genericRenderer.getVboRenderDebugMenuString());

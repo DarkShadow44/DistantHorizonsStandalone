@@ -23,7 +23,7 @@ import com.seibel.distanthorizons.core.file.structure.ISaveStructure;
 import com.seibel.distanthorizons.core.multiplayer.server.ServerPlayerStateManager;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos2D;
 import com.seibel.distanthorizons.core.render.RenderBufferHandler;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass.IDhGenericRenderer;
+import com.seibel.distanthorizons.core.render.renderer.GenericRenderHandler;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IServerLevelWrapper;
 
 import java.io.IOException;
@@ -70,18 +70,9 @@ public class DhServerLevel extends AbstractDhServerLevel
 	// getters //
 	//=========//
 	
-	@Override
-	public IDhGenericRenderer getGenericRenderer() 
-	{ 
-		// server-only levels don't support rendering
-		return null; 
-	}
-	@Override
-	public RenderBufferHandler getRenderBufferHandler()
-	{ 
-		// server-only levels don't support rendering
-		return null; 
-	}
+	// server-only levels don't support rendering
+	@Override public GenericRenderHandler getGenericRendererRegister() { return null; }
+	@Override public RenderBufferHandler getRenderBufferHandler() { return null; }
 	
 	
 	

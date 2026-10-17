@@ -19,6 +19,7 @@
 
 package com.seibel.distanthorizons.core.level;
 
+import com.seibel.distanthorizons.api.interfaces.render.IDhApiCustomRenderRegister;
 import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiChunkModifiedEvent;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.dataObjects.fullData.sources.FullDataSourceV2;
@@ -36,7 +37,6 @@ import com.seibel.distanthorizons.core.sql.repo.BeaconBeamRepo;
 import com.seibel.distanthorizons.core.sql.repo.ChunkHashRepo;
 import com.seibel.distanthorizons.core.util.KeyedLockContainer;
 import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.IChunkWrapper;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass.IDhGenericRenderer;
 import com.seibel.distanthorizons.coreapi.DependencyInjection.ApiEventInjector;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import org.jetbrains.annotations.Nullable;
@@ -118,8 +118,8 @@ public abstract class AbstractDhLevel implements IDhLevel
 	/** handles any setup that needs the repos to be created */
 	protected void runRepoReliantSetup()
 	{
-		IDhGenericRenderer genericRenderer = this.getGenericRenderer();
-		if (genericRenderer != null)
+		IDhApiCustomRenderRegister genericRendererRegister = this.getGenericRendererRegister();
+		if (genericRendererRegister != null)
 		{
 			// only client levels can render clouds
 			if (this instanceof IDhClientLevel)
@@ -129,7 +129,7 @@ public abstract class AbstractDhLevel implements IDhLevel
 				String dimName = this.getLevelWrapper().getDimensionType().getName();
 				if (enabledCloudDimensions.contains(dimName))
 				{
-					this.cloudRenderHandler = new CloudRenderHandler((IDhClientLevel)this, genericRenderer);
+					this.cloudRenderHandler = new CloudRenderHandler((IDhClientLevel)this, genericRendererRegister);
 				}
 			}
 		}

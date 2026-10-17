@@ -17,18 +17,23 @@
  *    along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.seibel.distanthorizons.core.wrapperInterfaces.render.objects;
+package com.seibel.distanthorizons.api.interfaces.render.renderDef;
 
-import com.seibel.distanthorizons.core.dataObjects.render.bufferBuilding.LodBufferContainer;
+import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam;
 
 /**
- * @see LodBufferContainer
+ * Can be used alongside {@link IDhApiMetaRenderer} as
+ * a proof-of-concept renderer to make sure
+ * DH's renderer is working properly. <Br><Br>
+ * 
+ * The "GL triangle" should render behind vanilla terrain
+ * just like DH's normal rendering does.
+ *
+ * @since API 7.3.0
+ * @version 2026-10-02
  */
-public interface ILodContainerUniformBufferWrapper extends AutoCloseable
+public interface IDhApiTestTriangleRenderer
 {
-	/** does nothing if the buffer has already been uploaded */
-	void tryUpload(LodBufferContainer bufferContainer);
-	
-	@Override void close();
+	void render(DhApiRenderParam renderParams);
 	
 }

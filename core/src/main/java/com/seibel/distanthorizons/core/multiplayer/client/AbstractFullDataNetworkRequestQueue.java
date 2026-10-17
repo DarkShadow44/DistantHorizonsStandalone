@@ -1,6 +1,7 @@
 package com.seibel.distanthorizons.core.multiplayer.client;
 
 import com.google.common.base.Stopwatch;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.IDhApiDebugWireframeRenderer;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.core.config.types.ConfigEntry;
 import com.seibel.distanthorizons.core.dataObjects.fullData.sources.FullDataSourceV2;
@@ -18,7 +19,7 @@ import com.seibel.distanthorizons.core.network.messages.fullData.FullDataSourceR
 import com.seibel.distanthorizons.core.network.messages.fullData.FullDataSourceResponseMessage;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos2D;
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
-import com.seibel.distanthorizons.core.render.renderer.AbstractDebugWireframeRenderer;
+import com.seibel.distanthorizons.core.render.renderer.DebugWireframeHandler;
 import com.seibel.distanthorizons.core.render.renderer.IDebugRenderable;
 import com.seibel.distanthorizons.core.sql.dto.FullDataSourceV2DTO;
 import com.seibel.distanthorizons.core.util.LodUtil;
@@ -44,7 +45,7 @@ public abstract class AbstractFullDataNetworkRequestQueue implements IDebugRende
 			.build();
 	
 	private static final IMinecraftClientWrapper MC_CLIENT = SingletonInjector.INSTANCE.get(IMinecraftClientWrapper.class);
-	private static final AbstractDebugWireframeRenderer DEBUG_RENDERER = SingletonInjector.INSTANCE.get(AbstractDebugWireframeRenderer.class);
+	private static final DebugWireframeHandler DEBUG_RENDERER = SingletonInjector.INSTANCE.get(DebugWireframeHandler.class);
 	
 	private static final int MAX_RETRY_ATTEMPTS = 3;
 	
@@ -404,7 +405,7 @@ public abstract class AbstractFullDataNetworkRequestQueue implements IDebugRende
 	//===========//
 	
 	@Override
-	public void debugRender(AbstractDebugWireframeRenderer renderer)
+	public void debugRender(IDhApiDebugWireframeRenderer renderer)
 	{
 		if (MC_CLIENT.getWrappedClientLevel() != this.level.getClientLevelWrapper())
 		{
@@ -435,7 +436,7 @@ public abstract class AbstractFullDataNetworkRequestQueue implements IDebugRende
 				}
 			}
 			
-			renderer.renderBox(new AbstractDebugWireframeRenderer.Box(pos, -32f, 64f, 0.05f, color));
+			renderer.renderBox(new DebugWireframeHandler.Box(pos, -32f, 64f, 0.05f, color));
 		}
 	}
 	

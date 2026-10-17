@@ -502,11 +502,14 @@ public class SelfUpdater
 			
 			// Run the file deletion jar in a new OS process, 
 			// this is done to allow for deleting the current jar if the OS has a lock on it
-			String execCommand = "\""+ javaBin +"\" -cp \""+
-					finalJarPath.toAbsolutePath()+"\" " // run the deletion code from the new jar
-					+DeleteOnUnlock.class.getCanonicalName()+" "+
-					URLEncoder.encode(JarUtils.jarFile.getAbsolutePath(), "UTF-8"); // Encode the file location to prevent issues with special characters and spaces
-			Process deleteProcess = Runtime.getRuntime().exec(execCommand);
+			ProcessBuilder builder = new ProcessBuilder(
+				javaBin,
+				"-cp",
+				finalJarPath.toAbsolutePath().toString(),
+				DeleteOnUnlock.class.getCanonicalName(),
+				URLEncoder.encode(JarUtils.jarFile.getAbsolutePath(), "UTF-8")
+			);
+			Process deleteProcess = builder.start();
 			
 			// check if the pro
 			if (deleteProcess.isAlive())

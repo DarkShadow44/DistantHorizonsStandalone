@@ -21,35 +21,35 @@ package com.seibel.distanthorizons.core.api.internal;
 
 import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiWorldLoadEvent;
 import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiWorldUnloadEvent;
-import com.seibel.distanthorizons.core.Initializer;
 import com.seibel.distanthorizons.core.api.internal.chunkUpdating.ChunkUpdateData;
 import com.seibel.distanthorizons.core.api.internal.chunkUpdating.ChunkUpdateQueueManager;
 import com.seibel.distanthorizons.core.api.internal.chunkUpdating.WorldChunkUpdateManager;
 import com.seibel.distanthorizons.core.config.eventHandlers.IgnoredDimensionCsvHandler;
 import com.seibel.distanthorizons.core.dataObjects.render.textures.BlockTextureRegistry;
+import com.seibel.distanthorizons.core.dependencyInjection.ModAccessorInjector;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.level.DhClientLevel;
 import com.seibel.distanthorizons.core.level.IDhLevel;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos2D;
 import com.seibel.distanthorizons.core.pos.DhChunkPos;
-import com.seibel.distanthorizons.core.render.DhApiRenderProxy;
 import com.seibel.distanthorizons.core.render.RenderThreadTaskHandler;
-import com.seibel.distanthorizons.core.render.renderer.AbstractDebugWireframeRenderer;
+import com.seibel.distanthorizons.core.render.renderer.DebugWireframeHandler;
 import com.seibel.distanthorizons.core.sql.repo.AbstractDhRepo;
 import com.seibel.distanthorizons.core.util.objects.Pair;
 import com.seibel.distanthorizons.core.util.threading.ThreadPoolUtil;
 import com.seibel.distanthorizons.core.world.*;
 import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.IChunkWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
+import com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor.IChunkyAccessor;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
 import com.seibel.distanthorizons.coreapi.DependencyInjection.ApiEventInjector;
 import com.seibel.distanthorizons.core.logging.DhLogger;
+import com.seibel.distanthorizons.coreapi.DependencyInjection.WorldGeneratorInjector;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
-import java.util.concurrent.*;
 
 /** Contains code and variables used by both {@link ClientApi} and {@link ServerApi} */
 public class SharedApi
@@ -62,6 +62,12 @@ public class SharedApi
 	private static final IMinecraftRenderWrapper MC_RENDER = SingletonInjector.INSTANCE.get(IMinecraftRenderWrapper.class);
 	
 	public static final WorldChunkUpdateManager WORLD_CHUNK_UPDATE_MANAGER = WorldChunkUpdateManager.INSTANCE; // local fariable for quick access
+	
+	/** Delayed accessing is necessary since this object will be created before the mod accessors are bound. */
+	private static class DelayedAccessors
+	{
+		public static final IChunkyAccessor CHUNKY = ModAccessorInjector.INSTANCE.get(IChunkyAccessor.class);
+	}
 	
 	
 	@Nullable
@@ -111,8 +117,8 @@ public class SharedApi
 			{
 				ThreadPoolUtil.shutdownThreadPools();
 				
-				// delayed get because SharedApi will be created before the singleton has been bound 
-				AbstractDebugWireframeRenderer debugWireframeRenderer = SingletonInjector.INSTANCE.get(AbstractDebugWireframeRenderer.class);
+				// delayed get because SharedApi will be created before the singleton has been bound
+				DebugWireframeHandler debugWireframeRenderer = SingletonInjector.INSTANCE.get(DebugWireframeHandler.class);
 				debugWireframeRenderer.clearRenderables();
 				
 				if (MC_RENDER != null)
@@ -127,6 +133,7 @@ public class SharedApi
 				
 				RenderThreadTaskHandler.INSTANCE.clearDebugStats();
 				BlockTextureRegistry.INSTANCE.clear();
+				WorldGeneratorInjector.INSTANCE.clear();
 				
 				// recommend that the garbage collector cleans up any objects from the old world and thread pools
 				System.gc();
@@ -189,6 +196,17 @@ public class SharedApi
 	
 	public void applyChunkUpdate(IChunkWrapper chunkWrapper, ILevelWrapper levelWrapper, boolean waitForLoadedWorld)
 	{
+		// Chunky may not finish it's first time startup until quite late in
+		// the level life cycle, but once we start receiving chunks,
+		// that means the level is fully up and running, and
+		// chunky should be available to run it's first-time setup.
+		if (DelayedAccessors.CHUNKY != null)
+		{
+			DelayedAccessors.CHUNKY.tryRunFirstTimeSetup();
+		}
+		
+		
+		
 		//===================//
 		// validation checks //
 		//===================//

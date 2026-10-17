@@ -83,14 +83,16 @@ public class ClientNetworkState implements Closeable
 				}
 			}
 	);
-	private final ConfigChangeListener<Boolean> adaptiveTransferSpeedListener = new ConfigChangeListener<>(Config.Server.enableAdaptiveTransferSpeed, isEnabled -> {
-		if (isEnabled)
+	private final ConfigChangeListener<Boolean> adaptiveTransferSpeedListener = new ConfigChangeListener<>(Config.Server.enableAdaptiveTransferSpeed,
+		(config) -> 
 		{
-			this.congestionControl.reset();
-		}
-		
-		this.sendConfigMessage();
-	});
+			if (config.get())
+			{
+				this.congestionControl.reset();
+			}
+			
+			this.sendConfigMessage();
+		});
 	
 	
 	

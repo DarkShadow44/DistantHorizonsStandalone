@@ -28,12 +28,13 @@ import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.pos.blockPos.DhBlockPos2D;
 import com.seibel.distanthorizons.core.render.QuadTree.LodQuadTree;
 import com.seibel.distanthorizons.core.render.RenderBufferHandler;
+import com.seibel.distanthorizons.core.render.renderer.GenericRenderHandler;
 import com.seibel.distanthorizons.core.util.LodUtil;
 import com.seibel.distanthorizons.core.util.math.DhVec3d;
 import com.seibel.distanthorizons.core.wrapperInterfaces.IWrapperFactory;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass.IDhGenericRenderer;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.IDhApiGenericRenderer;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IClientLevelWrapper;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 
@@ -55,13 +56,13 @@ public class ClientLevelModule implements Closeable, IDataSourceUpdateListenerFu
 	public final FullDataSourceProviderV2 fullDataSourceProvider;
 	public final AtomicReference<ClientRenderState> ClientRenderStateRef = new AtomicReference<>();
 	/** 
-	 * This is handled outside of the {@link ClientRenderState} to prevent destroying
-	 * the {@link IDhGenericRenderer} when changing render distances or enabling/disabling rendering. <br><br>
+	 * This is handled outside the {@link ClientRenderState} to prevent destroying
+	 * the {@link GenericRenderHandler} when changing render distances or enabling/disabling rendering. <br><br>
 	 * 
-	 * Destroying the {@link IDhGenericRenderer} would cause any existing bindings to be 
-	 * erroneously removed.
+	 * Destroying the {@link GenericRenderHandler} would cause any existing generic 
+	 * objects to be erroneously removed.
 	 */
-	public final IDhGenericRenderer genericRenderer = WRAPPER_FACTORY.createGenericRenderer();
+	public final GenericRenderHandler genericRendererRegister;
 	
 	
 	
@@ -75,6 +76,8 @@ public class ClientLevelModule implements Closeable, IDataSourceUpdateListenerFu
 		
 		this.fullDataSourceProvider = this.clientLevel.getFullDataProvider();
 		this.fullDataSourceProvider.addDataSourceUpdateListener(this);
+		
+		this.genericRendererRegister = new GenericRenderHandler();
 	}
 	
 	
@@ -187,7 +190,6 @@ public class ClientLevelModule implements Closeable, IDataSourceUpdateListenerFu
 		}
 		
 		this.fullDataSourceProvider.removeDataSourceUpdateListener(this);
-		this.genericRenderer.close();
 	}
 	
 	
@@ -196,7 +198,7 @@ public class ClientLevelModule implements Closeable, IDataSourceUpdateListenerFu
 	// misc helper functions //
 	//=======================//
 	
-	public void clearRenderCache()
+	public void clearRenderCache(boolean clearExistingData)
 	{
 		IClientLevelWrapper clientLevelWrapper = this.clientLevel.getClientLevelWrapper();
 		if (clientLevelWrapper != null)
@@ -207,7 +209,7 @@ public class ClientLevelModule implements Closeable, IDataSourceUpdateListenerFu
 		ClientRenderState ClientRenderState = this.ClientRenderStateRef.get();
 		if (ClientRenderState != null && ClientRenderState.quadtree != null)
 		{
-			ClientRenderState.quadtree.clearRenderDataCache();
+			ClientRenderState.quadtree.clearRenderDataCache(clearExistingData);
 		}
 	}
 	

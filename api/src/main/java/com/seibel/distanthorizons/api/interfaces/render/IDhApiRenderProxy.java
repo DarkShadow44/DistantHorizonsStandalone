@@ -23,8 +23,13 @@ import com.seibel.distanthorizons.api.enums.config.EDhApiDepthRange;
 import com.seibel.distanthorizons.api.enums.config.EDhApiDepthDirection;
 import com.seibel.distanthorizons.api.enums.config.EDhApiRenderingApi;
 import com.seibel.distanthorizons.api.enums.config.EDhApiRenderingEngine;
+import com.seibel.distanthorizons.api.interfaces.config.IDhApiConfigValue;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.AbstractDhApiRenderDefinition;
+import com.seibel.distanthorizons.api.interfaces.world.IDhApiLevelWrapper;
 import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiAfterDhInitEvent;
 import com.seibel.distanthorizons.api.objects.DhApiResult;
+
+import java.util.concurrent.CompletableFuture;
 
 
 /**
@@ -46,8 +51,25 @@ public interface IDhApiRenderProxy
 	 * Background: <Br>
 	 * When rendering Distant Horizons bakes each block's color into the geometry that's rendered. <Br>
 	 * This improves rendering speed and VRAM size, but prevents dynamically changing LOD colors. <Br>
+	 *     
+	 * @see #reloadRenderDataCache()
 	 */
 	DhApiResult<Boolean> clearRenderDataCache();
+	
+	/**
+	 * Similar to {@link #clearRenderDataCache()} except it doesn't
+	 * delete any currently rendering data. Any currently-rendering data will be replaced
+	 * once the new data has been loaded. <br><br> 
+	 * 
+	 * This allows for less distracting changes vs {@link #clearRenderDataCache()}
+	 * if, for example, you only want to change color/biome data while
+	 * keeping the same {@link EDhApiRenderingEngine}.
+	 * 
+	 * @see #clearRenderDataCache()
+	 * 
+	 * @since API 7.3.0
+	 */
+	DhApiResult<Boolean> reloadRenderDataCache();
 	
 	/**
 	 * Returns which specific {@link EDhApiRenderingApi}
@@ -110,9 +132,41 @@ public interface IDhApiRenderProxy
 	
 	
 	
-	//=======================//
-	// OpenGL object getters //
-	//=======================//
+	//============//
+	// render def //
+	//============//
+	//region
+	
+	/**
+	 * Sets a new {@link AbstractDhApiRenderDefinition} to override
+	 * DH's base renderer. <br><Br>
+	 * 
+	 * Will run at the beginning of DH's next frame.
+	 * 
+	 * @param apiUserDisplayName is displayed in the UI to denote your control over the rendering definition
+	 *                           so users can easily see what your mod is controlling. 
+	 *                           Identical to {@link IDhApiConfigValue#setValue(Object, String)}
+	 */
+	CompletableFuture<DhApiResult<String>> setRenderDefinitionOverrideAsync(AbstractDhApiRenderDefinition renderDef, String apiUserDisplayName);
+	/** 
+	 * Unbinds the currently active API set {@link AbstractDhApiRenderDefinition}
+	 * if one is present and replaces it with DH's base renderer. <br><br>
+	 * 
+	 * If no override {@link AbstractDhApiRenderDefinition} is set,
+	 * this will just refresh DH's own renderer. <br><Br>
+	 * 
+	 * Will run at the beginning of DH's next frame.
+	 */
+	CompletableFuture<DhApiResult<String>> clearRenderDefinitionOverrideAsync();
+	
+	//endregion
+	
+	
+	
+	//=================//
+	// texture getters //
+	//=================//
+	//region
 	
 	/** @deprecated in favor of {@link IDhApiRenderProxy#getDhDepthTextureGlId} */
 	@Deprecated // don't remove, this method is needed by Iris
@@ -196,11 +250,14 @@ public interface IDhApiRenderProxy
 	 */
 	DhApiResult<IDhApiBlazeTextureWrapper> getDhBlockRatioAtlasTextureBlazeWrapper();
 	
+	//endregion
+	
 	
 	
 	//======================//
 	// Shader compatibility //
 	//======================//
+	//region
 	
 	/**
 	 * If set to true DH won't render opaque and transparent LODs in the same pass.
@@ -214,6 +271,9 @@ public interface IDhApiRenderProxy
 	
 	/** This may change based on FOV, player speed, and other factors. */
 	float getNearClipPlaneDistanceInBlocks(float partialTicks);
+	
+	//endregion
+	
 	
 	
 }
