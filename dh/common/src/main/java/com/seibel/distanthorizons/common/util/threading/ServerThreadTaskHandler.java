@@ -111,8 +111,8 @@ public class ServerThreadTaskHandler
 		this.tickStartNano = TICK_START_NOT_SET;
 
 		// note: if essential tasks keep using up the whole budget then deferrable
-		// tasks will starve. That's acceptable, since essential tasks only exist
-		// because deferrable ones already ran, so the backlog drains instead of deadlocking.
+		// tasks will be delayed. That's acceptable, since essential tasks only exist
+		// because deferrable ones already ran, so the backlog drains instead of growing.
 		if (!runQueueUntilDeadline(this.essentialTaskQueue, deadlineNano))
 		{
 			return;
@@ -125,6 +125,15 @@ public class ServerThreadTaskHandler
 
 		if (!this.deferrableTasksCanRun())
 		{
+			// Still run one task per tick so already started work can finish.
+			// Otherwise a partially requested generation event keeps its chunks forced (and ticked by MC)
+			// which can be what keeps the server unhealthy, so it would never finish or release them.
+			// New generation events are paused while the server is unhealthy, so this backlog is bounded.
+			QueuedTask<?> queuedTask = this.deferrableTaskQueue.poll();
+			if (queuedTask != null)
+			{
+				queuedTask.run();
+			}
 			return;
 		}
 

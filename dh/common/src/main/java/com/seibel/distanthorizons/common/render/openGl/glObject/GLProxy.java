@@ -30,10 +30,11 @@ import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.util.objects.GLMessages.*;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
+import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor.IIrisAccessor;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.AbstractDhRenderApiDefinition;
 import com.seibel.distanthorizons.coreapi.ModInfo;
 import com.seibel.distanthorizons.lwjgl.EGLExtension;
+import com.seibel.distanthorizons.lwjgl.EGLFeature;
 import org.lwjgl.opengl.GL11;
 
 #if MC_VER > MC_1_12_2
@@ -55,7 +56,7 @@ public class GLProxy
 {
 	private static final IIrisAccessor IRIS_ACCESSOR = ModAccessorInjector.INSTANCE.get(IIrisAccessor.class);
 	private static final IMinecraftClientWrapper MC_CLIENT = SingletonInjector.INSTANCE.get(IMinecraftClientWrapper.class);
-	private static final AbstractDhRenderApiDefinition RENDER_DEF = SingletonInjector.INSTANCE.get(AbstractDhRenderApiDefinition.class);
+	private static final IMinecraftRenderWrapper MC_RENDER = SingletonInjector.INSTANCE.get(IMinecraftRenderWrapper.class);
 	
 	
 	public static final DhLogger LOGGER;
@@ -95,7 +96,6 @@ public class GLProxy
 	private static GLProxy instance = null;
 	
 	
-	public boolean namedObjectSupported = false; // ~OpenGL 4.5 (UNUSED CURRENTLY)
 	public boolean bufferStorageSupported = false; // ~OpenGL 4.4
 	public boolean vertexAttributeBufferBindingSupported = false; // ~OpenGL 4.3
 	public boolean instancedArraysSupported = false;
@@ -136,9 +136,10 @@ public class GLProxy
 	
 	private GLProxy() throws IllegalStateException
 	{
-		if (RENDER_DEF.getRenderApi() != EDhApiRenderingApi.OPEN_GL)
+		EDhApiRenderingApi mcRenderingApi = MC_RENDER.getMcRenderingApi();
+		if (mcRenderingApi != EDhApiRenderingApi.OPEN_GL)
 		{
-			throw new IllegalStateException("[" + GLProxy.class.getSimpleName() + "] was created with the wrong Rendering API ["+RENDER_DEF.getRenderApi()+"]!"); 
+			throw new IllegalStateException("[" + GLProxy.class.getSimpleName() + "] was created with the wrong Rendering API ["+mcRenderingApi+"]!"); 
 		}
 		
 		// this must be created on minecraft's render context to work correctly
@@ -190,19 +191,15 @@ public class GLProxy
 		// get GPU capabilities //
 		//======================//
 		
-		// UNUSED currently
-		// Check if we can use the named version of all calls, which is available in GL4.5 or after
-		this.namedObjectSupported = LWJGL.isOpenGLVersionSupported(4,5);
-		
 		// Check if we can use the Buffer Storage, which is available in GL4.4 or after
-		this.bufferStorageSupported = LWJGL.isOpenGLVersionSupported(4,4);
+		this.bufferStorageSupported = LWJGL.isFeatureSupported(EGLFeature.glBufferStorage);
 		if (!this.bufferStorageSupported)
 		{
 			LOGGER.info("This GPU doesn't support Buffer Storage (OpenGL 4.4), falling back to using other methods.");
 		}
 		
 		// Check if we can use the make-over version of Vertex Attribute, which is available in GL4.3 or after
-		this.vertexAttributeBufferBindingSupported =  LWJGL.isOpenGLVersionSupported(4,3);
+		this.vertexAttributeBufferBindingSupported = LWJGL.isFeatureSupported(EGLFeature.glBindVertexBuffer);
 		
 		// used by instanced rendering
 		this.vertexAttribDivisorSupported = LWJGL.isOpenGLVersionSupported(3,3);

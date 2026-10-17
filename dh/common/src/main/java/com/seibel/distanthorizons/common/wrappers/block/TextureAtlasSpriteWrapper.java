@@ -23,15 +23,22 @@ import com.seibel.distanthorizons.common.backports.IBlockState;
 import com.seibel.distanthorizons.common.wrappers.interfaces.IMixinTextureAtlasSprite;
 import com.seibel.distanthorizons.common.wrappers.modAccessor.IGregTechCommonAccessor;
 import com.seibel.distanthorizons.core.dependencyInjection.ModAccessorInjector;
+import com.seibel.distanthorizons.core.logging.DhLogger;
+import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.coreapi.util.ColorUtil;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 
 #if MC_VER <= MC_1_7_10
 import net.minecraft.block.Block;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.IconFlipped;
+import net.minecraft.client.renderer.texture.ITextureObject;
+import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.util.IIcon;
 import org.jetbrains.annotations.Nullable;
 import java.lang.reflect.Field;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 #endif
 
 #if MC_VER < MC_1_17_1
@@ -47,6 +54,7 @@ import net.minecraft.client.renderer.texture.SpriteContents;
  */
 public class TextureAtlasSpriteWrapper
 {
+	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	private static final IGregTechCommonAccessor GREG_TECH_ACCESSOR = ModAccessorInjector.INSTANCE.get(IGregTechCommonAccessor.class);
 
 	#if MC_VER <= MC_1_7_10
@@ -55,6 +63,9 @@ public class TextureAtlasSpriteWrapper
 	 * every edge. The border is atlas padding, not part of the block texture.
 	 */
 	private static final int ANISOTROPIC_SPRITE_BORDER = 8;
+
+	/** block registry name + meta, so each unusable block state is only reported once */
+	private static final Set<String> REPORTED_UNUSABLE_ICON_KEYS = ConcurrentHashMap.newKeySet();
 	#endif
 	
 	
@@ -200,7 +211,9 @@ public class TextureAtlasSpriteWrapper
 	 * 1.7.10 predates the baked model system, so there are no quads to rasterize;
 	 * textures are fetched directly via {@link IIcon} using the same mod-compat
 	 * handling {@link ClientBlockStateColorCache} uses
-	 * (GregTech, {@link IconFlipped}, TwilightForest, IC2).
+	 * (GregTech, {@link IconFlipped}, IC2). <br>
+	 * Other wrapped or copied icons (IE TwilightForest's GiantBlockIcon, AE2's FlippableIcon,
+	 * MalisisDoors' ClippedIcon) are resolved through the block atlas by icon name.
 	 *
 	 * @param sideOrdinal the {@link net.minecraftforge.common.util.ForgeDirection}/vanilla side
 	 *                    index passed to {@link Block#getIcon(int, int)}
@@ -221,31 +234,68 @@ public class TextureAtlasSpriteWrapper
 		{
 			icon = blockstate.getBlock().getIcon(sideOrdinal, blockstate.getMeta());
 		}
+		IIcon rawIcon = icon;
 		
 		if (icon instanceof IconFlipped)
 		{
 			icon = ((IconFlipped) icon).baseIcon;
 		}
-		
-		// twilight forest
-		if (icon != null 
-			&& icon.getClass().getName().equals("twilightforest.block.GiantBlockIcon"))
-		{
-			icon = unwrapIcon(icon, "baseIcon");
-		}
-		// Industrial Craft 2
-		if (icon != null 
+
+		// Industrial Craft 2 skips loading duplicate sub-images, mappedTexture points to the loaded copy
+		if (icon != null
 			&& icon.getClass().getName().equals("ic2.core.block.BlockTextureStitched"))
 		{
 			icon = unwrapIcon(icon, "mappedTexture");
 		}
-		
+
+		// wrapped or copied icons don't have pixel data,
+		// the atlas sprite registered under the same name does
+		if (icon != null && !hasSpriteData(icon))
+		{
+			ITextureObject blockAtlas = Minecraft.getMinecraft().getTextureManager().getTexture(TextureMap.locationBlocksTexture);
+			if (blockAtlas instanceof TextureMap)
+			{
+				// unknown names return the missing sprite, which has no sprite data
+				TextureAtlasSprite atlasSprite = ((TextureMap) blockAtlas).getAtlasSprite(icon.getIconName());
+				if (hasSpriteData(atlasSprite))
+				{
+					icon = atlasSprite;
+				}
+			}
+		}
+
+		if (!hasSpriteData(icon))
+		{
+			logUnusableIcon(blockstate, sideOrdinal, rawIcon);
+		}
+
 		return (icon instanceof TextureAtlasSprite) ? (TextureAtlasSprite) icon : null;
 	}
 
 	/**
+	 * Logs block states whose icon has no usable pixel data
+	 * (rendered as {@link ColorUtil#HOT_PINK}), once per block + meta.
+	 */
+	private static void logUnusableIcon(IBlockState blockstate, int sideOrdinal, @Nullable IIcon icon)
+	{
+		Block block = blockstate.getBlock();
+		String key = Block.blockRegistry.getNameForObject(block) + ":" + blockstate.getMeta();
+		if (REPORTED_UNUSABLE_ICON_KEYS.add(key))
+		{
+			LOGGER.warn("Unusable icon for block [" + key + "] (" + block.getClass().getName() + ") side [" + sideOrdinal + "]: "
+				+ (icon != null ? "[" + icon.getIconName() + "] (" + icon.getClass().getName() + ")" : "[null]"));
+		}
+	}
+
+	private static boolean hasSpriteData(@Nullable IIcon icon)
+	{
+		return icon instanceof TextureAtlasSprite
+			&& ((IMixinTextureAtlasSprite) icon).distanthorizons$getSpriteData() != null;
+	}
+
+	/**
 	 * Some mods wrap their real atlas sprite inside an {@link IIcon} field
-	 * (IE TwilightForest's GiantBlockIcon, IC2's BlockTextureStitched). <br>
+	 * (IE IC2's BlockTextureStitched). <br>
 	 * This returns the icon stored in the named field, or the original {@code icon}
 	 * unchanged if the field is missing, inaccessible, or null.
 	 */

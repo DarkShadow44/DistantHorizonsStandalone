@@ -47,6 +47,9 @@ dependencies {
     
     // Canvas
     addMod("io.vram:canvas-fabric-${project.canvas_version}", rootProject.enable_canvas)
+    
+    // Chunky
+    addMod("maven.modrinth:chunky:${project.chunky_version}", rootProject.enable_chunky)
 }
 
 

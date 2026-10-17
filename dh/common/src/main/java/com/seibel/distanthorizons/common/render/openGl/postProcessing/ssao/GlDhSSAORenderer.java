@@ -19,12 +19,13 @@
 
 package com.seibel.distanthorizons.common.render.openGl.postProcessing.ssao;
 
+import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam;
 import com.seibel.distanthorizons.common.render.openGl.glObject.GLState;
 import com.seibel.distanthorizons.common.wrappers.minecraft.MinecraftGLWrapper;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
-import com.seibel.distanthorizons.core.render.RenderParams;
+import com.seibel.distanthorizons.core.render.RenderParam;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass.IDhSsaoRenderer;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.IDhApiSsaoRenderer;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL30;
@@ -39,7 +40,7 @@ import java.nio.ByteBuffer;
  * {@link GlDhSSAOShader} - draws the SSAO to a texture. <br>
  * {@link GlDhSSAOApplyShader} - draws the SSAO texture to DH's FrameBuffer. <br>
  */
-public class GlDhSSAORenderer implements IDhSsaoRenderer
+public class GlDhSSAORenderer implements IDhApiSsaoRenderer
 {
 	public static GlDhSSAORenderer INSTANCE = new GlDhSSAORenderer();
 	
@@ -112,8 +113,10 @@ public class GlDhSSAORenderer implements IDhSsaoRenderer
 	//region
 	
 	@Override
-	public void render(RenderParams renderParams)
+	public void render(DhApiRenderParam apiRenderParams)
 	{
+		RenderParam renderParams = (RenderParam)apiRenderParams;
+		
 		try(GLState state = new GLState())
 		{
 			this.init();

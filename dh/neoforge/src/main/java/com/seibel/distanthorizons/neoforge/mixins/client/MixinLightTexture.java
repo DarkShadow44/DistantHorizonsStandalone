@@ -23,8 +23,6 @@ import com.seibel.distanthorizons.api.enums.config.EDhApiRenderingApi;
 import com.seibel.distanthorizons.common.wrappers.minecraft.MinecraftRenderWrapper;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.AbstractDhRenderApiDefinition;
-import com.seibel.distanthorizons.neoforge.wrappers.NeoforgeTextureUnwrapper;
 
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -54,6 +52,12 @@ import net.minecraft.client.renderer.state.LightmapRenderState;
 import net.minecraft.client.renderer.Lightmap;
 #endif
 
+#if MC_VER <= MC_1_21_10
+#elif MC_VER <= MC_26_1_2
+import com.seibel.distanthorizons.neoforge.wrappers.NeoforgeTextureUnwrapper;
+#else
+#endif
+
 
 #if MC_VER <= MC_1_21_11
 @Mixin(LightTexture.class)
@@ -79,8 +83,6 @@ public class MixinLightTexture
 	
 	@Unique
 	private MinecraftRenderWrapper renderWrapper = null;
-	@Unique
-	private AbstractDhRenderApiDefinition renderDef = null;
 	
 	
 	
@@ -96,7 +98,6 @@ public class MixinLightTexture
 		if (this.renderWrapper == null)
 		{
 			this.renderWrapper = (MinecraftRenderWrapper)SingletonInjector.INSTANCE.get(IMinecraftRenderWrapper.class);
-			this.renderDef = SingletonInjector.INSTANCE.get(AbstractDhRenderApiDefinition.class);
 		}
 		
 		
@@ -109,13 +110,14 @@ public class MixinLightTexture
 		this.renderWrapper.setLightmapId(glTexture.glId());
 		#elif MC_VER <= MC_26_1_2
 		// both options are available since the renderer can be changed to either Blaze3D or OpenGL
-		GlTexture glTexture = (GlTexture) this.texture;
-		this.renderWrapper.setLightmapId(glTexture.glId());
+		int textureId = NeoforgeTextureUnwrapper.getGlTextureIdFromGpuTexture(this.texture);
+		this.renderWrapper.setLightmapId(textureId);
 		
 		this.renderWrapper.setLightmapGpuTexture(this.texture);
 		#else
 		
-		if (this.renderDef.getRenderApi() == EDhApiRenderingApi.OPEN_GL)
+		IMinecraftRenderWrapper mcRender = SingletonInjector.INSTANCE.get(IMinecraftRenderWrapper.class);
+		if (mcRender.getMcRenderingApi() == EDhApiRenderingApi.OPEN_GL)
 		{
 			GlTexture glTexture = (GlTexture) this.texture;
 			this.renderWrapper.setLightmapId(glTexture.glId());

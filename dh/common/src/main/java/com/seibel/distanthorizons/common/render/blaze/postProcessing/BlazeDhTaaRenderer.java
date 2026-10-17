@@ -33,28 +33,25 @@ import com.mojang.renderpearl.api.pipeline.RenderPipeline;
 #endif
 
 import com.seibel.distanthorizons.api.enums.config.EDhApiDepthRange;
+import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam;
 import com.seibel.distanthorizons.common.render.blaze.BlazeDhMetaRenderer;
 import com.seibel.distanthorizons.common.render.blaze.util.BlazePostProcessUtil;
 import com.seibel.distanthorizons.common.render.blaze.wrappers.RenderPassWrapper;
 import com.seibel.distanthorizons.common.render.blaze.wrappers.RenderPipelineBuilderWrapper;
 import com.seibel.distanthorizons.common.render.blaze.wrappers.texture.BlazeTextureWrapper;
 import com.seibel.distanthorizons.common.render.blaze.wrappers.uniform.BlazeUniformBufferWrapper;
-import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
-import com.seibel.distanthorizons.core.render.RenderParams;
+import com.seibel.distanthorizons.core.render.RenderParam;
 import com.seibel.distanthorizons.core.util.math.DhMat4f;
 import com.seibel.distanthorizons.core.util.math.DhVec3d;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.AbstractDhRenderApiDefinition;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass.IDhAntiAliasRenderer;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.IDhApiAntiAliasRenderer;
 
-public class BlazeDhTaaRenderer implements IDhAntiAliasRenderer
+public class BlazeDhTaaRenderer implements IDhApiAntiAliasRenderer
 {
 	public static final DhLogger LOGGER = new DhLoggerBuilder().build();
 	
 	public static final BlazeDhTaaRenderer INSTANCE = new BlazeDhTaaRenderer();
-	
-	private static final AbstractDhRenderApiDefinition RENDER_DEF = SingletonInjector.INSTANCE.get(AbstractDhRenderApiDefinition.class);
 	
 	
 	private RenderPipeline pipeline;
@@ -130,8 +127,10 @@ public class BlazeDhTaaRenderer implements IDhAntiAliasRenderer
 	//========//
 	//region
 	
-	public void render(RenderParams renderParams)
+	@Override
+	public void render(DhApiRenderParam apiRenderParams)
 	{
+		RenderParam renderParams = (RenderParam)apiRenderParams;
 		this.tryInit();
 		
 		// shouldn't happen, but just in case
@@ -190,7 +189,7 @@ public class BlazeDhTaaRenderer implements IDhAntiAliasRenderer
 				.putFloat(BlazeDhMetaRenderer.INSTANCE.dhColorTextureWrapper.getWidth()) // viewWidth
 				.putFloat(BlazeDhMetaRenderer.INSTANCE.dhColorTextureWrapper.getHeight()) // viewHeight
 				
-				.putInt(((RENDER_DEF.getDepthRange() == EDhApiDepthRange.ZERO_TO_POS_ONE) ? 1 : 0)) // uDepthIsZeroToPositiveOne
+				.putInt(((renderParams.renderDefinition.getDepthRange() == EDhApiDepthRange.ZERO_TO_POS_ONE) ? 1 : 0)) // uDepthIsZeroToPositiveOne
 				
 				.finishAndUpload()
 			;

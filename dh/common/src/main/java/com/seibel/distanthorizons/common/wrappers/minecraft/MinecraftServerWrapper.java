@@ -1,5 +1,6 @@
 package com.seibel.distanthorizons.common.wrappers.minecraft;
 
+import com.seibel.distanthorizons.common.wrappers.DependencySetup;
 import com.seibel.distanthorizons.common.wrappers.world.ServerLevelWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IServerLevelWrapper;
 import net.minecraft.server.dedicated.DedicatedServer;

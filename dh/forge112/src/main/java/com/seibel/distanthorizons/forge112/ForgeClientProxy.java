@@ -84,21 +84,6 @@ public class ForgeClientProxy implements AbstractModInitializer.IEventProxy
 	}
 	
 	
-	@SubscribeEvent
-	public void onWorldLoad(WorldEvent.Load event)
-	{
-		if (event.getWorld().isRemote)
-		{
-			if (!Arrays.asList(Config.Client.Advanced.Graphics.Texture.blocksDontUseSideTextureCsv.get().split(",")).contains("grass"))
-			{
-				String message = "\n" + MinecraftTextFormat.ORANGE + "Distant Horizons: `grass` entry in `blocksDontUseSideTextureCsv` not found." + MinecraftTextFormat.CLEAR_FORMATTING + "\n" +
-					"This will cause grass blocks with LOD textures enabled render incorrectly." + "\n" +
-					"It is recommended to add `grass` into the blocksDontUseSideTextureCsv entry. \n(Graphics->LOD Textures->Blocks Don't Use Side Textures) or delete your config file to let it regenerate";
-				ClientApi.INSTANCE.queueFastChatMessage(message);
-			}
-		}
-	}
-	
 	//==============//
 	// chunk events //
 	//==============//
@@ -161,18 +146,22 @@ public class ForgeClientProxy implements AbstractModInitializer.IEventProxy
 		}
 	}
 	
-	@SubscribeEvent
+	//Handled in MixinNetHandlerPlayClient
+/*	@SubscribeEvent
 	public void clientChunkLoadEvent(ChunkEvent.Load event)
 	{
-		if (MC.clientConnectedToDedicatedServer())
+		if (!event.getWorld().isRemote || !MC.clientConnectedToDedicatedServer())
 		{
-			if (event.getWorld() instanceof WorldServer)
-			{
-				WorldServer worldServer = (WorldServer) event.getWorld();
-				MixinChunkMapCommon.onChunkSave(worldServer, event.getChunk());
-			}
+			return;
 		}
-	}
+		
+		ILevelWrapper wrappedLevel = ProxyUtil.getLevelWrapper(event.getWorld());
+		SharedApi.INSTANCE.applyChunkUpdate(
+			new ChunkWrapper(event.getChunk(), wrappedLevel),
+			wrappedLevel,
+			true
+		);
+	}*/
 	
 	//endregion
 	
@@ -186,16 +175,20 @@ public class ForgeClientProxy implements AbstractModInitializer.IEventProxy
 	@SubscribeEvent
 	public void registerKeyBindings(InputEvent.KeyInputEvent event)
 	{
-	/*	if (Minecraft.getMinecraft().player == null)
+		// TODO: Verify and implement for 1.12.2 and older
+		/*
+		if (Minecraft.getMinecraft().player == null)
 		{
 			return;
 		}
-		if (event.getAction() != GLFW.GLFW_PRESS)
+		// only key presses, not releases
+		if (!Keyboard.getEventKeyState())
 		{
 			return;
 		}
 		
-		ClientApi.INSTANCE.keyPressedEvent(event.getKey());*/
+		DebugKeybindHandler.onKeyPressed(Keyboard.getEventKey());
+		*/
 	}
 	
 	//endregion

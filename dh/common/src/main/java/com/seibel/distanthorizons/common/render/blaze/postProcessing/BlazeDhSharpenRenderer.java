@@ -39,11 +39,9 @@ import com.seibel.distanthorizons.common.render.blaze.wrappers.RenderPassWrapper
 import com.seibel.distanthorizons.common.render.blaze.wrappers.RenderPipelineBuilderWrapper;
 import com.seibel.distanthorizons.common.render.blaze.wrappers.texture.BlazeTextureWrapper;
 import com.seibel.distanthorizons.common.render.blaze.wrappers.uniform.BlazeUniformBufferWrapper;
-import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
-import com.seibel.distanthorizons.core.render.RenderParams;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.AbstractDhRenderApiDefinition;
+import com.seibel.distanthorizons.core.render.RenderParam;
 
 public class BlazeDhSharpenRenderer
 {
@@ -51,7 +49,6 @@ public class BlazeDhSharpenRenderer
 	
 	public static final BlazeDhSharpenRenderer INSTANCE = new BlazeDhSharpenRenderer();
 	
-	private static final AbstractDhRenderApiDefinition RENDER_DEF = SingletonInjector.INSTANCE.get(AbstractDhRenderApiDefinition.class);
 	
 	
 	private RenderPipeline pipeline;
@@ -115,7 +112,7 @@ public class BlazeDhSharpenRenderer
 	//========//
 	//region
 	
-	public void render(BlazeTextureWrapper aaTexture, RenderParams renderParams)
+	public void render(BlazeTextureWrapper aaTexture, RenderParam renderParams)
 	{
 		this.tryInit();
 		
@@ -131,7 +128,7 @@ public class BlazeDhSharpenRenderer
 				.putFloat(BlazeDhMetaRenderer.INSTANCE.dhColorTextureWrapper.getHeight()) // viewHeight
 				
 				.putFloat(0.3f) // uCasAmount
-				.putInt((RENDER_DEF.getDepthDirection() == EDhApiDepthDirection.REVERSE_Z) ? 1 : 0) // uIsReverseZDepth
+				.putInt((renderParams.renderDefinition.getDepthDirection() == EDhApiDepthDirection.REVERSE_Z) ? 1 : 0) // uIsReverseZDepth
 				
 				.finishAndUpload()
 			;

@@ -22,14 +22,12 @@ package com.seibel.distanthorizons.common.render.openGl.util;
 import com.seibel.distanthorizons.common.render.openGl.glObject.shader.GlShaderProgram;
 import com.seibel.distanthorizons.common.wrappers.minecraft.MinecraftGLWrapper;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
-import com.seibel.distanthorizons.core.render.RenderParams;
+import com.seibel.distanthorizons.core.render.RenderParam;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.AbstractDhRenderApiDefinition;
 
 public abstract class GlAbstractShaderRenderer
 {
 	protected static final IMinecraftRenderWrapper MC_RENDER = SingletonInjector.INSTANCE.get(IMinecraftRenderWrapper.class);
-	protected static final AbstractDhRenderApiDefinition RENDER_DEF = SingletonInjector.INSTANCE.get(AbstractDhRenderApiDefinition.class);
 	
 	private static final MinecraftGLWrapper GLMC = MinecraftGLWrapper.INSTANCE;
 	
@@ -66,9 +64,9 @@ public abstract class GlAbstractShaderRenderer
 	
 	protected void onInit() {}
 	
-	protected void onApplyUniforms(RenderParams renderParams) {}
+	protected void onApplyUniforms(RenderParam renderParams) {}
 	
-	protected void onRender() {}
+	protected void onRender(RenderParam renderParam) {}
 	
 	//endregion
 	
@@ -79,7 +77,7 @@ public abstract class GlAbstractShaderRenderer
 	//===========//
 	//region
 	
-	public void render(RenderParams renderParams)
+	public void render(RenderParam renderParams)
 	{
 		this.init();
 		
@@ -91,7 +89,7 @@ public abstract class GlAbstractShaderRenderer
 		int height = MC_RENDER.getTargetFramebufferViewportHeight();
 		GLMC.glViewport(0, 0, width, height);
 		
-		this.onRender();
+		this.onRender(renderParams);
 		
 		this.shader.unbind();
 	}

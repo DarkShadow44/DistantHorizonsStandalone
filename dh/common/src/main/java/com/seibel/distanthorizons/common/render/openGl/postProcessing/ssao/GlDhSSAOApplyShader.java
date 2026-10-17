@@ -25,10 +25,8 @@ import com.seibel.distanthorizons.common.render.openGl.glObject.shader.GlShaderP
 import com.seibel.distanthorizons.common.render.openGl.postProcessing.GlScreenQuad;
 import com.seibel.distanthorizons.common.wrappers.minecraft.MinecraftGLWrapper;
 import com.seibel.distanthorizons.common.render.openGl.util.GlAbstractShaderRenderer;
-import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
-import com.seibel.distanthorizons.core.render.RenderParams;
+import com.seibel.distanthorizons.core.render.RenderParam;
 import com.seibel.distanthorizons.core.util.RenderUtil;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.AbstractDhRenderApiDefinition;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL14;
@@ -48,7 +46,6 @@ public class GlDhSSAOApplyShader extends GlAbstractShaderRenderer
 	public static GlDhSSAOApplyShader INSTANCE = new GlDhSSAOApplyShader();
 	
 	private static final MinecraftGLWrapper GLMC = MinecraftGLWrapper.INSTANCE;
-	private static final AbstractDhRenderApiDefinition RENDER_DEF = SingletonInjector.INSTANCE.get(AbstractDhRenderApiDefinition.class);
 	
 	
 	public int ssaoTexture;
@@ -94,7 +91,7 @@ public class GlDhSSAOApplyShader extends GlAbstractShaderRenderer
 	//=============//
 	
 	@Override
-	protected void onApplyUniforms(RenderParams renderParams)
+	protected void onApplyUniforms(RenderParam renderParams)
 	{
 		GLMC.glActiveTexture(GL13.GL_TEXTURE0);
 		GLMC.glBindTexture(GlDhMetaRenderer.INSTANCE.getActiveDepthTextureId());
@@ -125,7 +122,7 @@ public class GlDhSSAOApplyShader extends GlAbstractShaderRenderer
 			LWJGL.glUniform1f(this.uFarClipPlane, farClipPlane);
 		}
 		
-		LWJGL.glUniform1i(this.uIsReverseZDepth, (RENDER_DEF.getDepthDirection() == EDhApiDepthDirection.REVERSE_Z) ? 1 : 0);
+		LWJGL.glUniform1i(this.uIsReverseZDepth, (renderParams.renderDefinition.getDepthDirection() == EDhApiDepthDirection.REVERSE_Z) ? 1 : 0);
 	}
 	
 	
@@ -135,7 +132,7 @@ public class GlDhSSAOApplyShader extends GlAbstractShaderRenderer
 	//========//
 	
 	@Override
-	protected void onRender()
+	protected void onRender(RenderParam renderParams)
 	{
 		GLMC.enableBlend();
 		LWJGL.glBlendEquation(GL14.GL_FUNC_ADD);

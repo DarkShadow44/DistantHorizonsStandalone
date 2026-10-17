@@ -28,10 +28,7 @@ import com.seibel.distanthorizons.core.wrapperInterfaces.misc.IPluginPacketSende
 import com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor.*;
 import com.seibel.distanthorizons.coreapi.ModInfo;
 
-import com.seibel.distanthorizons.forge.wrappers.modAccessor.ImmersivePortalsAccessorForge;
-import com.seibel.distanthorizons.forge.wrappers.modAccessor.ModChecker;
-import com.seibel.distanthorizons.forge.wrappers.modAccessor.OptifineAccessor;
-import com.seibel.distanthorizons.forge.wrappers.modAccessor.OculusAccessor;
+import com.seibel.distanthorizons.forge.wrappers.modAccessor.*;
 
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.server.MinecraftServer;
@@ -107,6 +104,7 @@ public class ForgeMain extends AbstractModInitializer
 		this.tryCreateModCompatAccessor("oculus", IIrisAccessor.class, OculusAccessor::new);
 		IModChecker modChecker = SingletonInjector.INSTANCE.get(IModChecker.class);
 		this.tryCreateModCompatAccessor(IImmersivePortalsAccessor.MOD_ID_ARRAY, IImmersivePortalsAccessor.class, ImmersivePortalsAccessorForge::new);
+		this.tryCreateModCompatAccessor("chunky", IChunkyAccessor.class, ChunkyAccessor::new);
 		
 		#if MC_VER < MC_1_17_1
 		ModLoadingContext.get().registerExtensionPoint(ExtensionPoint.CONFIGGUIFACTORY,

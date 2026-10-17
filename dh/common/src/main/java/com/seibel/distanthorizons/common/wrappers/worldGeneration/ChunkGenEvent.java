@@ -152,12 +152,9 @@ public final class ChunkGenEvent
 		boolean isShutdownException = ExceptionUtil.isShutdownException(throwable);
 		if (isShutdownException)
 		{
-			// these exceptions can be ignored, generally they just mean
-			// the thread is busy so it'll need to try again later.
-			// FIXME this should cause the world gen task to be re-queued so we can try again later
-			//  however, currently it can cause large gaps in the world gen instead.
-			//  These gaps will generate correctly if the level is reloaded and the world gen is re-queued,
-			//  however this is makes it look like the generator isn't working or skipped something.
+			// these exceptions generally just mean the thread is busy or shutting down,
+			// cancel so the world gen task is re-queued without being logged as an error
+			generationEvent.future.cancel(false);
 		}
 		else
 		{

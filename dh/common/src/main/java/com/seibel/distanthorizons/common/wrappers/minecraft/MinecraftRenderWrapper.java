@@ -23,6 +23,7 @@ import java.awt.Color;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.seibel.distanthorizons.api.enums.config.EDhApiDepthDirection;
+import com.seibel.distanthorizons.core.jar.EPlatform;
 import com.seibel.distanthorizons.core.render.RenderThreadTaskHandler;
 import com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor.IAngelicaAccessor;
 import org.jetbrains.annotations.Nullable;
@@ -180,6 +181,8 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
 	
 	public boolean colorTextureCastFailLogged = false;
 	public boolean depthTextureCastFailLogged = false;
+	
+	private final boolean useSingleIbo = (EPlatform.get() != EPlatform.MACOS);
 	
 	#if MC_VER < MC_1_21_6
 	#else
@@ -568,8 +571,22 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
 			.getDevice()
 			.getDeviceInfo()
 			.backendName();
+		
+		boolean isOpenGl = backendName.equalsIgnoreCase("OpenGL");
 		boolean isVulkan = backendName.equalsIgnoreCase("Vulkan");
-		this.renderApi = isVulkan ? EDhApiRenderingApi.VULKAN : EDhApiRenderingApi.OPEN_GL;
+		
+		if (isOpenGl)
+		{
+			this.renderApi = EDhApiRenderingApi.OPEN_GL;
+		}
+		else if (isVulkan)
+		{
+			this.renderApi = EDhApiRenderingApi.VULKAN;
+		}
+		else
+		{
+			this.renderApi = EDhApiRenderingApi.UNKNOWN;
+		}
 		#endif
 		return this.renderApi;
 	}
@@ -833,6 +850,16 @@ public class MinecraftRenderWrapper implements IMinecraftRenderWrapper
 		
 		#endif
 	}
+	
+	/**
+	 * Mac has a problem where binding an IBO that's longer than the VBO
+	 * can cause OpenGL to render past the end of the VBO, throwing random junk
+	 * on the screen. <br>
+	 * To fix this we have to use individual IBOs for each VBO, which
+	 * is slower due to having to construct new IBOs.
+	 */
+	@Override
+	public boolean useSingleIbo() { return this.useSingleIbo; }
 	
 	
 	

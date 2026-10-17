@@ -8,21 +8,20 @@ public class BlazeDhRenderApiDefinition {}
 import com.seibel.distanthorizons.api.enums.config.EDhApiDepthDirection;
 import com.seibel.distanthorizons.api.enums.config.EDhApiDepthRange;
 import com.seibel.distanthorizons.api.enums.config.EDhApiRenderingApi;
-import com.seibel.distanthorizons.api.enums.config.EDhApiRenderingEngine;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.*;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.objects.IDhApiVertexBufferWrapper;
 import com.seibel.distanthorizons.common.render.blaze.objects.BlazeGenericObjectVertexContainer;
 import com.seibel.distanthorizons.common.render.blaze.postProcessing.*;
 import com.seibel.distanthorizons.common.render.blaze.test.BlazeDhTestTriangleRenderer;
 import com.seibel.distanthorizons.common.render.blaze.wrappers.buffer.BlazeVertexBufferWrapper;
 import com.seibel.distanthorizons.common.render.blaze.wrappers.uniform.BlazeLodUniformBufferWrapper;
 import com.seibel.distanthorizons.common.wrappers.minecraft.MinecraftRenderWrapper;
-import com.seibel.distanthorizons.core.render.renderer.AbstractDebugWireframeRenderer;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.AbstractDhRenderApiDefinition;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.objects.IDhGenericObjectVertexBufferContainer;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.objects.ILodContainerUniformBufferWrapper;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.objects.IVertexBufferWrapper;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass.*;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.AbstractDhApiRenderDefinition;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.objects.IDhApiGenericObjectVertexBufferContainer;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.objects.IDhApiTerrainContainerUniformBufferWrapper;
+import com.seibel.distanthorizons.coreapi.interfaces.dependencyInjection.IOverrideInjector;
 
-public class BlazeDhRenderApiDefinition extends AbstractDhRenderApiDefinition
+public class BlazeDhRenderApiDefinition extends AbstractDhApiRenderDefinition
 {
 	//=========//
 	// getters //
@@ -30,7 +29,7 @@ public class BlazeDhRenderApiDefinition extends AbstractDhRenderApiDefinition
 	//region
 	
 	private final String engineName;
-	public String getEngineName() { return this.engineName; }
+	public String getName() { return this.engineName; }
 	
 	@Override
 	public EDhApiDepthDirection getDepthDirection()
@@ -55,8 +54,10 @@ public class BlazeDhRenderApiDefinition extends AbstractDhRenderApiDefinition
 	
 	private final EDhApiRenderingApi renderApi;
 	public EDhApiRenderingApi getRenderApi() { return this.renderApi; }
-	public EDhApiRenderingEngine getRenderingEngine() { return EDhApiRenderingEngine.BLAZE_3D; }
 	public boolean isNativeRenderer() { return false; }
+	
+	@Override
+	public int getPriority() { return IOverrideInjector.CORE_PRIORITY; }
 	
 	//endregion
 	
@@ -88,16 +89,16 @@ public class BlazeDhRenderApiDefinition extends AbstractDhRenderApiDefinition
 	//============//
 	//region
 	
-	@Override public IDhMetaRenderer getMetaRenderer() { return BlazeDhMetaRenderer.INSTANCE; }
-	@Override public IDhTerrainRenderer getTerrainRenderer() { return BlazeDhTerrainRenderer.INSTANCE; }
-	@Override public IDhSsaoRenderer getSsaoRenderer() { return BlazeDhSsaoRenderer.INSTANCE; }
-	@Override public IDhFogRenderer getFogRenderer() { return BlazeDhFogRenderer.INSTANCE; }
-	@Override public IDhFarFadeRenderer getFarFadeRenderer() { return BlazeDhFarFadeRenderer.INSTANCE; }
-	@Override public IDhAntiAliasRenderer getAntiAliasRenderer() { return BlazeDhTaaRenderer.INSTANCE; }
-	@Override public AbstractDebugWireframeRenderer getDebugWireframeRenderer() { return BlazeDebugWireframeRenderer.INSTANCE; }
-	
-	@Override public IDhVanillaFadeRenderer getVanillaFadeRenderer() { return BlazeVanillaFadeRenderer.INSTANCE; }
-	@Override public IDhTestTriangleRenderer getTestTriangleRenderer() { return BlazeDhTestTriangleRenderer.INSTANCE; }
+	@Override public IDhApiMetaRenderer getMetaRenderer() { return BlazeDhMetaRenderer.INSTANCE; }
+	@Override public IDhApiTerrainRenderer getTerrainRenderer() { return BlazeDhTerrainRenderer.INSTANCE; }
+	@Override public IDhApiSsaoRenderer getSsaoRenderer() { return BlazeDhSsaoRenderer.INSTANCE; }
+	@Override public IDhApiFogRenderer getFogRenderer() { return BlazeDhFogRenderer.INSTANCE; }
+	@Override public IDhApiFarFadeRenderer getFarFadeRenderer() { return BlazeDhFarFadeRenderer.INSTANCE; }
+	@Override public IDhApiAntiAliasRenderer getAntiAliasRenderer() { return BlazeDhTaaRenderer.INSTANCE; }
+	@Override public IDhApiDebugWireframeRenderer getDebugWireframeRenderer() { return BlazeDebugWireframeRenderer.INSTANCE; }
+	@Override public IDhApiVanillaFadeRenderer getVanillaFadeRenderer() { return BlazeVanillaFadeRenderer.INSTANCE; }
+	@Override public IDhApiTestTriangleRenderer getTestTriangleRenderer() { return BlazeDhTestTriangleRenderer.INSTANCE; }
+	@Override public IDhApiGenericRenderer getGenericRenderer() { return BlazeDhGenericObjectRenderer.INSTANCE; }
 	
 	//endregion
 	
@@ -108,11 +109,9 @@ public class BlazeDhRenderApiDefinition extends AbstractDhRenderApiDefinition
 	//===========//
 	//region
 	
-	@Override public IDhGenericRenderer createGenericRenderer() { return new BlazeDhGenericObjectRenderer(); }
-	
-	@Override public IVertexBufferWrapper createVboWrapper(String name) { return new BlazeVertexBufferWrapper(name); }
-	@Override public ILodContainerUniformBufferWrapper createLodContainerUniformWrapper() { return new BlazeLodUniformBufferWrapper(); }
-	@Override public IDhGenericObjectVertexBufferContainer createGenericVboContainer() { return new BlazeGenericObjectVertexContainer(); }
+	@Override public IDhApiVertexBufferWrapper createVboWrapper(String name) { return new BlazeVertexBufferWrapper(name); }
+	@Override public IDhApiTerrainContainerUniformBufferWrapper createLodContainerUniformWrapper() { return new BlazeLodUniformBufferWrapper(); }
+	@Override public IDhApiGenericObjectVertexBufferContainer createGenericObjectVboContainer() { return new BlazeGenericObjectVertexContainer(); }
 	
 	//endregion
 	

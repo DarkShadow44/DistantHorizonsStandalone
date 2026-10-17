@@ -31,11 +31,9 @@ import com.seibel.distanthorizons.common.render.openGl.postProcessing.GlScreenQu
 import com.seibel.distanthorizons.common.wrappers.minecraft.MinecraftGLWrapper;
 import com.seibel.distanthorizons.core.config.Config;
 import com.seibel.distanthorizons.common.render.openGl.util.GlAbstractShaderRenderer;
-import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
-import com.seibel.distanthorizons.core.render.RenderParams;
+import com.seibel.distanthorizons.core.render.RenderParam;
 import com.seibel.distanthorizons.core.util.LodUtil;
 import com.seibel.distanthorizons.core.util.math.DhMat4f;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.AbstractDhRenderApiDefinition;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL30;
@@ -47,7 +45,6 @@ public class GlDhFogShader extends GlAbstractShaderRenderer
 	public static final GlDhFogShader INSTANCE = new GlDhFogShader();
 	
 	private static final MinecraftGLWrapper GLMC = MinecraftGLWrapper.INSTANCE;
-	private static final AbstractDhRenderApiDefinition RENDER_DEF = SingletonInjector.INSTANCE.get(AbstractDhRenderApiDefinition.class);
 	
 	
 	
@@ -169,14 +166,14 @@ public class GlDhFogShader extends GlAbstractShaderRenderer
 	//region
 	
 	@Override
-	protected void onApplyUniforms(RenderParams renderParams)
+	protected void onApplyUniforms(RenderParam renderParams)
 	{
 		int lodDrawDistance = Config.Client.Advanced.Graphics.Quality.lodChunkRenderDistanceRadius.get() * LodUtil.CHUNK_WIDTH;
 		
 		this.shader.setUniform(this.uInvMvmProj, this.inverseMvmProjMatrix);
 		
-		this.shader.setUniform(this.uIsReverseZDepth, (RENDER_DEF.getDepthDirection() == EDhApiDepthDirection.REVERSE_Z) ? 1 : 0);
-		this.shader.setUniform(this.uDepthIsZeroToPositiveOne, (RENDER_DEF.getDepthRange() == EDhApiDepthRange.ZERO_TO_POS_ONE) ? 1 : 0);
+		this.shader.setUniform(this.uIsReverseZDepth, (renderParams.renderDefinition.getDepthDirection() == EDhApiDepthDirection.REVERSE_Z) ? 1 : 0);
+		this.shader.setUniform(this.uDepthIsZeroToPositiveOne, (renderParams.renderDefinition.getDepthRange() == EDhApiDepthRange.ZERO_TO_POS_ONE) ? 1 : 0);
 		
 		
 		// Fog uniforms
@@ -240,7 +237,7 @@ public class GlDhFogShader extends GlAbstractShaderRenderer
 	//region
 	
 	@Override
-	protected void onRender()
+	protected void onRender(RenderParam renderParams)
 	{
 		GLMC.glBindFramebuffer(GL30.GL_FRAMEBUFFER, this.frameBuffer);
 		GLMC.disableScissorTest();

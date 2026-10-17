@@ -1,17 +1,18 @@
 package com.seibel.distanthorizons.lwjgl.lwjgl3;
 
+import com.seibel.distanthorizons.lwjgl.*;
+import com.seibel.distanthorizons.lwjgl.GL33;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.opengl.*;
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL15;
+import org.lwjgl.opengl.GL32;
 import org.lwjgl.system.APIUtil;
 import org.lwjgl.system.JNI;
 import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.system.Pointer;
-import com.seibel.distanthorizons.lwjgl.IDebugMessageHandler;
-import com.seibel.distanthorizons.lwjgl.EGLExtension;
-import com.seibel.distanthorizons.lwjgl.ILWJGLService;
-import com.seibel.distanthorizons.lwjgl.AbstractMemoryStack;
 
 import java.io.PrintStream;
 import java.nio.*;
@@ -104,13 +105,26 @@ public class LWJGL3Service implements ILWJGLService
     }
 
     @Override
+    public boolean isFeatureSupported(EGLFeature feature)
+    {
+        GLCapabilities caps = GL.getCapabilities();
+        switch (feature) 
+        {
+	        case glBufferStorage: return caps.glBufferStorage != 0L;
+	        case glBindVertexBuffer: return caps.glBindVertexBuffer != 0L;
+			
+	        default: throw new UnsupportedOperationException("No logic defined for feature ["+feature+"].");
+        }
+    }
+
+    @Override
     public int getPointerSize() {
         return Pointer.POINTER_SIZE;
     }
 
 	
 	
-    // ===================== BUFFER OPERATIONS =====================
+	// ===================== BUFFER OPERATIONS =====================
 
     @Override
     public int glGenBuffers() {
@@ -880,6 +894,12 @@ public class LWJGL3Service implements ILWJGLService
     public void glDisable(int cap) {
         GL11C.glDisable(cap);
     }
+	
+	@Override
+	public void glDisablei(int target, int index) { GL33C.glDisablei(target, index); }
+	
+	@Override 
+	public void glEnablei(int target, int index) { GL33C.glEnablei(target, index); }
 	
 	@Override
 	public boolean glIsEnabled(int cap)

@@ -648,7 +648,7 @@ public class ClientLevelWrapper implements IClientLevelWrapper
 			return null;
 		}
 		
-		return this.dhLevel.getGenericRenderer();
+		return this.dhLevel.getGenericRendererRegister();
 	}
 	
 	@Override

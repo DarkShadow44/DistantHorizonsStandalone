@@ -1014,8 +1014,10 @@ public class BlockStateWrapper implements IBlockStateWrapper
 		boolean canOcclude = false;
 		if (blockState != null)
 		{
-			#if MC_VER <= MC_1_12_2
-			canOcclude = blockState.getMaterial().isSolid();
+			#if MC_VER <= MC_1_7_10
+			canOcclude = blockState.getBlock().isOpaqueCube();
+			#elif MC_VER <= MC_1_12_2
+			canOcclude = blockState.isOpaqueCube();
 			#else
 			canOcclude = blockState.canOcclude();
 			#endif

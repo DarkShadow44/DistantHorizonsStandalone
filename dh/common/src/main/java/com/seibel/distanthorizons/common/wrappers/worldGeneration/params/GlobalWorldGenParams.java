@@ -45,7 +45,6 @@ import net.minecraft.core.RegistryAccess;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.biome.Biome;
-import net.minecraft.world.level.biome.BiomeManager;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 
 #if MC_VER >= MC_1_18_2
@@ -125,7 +124,6 @@ public final class GlobalWorldGenParams
 	#endif
 	
 	#if MC_VER >= MC_1_18_2
-	public final BiomeManager biomeManager;
 	public final ChunkScanAccess chunkScanner;
 	#endif
 	
@@ -174,7 +172,6 @@ public final class GlobalWorldGenParams
 		
 		
 		#if MC_VER >= MC_1_18_2
-		this.biomeManager = new BiomeManager(this.mcServerLevel, BiomeManager.obfuscateSeed(this.worldSeed));
 		this.chunkScanner = this.mcServerLevel.getChunkSource().chunkScanner();
 		#endif
 		

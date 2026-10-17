@@ -163,7 +163,7 @@ public class ClientBlockStateTextureCache
 		
 		// allow changing the texture if the API event is requested
 		// (this is done to reduce GC pressure and speed up color getting)
-		if (blockStateWrapper.allowApiColorOverride())
+		if (blockStateWrapper.allowApiTextureOverride())
 		{
 			DhApiBlockTextureOverrideEvent.EventParam eventParam = TEXTURE_OVERRIDE_EVENT_PARAM_THREAD_LOCAL.get();
 			
@@ -175,6 +175,7 @@ public class ClientBlockStateTextureCache
 				eventParam.update(
 					blockStateWrapper,
 					faceDirection.getApiVersion(),
+					blockFaceTexture.argbPixels, // sending in the current pixel colors is necessary for textures to appear correctly if no texture change events are fired
 					ClientBlockStateTextureCache::ApiTextureRegenFunc
 				);
 				ApiEventInjector.INSTANCE.fireAllEvents(DhApiBlockTextureOverrideEvent.class, eventParam);

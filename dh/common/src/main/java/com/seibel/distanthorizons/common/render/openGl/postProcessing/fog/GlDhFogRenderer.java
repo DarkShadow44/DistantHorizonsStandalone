@@ -20,12 +20,13 @@
 package com.seibel.distanthorizons.common.render.openGl.postProcessing.fog;
 
 import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiFogRenderParam;
+import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam;
 import com.seibel.distanthorizons.common.render.openGl.glObject.GLState;
 import com.seibel.distanthorizons.common.wrappers.minecraft.MinecraftGLWrapper;
 import com.seibel.distanthorizons.core.dependencyInjection.SingletonInjector;
-import com.seibel.distanthorizons.core.render.RenderParams;
+import com.seibel.distanthorizons.core.render.RenderParam;
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.renderPass.IDhFogRenderer;
+import com.seibel.distanthorizons.api.interfaces.render.renderDef.IDhApiFogRenderer;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL30;
@@ -40,7 +41,7 @@ import java.nio.ByteBuffer;
  * {@link GlDhFogShader} - draws the Fog to a texture. <br>
  * {@link GlDhFogApplyShader} - draws the Fog texture to DH's FrameBuffer. <br>
  */
-public class GlDhFogRenderer implements IDhFogRenderer
+public class GlDhFogRenderer implements IDhApiFogRenderer
 {
 	public static GlDhFogRenderer INSTANCE = new GlDhFogRenderer();
 	
@@ -112,8 +113,10 @@ public class GlDhFogRenderer implements IDhFogRenderer
 	//region
 	
 	@Override
-	public void render(RenderParams renderParams, DhApiFogRenderParam fogRenderParams)
+	public void render(DhApiRenderParam apiRenderParams, DhApiFogRenderParam fogRenderParams)
 	{
+		RenderParam renderParams = (RenderParam)apiRenderParams;
+		
 		// GLState needed in MC 1.16.5 probably due to MC not manually setting each GL state they need before the next rendering step
 		try (GLState state = new GLState())
 		{

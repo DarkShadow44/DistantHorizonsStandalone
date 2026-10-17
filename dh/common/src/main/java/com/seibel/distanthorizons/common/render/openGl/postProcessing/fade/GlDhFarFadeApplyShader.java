@@ -23,7 +23,7 @@ import com.seibel.distanthorizons.common.render.openGl.glObject.shader.GlShaderP
 import com.seibel.distanthorizons.common.render.openGl.postProcessing.GlScreenQuad;
 import com.seibel.distanthorizons.common.wrappers.minecraft.MinecraftGLWrapper;
 import com.seibel.distanthorizons.common.render.openGl.util.GlAbstractShaderRenderer;
-import com.seibel.distanthorizons.core.render.RenderParams;
+import com.seibel.distanthorizons.core.render.RenderParam;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL30;
 
@@ -79,7 +79,7 @@ public class GlDhFarFadeApplyShader extends GlAbstractShaderRenderer
 	//=============//
 	
 	@Override
-	protected void onApplyUniforms(RenderParams renderParams)
+	protected void onApplyUniforms(RenderParam renderParams)
 	{
 		GLMC.glActiveTexture(GL13.GL_TEXTURE0);
 		GLMC.glBindTexture(this.fadeTexture);
@@ -94,7 +94,7 @@ public class GlDhFarFadeApplyShader extends GlAbstractShaderRenderer
 	//========//
 	
 	@Override
-	protected void onRender()
+	protected void onRender(RenderParam renderParams)
 	{
 		GLMC.disableBlend();
 		

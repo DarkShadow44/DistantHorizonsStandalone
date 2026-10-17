@@ -129,7 +129,7 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
 	@SubscribeEvent
 	public void serverChunkSaveEvent(ChunkDataEvent.Save event)
 	{
-		if (event.getWorld() instanceof WorldServer 
+		if (event.getWorld() instanceof WorldServer
 			&& event.getChunk().dirty)
 		{
 			WorldServer worldServer = (WorldServer) event.getWorld();
@@ -139,11 +139,26 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
 	
 	@SubscribeEvent
 	public void playerLoggedInEvent(PlayerEvent.PlayerLoggedInEvent event)
-	{ this.serverApi.serverPlayerJoinEvent(getServerPlayerWrapper(event)); }
+	{
+		ServerPlayerWrapper serverPlayerWrapper = getServerPlayerWrapper(event);
+		if (serverPlayerWrapper == null)
+		{
+			return;
+		}
+		this.serverApi.serverPlayerJoinEvent(serverPlayerWrapper);
+		
+	}
 	
 	@SubscribeEvent
 	public void playerLoggedOutEvent(PlayerEvent.PlayerLoggedOutEvent event)
-	{ this.serverApi.serverPlayerDisconnectEvent(getServerPlayerWrapper(event)); }
+	{
+		ServerPlayerWrapper serverPlayerWrapper = getServerPlayerWrapper(event);
+		if (serverPlayerWrapper == null)
+		{
+			return;
+		}
+		this.serverApi.serverPlayerDisconnectEvent(serverPlayerWrapper);
+	}
 	
 	@SubscribeEvent
 	public void playerChangedDimensionEvent(PlayerEvent.PlayerChangedDimensionEvent event)

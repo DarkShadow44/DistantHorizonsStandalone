@@ -22,6 +22,7 @@ package com.seibel.distanthorizons.neoforge;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.seibel.distanthorizons.api.enums.config.EDhApiRenderingApi;
 import com.seibel.distanthorizons.common.AbstractModInitializer;
+import com.seibel.distanthorizons.common.util.DebugKeybindHandler;
 import com.seibel.distanthorizons.common.util.ProxyUtil;
 import com.seibel.distanthorizons.common.wrappers.minecraft.MinecraftRenderWrapper;
 import com.seibel.distanthorizons.common.wrappers.world.ClientLevelWrapper;
@@ -32,11 +33,10 @@ import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.util.threading.ThreadPoolUtil;
 
 import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftClientWrapper;
-import com.seibel.distanthorizons.core.wrapperInterfaces.render.AbstractDhRenderApiDefinition;
+import com.seibel.distanthorizons.core.wrapperInterfaces.minecraft.IMinecraftRenderWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
 import net.minecraft.world.level.LevelAccessor;
 
-import net.minecraft.client.multiplayer.ClientLevel;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import net.neoforged.neoforge.common.NeoForge;
 
@@ -54,6 +54,11 @@ import org.lwjgl.opengl.GL33;
 
 import java.util.concurrent.AbstractExecutorService;
 
+#if MC_VER < MC_1_21_9
+import net.minecraft.client.multiplayer.ClientLevel;
+#elif MC_VER <= MC_1_21_11
+#endif
+
 #if MC_VER <= MC_26_2_0
 import org.lwjgl.glfw.GLFW;
 #else
@@ -63,18 +68,6 @@ public class NeoforgeClientProxy implements AbstractModInitializer.IEventProxy
 {
 	private static final IMinecraftClientWrapper MC = SingletonInjector.INSTANCE.get(IMinecraftClientWrapper.class);
 	private static final DhLogger LOGGER = new DhLoggerBuilder().build();
-	
-	private AbstractDhRenderApiDefinition renderDef = null;
-	/** delayed get due to this class being created before the {@link AbstractDhRenderApiDefinition} is bound */
-	private AbstractDhRenderApiDefinition getRenderDef()
-	{
-		if (this.renderDef == null)
-		{
-			this.renderDef = SingletonInjector.INSTANCE.get(AbstractDhRenderApiDefinition.class);
-		}
-		
-		return this.renderDef;
-	}
 	
 	
 	
@@ -185,7 +178,7 @@ public class NeoforgeClientProxy implements AbstractModInitializer.IEventProxy
 		}
 		#endif
 		
-		ClientApi.INSTANCE.keyPressedEvent(event.getKey());
+		DebugKeybindHandler.onKeyPressed(event.getKey());
 	}
 	
 	//endregion
@@ -269,7 +262,8 @@ public class NeoforgeClientProxy implements AbstractModInitializer.IEventProxy
 		
 		try
 		{
-			if (this.getRenderDef().getRenderApi() == EDhApiRenderingApi.OPEN_GL)
+			IMinecraftRenderWrapper mcRender = SingletonInjector.INSTANCE.get(IMinecraftRenderWrapper.class);
+			if (mcRender.getMcRenderingApi() == EDhApiRenderingApi.OPEN_GL)
 			{
 				// should generally only need to be set once per game session
 				// allows DH to render directly to Optifine's level frame buffer,
