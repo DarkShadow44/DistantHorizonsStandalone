@@ -581,9 +581,12 @@ if (isNotCommonProject) {
             }
             
             
-            // Shared run directory so all loaders use the same worlds
+            // Shared run directory so all loaders use the same worlds; -PdhClientRunDir overrides the client one
             boolean isClient = runTask.name.toLowerCase().contains("client")
-            runTask.workingDir = rootProject.file("run/${isClient ? 'client' : 'server'}")
+            File runDir = isClient && rootProject.hasProperty("dhClientRunDir")
+                ? new File(rootProject.dhClientRunDir as String)
+                : rootProject.file("run/${isClient ? 'client' : 'server'}")
+            runTask.workingDir = runDir
 
             boolean useZgc = (gradle.ext.java_version as Integer) >= 21;
             
@@ -606,7 +609,7 @@ if (isNotCommonProject) {
             {
                 // fix (Neo)forge, debug running
                 doFirst {
-                    def modsDir = rootProject.file("run/${isClient ? 'client' : 'server'}/mods")
+                    def modsDir = new File(runDir, "mods")
                     modsDir.mkdirs()
 
                     // Remove any stale DH jars before copying the fresh one
