@@ -80,3 +80,11 @@ tasks.named('clean') { dependsOn dhBuild.task(':clean') }
     configurations.named(name) { setExtendsFrom([]) }
 }
 tasks.named('setupCIWorkspace') { setDependsOn([]) }
+
+// RFG's run tasks would launch vanilla from the emptied classpaths above; forward to DH's instead.
+['runClient', 'runServer'].each { name ->
+    tasks.named(name) {
+        setDependsOn([dhBuild.task(":${dhLoader}:${name}")])
+        actions.clear()
+    }
+}
