@@ -15,6 +15,13 @@ repositories {
             includeGroup "com.falsepattern"
         }
     }
+    maven {
+        name = "mavenpattern mega"
+        url = "https://mvn.falsepattern.com/gtmega_releases" // megatraceservice (FalseTweaks)
+        content {
+            includeGroup "mega"
+        }
+    }
 }
 
 // ==================== Mod Dependency Helper ====================
@@ -37,8 +44,17 @@ dependencies {
     addMod("com.github.GTNewHorizons:GTNHLib:0.11.47", rootProject.enable_angelica == "2" ? "2" : "1")
     modCompileOnly("com.github.GTNewHorizons:GT5-Unofficial:5.09.51.469:dev") { transitive = false }
     addMod("com.github.GTNewHorizons:Angelica:2.2.12", rootProject.enable_angelica)
-    modCompileOnly "com.falsepattern:rple-mc1.7.10:2.1.0:api"
-    
+    // RPLE plus its runtime chain. The mod jars stay non-transitive so their dev
+    // jars don't come along; the plain libraries they need are listed after them.
+    modImplementation("com.falsepattern:rple-mc1.7.10:2.1.0@jar") { transitive = false }
+    modRuntimeOnly("com.falsepattern:lumi-mc1.7.10:1.2.0@jar") { transitive = false }
+    modRuntimeOnly("com.falsepattern:chunkapi-mc1.7.10:0.6.1@jar") { transitive = false }
+    modRuntimeOnly("com.falsepattern:falsetweaks-mc1.7.10:4.0.5@jar") { transitive = false }
+    modRuntimeOnly("com.falsepattern:falsepatternlib-mc1.7.10:1.9.0@jar") { transitive = false }
+    runtimeOnly "it.unimi.dsi:fastutil:8.5.16"
+    runtimeOnly "org.joml:joml:1.10.8"
+    runtimeOnly "mega:megatraceservice:1.2.0"
+
     modImplementation "io.github.legacymoddingmc:unimixins:0.2.1@jar"
 
 }
@@ -61,6 +77,20 @@ processResources {
 
 tasks.named('runClient') {
     dependsOn(copyCoreResources)
+    // FML only looks for the @Mod of a classpath coremod (FMLCorePluginContainsFMLMod)
+    // in the mods folder, so move FalsePatternLib there like the DH jar itself.
+    // It must also leave the classpath, or its coremod is loaded twice.
+    doFirst {
+        def isFpLib = { File file -> file.name.startsWith("falsepatternlib-") }
+        def modsDir = new File(workingDir, "mods")
+        modsDir.mkdirs()
+        modsDir.listFiles()?.findAll(isFpLib)*.delete()
+        copy {
+            from classpath.filter(isFpLib)
+            into modsDir
+        }
+        classpath = classpath.filter { !isFpLib(it) }
+    }
     // dependsOn(copyCommonLoaderResources)
     finalizedBy(deleteResources)
 }
