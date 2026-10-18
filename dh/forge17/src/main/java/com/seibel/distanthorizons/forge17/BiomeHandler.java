@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.seibel.distanthorizons.common.wrappers.block.BiomeWrapper;
 import com.seibel.distanthorizons.common.wrappers.block.IBiomeHandler;
 import com.seibel.distanthorizons.forge17.mixin.MixinBiomeGenBase;
 import net.minecraft.world.biome.BiomeGenBase;
@@ -58,7 +59,7 @@ public class BiomeHandler implements IBiomeHandler
 			ConcurrentHashMap<String, BiomeGenBase> newBiomeByName = new ConcurrentHashMap<>();
 			for (BiomeGenBase biome : biomeList)
 			{
-				newBiomeByName.put(biome.biomeName, biome);
+				newBiomeByName.put(BiomeWrapper.getSerialName(biome), biome);
 			}
 			this.biomeByName = newBiomeByName;
 		}

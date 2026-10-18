@@ -195,7 +195,7 @@ public class BiomeWrapper implements IBiomeWrapper
 		}
 		
         #if MC_VER <= MC_1_7_10
-		return this.biome.biomeName;
+		return getSerialName(this.biome);
         #elif MC_VER < MC_1_18_2
 		return this.biome.toString();
         #else
@@ -264,7 +264,7 @@ public class BiomeWrapper implements IBiomeWrapper
 		#endif
 		
 		#if MC_VER <= MC_1_7_10
-		this.serialString = "biome:" + this.biome.biomeName;
+		this.serialString = "biome:" + getSerialName(this.biome);
 		#else
 		#if MC_VER <= MC_1_21_10
 		ResourceLocation resourceLocation;
@@ -307,6 +307,15 @@ public class BiomeWrapper implements IBiomeWrapper
 		return this.serialString;
 	}
 	
+	#if MC_VER <= MC_1_7_10
+	/**
+	 * Some mods never call setBiomeName (e.g. Arcana RPG's BiomeSunset),
+	 * so nameless biomes are keyed by their ID instead.
+	 */
+	public static String getSerialName(BiomeGenBase biome)
+	{ return (biome.biomeName != null) ? biome.biomeName : ("#" + biome.biomeID); }
+	
+	#endif
 	public static IBiomeWrapper deserialize(String resourceLocationString, ILevelWrapper levelWrapper) throws IOException
 	{
 		// we need the final string for the concurrent hash map later
