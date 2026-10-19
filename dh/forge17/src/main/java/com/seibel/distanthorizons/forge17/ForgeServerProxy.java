@@ -103,8 +103,7 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
     {
 		if (GetEventLevel(event) instanceof WorldServer)
 	    {
-			// Make new server level wrapper so it's not cached...
-			ServerApi.INSTANCE.serverLevelUnloadEvent(new ServerLevelWrapper((WorldServer) GetEventLevel(event)));
+			ServerApi.INSTANCE.serverLevelUnloadEvent(getServerLevelWrapper((WorldServer) GetEventLevel(event)));
 		}
 	}
 

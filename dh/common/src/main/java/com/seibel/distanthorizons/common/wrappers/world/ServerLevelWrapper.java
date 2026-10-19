@@ -358,6 +358,20 @@ public class ServerLevelWrapper implements IServerLevelWrapper
 	@Override
 	public String toString() { return "Wrapped{" + this.level.toString() + "@" + this.getDhIdentifier() + "}"; }
 	
+	/**
+	 * Two wrappers for the same MC level must be interchangeable as map keys.
+	 * Wrappers are compared by the identity of the level they wrap.
+	 */
+	@Override
+	public boolean equals(Object other)
+	{
+		return other instanceof ServerLevelWrapper
+			&& ((ServerLevelWrapper) other).level == this.level;
+	}
+	
+	@Override
+	public int hashCode() { return System.identityHashCode(this.level); }
+	
 	//endregion
 	
 	
