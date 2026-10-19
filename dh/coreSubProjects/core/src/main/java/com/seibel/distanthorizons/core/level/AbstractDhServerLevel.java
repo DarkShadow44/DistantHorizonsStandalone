@@ -31,8 +31,10 @@ import org.jetbrains.annotations.NotNull;
 import java.io.File;
 import java.io.IOException;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
+import java.util.function.Consumer;
 
 public abstract class AbstractDhServerLevel extends AbstractDhLevel implements IDhServerLevel
 {
@@ -50,6 +52,8 @@ public abstract class AbstractDhServerLevel extends AbstractDhLevel implements I
 	protected final ConcurrentLinkedQueue<IServerPlayerWrapper> worldGenPlayerCenteringQueue = new ConcurrentLinkedQueue<>();
 	
 	private final FullDataSourceRequestHandler requestHandler;
+	
+	private final ConcurrentHashMap<ServerPlayerState, List<Runnable>> unregisterActionsByPlayer = new ConcurrentHashMap<>();
 	
 	
 	
@@ -127,7 +131,13 @@ public abstract class AbstractDhServerLevel extends AbstractDhLevel implements I
 	
 	public void registerNetworkHandlers(ServerPlayerState serverPlayerState)
 	{
-		serverPlayerState.networkSession.registerHandler(FullDataSourceRequestMessage.class, (message) ->
+		List<Runnable> unregisterActions = new ArrayList<>();
+		if (this.unregisterActionsByPlayer.putIfAbsent(serverPlayerState, unregisterActions) != null)
+		{
+			return;
+		}
+		
+		Consumer<FullDataSourceRequestMessage> fullDataSourceRequestHandler = (message) ->
 		{
 			if (!this.validatePlayerInCurrentLevel(message))
 			{
@@ -175,13 +185,33 @@ public abstract class AbstractDhServerLevel extends AbstractDhLevel implements I
 				}
 				this.requestHandler.queueLodSyncForRequestMessage(serverPlayerState, message, rateLimiterSet);
 			}
-		});
+		};
+		serverPlayerState.networkSession.registerHandler(FullDataSourceRequestMessage.class, fullDataSourceRequestHandler);
+		unregisterActions.add(() -> serverPlayerState.networkSession.unregisterHandler(FullDataSourceRequestMessage.class, fullDataSourceRequestHandler));
 		
 		
-		serverPlayerState.networkSession.registerHandler(CancelMessage.class, msg ->
+		Consumer<CancelMessage> cancelMessageHandler = (msg) ->
 		{
 			this.requestHandler.cancelRequest(msg.futureId);
-		});
+		};
+		serverPlayerState.networkSession.registerHandler(CancelMessage.class, cancelMessageHandler);
+		unregisterActions.add(() -> serverPlayerState.networkSession.unregisterHandler(CancelMessage.class, cancelMessageHandler));
+	}
+	
+	public void unregisterNetworkHandlers(ServerPlayerState serverPlayerState)
+	{
+		List<Runnable> unregisterActions = this.unregisterActionsByPlayer.remove(serverPlayerState);
+		if (unregisterActions == null)
+		{
+			return;
+		}
+		
+		for (Runnable unregisterAction : unregisterActions)
+		{
+			unregisterAction.run();
+		}
+		
+		serverPlayerState.removeRateLimiterSet(this);
 	}
 	
 	
@@ -305,6 +335,12 @@ public abstract class AbstractDhServerLevel extends AbstractDhLevel implements I
 	@Override
 	public void close()
 	{
+		for (ServerPlayerState serverPlayerState : this.unregisterActionsByPlayer.keySet())
+		{
+			this.unregisterNetworkHandlers(serverPlayerState);
+		}
+		this.unregisterActionsByPlayer.clear();
+		
 		super.close();
 		this.serverside.close();
 		this.requestHandler.close();

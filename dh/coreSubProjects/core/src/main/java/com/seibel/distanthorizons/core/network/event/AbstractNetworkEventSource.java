@@ -147,7 +147,26 @@ public abstract class AbstractNetworkEventSource
 		this.networkHandlerSetByMessageClass
 				.computeIfAbsent(handlerClass, missingHandlerClass -> new ConcurrentHashMap<>())
 				.computeIfAbsent(eventSource, missingEventSource -> ConcurrentHashMap.newKeySet())
-				.add((m) -> handlerImplementation.accept((T) m));
+				.add(new NetworkMessageConsumer<>(handlerImplementation));
+	}
+	
+	protected final <T extends AbstractNetworkMessage> void unregisterHandler(AbstractNetworkEventSource eventSource, Class<T> handlerClass, Consumer<T> handlerImplementation)
+	{
+		ConcurrentMap<AbstractNetworkEventSource, Set<INetworkMessageConsumer>> handlerMap = this.networkHandlerSetByMessageClass.get(handlerClass);
+		if (handlerMap == null)
+		{
+			return;
+		}
+		
+		Set<INetworkMessageConsumer> handlerSet = handlerMap.get(eventSource);
+		if (handlerSet == null)
+		{
+			return;
+		}
+		
+		// empty sets/maps are intentionally kept, removing them could race
+		// with a concurrent registerHandler() adding to the removed set
+		handlerSet.remove(new NetworkMessageConsumer<>(handlerImplementation));
 	}
 	
 	protected void removeAllHandlers(AbstractNetworkEventSource eventSource)
@@ -230,6 +249,35 @@ public abstract class AbstractNetworkEventSource
 	private interface INetworkMessageConsumer 
 	{
 		void accept(AbstractNetworkMessage message);
+	}
+	
+	/**
+	 * Wraps a handler so it can be looked up and removed again.
+	 * Handlers are compared by identity, matching how they were registered.
+	 */
+	private static class NetworkMessageConsumer<T extends AbstractNetworkMessage> implements INetworkMessageConsumer
+	{
+		private final Consumer<T> handlerImplementation;
+		
+		private NetworkMessageConsumer(Consumer<T> handlerImplementation)
+		{
+			this.handlerImplementation = handlerImplementation;
+		}
+		
+		@Override
+		@SuppressWarnings("unchecked")
+		public void accept(AbstractNetworkMessage message) { this.handlerImplementation.accept((T) message); }
+		
+		@Override
+		public boolean equals(Object other)
+		{
+			return other instanceof NetworkMessageConsumer
+				&& ((NetworkMessageConsumer<?>) other).handlerImplementation == this.handlerImplementation;
+		}
+		
+		@Override
+		public int hashCode() { return System.identityHashCode(this.handlerImplementation); }
+		
 	}
 	
 	

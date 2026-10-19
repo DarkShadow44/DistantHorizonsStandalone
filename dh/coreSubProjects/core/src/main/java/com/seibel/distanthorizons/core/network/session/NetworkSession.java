@@ -108,6 +108,11 @@ public class NetworkSession extends AbstractNetworkEventSource
 		this.registerHandler(this, handlerClass, handlerImplementation);
 	}
 	
+	public <T extends AbstractNetworkMessage> void unregisterHandler(Class<T> handlerClass, Consumer<T> handlerImplementation)
+	{
+		this.unregisterHandler(this, handlerClass, handlerImplementation);
+	}
+	
 	
 	
 	//==============//

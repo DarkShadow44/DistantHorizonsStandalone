@@ -92,6 +92,16 @@ public abstract class AbstractDhServerWorld<TDhServerLevel extends AbstractDhSer
 		}
 		
 		serverLevel.removePlayer(serverPlayer);
+		
+		ServerPlayerState playerState = this.serverPlayerStateManager.getConnectedPlayer(serverPlayer);
+		if (playerState != null)
+		{
+			for (TDhServerLevel level : this.dhLevelByLevelWrapper.values())
+			{
+				level.unregisterNetworkHandlers(playerState);
+			}
+		}
+		
 		this.serverPlayerStateManager.unregisterLeftPlayer(serverPlayer);
 		
 		// If player's left, session is already closed

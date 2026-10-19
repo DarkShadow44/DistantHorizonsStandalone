@@ -26,6 +26,7 @@ import com.seibel.distanthorizons.core.api.internal.chunkUpdating.WorldChunkUpda
 import com.seibel.distanthorizons.core.enums.MinecraftTextFormat;
 import com.seibel.distanthorizons.core.generation.PregenManager;
 import com.seibel.distanthorizons.core.level.DhServerLevel;
+import com.seibel.distanthorizons.core.multiplayer.server.ServerPlayerState;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.ILevelWrapper;
 import com.seibel.distanthorizons.core.wrapperInterfaces.world.IServerLevelWrapper;
 import com.seibel.distanthorizons.coreapi.DependencyInjection.ApiEventInjector;
@@ -63,14 +64,16 @@ public class DhServerWorld extends AbstractDhServerWorld<DhServerLevel>
 			return null;
 		}
 		
-		return this.dhLevelByLevelWrapper.computeIfAbsent(wrapper, 
+		final boolean[] levelCreated = { false };
+		DhServerLevel level = this.dhLevelByLevelWrapper.computeIfAbsent(wrapper, 
 			(serverLevelWrapper) ->
 			{
 				try
 				{
-					DhServerLevel level = new DhServerLevel(this.saveStructure, (IServerLevelWrapper) serverLevelWrapper, this.getServerPlayerStateManager());
+					DhServerLevel newLevel = new DhServerLevel(this.saveStructure, (IServerLevelWrapper) serverLevelWrapper, this.getServerPlayerStateManager());
 					ApiEventInjector.INSTANCE.fireAllEvents(DhApiLevelLoadEvent.class, new DhApiLevelLoadEvent.EventParam(wrapper));
-					return level;
+					levelCreated[0] = true;
+					return newLevel;
 				}
 				catch (Exception e)
 				{
@@ -88,6 +91,16 @@ public class DhServerWorld extends AbstractDhServerWorld<DhServerLevel>
 					return null;
 				}
 			});
+		
+		if (level != null && levelCreated[0])
+		{
+			for (ServerPlayerState playerState : this.getServerPlayerStateManager().getConnectedPlayers())
+			{
+				level.registerNetworkHandlers(playerState);
+			}
+		}
+		
+		return level;
 	}
 	
 	@Override
