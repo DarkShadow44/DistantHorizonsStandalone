@@ -23,6 +23,7 @@ import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiLevelLo
 import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiLevelUnloadEvent;
 import com.seibel.distanthorizons.core.api.internal.ClientApi;
 import com.seibel.distanthorizons.core.api.internal.ClientPluginChannelApi;
+import com.seibel.distanthorizons.core.api.internal.chunkUpdating.WorldChunkUpdateManager;
 import com.seibel.distanthorizons.core.enums.MinecraftTextFormat;
 import com.seibel.distanthorizons.core.file.structure.ClientOnlySaveStructure;
 import com.seibel.distanthorizons.core.level.DhClientLevel;
@@ -235,6 +236,8 @@ public class DhClientWorld extends AbstractDhWorld implements IDhClientWorld
 			if (wrapperSet.isEmpty()) 
 			{
 				this.clientLevelByDhId.remove(wrapper.getDhIdentifier()).close();
+				WorldChunkUpdateManager.INSTANCE.removeLevel(wrapper);
+				this.saveStructure.removeLevel(wrapper);
 			}
 			
 			ApiEventInjector.INSTANCE.fireAllEvents(DhApiLevelUnloadEvent.class, new DhApiLevelUnloadEvent.EventParam(wrapper));

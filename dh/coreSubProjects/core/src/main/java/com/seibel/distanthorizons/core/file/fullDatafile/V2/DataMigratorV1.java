@@ -334,6 +334,10 @@ public class DataMigratorV1 implements AutoCloseable
 	public void close()
 	{
 		//LOGGER.info("Closing [" + this.getClass().getSimpleName() + "] for level: [" + this.levelId + "].");
+
+		// the V1 repo is tracked in a static map until it's closed,
+		// so not closing it here kept it (and its connections) alive after the level unloaded
+		this.v1DataSourceProvider.close();
 	}
 	
 	

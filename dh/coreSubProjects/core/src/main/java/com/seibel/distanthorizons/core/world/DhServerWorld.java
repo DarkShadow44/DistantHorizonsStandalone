@@ -22,6 +22,7 @@ package com.seibel.distanthorizons.core.world;
 import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiLevelLoadEvent;
 import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiLevelUnloadEvent;
 import com.seibel.distanthorizons.core.api.internal.ClientApi;
+import com.seibel.distanthorizons.core.api.internal.chunkUpdating.WorldChunkUpdateManager;
 import com.seibel.distanthorizons.core.enums.MinecraftTextFormat;
 import com.seibel.distanthorizons.core.generation.PregenManager;
 import com.seibel.distanthorizons.core.level.DhServerLevel;
@@ -101,6 +102,8 @@ public class DhServerWorld extends AbstractDhServerWorld<DhServerLevel>
 		{
 			wrapper.onUnload();
 			this.dhLevelByLevelWrapper.remove(wrapper).close();
+			WorldChunkUpdateManager.INSTANCE.removeLevel(wrapper);
+			this.saveStructure.removeLevel(wrapper);
 			ApiEventInjector.INSTANCE.fireAllEvents(DhApiLevelUnloadEvent.class, new DhApiLevelUnloadEvent.EventParam(wrapper));
 			return true;
 		}

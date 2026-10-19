@@ -32,9 +32,8 @@ public class WorldChunkUpdateManager
 	
 	
 	/** 
-	 * Queues are only removed during world shutdown.
-	 * The assumption is that there will be a limited number of {@link ILevelWrapper}'s
-	 * for a given world.
+	 * Queues are removed when their level unloads,
+	 * and all of them are removed during world shutdown.
 	 */
 	private final ConcurrentHashMap<ILevelWrapper, ChunkUpdateQueueManager> updateQueueByLevelWrapper = new ConcurrentHashMap<>();
 	
@@ -132,6 +131,16 @@ public class WorldChunkUpdateManager
 			});
 		
 		return queueCountRef.get();
+	}
+	
+	public void removeLevel(ILevelWrapper levelWrapper)
+	{
+		ChunkUpdateQueueManager updateManager = this.updateQueueByLevelWrapper.remove(levelWrapper);
+		if (updateManager != null)
+		{
+			updateManager.close();
+			updateManager.clear();
+		}
 	}
 	
 	public void clear() 

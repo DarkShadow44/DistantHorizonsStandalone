@@ -78,6 +78,9 @@ public class LocalSaveStructure implements ISaveStructure
 	@Override
 	public File getPre23SaveFolder(ILevelWrapper levelWrapper) { return this.getSaveFolder(levelWrapper); }
 	
+	@Override
+	public void removeLevel(ILevelWrapper levelWrapper) { this.levelWrapperToFileMap.remove(levelWrapper); }
+	
 	
 	//==================//
 	// override methods //
