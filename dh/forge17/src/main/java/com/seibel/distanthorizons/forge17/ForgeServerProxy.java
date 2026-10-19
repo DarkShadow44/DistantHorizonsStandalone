@@ -3,6 +3,7 @@ package com.seibel.distanthorizons.forge17;
 import com.seibel.distanthorizons.common.commonMixins.MixinChunkMapCommon;
 import com.seibel.distanthorizons.common.util.threading.ServerThreadTaskHandler;
 import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.world.ChunkCoordIntPair;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.chunk.Chunk;
@@ -28,9 +29,18 @@ import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.PlayerEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+
 public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
 {
     private final boolean isDedicated;
+	
+	private static final int MAX_PENDING_CLICK_TASKS = 2_048;
+	private static final Set<Long> pendingClickTaskKeys = ConcurrentHashMap.newKeySet();
+	private static final AtomicInteger pendingClickTaskCount = new AtomicInteger(0);
 	
 	
 	
@@ -170,18 +180,56 @@ public class ForgeServerProxy implements AbstractModInitializer.IEventProxy
     @SubscribeEvent
 	public void clickBlockEvent(PlayerInteractEvent event)
     {
-		ILevelWrapper wrappedLevel = ProxyUtil.getLevelWrapper(event.world);
-		if (SharedApi.isChunkAtBlockPosAlreadyUpdating(wrappedLevel, event.x, event.z))
+		final World world = event.world;
+		final int x = event.x;
+		final int z = event.z;
+		ILevelWrapper wrappedLevel = ProxyUtil.getLevelWrapper(world);
+		if (SharedApi.isChunkAtBlockPosAlreadyUpdating(wrappedLevel, x, z))
 	    {
 			return;
 		}
 		
+		if (pendingClickTaskCount.get() > MAX_PENDING_CLICK_TASKS)
+		{
+			return;
+		}
+		
+		final long chunkKey = (((long) System.identityHashCode(world)) << 32) ^ ChunkCoordIntPair.chunkXZ2Int(x >> 4, z >> 4);
+		if (!pendingClickTaskKeys.add(chunkKey))
+		{
+			return;
+		}
+		
+		pendingClickTaskCount.incrementAndGet();
+		AtomicBoolean taskStarted = new AtomicBoolean(false);
 		ServerThreadTaskHandler.INSTANCE.queueTask(() ->
 		{
-			Chunk chunk = event.world.getChunkFromBlockCoords(event.x, event.z);
-			ChunkWrapper chunkWrapper = new ChunkWrapper(chunk, wrappedLevel);
-			SharedApi.INSTANCE.applyChunkUpdate(chunkWrapper, wrappedLevel, true);
-			return null;
+			taskStarted.set(true);
+			pendingClickTaskKeys.remove(chunkKey);
+			try
+			{
+				// the task may run ticks later, don't load the chunk again if it was unloaded in the meantime
+				if (!world.getChunkProvider().chunkExists(x >> 4, z >> 4))
+				{
+					return null;
+				}
+
+				Chunk chunk = world.getChunkFromBlockCoords(x, z);
+				ChunkWrapper chunkWrapper = new ChunkWrapper(chunk, wrappedLevel);
+				SharedApi.INSTANCE.applyChunkUpdate(chunkWrapper, wrappedLevel, true);
+				return null;
+			}
+			finally
+			{
+				pendingClickTaskCount.decrementAndGet();
+			}
+		}).whenComplete((result, throwable) ->
+		{
+			if (throwable != null && !taskStarted.get())
+			{
+				pendingClickTaskKeys.remove(chunkKey);
+				pendingClickTaskCount.decrementAndGet();
+			}
 		});
 	}
 	
