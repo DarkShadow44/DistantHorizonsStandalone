@@ -33,6 +33,8 @@ public class ServerPlayerStateManager implements AutoCloseable
 	
 	public void unregisterLeftPlayer(IServerPlayerWrapper serverPlayer)
 	{
+		this.messageQueueByPlayerWrapper.remove(serverPlayer);
+		
 		ServerPlayerState playerState = this.connectedPlayerStateByPlayerWrapper.remove(serverPlayer);
 		if (playerState != null)
 		{
@@ -118,6 +120,7 @@ public class ServerPlayerStateManager implements AutoCloseable
 				playerState.close();
 			}
 		}
+		this.messageQueueByPlayerWrapper.clear();
 	}
 	
 	

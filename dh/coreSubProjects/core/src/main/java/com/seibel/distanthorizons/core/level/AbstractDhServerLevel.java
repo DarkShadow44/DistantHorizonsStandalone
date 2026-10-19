@@ -211,6 +211,7 @@ public abstract class AbstractDhServerLevel extends AbstractDhLevel implements I
 			unregisterAction.run();
 		}
 		
+		this.requestHandler.cancelRequestsForPlayer(serverPlayerState);
 		serverPlayerState.removeRateLimiterSet(this);
 	}
 	
