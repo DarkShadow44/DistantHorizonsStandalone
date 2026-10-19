@@ -847,6 +847,9 @@ public final class DhChunkGenerator implements IChunkGenerator
 			genEventIter.remove();
 		}
 		
+		this.chunkSaveIgnoreTimer.cancel();
+		this.internalServerGenerator.close();
+		
 		
 		#if MC_VER > MC_1_12_2
 		this.chunkFileReader.close();

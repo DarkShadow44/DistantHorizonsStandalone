@@ -146,6 +146,33 @@ public class DhInternalServerGenerator
 		increaseChunkLimit(this.dhServerGenTicket, 1000);
 		#endif
 	}
+	
+	public void close()
+	{
+		this.chunkSaveIgnoreTimer.cancel();
+		
+		#if MC_VER <= MC_1_12_2
+		// the ref count map is only accessed on the server thread
+		ServerThreadTaskHandler.INSTANCE.queueEssentialTask(() ->
+		{
+			#if MC_VER <= MC_1_7_10
+			// chunks still held by generation were marked as "don't simulate",
+			// that has to be undone or they'd stay frozen after the ticket is released
+			if (HODGE_PODGE_ACCESSOR != null)
+			{
+				for (DhChunkPos chunkPos : this.generationChunkRefCountMap.keySet())
+				{
+					HODGE_PODGE_ACCESSOR.allowChunkSimulation(this.params.mcServerLevel, chunkPos.getX(), chunkPos.getZ());
+				}
+			}
+			#endif
+			this.generationChunkRefCountMap.clear();
+
+			ForgeChunkManager.releaseTicket(this.dhServerGenTicket);
+			return null;
+		});
+		#endif
+	}
 
 	#if MC_VER <= MC_1_12_2
 	private static void increaseChunkLimit(ForgeChunkManager.Ticket ticket, int newMaxDepth)
