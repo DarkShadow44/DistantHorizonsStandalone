@@ -8,6 +8,7 @@ import com.seibel.distanthorizons.core.level.AbstractDhServerLevel;
 import com.seibel.distanthorizons.core.logging.DhLogger;
 import com.seibel.distanthorizons.core.logging.DhLoggerBuilder;
 import com.seibel.distanthorizons.core.multiplayer.fullData.FullDataPayload;
+import com.seibel.distanthorizons.core.network.exceptions.RequestOutOfRangeException;
 import com.seibel.distanthorizons.core.network.exceptions.RequestRejectedException;
 import com.seibel.distanthorizons.core.network.exceptions.SectionRequiresSplittingException;
 import com.seibel.distanthorizons.core.network.messages.fullData.FullDataSourceRequestMessage;
@@ -15,6 +16,7 @@ import com.seibel.distanthorizons.core.network.messages.fullData.FullDataSourceR
 import com.seibel.distanthorizons.core.pos.DhSectionPos;
 import com.seibel.distanthorizons.core.sql.dto.BeaconBeamDTO;
 import com.seibel.distanthorizons.core.util.ThreadUtil;
+import com.seibel.distanthorizons.core.util.ratelimiting.SupplierBasedRateAndConcurrencyLimiter;
 import com.seibel.distanthorizons.core.util.threading.ThreadPoolUtil;
 
 import java.util.ArrayList;
@@ -113,11 +115,19 @@ public class FullDataSourceRequestHandler implements AutoCloseable
 					}
 					
 					// get the server's datasource
-					return this.fullDataSourceProvider().get(message.sectionPos);
+					FullDataSourceV2 fullDataSource = this.fullDataSourceProvider().get(message.sectionPos);
+					if (fullDataSource == null)
+					{
+						// the read failed or the provider is shutting down (logged by the provider),
+						// the client still needs an answer and the permit has to be released
+						this.answerFailedRequest(message, rateLimiterSet.syncOnLoginRateLimiter);
+					}
+					return fullDataSource;
 				}
 				catch (Exception e)
 				{
 					LOGGER.error("Unexpected issue getting server-side LOD for request at pos [" + DhSectionPos.toString(message.sectionPos) + "], error: [" + e.getMessage() + "].", e);
+					this.answerFailedRequest(message, rateLimiterSet.syncOnLoginRateLimiter);
 					return null;
 				}
 			}, fileHandlerExecutor);
@@ -146,6 +156,7 @@ public class FullDataSourceRequestHandler implements AutoCloseable
 				catch (Exception e)
 				{
 					LOGGER.error("Unexpected issue sending request for pos [" + DhSectionPos.toString(message.sectionPos) + "], error: [" + e.getMessage() + "].", e);
+					this.answerFailedRequest(message, rateLimiterSet.syncOnLoginRateLimiter);
 				}
 			}, networkCompressionExecutor);
 		
@@ -265,6 +276,14 @@ public class FullDataSourceRequestHandler implements AutoCloseable
 		provider.getAsync(pos)
 			.thenAccept((FullDataSourceV2 fullDataSource) ->
 		{
+			if (fullDataSource == null)
+			{
+				// the provider is shutting down or the read failed (logged by the provider),
+				// either way the players need an answer or they'll wait forever
+				this.failRequestGroup(pos, requestGroup, "Unable to read LOD data for this section, retry later.");
+				return;
+			}
+			
 			if (provider.generationStepsAreFullyGenerated(fullDataSource.columnGenerationSteps))
 			{
 				//LOGGER.info("sending - complete [" + DhSectionPos.toString(pos) + "]");
@@ -305,7 +324,37 @@ public class FullDataSourceRequestHandler implements AutoCloseable
 				//LOGGER.info("queueing incomplete world gen [" + DhSectionPos.toString(pos) + "]");
 				this.fullDataSourceProvider().queuePositionForRetrieval(pos);
 			}
+		})
+		.exceptionally((Throwable e) ->
+		{
+			LOGGER.error("Unexpected issue fulfilling request group at pos [" + DhSectionPos.toString(pos) + "], error: [" + e.getMessage() + "].", e);
+			this.failRequestGroup(pos, requestGroup, "Unexpected error for this section, retry later.");
+			return null;
 		});
+	}
+	
+	/** Removes the group and answers every waiting player with a "retry later" so none of them wait forever. */
+	private void failRequestGroup(long pos, DataSourceRequestGroup requestGroup, String reason)
+	{
+		this.requestGroupsByPos.remove(pos, requestGroup);
+		if (!requestGroup.tryClose())
+		{
+			return;
+		}
+		
+		for (DataSourceRequestGroup.RequestData requestData : requestGroup.requestMessages.values())
+		{
+			this.requestGroupsByFutureId.remove(requestData.futureId());
+			requestData.rateLimiterSet.generationRequestRateLimiter.release();
+			requestData.message.sendResponse(new RequestOutOfRangeException(reason));
+		}
+	}
+	
+	/** the client treats {@link RequestOutOfRangeException} as "retry later" */
+	private void answerFailedRequest(FullDataSourceRequestMessage message, SupplierBasedRateAndConcurrencyLimiter<FullDataSourceRequestMessage> rateLimiter)
+	{
+		rateLimiter.release();
+		message.sendResponse(new RequestOutOfRangeException("Unable to read LOD data for this section, retry later."));
 	}
 	
 	public void onWorldGenTaskComplete(long pos)
@@ -315,6 +364,15 @@ public class FullDataSourceRequestHandler implements AutoCloseable
 		{
 			requestGroup.markWorldGenTaskComplete();
 			this.tryFulfillDataSourceRequestGroup(requestGroup, pos);
+		}
+	}
+	
+	public void onWorldGenTaskFailed(long pos)
+	{
+		DataSourceRequestGroup requestGroup = this.requestGroupsByPos.get(pos);
+		if (requestGroup != null)
+		{
+			this.failRequestGroup(pos, requestGroup, "World generation failed for this section, retry later.");
 		}
 	}
 	
