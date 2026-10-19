@@ -548,6 +548,32 @@ public abstract class AbstractDhRepo<TKey, TDTO extends IBaseDTO<TKey>> implemen
 		}
 		
 		Thread thread = Thread.currentThread();
+		
+		// dead threads can't use their connections anymore, so clean them up
+		// before potentially creating a new connection for this thread
+		if (this.connectionByThread.get(thread) == null)
+		{
+			for (Map.Entry<Thread, Connection> entry : this.connectionByThread.entrySet())
+			{
+				Thread connectionThread = entry.getKey();
+				if (!connectionThread.isAlive())
+				{
+					Connection connection = this.connectionByThread.remove(connectionThread);
+					if (connection != null)
+					{
+						try
+						{
+							connection.close();
+						}
+						catch (Exception e)
+						{
+							LOGGER.warn("Failed to close connection for dead thread ["+connectionThread.getName()+"].", e);
+						}
+					}
+				}
+			}
+		}
+		
 		return this.connectionByThread.computeIfAbsent(thread, (Thread newThread) ->
 		{
 			try
