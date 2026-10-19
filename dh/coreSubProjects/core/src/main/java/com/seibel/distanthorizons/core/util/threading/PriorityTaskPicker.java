@@ -120,7 +120,7 @@ public class PriorityTaskPicker
 				// or until this executor is empty,
 				// or until we should move on to the next executor
 				while (this.occupiedThreadsRef.get() < Config.Common.MultiThreading.numberOfThreads.get()
-						&& (task = executor.taskQueue.poll()) != null)
+						&& (task = executor.pollTask()) != null)
 				{
 					try
 					{
@@ -132,7 +132,7 @@ public class PriorityTaskPicker
 						if (this.isShutDownRef.get())
 						{
 							// Clear this executor's tasks since we no longer expect anything to execute.
-							executor.taskQueue.clear();
+							executor.clearQueue();
 						}
 						else
 						{
@@ -141,7 +141,7 @@ public class PriorityTaskPicker
 							// Re-queue the task so we don't lose any tasks
 							// (failing to re-queue tasks can cause LODs to fail to load due
 							// to completable futures becoming orphaned).
-							executor.taskQueue.add(task);
+							executor.requeueTask(task);
 						}
 					}
 				}
@@ -248,6 +248,8 @@ public class PriorityTaskPicker
 		private final String name;
 		
 		private final Queue<TrackedRunnable> taskQueue = new ConcurrentLinkedQueue<>();
+		/** {@link ConcurrentLinkedQueue#size()} walks the whole queue, so the count is tracked separately */
+		private final AtomicInteger queuedTasksRef = new AtomicInteger(0);
 		
 		private final AtomicInteger runningTasksRef = new AtomicInteger(0);
 		private final AtomicInteger completedTasksRef = new AtomicInteger(0);
@@ -339,19 +341,49 @@ public class PriorityTaskPicker
 			
 			
 			this.taskQueue.add(new TrackedRunnable(this.parentTaskPicker, this, command));
+			this.queuedTasksRef.getAndIncrement();
 			
 			// Attempt to start the task immediately
 			this.parentTaskPicker.tryStartNextTask();
 		}
 		
 		/** The passed in {@link Runnable} must be exactly the same as the one passed into {@link PriorityTaskPicker.Executor#execute(Runnable)} */
-		public void remove(@NotNull Runnable command) { this.taskQueue.removeIf(trackedRunnable -> trackedRunnable.command == command); }
+		public void remove(@NotNull Runnable command)
+		{
+			Iterator<TrackedRunnable> iterator = this.taskQueue.iterator();
+			while (iterator.hasNext())
+			{
+				if (iterator.next().command == command)
+				{
+					iterator.remove();
+					this.queuedTasksRef.getAndDecrement();
+				}
+			}
+		}
+		
+		/** returns null if the queue is empty */
+		@Nullable
+		private TrackedRunnable pollTask()
+		{
+			TrackedRunnable task = this.taskQueue.poll();
+			if (task != null)
+			{
+				this.queuedTasksRef.getAndDecrement();
+			}
+			return task;
+		}
+		private void requeueTask(TrackedRunnable task)
+		{
+			this.taskQueue.add(task);
+			this.queuedTasksRef.getAndIncrement();
+		}
 		
 		
 		public void runTask(@NotNull Runnable command) { this.threadPoolExecutor.execute(command); }
 		
 		
-		public int getQueueSize() { return this.taskQueue.size(); }
+		/** clamped since a task added while {@link #clearQueue()} runs can make the count briefly negative */
+		public int getQueueSize() { return Math.max(0, this.queuedTasksRef.get()); }
 		/** number of threads */
 		public int getPoolSize() { return Config.Common.MultiThreading.numberOfThreads.get(); }
 		
@@ -360,7 +392,11 @@ public class PriorityTaskPicker
 		/** Will return NaN if nothing has been submitted yet */
 		public double getAverageRunTimeInMs() { return this.runTimeInMsRollingAverage.getAverage(); }
 		
-		public void clearQueue() { this.taskQueue.clear(); }
+		public void clearQueue()
+		{
+			this.taskQueue.clear();
+			this.queuedTasksRef.set(0);
+		}
 		
 		public boolean canRun()
 		{

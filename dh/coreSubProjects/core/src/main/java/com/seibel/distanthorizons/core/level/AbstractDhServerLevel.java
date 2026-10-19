@@ -286,7 +286,7 @@ public abstract class AbstractDhServerLevel extends AbstractDhLevel implements I
 					int distanceFromPlayer = DhSectionPos.getChebyshevSignedBlockDistance(data.getPos(), new DhBlockPos2D((int) playerPosition.x, (int) playerPosition.z)) / 16;
 					if (distanceFromPlayer <= serverPlayerState.sessionConfig.getMaxUpdateDistanceRadius())
 					{
-						serverPlayerState.fullDataPayloadSender.sendInChunks(payload, () ->
+						serverPlayerState.fullDataPayloadSender.sendRealTimeUpdate(payload, () ->
 						{
 							serverPlayerState.networkSession.sendMessage(new FullDataPartialUpdateMessage(this.serverLevelWrapper, payload));
 						});
